@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+
+
+<title>Graph relationships</title>
+
+<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/cerulean.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="site_libs/jqueryui-1.11.4/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<link href="site_libs/highlightjs-1.1/default.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-1.1/highlight.js"></script>
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs && document.readyState && document.readyState === "complete") {
+   window.setTimeout(function() {
+      hljs.initHighlighting();
+   }, 0);
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+</style>
+
+
+<style type="text/css">
+/* padding for bootstrap navbar */
+body {
+  padding-top: 51px;
+  padding-bottom: 40px;
+}
+/* offset scroll position for anchor links (for fixed navbar)  */
+.section h1 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+
+.section h2 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h3 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h4 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h5 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h6 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+</style>
+
+<script>
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark it active
+  menuAnchor.parent().addClass('active');
+
+  // if it's got a parent navbar menu mark it active as well
+  menuAnchor.closest('li.dropdown').addClass('active');
+});
+</script>
+
+
+<div class="container-fluid main-container">
+
+<!-- tabsets -->
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+</script>
+
+<!-- code folding -->
+
+
+
+
+<script>
+$(document).ready(function ()  {
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_').toLowerCase();
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = false;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+  padding-left: 25px;
+  text-indent: 0;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+.tocify-subheader {
+  display: inline;
+}
+.tocify-subheader .tocify-item {
+  font-size: 0.95em;
+}
+
+</style>
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row-fluid">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">graph processing</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div class="fluid-row" id="header">
+
+
+
+<h1 class="title toc-ignore">Graph relationships</h1>
+
+</div>
+
+
+<div id="introduction" class="section level1">
+<h1>Introduction</h1>
+<p>Say we have model code:</p>
+<pre class="r"><code>for(i in 1:l) {
+  for(j in 1:p[i]) {
+    y[i, j] ~ dnorm(x[i+1, k[j]], sd = sigma[j])
+  }
+}</code></pre>
+<p>This creates two sets of edges:</p>
+<ul>
+<li>from some elements of <code>x</code> to some elements of <code>y</code>; and</li>
+<li>from some elements of <code>sigma</code> to some elements of <code>y</code>.</li>
+</ul>
+<p>The two sets of edges can be considered separately. We will consider the edges from <code>x</code> to <code>y</code> below.</p>
+</div>
+<div id="context" class="section level1">
+<h1>Context</h1>
+<p>We define the <em>context</em> of a model declaration as the for-loops that enclose it. In the above example, the context is <span class="math inline">\(C = \{i,j: i=1\ldots l; j=1\ldots p[i] \}\)</span>.</p>
+</div>
+<div id="general-formulation" class="section level1">
+<h1>General formulation</h1>
+<p>Say there are <span class="math inline">\(D\)</span> indices in a context, denoted <span class="math inline">\(I = (i_1, \ldots, i_D)\)</span>. Suppsed <span class="math inline">\(y\)</span> has <span class="math inline">\(M\)</span> dimensions and <span class="math inline">\(x\)</span> has <span class="math inline">\(N\)</span> dimensions. The general formulation of a set of edges in a context is the following:</p>
+<p><span class="math inline">\(\newcommand{\mbt}{\mathbf{t}}\)</span> <span class="math inline">\(\newcommand{\mbf}{\mathbf{f}}\)</span> <span class="math inline">\(\newcommand{\mbT}{\mathbf{T}}\)</span> <span class="math inline">\(\newcommand{\mbF}{\mathbf{F}}\)</span></p>
+<p><span class="math display">\[
+y[\mbt_1(i_1, i_2, \ldots, i_D), \ldots, \mbt_{M}(i_1, i_2, \ldots, i_D)] \leftarrow x[\mbf_{1}(i_1, i_2, \ldots, i_D), \ldots, \mbf_{N}(i_1, i_2, \ldots, i_D)]
+\]</span> <span class="math display">\[
+\mbox{in Context } C = \{i_1,i_2: i_1=L_1\ldots U_1; i_2=L2(i_1)\ldots U_2(i_1) \}
+\]</span></p>
+<p>Some comments:</p>
+<ul>
+<li><p>For generic context (for-loop) indices:</p>
+<ul>
+<li>We switch from <span class="math inline">\((i, j, k, \dots)\)</span> to <span class="math inline">\((i_1, i_2, i_3, \ldots)\)</span>.</li>
+<li>Index <span class="math inline">\(i_1\)</span> runs from <span class="math inline">\(L_1\ldots U_1\)</span>. Index <span class="math inline">\(i_2\)</span> runs from <span class="math inline">\(L_2(i_1)\ldots U_2(i_1)\)</span>, etc.</li>
+</ul></li>
+<li><span class="math inline">\(\leftarrow\)</span> indicates <span class="math inline">\(x\)</span> is upstream in the graph and <span class="math inline">\(y\)</span> is downstream, so the graph edges are directed <strong>from</strong> parts of x <strong>to</strong> parts of y.</li>
+<li>Indices “t” stand for “to” and “f” for “from”.</li>
+<li>Indices are boldface to indicate they could be vectors of indices. E.g., <span class="math inline">\(\mbt_1\)</span> could be <code>1:100</code>. Non-boldface indices are scalars.</li>
+<li>In implementation, indices for the full extent of a dimension can be indicated by a blank.</li>
+<li><p>The context extent of each index variable can be independent or can depend on outer index variables.</p></li>
+</ul>
+<p>For further index notation, define:</p>
+<ul>
+<li><span class="math inline">\(T = (t_1, \ldots, t_M)\)</span></li>
+<li><span class="math inline">\(F = (f_1, \ldots, f_N)\)</span></li>
+<li><span class="math inline">\(\mbT = (\mbt_1, \ldots, \mbt_M)\)</span></li>
+<li><span class="math inline">\(\mbF = (\mbf_1, \ldots, \mbf_N)\)</span></li>
+</ul>
+<p>In words:</p>
+<ul>
+<li>Lowercase plain indicates a single scalar index.</li>
+<li>Lowercase bold indicates a block for a single index.</li>
+<li>Capital plain indicates a full set of scalar indices.<br />
+</li>
+<li>Capital bold indicates a (possible) block of indices.</li>
+</ul>
+<div id="index-inversion-for-downstream-dependents" class="section level2">
+<h2>Index inversion for downstream dependents</h2>
+<p>We look at the problem of querying what elements of <span class="math inline">\(y\)</span> depend on a particular (scalar) element of <span class="math inline">\(x\)</span> as an index inversion. Given <span class="math inline">\((f_1, \ldots, f_N)\)</span>, determine all:</p>
+<p><span class="math display">\[
+\{(t_1, \ldots, t_M) :  (f_1(I), \ldots, f_N(I)) = (f_1, \ldots, f_N); (t_1(I), \ldots, t_M(I)) = (t_1, \ldots, t_M); I \in C \}
+\]</span></p>
+<p>or in more compact form, given <span class="math inline">\(F\)</span>, determine all: <span class="math display">\[
+\{T : F(I) = F; T(I) = T; I \in C\}
+\]</span></p>
+</div>
+</div>
+<div id="separable-indices" class="section level1">
+<h1>Separable indices</h1>
+<p>The above formulation takes all dimensions together. Of particular interest are cases like the following, using <span class="math inline">\(M = N = 2\)</span>;</p>
+<p><span class="math display">\[
+y[\mbt_1(i_2), \mbt_{2}(i_1)] \leftarrow x[\mbf_{1}(i_1), \mbf_{2}(i_2)]
+\]</span> <span class="math display">\[
+\mbox{in Context } C \mbox{ such that } L_2(i_1) = L_2, U_2(i_1) = U_2. \mbox{ (Index extents are independent.)}
+\]</span></p>
+<p>This would result from code such as:</p>
+<pre class="r"><code>for(i in 1:U1)
+  for(j in 1:U2)
+    y[j, i] &lt;- foo(x[ r[i], s[j])</code></pre>
+<p>where <code>r</code> and <code>s</code> are index vectors. The use of <code>i</code> and <code>j</code> in different order for <code>y</code> and <code>x</code> is just an illustration to support general thinking.</p>
+<p>In this example, the index inversion can be separated for <code>i</code> and <code>j</code>. (<code>i</code> is <span class="math inline">\(i_1\)</span> and <code>j</code> is <span class="math inline">\(i_2\)</span>.) Given <span class="math inline">\((f_1, f_2)\)</span>, find all:</p>
+<p><span class="math display">\[
+\{t_2 : f_1(i_1) \equiv r[i_1] = f_1, t_2(i_1) \equiv i_1 = t_2, i_1 \in 1\ldots U_1 \}
+\]</span></p>
+<p>and</p>
+<p><span class="math display">\[
+\{t_1 : f_2(i_2) \equiv s[i_2] = f_2, t_1(i_2) \equiv i_2 = t_1, i_2 \in 1 \ldots U_2 \}
+\]</span></p>
+</div>
+<div id="separable-index-sets" class="section level1">
+<h1>Separable index sets</h1>
+<p>Sometimes separability will only occur for multiple indices. Consider this case:</p>
+<pre class="r"><code>for(i in 1:U1) 
+  for(j in 1:U2)
+    for(k in 1:U3)
+      y[i, j, k] &lt;- foo(x[ r[i,j], s[i,j], q[k]])</code></pre>
+<p>Now the index set <code>(i, j)</code> (or <span class="math inline">\((i_1, i_2)\)</span>) must be inverted jointly, while <code>k</code> (or <span class="math inline">\(i_3\)</span>) can be inverted on its own. This can be seen because given <span class="math inline">\(f_1 = r[i_1, i_2]\)</span> and <span class="math inline">\(f_2 = s[i_1,i_2]\)</span>, both <span class="math inline">\(i_1\)</span> and <span class="math inline">\(i_2\)</span> must satisfy the condition together to find a valid <span class="math inline">\(y[i_1, i_2, i_3]\)</span>.</p>
+<p>The same can be true in the opposite direction. Consider this case:</p>
+<pre class="r"><code>for(i in 1:U1) 
+  for(j in 1:U2)
+    for(k in 1:U3)
+      y[i, 1:v[i, j], k] &lt;- foo(x[ i, j, k])</code></pre>
+<p>In this case, the extent of the second dimension of <span class="math inline">\(y\)</span> depend on indices used in the first two elements of <span class="math inline">\(x\)</span>. Again, <code>(i, j)</code> must be inverted jointly.</p>
+<p>Another case that forces two indices to be inverted jointly is when the extent of one depends on the value of the other. Consider this case:</p>
+<pre class="r"><code>for(i in 1:U1) 
+  for(j in 1:U2[i])
+    for(k in 1:U3)
+      y[i, j, k] &lt;- foo(x[ i, j, k])</code></pre>
+<p>In this case, the extent of <code>j</code> depends on <code>i</code>, so again <code>(i, j)</code> must be inverted jointly.</p>
+<div id="definition-of-separable-index-set" class="section level3">
+<h3>Definition of <em>separable index set</em></h3>
+<p>We define a <strong>separable index set</strong> <span class="math inline">\((k_1, \ldots, k_d)\)</span> to be the dimensions of <span class="math inline">\(I\)</span> such that some dimensions of <span class="math inline">\(F\)</span> can be inverted independent of other dimensions. In the first example above, <span class="math inline">\((1, 2)\)</span> is a separable index set because dimensions <span class="math inline">\((f_1, f_2)\)</span> of <span class="math inline">\(F\)</span>, which depend on <span class="math inline">\((i_{k_1} = i_1, i_{k_2} = i_2)\)</span>, can be inverted independently of <span class="math inline">\(f_3\)</span>.</p>
+</div>
+</div>
+<div id="fixed-index-values." class="section level1">
+<h1>Fixed index values.</h1>
+<p>Sometimes there are elements of <span class="math inline">\(T\)</span> or <span class="math inline">\(F\)</span> that are independent of <span class="math inline">\(I\)</span>. This could either be due to a constant or a blank entry (indicating a full index range).</p>
+<p>Consider several examples.</p>
+<div id="example-1" class="section level3">
+<h3>Example 1:</h3>
+<pre class="r"><code>for(i in 1:U1)
+  for(j in 1:U2)
+  y[i, j] &lt;- foo(x[i, ])</code></pre>
+<p>In this case, given <span class="math inline">\(F = (f_1, f_2)\)</span>, the solution for <span class="math inline">\(\mbt_2\)</span> is always <code>1:U2</code>.</p>
+</div>
+<div id="example-2" class="section level3">
+<h3>Example 2:</h3>
+<pre class="r"><code>for(i in 1:U1)
+  for(j in 1:U2)
+  y[i, j] &lt;- foo(x[i, 3])</code></pre>
+<p>In this case, given <span class="math inline">\(F = (f_1, f_2)\)</span>, the solution for <span class="math inline">\(\mbt_2\)</span> is <code>1:U2</code> if <span class="math inline">\(f_2 = 3\)</span>, and is an empty set otherwise.</p>
+</div>
+<div id="example-3" class="section level3">
+<h3>Example 3:</h3>
+<pre class="r"><code>for(i in 1:U1)
+  for(j in 1:U2)
+  y[i, ] &lt;- foo(x[i, j])</code></pre>
+<p>This code should not really be written or allowed, although JAGS seems to allow it. In this case, given <span class="math inline">\(F = (f_1, f_2)\)</span>, the solution for <span class="math inline">\(\mbt_2\)</span> is <code>&lt;blank&gt;</code> (the full range, which may not be known at some stages of implementation) if <span class="math inline">\(j \in\)</span> <code>1:U2</code>, and is an empty set otherwise.</p>
+</div>
+<div id="example-4" class="section level3">
+<h3>Example 4:</h3>
+<pre class="r"><code>for(i in 1:U1)
+  for(j in 1:U2)
+  y[i, 3] &lt;- foo(x[i, j])</code></pre>
+<p>Again, this code should not really be written or allowed. In this case, given <span class="math inline">\(F = (f_1, f_2)\)</span>, the solution for <span class="math inline">\(\mbt_2\)</span> is <code>3</code> if $j $ <code>1:J</code>, and is an empty set otherwise.</p>
+<p>More cases could be considered. What seems to emerge is that fixed index values can be handled simply as a single separable index set</p>
+</div>
+</div>
+<div id="section" class="section level1">
+<h1></h1>
+</div>
+
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,20 @@
+---
+title: "Overall strategy"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+The overall strategy for representing a set of graph relationships (edges from one variable to another variable from a particular contenxt) is the following:
+
+- Identify minimum separable index sets.
+- Do index inversion separately for each separable index set and compose the results.
+- Create index inversion methods for different cases.  In particular, methods will be needed for:
+
+    - Blank or constant indices.
+    - Index blocks with simple index shifts.  E.g.: `y[i + 1] \leftarrow x[i]`.
+    - Arbitrary index mapping.  E.g.: `y[i] \leftarray x[ k[i] ]` where `k` is a constant index vector.
+    
+    

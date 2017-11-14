@@ -1,0 +1,198 @@
+---
+title: "Graph relationships"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(eval = FALSE)
+```
+
+# Introduction
+
+Say we have model code:
+```{r}
+for(i in 1:l) {
+  for(j in 1:p[i]) {
+    y[i, j] ~ dnorm(x[i+1, k[j]], sd = sigma[j])
+  }
+}
+```
+
+This creates two sets of edges:
+
+- from some elements of `x` to some elements of `y`; and
+- from some elements of `sigma` to some elements of `y`.
+
+The two sets of edges can be considered separately.  We will consider the edges from `x` to `y` below.
+
+# Context
+
+We define the *context* of a model declaration as the for-loops that enclose it.  In the above example, the context is $C = \{i,j: i=1\ldots l; j=1\ldots p[i] \}$.
+
+# General formulation
+
+Say there are $D$ indices in a context, denoted $I = (i_1, \ldots, i_D)$. Suppsed $y$ has $M$ dimensions and $x$ has $N$ dimensions. The general formulation of a set of edges in a context is the following:
+
+$\newcommand{\mbt}{\mathbf{t}}$
+$\newcommand{\mbf}{\mathbf{f}}$
+$\newcommand{\mbT}{\mathbf{T}}$
+$\newcommand{\mbF}{\mathbf{F}}$
+
+\[
+y[\mbt_1(i_1, i_2, \ldots, i_D), \ldots, \mbt_{M}(i_1, i_2, \ldots, i_D)] \leftarrow x[\mbf_{1}(i_1, i_2, \ldots, i_D), \ldots, \mbf_{N}(i_1, i_2, \ldots, i_D)]
+\]
+\[
+\mbox{in Context } C = \{i_1,i_2: i_1=L_1\ldots U_1; i_2=L2(i_1)\ldots U_2(i_1) \}
+\]
+
+Some comments:
+
+- For generic context (for-loop) indices:
+
+    - We switch from $(i, j, k, \dots)$ to $(i_1, i_2, i_3, \ldots)$.
+    - Index $i_1$ runs from $L_1\ldots U_1$.  Index $i_2$ runs from $L_2(i_1)\ldots U_2(i_1)$, etc.
+
+- $\leftarrow$ indicates $x$ is upstream in the graph and $y$ is downstream, so the graph edges are directed **from** parts of x **to** parts of y.
+- Indices "t" stand for "to" and "f" for "from".
+- Indices are boldface to indicate they could be vectors of indices.  E.g., $\mbt_1$ could be `1:100`.  Non-boldface indices are scalars.
+- In implementation, indices for the full extent of a dimension can be indicated by a blank.
+- The context extent of each index variable can be independent or can depend on outer index variables.
+
+For further index notation, define:
+
+- $T = (t_1, \ldots, t_M)$
+- $F = (f_1, \ldots, f_N)$
+- $\mbT = (\mbt_1, \ldots, \mbt_M)$
+- $\mbF = (\mbf_1, \ldots, \mbf_N)$
+
+In words:
+
+- Lowercase plain indicates a single scalar index.
+- Lowercase bold indicates a block for a single index.
+- Capital plain indicates a full set of scalar indices.  
+- Capital bold indicates a (possible) block of indices.
+
+## Index inversion for downstream dependents
+
+We look at the problem of querying what elements of $y$ depend on a particular (scalar) element of $x$ as an index inversion.  Given $(f_1, \ldots, f_N)$, determine all:
+
+\[
+\{(t_1, \ldots, t_M) :  (f_1(I), \ldots, f_N(I)) = (f_1, \ldots, f_N); (t_1(I), \ldots, t_M(I)) = (t_1, \ldots, t_M); I \in C \}
+\]
+
+or in more compact form, given $F$, determine all:
+\[
+\{T : F(I) = F; T(I) = T; I \in C\}
+\]
+
+# Separable indices
+
+The above formulation takes all dimensions together.  Of particular interest are cases like the following, using $M = N = 2$;
+
+\[
+y[\mbt_1(i_2), \mbt_{2}(i_1)] \leftarrow x[\mbf_{1}(i_1), \mbf_{2}(i_2)]
+\]
+\[
+\mbox{in Context } C \mbox{ such that } L_2(i_1) = L_2, U_2(i_1) = U_2. \mbox{ (Index extents are independent.)}
+\]
+
+This would result from code such as:
+```{r}
+for(i in 1:U1)
+  for(j in 1:U2)
+    y[j, i] <- foo(x[ r[i], s[j])
+```
+
+where `r` and `s` are index vectors.  The use of `i` and `j` in different order for `y` and `x` is just an illustration to support general thinking.
+
+In this example, the index inversion can be separated for `i` and `j`.  (`i` is $i_1$ and `j` is $i_2$.)  Given $(f_1, f_2)$, find all:
+
+\[
+\{t_2 : f_1(i_1) \equiv r[i_1] = f_1, t_2(i_1) \equiv i_1 = t_2, i_1 \in 1\ldots U_1 \}
+\]
+
+and
+
+\[
+\{t_1 : f_2(i_2) \equiv s[i_2] = f_2, t_1(i_2) \equiv i_2 = t_1, i_2 \in 1 \ldots U_2 \}
+\]
+
+# Separable index sets
+
+Sometimes separability will only occur for multiple indices.  Consider this case:
+```{r}
+for(i in 1:U1) 
+  for(j in 1:U2)
+    for(k in 1:U3)
+      y[i, j, k] <- foo(x[ r[i,j], s[i,j], q[k]])
+```
+
+Now the index set `(i, j)` (or $(i_1, i_2)$) must be inverted jointly, while `k` (or $i_3$) can be inverted on its own.  This can be seen because given $f_1 = r[i_1, i_2]$ and $f_2 = s[i_1,i_2]$, both $i_1$ and $i_2$ must satisfy the condition together to find a valid $y[i_1, i_2, i_3]$.
+
+The same can be true in the opposite direction.  Consider this case:
+```{r}
+for(i in 1:U1) 
+  for(j in 1:U2)
+    for(k in 1:U3)
+      y[i, 1:v[i, j], k] <- foo(x[ i, j, k])
+```
+In this case, the extent of the second dimension of $y$ depend on indices used in the first two elements of $x$.  Again, `(i, j)` must be inverted jointly.
+
+Another case that forces two indices to be inverted jointly is when the extent of one depends on the value of the other. Consider this case:
+```{r}
+for(i in 1:U1) 
+  for(j in 1:U2[i])
+    for(k in 1:U3)
+      y[i, j, k] <- foo(x[ i, j, k])
+```
+In this case, the extent of `j` depends on `i`, so again `(i, j)` must be inverted jointly.
+
+### Definition of *separable index set*
+
+We define a **separable index set** $(k_1, \ldots, k_d)$ to be the dimensions of $I$ such that some dimensions of $F$ can be inverted independent of other dimensions.  In the first example above, $(1, 2)$ is a separable index set because dimensions $(f_1, f_2)$ of $F$, which depend on $(i_{k_1} = i_1, i_{k_2} = i_2)$, can be inverted independently of $f_3$.
+
+# Fixed index values.
+
+Sometimes there are elements of $T$ or $F$ that are independent of $I$.  This could either be due to a constant or a blank entry (indicating a full index range).  
+
+Consider several examples.
+
+### Example 1:
+```{r}
+for(i in 1:U1)
+  for(j in 1:U2)
+  y[i, j] <- foo(x[i, ])
+```
+
+In this case, given $F = (f_1, f_2)$, the solution for $\mbt_2$ is always `1:U2`.
+
+### Example 2:
+```{r}
+for(i in 1:U1)
+  for(j in 1:U2)
+  y[i, j] <- foo(x[i, 3])
+```
+
+In this case, given $F = (f_1, f_2)$, the solution for $\mbt_2$ is `1:U2` if $f_2 = 3$, and is an empty set otherwise.
+
+### Example 3:
+```{r}
+for(i in 1:U1)
+  for(j in 1:U2)
+  y[i, ] <- foo(x[i, j])
+```
+
+This code should not really be written or allowed, although JAGS seems to allow it.  In this case, given $F = (f_1, f_2)$, the solution for $\mbt_2$ is `<blank>` (the full range, which may not be known at some stages of implementation) if $j \in$ `1:U2`, and is an empty set otherwise.
+
+### Example 4:
+```{r}
+for(i in 1:U1)
+  for(j in 1:U2)
+  y[i, 3] <- foo(x[i, j])
+```
+
+Again, this code should not really be written or allowed.  In this case, given $F = (f_1, f_2)$, the solution for $\mbt_2$ is `3` if $j \in $ `1:J`, and is an empty set otherwise.
+
+More cases could be considered.  What seems to emerge is that fixed index values can be handled simply as a single separable index set
+
+# 

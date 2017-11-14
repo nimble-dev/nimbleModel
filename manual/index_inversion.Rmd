@@ -1,0 +1,51 @@
+---
+title: "Index Inversion"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(eval = FALSE)
+```
+
+The section summarizes several kinds of index inversion for a separable index set.
+
+# Arbitrary index inversion
+
+Say we have a general problem, such as from code:
+```{r}
+for(i in 1:U1)
+  for(j in 1:U2[i])
+    for(k in 1:U3)
+      y[i, j, k] <- foo(x[ r[i]+1, k+3, s[i, j]+2])
+```
+(We continue to use $i_1 \equiv$ `i`, $i_2 \equiv$ `j`, $i_3 \equiv$ `k`, etc.) The separable index sets are $(i_1, i_2)$ and $(i_3)$.  $i_1$ and $i_2$ must be inverted together for two reasons: the extent of $i_2$ depends on $i_1$, and $f_3 \equiv$ `s[i, j]+2` depends on both $i_1$ and $i_2$.  
+
+We use the set $(i_1, i_2)$ as an example.
+
+The Context for $(i_1, i_2)$ is $\{i_1 = 1\ldots U1; i_2 = 1\ldots U1[i_1]\}$.  *It does not include the third for-loop.*
+
+Given any pair $(f_1, f_3)$, we seek all values of $(t_1, t_2)$ such that there is an edge from $x[f_1, f_2(i_3), f_2]$ to $y[t_1, t_2, t_3(i_3)]$, where the functions of $i_3$ are ignored since they will be inverted separately.
+
+In a nutshell the inversion we seek can be done by unrolling the for loops and choosing some good way to manage all the declared relationships.  This is a microcosm of what we've done previously.
+
+The steps I've used are:
+
+- Define sizes and offsets (if they don't start at 1) for the relevant dimensions of $x$ and $y$.  Note these do not need to be the full sizes of $x$ and $y$ that may be created elsewhere in model code.  They only need to handle what is in this declaration.
+- Define row-wise "flat" indices for each $x$ and $y$ based on their sizes and offsets.
+- Define `iRow` as a cumulative unrolled index.  E.g. `iRow` starts at 1 and increments everytime the innermost loop increments.  `iRow` indexes all declarations made by this declaration in its Context.
+- Set up a list indexed by flat index of $y$ containing the set of `iRow`s of declarations that use that element of $y$.
+- Set up a list indexed by `iRow` containing every flat index of $x$ used by that declaration.
+
+Now given indices of $y$, we can go through the following steps:
+
+- Determine the flat indices of $y$.
+- Determine which unrolled declarations used that element of $y$.
+- Determine which elements of $x$ were defined by those declarations.
+
+There are certainly other ways this could all be done.
+
+# Block inversion
+
+# Constant inversion
+
+# Blank inversion

@@ -1,0 +1,14 @@
+---
+title: "graph processing"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+[Graph relationships](introduction.html)
+
+[Overall strategy](overall_strategy.html)
+
+[Index inversion](index_inversion.html)

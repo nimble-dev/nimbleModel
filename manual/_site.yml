@@ -1,0 +1,13 @@
+name: "model-processing"
+navbar:
+  title: "graph processing"
+  left:
+    - text: "Home"
+      href: index.html
+output:
+  html_document:
+    mathjax: default
+    theme: cerulean
+    toc: yes
+    toc_float:
+      collapsed: false
