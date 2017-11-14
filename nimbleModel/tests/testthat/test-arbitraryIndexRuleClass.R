@@ -125,20 +125,13 @@ test_arbitraryIndexRule <- function(LHS,
 
 test_that("arbitraryIndexRuleClass", {
     singleContext1 <-
-        modelSingleContext(indexVarExpr = quote(i),
-                           indexRangeExpr = quote(1:10),
-                           forCode = quote(for(i in 1:10){})[1:3])
+        modelSingleContext(forCode = quote(for(i in 1:10){}))
     
     singleContext2 <-
-        modelSingleContext(indexVarExpr = quote(j),
-                           indexRangeExpr = quote(1:5),
-                           forCode = quote(for(j in 1:5){})[1:3])
+        modelSingleContext(forCode = quote(for(j in 1:5){}))
     
     singleContext2ni <-
-        modelSingleContext(indexVarExpr = quote(j),
-                           indexRangeExpr = quote(1:n[i]),
-                           forCode = quote(for(j in 1:n[i]){})[1:3])
-    
+        modelSingleContext(forCode = quote(for(j in 1:n[i]){}))
     
     context_i <- modelContextClass$new(list(singleContext1))
     

@@ -91,3 +91,77 @@ makeSeparableIndexSets <- function(LHS,
          indexVarNameSets = indexVarNameSets
          )
 }
+
+## The following functions may be used from class methods in the future.
+## For now they are standalone for development and debuggin.
+makeGraphIndexRules <- function(LHS,
+                                RHS,
+                                context,
+                                constants = list()) {
+    constantsEnv <- if(is.environment(constants))
+                        constants
+                    else
+                        list2env(constants)
+    
+    indexSets <-
+        makeSeparableIndexSets(LHS, RHS, context)
+
+    ## Assume there is indexing.
+    LHSindexExprs <- as.list(LHS[-c(1,2)])
+    RHSindexExprs <- as.list(RHS[-c(1,2)])
+    
+    numSets <- indexSets$numSets
+    indexRules <- list()
+    for(iSet in seq_len(numSets)) {
+        LHSindicesBool <- indexSets$LHSindex2setID == iSet
+        RHSindicesBool <- indexSets$RHSindex2setID == iSet
+        thisLHSindexExprs <- structure(
+            LHSindexExprs[LHSindicesBool],
+            names = paste0("t", seq_len(sum(LHSindicesBool)))
+        )
+        thisRHSindexExprs <- structure(
+            RHSindexExprs[RHSindicesBool],
+            names = paste0("f", seq_len(sum(RHSindicesBool)))
+        )
+        indexVarNamesInThisSet <- indexSets$indexVarNameSets[[iSet]]
+        thisContext <-
+            modelContextClass$new(
+                context$singleContexts[indexVarNamesInThisSet]
+            )
+        thisIndexRule <- arbitraryIndexRuleClass_setup(
+            toIndexExprList = thisLHSindexExprs,
+            fromIndexExprList = thisRHSindexExprs,
+            context = thisContext,
+            constantsEnv = constantsEnv)
+        indexRules[[iSet]] <- thisIndexRule
+    }
+    list(indexSets = indexSets,
+         indexRules = indexRules)
+}
+
+applyGraphIndexRules <- function(fromIndices,
+                                 rules) {
+    ## Some of the steps below will reveal things that
+    ## could be cached and re-used.
+    indexSets <- rules$indexSets
+    indexRules <- rules$indexRules
+    numSets <- indexSets$numSets
+    ## Currently this will handle one set of fromIndices,
+    ## not multiples.
+    ## ncol needs to come from dim of LHS
+    ## nrow needs to come from number of fromIndices provided
+    LHSnDim <- length(indexSets$LHSindex2setID)
+    lhsIndices <- matrix(ncol = LHSnDim, nrow = 1)
+    for(iSet in seq_len(numSets)) {
+        RHSindicesBool <- indexSets$RHSindex2setID == iSet
+        thisRHSindices <- fromIndices[RHSindicesBool]
+        thisLHSindices <-
+            applyArbitraryIndexRule_single(
+                thisRHSindices,
+                indexRules[[iSet]]
+            )
+        LHSindicesBool <- indexSets$LHSindex2setID == iSet
+        lhsIndices[, LHSindicesBool] <- thisLHSindices 
+    }
+    lhsIndices
+}

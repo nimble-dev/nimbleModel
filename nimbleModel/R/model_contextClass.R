@@ -17,6 +17,27 @@ getNimbleOption <- function(...) FALSE
 modelSingleContext <- function(indexVarExpr,
                                indexRangeExpr,
                                forCode) {
+    if(missing(forCode)) {
+        if(missing(indexVarExpr) | missing(indexRangeExpr))
+            stop("Must provide both indexVarExpr and indexRangeExpr OR forCode")
+        forCode <- substitute(for(III in VVV){},
+                              list(III = indexVarExpr,
+                                   VVV = indexRangeExpr))[1:3]
+    } else {
+        if(missing(indexVarExpr)) {
+            indexVarExpr <- forCode[[2]]
+        } else {
+            if(!identical(indexVarExpr, forCode[[2]]))
+                stop("indexVarExpr must match what is in forCode")
+        }
+        if(missing(indexRangeExpr)) {
+            indexRangeExpr <- forCode[[3]]
+        } else {
+            if(!identical(indexRangeExpr, forCode[[3]]))
+                stop("indexRangeExpr must match what is in forCode")
+        }
+        if(length(forCode) > 3) forCode <- forCode[1:3]
+    }
     structure(
         list(indexVarExpr = indexVarExpr,
              indexRangeExpr = indexRangeExpr,
@@ -52,6 +73,7 @@ modelContextClass <-
                                       unlist(lapply(indexVarExprs, as.character))
                                   else
                                       character(0)
+                names(singleContexts) <<- indexVarNames
             },
             genIndexVarValues = function(constantsEnvCopy) {
                 genIndexVarValues_recurse(singleContexts, constantsEnvCopy)
