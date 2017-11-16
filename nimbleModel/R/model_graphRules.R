@@ -132,7 +132,7 @@ makeGraphIndexRules <- function(LHS,
             toIndexExprList = thisLHSindexExprs,
             fromIndexExprList = thisRHSindexExprs,
             context = thisContext,
-            constantsEnv = constantsEnv)
+            constants = constantsEnv)
         indexRules[[iSet]] <- thisIndexRule
     }
     list(indexSets = indexSets,

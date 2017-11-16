@@ -145,7 +145,7 @@ test_that("arbitraryIndexRuleClass", {
 ## Example case:
 ## for(i in 1:10)
 ##     for(j in 1:5)
-##         y[i, j] <- foo(x[i+1, j + 2]
+##         y[i, j] <- foo(x[i+1, j + 2])
 
     setupRules <- indexRule_arbitrary_setup(
         toIndexExprList = list(
