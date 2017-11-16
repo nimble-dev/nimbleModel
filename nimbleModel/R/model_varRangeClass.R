@@ -31,8 +31,8 @@ isBlank <- function(expr) {
 ## It seems useful to have the result be a list,
 ## even when it only has one element
 indexRange <- function(expr) {
-    if(is.numeric(expr))
-        stop("Calling indexRange with a numeric argument is not supported.")
+    ## if expr is simply a number,
+    ## it will get treated as a scalar, not a 1-row matrix
     if(length(expr) > 1) {
         ## input expr is not just a name or number
         if(identical(expr[[1]], as.name(":")))
@@ -98,7 +98,7 @@ indexRange_matrix <- function(rangeList) {
 
 indexRange2matrix <- function(inputIndexRange) {
     switch(attr(inputIndexRange, 'rangeType'),
-           matrix = inputIndexRange,
+           matrix = inputIndexRange[[1]],
            block = indexRange_matrix(
                list(matrix(seq.int(inputIndexRange[[1]],
                                    inputIndexRange[[2]])))
@@ -145,7 +145,7 @@ indexRange2expr <- function(IRL) {
            block = substitute(A:B,
                               list(A = IRL[[1]],
                                    B = IRL[[2]])),
-           vector = IRL[[1]],
+           matrix = IRL[[1]],
            blank = IRL[[1]],
            scalar = IRL[[1]],
            stop("Unknown indexRange list"))

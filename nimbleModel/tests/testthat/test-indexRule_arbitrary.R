@@ -31,7 +31,7 @@ test_arbitraryIndexRule <- function(LHS,
         toIndexExprList = toIndexExprList,
         fromIndexExprList = fromIndexExprList,
         context = context,
-        constantsEnv = constantsEnv
+        constants = constantsEnv
     )
 
     makeBruteForceCalculator <- function(LHS,
@@ -180,7 +180,7 @@ test_that("arbitraryIndexRuleClass", {
         context = context_ij)
 
     thisRule$applyOne(c(5, 3))
-    debug(thisRule$apply)
+    options(error = recover)
     thisAns <- thisRule$apply(indexRange_matrix(matrix(c(5, 3, 6, 3),
                                                        byrow = TRUE,
                                                        nrow = 2)))
@@ -193,11 +193,6 @@ test_that("arbitraryIndexRuleClass", {
                                  byrow = TRUE,
                                  nrow = 2)))
 
-    indexRangeList2matrix(list(indexRange(quote(c(1, 2, 3))),
-                               indexRange(quote(2:4))
-                               )
-                          )
-    
     ## Non-scalar RHS test
     ## for(i in 1:10) 
     ##     for(j in 1:5) 

@@ -18,11 +18,11 @@ test_that('indexRange conversions between list and expr', {
                      indexRange2expr(indexRange(input)))
 
     input <- quote(c(2, 4, 6))
-    expect_identical(eval(input),
+    expect_identical(matrix(eval(input)),
                      indexRange2expr(indexRange(input)))
 
     input <- c(2, 4, 6)
-    expect_identical(input,
+    expect_identical(matrix(input),
                      indexRange2expr(indexRange(input)))
 
     input <- quote(matrix(c(2, 4, 5, 8, 6, 2), ncol = 2))
@@ -124,10 +124,11 @@ test_that("varRange expr, char, and indexRange replacement", {
     VR$setIndexRanges( VRnew$indexRanges )
     ## equal because the arbitrary index range is evaluated
     ## the replaced case.
-    expect_equal(
-        varRange2expr( VR ),
-        varRange2expr( VRnew )
+    expect_identical(
+        VR$indexRanges,
+        VRnew$indexRanges
     )
+    ## It doesn't appear we can keep indexRangeExprs identical
     
 }
 )
