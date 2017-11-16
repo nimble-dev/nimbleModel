@@ -107,3 +107,32 @@ test_that("graphRules works", {
                  matrix(c(3, 2), nrow = 1))
     
 })
+
+test_that("graphRuleClass works",
+{
+    singleContext1 <-
+        modelSingleContext(forCode = quote(for(i in 1:10){}))
+    
+    singleContext2 <-
+        modelSingleContext(forCode = quote(for(j in 1:5){}))
+    
+    singleContext3 <-
+        modelSingleContext(forCode = quote(for(k in 1:5){}))
+    
+    context_i <- modelContextClass$new(list(singleContext1))
+    
+    context_ij <- modelContextClass$new(list(singleContext1,
+                                             singleContext2))
+    
+    context_ijk <- modelContextClass$new(list(singleContext1,
+                                              singleContext2,
+                                              singleContext3))
+
+    rule <- graphRuleClass$new(LHS = quote(y[i, j]),
+                               RHS = quote(x[i, j]),
+                               context = context_ij)
+    ## rule$apply needs to work with a varRange, not an indexRange
+    debug(applyGraphIndexRules)
+    rule$apply(indexRange(c(2, 4)))
+}
+)

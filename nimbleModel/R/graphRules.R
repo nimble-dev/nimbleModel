@@ -1,3 +1,26 @@
+## This doesn't work yet.
+graphRuleClass <- R6Class(
+    classname = "graphRuleClass",
+    portable = FALSE,
+    public = list(
+        indexRules = NULL,
+        initialize = function(LHS,
+                              RHS,
+                              context) {
+            indexRules <<-
+                makeGraphIndexRules(LHS,
+                                    RHS,
+                                    context)
+        },
+        apply = function(fromIndices) {
+            applyGraphIndexRules(
+                fromIndices,
+                indexRules
+            )
+        }
+    )
+)
+
 ## This file has code for managing the set of rules for a variable.
 ##
 ## This first function here separates sets of index relationships
@@ -128,18 +151,28 @@ makeGraphIndexRules <- function(LHS,
             modelContextClass$new(
                 context$singleContexts[indexVarNamesInThisSet]
             )
-        thisIndexRule <- indexRule_arbitrary_setup(
+        browser()
+        ## We try making a block rule.
+        ## It it fails, we will throw it away.
+        thisIndexRule <- indexRuleClass_block$new(
             toIndexExprList = thisLHSindexExprs,
             fromIndexExprList = thisRHSindexExprs,
             context = thisContext,
             constants = constantsEnv)
+        if(is.null(thisIndexRule$setupResults)) {
+            thisIndexRule <- indexRuleClass_arbitrary$new(
+                toIndexExprList = thisLHSindexExprs,
+                fromIndexExprList = thisRHSindexExprs,
+                context = thisContext,
+                constants = constantsEnv)
+        }
         indexRules[[iSet]] <- thisIndexRule
     }
     list(indexSets = indexSets,
          indexRules = indexRules)
 }
 
-applyGraphIndexRules <- function(fromIndices,
+applyGraphIndexRules <- function(fromVarRange,
                                  rules) {
     ## Some of the steps below will reveal things that
     ## could be cached and re-used.
@@ -151,17 +184,21 @@ applyGraphIndexRules <- function(fromIndices,
     ## ncol needs to come from dim of LHS
     ## nrow needs to come from number of fromIndices provided
     LHSnDim <- length(indexSets$LHSindex2setID)
-    lhsIndices <- matrix(ncol = LHSnDim, nrow = 1)
+    ##    lhsIndices <- matrix(ncol = LHSnDim, nrow = 1)
+    message('Need to deal with mixed input to joint rules')
+    ans <- list()
     for(iSet in seq_len(numSets)) {
+        # which "from" indices are in this indexSet?
         RHSindicesBool <- indexSets$RHSindex2setID == iSet
+        ## extract the relevant indices from fromVarRange
         thisRHSindices <- fromIndices[RHSindicesBool]
-        thisLHSindices <-
-            indexRule_arbitrary_apply_single(
-                thisRHSindices,
-                indexRules[[iSet]]
+        thisLHSindexRange <-
+            indexRules[[iSet]]$apply(
+                thisRHSindices
             )
-        LHSindicesBool <- indexSets$LHSindex2setID == iSet
-        lhsIndices[, LHSindicesBool] <- thisLHSindices 
+##        LHSindicesBool <- indexSets$LHSindex2setID == iSet
+        ##        lhsIndices[, LHSindicesBool] <- thisLHSindices
+        ans[[iSet]] <- thisLHSindexRange
     }
-    lhsIndices
+##    lhsIndices
 }

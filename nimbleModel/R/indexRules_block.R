@@ -1,5 +1,36 @@
-## This is a first draft of setting up different apply cases
-## for different flavors of indexRange
+indexRuleClass_block <- R6Class(
+    classname = "indexRuleClass_block",
+    inherit = indexRuleClass,
+    portable = FALSE,
+    public = list(
+        setupResults = NULL,
+        initialize = function(toIndexExprList,
+                              fromIndexExprList,
+                              context,
+                              constants = list()
+                              ) {
+            setupResults <<-
+                indexRule_block_setup(toIndexExprList,
+                                      fromIndexExprList,
+                                      context,
+                                      constants
+                                      )
+        },
+        applyOne = function(fromIndices) {
+            indexRule_block_apply_single(
+                fromIndices,
+                setupResults
+            )
+        },
+        apply = function(fromIndexRange) {
+            indexRule_block_apply(
+                fromIndexRange,
+                setupResults
+            )
+        }
+    )
+)
+
 indexRule_block_apply_single <- function(fromIndices,
                                          setupResults,
                                          make.matrix = TRUE) {
@@ -11,7 +42,7 @@ indexRule_block_apply_single <- function(fromIndices,
     else toIndices
 }
 
-indexRule_block_apply_vector <- function(fromIndices,
+indexRule_block_apply_matrix <- function(fromIndices,
                                          setupResults) {
     valid <-
         fromIndices >= setupResults$from_min &
@@ -27,7 +58,7 @@ indexRule_block_apply_block <- function(fromIR,
     ## fromIR should be an indexRange
     toIR <-
         indexRange_block(
-            lapply(fromIR,
+            lapply(fromIR[[1]],
                    indexRule_block_apply_single,
                    setupResults = setupResults,
                    make.matrix = FALSE)
@@ -37,14 +68,21 @@ indexRule_block_apply_block <- function(fromIR,
 
 indexRule_block_apply <- function(fromIR,
                                   setupResults) {
-    ## fromIR should be an indexRange
-    switch(fromIR$rangeType,
-           scalar = indexRule_block_apply_single(fromIR,
-                                                 setupResults),
+    ## fromIR should be an indexRange.
+    ## This is essentially dispatching on types,
+    ## which often a class hierarchy would manage.
+    ## In this case it makes sense to do via switch().
+    switch(attr(fromIR, "rangeType"),
+           scalar = indexRange_scalar(
+               indexRule_block_apply_single(fromIR[[1]],
+                                            setupResults)
+           ),
            block = indexRule_block_apply_block(fromIR,
                                                setupResults),
-           vector = indexRule_block_apply_vector(fromIR,
-                                                 setupResults)
+           matrix = indexRange_matrix(
+               indexRule_block_apply_matrix(fromIR[[1]],
+                                            setupResults)
+           )
            )
 }
 

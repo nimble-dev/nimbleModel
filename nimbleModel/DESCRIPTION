@@ -10,10 +10,11 @@ License: What license is it under?
 Encoding: UTF-8
 LazyData: true
 Collate:
+    indexRange.R
     indexRules.R
-    indexRules_arbitraryRule.R
+    indexRules_arbitrary.R
     indexRules_block.R
-    model_contextClass.R
-    model_graphRules.R
-    model_varRangeClass.R
+    contextClass.R
+    graphRules.R
+    varRangeClass.R
     
