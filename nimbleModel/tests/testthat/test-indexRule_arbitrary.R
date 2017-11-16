@@ -155,12 +155,49 @@ test_that("arbitraryIndexRuleClass", {
             f1 = quote(i+1),
             f2 = quote(j+2)),
         context = context_ij,
-        constantsEnv = new.env())
+        constants = new.env())
     
     expect_equal(indexRule_arbitrary_apply_single(c(5, 3),
                                                 setupRules),
                  matrix(c(4, 1), nrow = 1))
 
+    expect_equal(indexRule_arbitrary_apply_matrix(matrix(c(5, 3, 6, 3),
+                                                         byrow = TRUE,
+                                                         nrow = 2),
+                                                  setupRules),
+                 matrix(c(4, 1, 5, 1),
+                        byrow = TRUE,
+                        nrow = 2))
+
+    ## re-do previous case using indexRuleClass_arbitrary
+    thisRule <- indexRuleClass_arbitrary$new(
+        toIndexExprList = list(
+            t1 = quote(i),
+            t2 = quote(j)),
+        fromIndexExprList = list(
+            f1 = quote(i+1),
+            f2 = quote(j+2)),
+        context = context_ij)
+
+    thisRule$applyOne(c(5, 3))
+    debug(thisRule$apply)
+    thisAns <- thisRule$apply(indexRange_matrix(matrix(c(5, 3, 6, 3),
+                                                       byrow = TRUE,
+                                                       nrow = 2)))
+    expect_identical(attr(thisAns, "rangeType"), "matrix")
+    expect_identical(class(thisAns), "indexRange")
+   
+    expect_equivalent(thisAns,
+                      indexRange_matrix(
+                          matrix(c(4, 1, 5, 1),
+                                 byrow = TRUE,
+                                 nrow = 2)))
+
+    indexRangeList2matrix(list(indexRange(quote(c(1, 2, 3))),
+                               indexRange(quote(2:4))
+                               )
+                          )
+    
     ## Non-scalar RHS test
     ## for(i in 1:10) 
     ##     for(j in 1:5) 
@@ -174,7 +211,7 @@ test_that("arbitraryIndexRuleClass", {
             f1 = quote(i+1),
             f2 = quote(1:(j+2))),
         context = context_ij,
-        constantsEnv = new.env())
+        constants = new.env())
 
     expect_equal(indexRule_arbitrary_apply_single(c(4, 6),
                                                 setupRules),
@@ -192,7 +229,7 @@ test_that("arbitraryIndexRuleClass", {
         fromIndexExprList = list(
             f1 = quote(i+1)),
         context = context_i,
-        constantsEnv = list2env(list(n = 1:10))
+        constants = list2env(list(n = 1:10))
     )
 
     expect_equivalent(test <- indexRule_arbitrary_apply_single(c(2),
@@ -211,7 +248,7 @@ test_that("arbitraryIndexRuleClass", {
             f1 = quote(i),
             f2 = quote(j)),
         context = context_ijni,
-        constantsEnv = list2env(list(n = 1:10))
+        constants = list2env(list(n = 1:10))
     )
 
     expect_equal(indexRule_arbitrary_apply_single(c(8, 2),

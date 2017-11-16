@@ -8,34 +8,33 @@ indexRuleClass_arbitrary <- R6Class(
         initialize = function(toIndexExprList,
                               fromIndexExprList,
                               context,
-                              constantsEnv = new.env()
+                              constants = list()
                               ) {
             setupResults <<-
                 indexRule_arbitrary_setup(toIndexExprList,
                                               fromIndexExprList,
                                               context,
-                                              constantsEnv = new.env()
+                                              constants
                                               )
         },
         applyOne = function(fromIndices) {
-            doApplyOne(fromIndices, setupResults)
+            indexRule_arbitrary_apply_single(
+                fromIndices,
+                setupResults
+            )
         },
-        apply = function(varRange,
-                         type = c("logical", "indexMatrix")) {
-            ## varRange is a varRangeClass object
-            fromIndices <- evalIndexRange(fromIndexObject, varRange)
-            fromIndices <- unique(fromIndices)
-            toIndices <- unique(unlist(edgesFrom2ToList[fromIndices]))
-            type <- match.arg(type)
-            switch(type,
-                   logical = flatIndices2logicalVarRange(
-                       toIndices,
-                       dimTo),
-                   indexMatrix = flatIndices2indexMatrixVarRange(
-                       toIndices,
-                       dimTo
-                   ),
-                   stop())
+        ## Should conversion from mulitple ranges be done before
+        ## calling this, or as part of this?
+        apply = function(fromIndexRange) {
+            ## fromIndexRange is an indexRange object
+            fromIndicesMatrix <- indexRange2matrix(fromIndexRange)
+            toIndices <-
+                indexRule_arbitrary_apply_matrix(
+                    fromIndicesMatrix,
+                    setupResults
+                )
+            toIndices <- indexRange_matrix(toIndices)
+            toIndices
         }
     )
 )
@@ -285,6 +284,21 @@ indexRule_arbitrary_apply_single <- function(fromIndices,
                                              setupResults) {
     with(setupResults, {
         from_flat <- from2indicesFunctions$rawIndex2flatIndex(fromIndices)
+        iRows <- unlist(from_flat2iRow[from_flat])
+### unique???
+        toIndices <<- do.call("rbind", iRow2toIndices[iRows])
+    })
+    if(is.null(toIndices))
+        matrix(nrow = 0, ncol = length(setupResults$toInfo))
+    else
+        as.matrix(toIndices)
+}
+
+indexRule_arbitrary_apply_matrix <- function(fromIndices,
+                                             setupResults) {
+    with(setupResults, {
+        from_flat <-
+            from2indicesFunctions$rawIndex2flatIndex_multi(fromIndices)
         iRows <- unlist(from_flat2iRow[from_flat])
 ### unique???
         toIndices <<- do.call("rbind", iRow2toIndices[iRows])

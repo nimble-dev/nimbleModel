@@ -31,19 +31,36 @@ isBlank <- function(expr) {
 ## It seems useful to have the result be a list,
 ## even when it only has one element
 indexRange <- function(expr) {
+    if(is.numeric(expr))
+        stop("Calling indexRange with a numeric argument is not supported.")
     if(length(expr) > 1) {
+        ## input expr is not just a name or number
         if(identical(expr[[1]], as.name(":")))
+            ## index expr is a:b
             structure(as.list(expr[-1]),
                       class = "indexRange",
                       rangeType = "block")
         else
-            structure(list(eval(expr)),
+            ## index expr must be something like c(2, 4, 6)
+            ## or matrix(...)
+            ## An expression that returns a vector
+            ## is assumed to be a set of 1D indices.
+            ## An expression that returns a matrix is assumed to
+            ## be a rows of indices (1D or higher-dimensional).
+            ## Creating a single row of indices for nDim > 1
+            ## requires an expression that returns a 1-row matrix.
+            structure(list(as.matrix(eval(expr))),
                       class = "indexRange",
-                      rangeType = "vector")
+                      rangeType = "matrix")
+            ## structure(list(eval(expr)),
+            ##           class = "indexRange",
+            ##           rangeType = "vector")
+
         ## Note: "vector" is the only type that might need
         ## to handle multiple dimensions.  Thus it might be a matrix,
         ## representing a vector of index vectors.
     } else {
+        ## input expr is a single name, number, or blank
         if(isBlank(expr))
             structure(list(expr),
                       class = "indexRange",
@@ -70,6 +87,34 @@ indexRange_block <- function(rangeList) {
               rangeType = "block")
 }
 
+indexRange_matrix <- function(rangeList) {
+    structure(if(is.list(rangeList))
+                  rangeList
+              else
+                  list(rangeList),
+              class = "indexRange",
+              rangeType = "matrix")
+}
+
+indexRange2matrix <- function(inputIndexRange) {
+    switch(attr(inputIndexRange, 'rangeType'),
+           matrix = inputIndexRange,
+           block = indexRange_matrix(
+               list(matrix(seq.int(inputIndexRange[[1]],
+                                   inputIndexRange[[2]])))
+              ),
+           stop(paste0("Converting from ",
+                       inputIndexRange$rangetype,
+                       " to matrix is not supported."))
+           )
+}
+
+indexRangeList2matrix <- function(indexRangeList) {
+    do.call("cbind",
+            lapply(indexRangeList,
+                   function(x) indexRange2matrix(x)[[1]]))
+}
+
 getRangeType <- function(IRL) {
     attr(IRL, 'rangeType')
 }
@@ -82,8 +127,8 @@ indexRange_isBlank <- function(IRL) {
     attr(indexRange, 'rangeType') == "blank"
 }
 
-indexRange_isVector <- function(IRL) {
-    attr(indexRange, 'rangeType') == "vector"
+indexRange_isMatrix <- function(IRL) {
+    attr(indexRange, 'rangeType') == "matrix"
 }
 
 indexRange_isScalar <- function(IRL) {
