@@ -40,6 +40,9 @@ indexRange <- function(expr) {
             structure(list(eval(expr)),
                       class = "indexRange",
                       rangeType = "vector")
+        ## Note: "vector" is the only type that might need
+        ## to handle multiple dimensions.  Thus it might be a matrix,
+        ## representing a vector of index vectors.
     } else {
         if(isBlank(expr))
             structure(list(expr),
@@ -52,6 +55,20 @@ indexRange <- function(expr) {
     }
 }
 
+## Notes:
+##
+## We may need to distinguish vector from matrix
+##
+## We may need a "nothing" type, which can be returned when
+## the result of applying a rule is empty.  Or we may decide
+## to define that as NULL.
+##
+
+indexRange_block <- function(rangeList) {
+    structure(rangeList,
+              class = "indexRange",
+              rangeType = "block")
+}
 
 getRangeType <- function(IRL) {
     attr(IRL, 'rangeType')

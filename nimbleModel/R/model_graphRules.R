@@ -128,7 +128,7 @@ makeGraphIndexRules <- function(LHS,
             modelContextClass$new(
                 context$singleContexts[indexVarNamesInThisSet]
             )
-        thisIndexRule <- arbitraryIndexRuleClass_setup(
+        thisIndexRule <- indexRule_arbitrary_setup(
             toIndexExprList = thisLHSindexExprs,
             fromIndexExprList = thisRHSindexExprs,
             context = thisContext,
@@ -156,7 +156,7 @@ applyGraphIndexRules <- function(fromIndices,
         RHSindicesBool <- indexSets$RHSindex2setID == iSet
         thisRHSindices <- fromIndices[RHSindicesBool]
         thisLHSindices <-
-            applyArbitraryIndexRule_single(
+            indexRule_arbitrary_apply_single(
                 thisRHSindices,
                 indexRules[[iSet]]
             )

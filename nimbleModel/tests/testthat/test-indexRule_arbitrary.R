@@ -1,4 +1,4 @@
-context("arbitraryIndexRuleClass tests")
+context("indexRule_arbitrary tests")
 
 ## This function takes the inputs for an arbitrary index rule
 ## and compares the rule behavior to a brute force evaluation
@@ -27,7 +27,7 @@ test_arbitraryIndexRule <- function(LHS,
 
     constantsEnv <- list2env(constants)
     
-    setupRules <- arbitraryIndexRuleClass_setup(
+    setupRules <- indexRule_arbitrary_setup(
         toIndexExprList = toIndexExprList,
         fromIndexExprList = fromIndexExprList,
         context = context,
@@ -110,7 +110,7 @@ test_arbitraryIndexRule <- function(LHS,
     for(i in seq_len(setupRules$from_flatMax)) {
         if(i >= debug) browser()
         rawIndices <- setupRules$from2indicesFunctions$flatIndex2rawIndex(i)
-        rulesAnswer <- applyArbitraryIndexRule_single(rawIndices,
+        rulesAnswer <- indexRule_arbitrary_apply_single(rawIndices,
                                   setupRules)
         bruteForceAnswer <- bruteForceCalculator(rawIndices)
         ## if there is a shuffle on LHS,
@@ -147,7 +147,7 @@ test_that("arbitraryIndexRuleClass", {
 ##     for(j in 1:5)
 ##         y[i, j] <- foo(x[i+1, j + 2]
 
-    setupRules <- arbitraryIndexRuleClass_setup(
+    setupRules <- indexRule_arbitrary_setup(
         toIndexExprList = list(
             t1 = quote(i),
             t2 = quote(j)),
@@ -157,7 +157,7 @@ test_that("arbitraryIndexRuleClass", {
         context = context_ij,
         constantsEnv = new.env())
     
-    expect_equal(applyArbitraryIndexRule_single(c(5, 3),
+    expect_equal(indexRule_arbitrary_apply_single(c(5, 3),
                                                 setupRules),
                  matrix(c(4, 1), nrow = 1))
 
@@ -166,7 +166,7 @@ test_that("arbitraryIndexRuleClass", {
     ##     for(j in 1:5) 
     ##         y[i, j] <- foo(x[i+1, 1:(j+1)])
     
-    setupRules <- arbitraryIndexRuleClass_setup(
+    setupRules <- indexRule_arbitrary_setup(
         toIndexExprList = list(
             t1 = quote(i),
             t2 = quote(j)),
@@ -176,7 +176,7 @@ test_that("arbitraryIndexRuleClass", {
         context = context_ij,
         constantsEnv = new.env())
 
-    expect_equal(applyArbitraryIndexRule_single(c(4, 6),
+    expect_equal(indexRule_arbitrary_apply_single(c(4, 6),
                                                 setupRules),
                  matrix(c(3, 4, 3, 5), byrow = TRUE, nrow = 2))
 
@@ -185,7 +185,7 @@ test_that("arbitraryIndexRuleClass", {
     ##  y[i, 1:n[i] ] <- foo(x[i+1])
 
 
-    setupRules <- arbitraryIndexRuleClass_setup(
+    setupRules <- indexRule_arbitrary_setup(
         toIndexExprList = list(
             t1 = quote(i),
             t2 = quote(1:n[i])),
@@ -195,7 +195,7 @@ test_that("arbitraryIndexRuleClass", {
         constantsEnv = list2env(list(n = 1:10))
     )
 
-    expect_equivalent(test <- applyArbitraryIndexRule_single(c(2),
+    expect_equivalent(test <- indexRule_arbitrary_apply_single(c(2),
                                                              setupRules),
                       matrix(c(1, 1), nrow = 1))
 
@@ -203,7 +203,7 @@ test_that("arbitraryIndexRuleClass", {
     ## for(i in 1:10)
     ##     for(j in 1:n[i])
     ##         y[i, j] <- foo(x[i, j])
-    setupRules <- arbitraryIndexRuleClass_setup(
+    setupRules <- indexRule_arbitrary_setup(
         toIndexExprList = list(
             t1 = quote(i),
             t2 = quote(j)),
@@ -214,7 +214,7 @@ test_that("arbitraryIndexRuleClass", {
         constantsEnv = list2env(list(n = 1:10))
     )
 
-    expect_equal(applyArbitraryIndexRule_single(c(8, 2),
+    expect_equal(indexRule_arbitrary_apply_single(c(8, 2),
                                                 setupRules),
                  matrix(c(8, 2), nrow = 1))
 

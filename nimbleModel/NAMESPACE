@@ -1,10 +1,33 @@
 import(methods)
 import(R6)
 ## Some exports are for testing convenience and may not need to be exported.
-export(arbitraryIndexRuleClass_setup)
-export(applyArbitraryIndexRule_single)
+
+## Classes: R6 classes are exported as regular objects
+export(indexRuleClass)
+export(modelContextClass)
+export(indexRuleClass_arbitrary)
+export(varRangeClass)
+
+## functions and other objects
+export(indexRule_arbitrary_setup)
+export(indexRule_arbitrary_apply_single)
+export(indexRule_block_setup)
+export(indexRule_block_apply_single)
 export(applyGraphIndexRules)
+export(indexRange)
+export(isBlank)
+export(getRangeType)
+export(indexRange_isBlank)
+export(indexRange_isBlock)
+export(indexRange_isVector)
+export(indexRange_isScalar)
+export(indexRange2expr)
+
 export(makeGraphIndexRules)
 export(makeSeparableIndexSets)
 export(modelSingleContext)
-exportClass(modelContextClass)
+
+export(varRange2char)
+export(varRange2expr)
+export(numIndices)
+export(evalIndexRange)

@@ -1,24 +1,52 @@
-## STOPPED HERE:
-## Fix filtering of invalid indices
-## Handle LHS non-scalar case.
-## Write systematic tested that runs loop with logical collector.
 
-## class for single rules
-indexRuleClass <- R6Class(
-    classname = 'indexRuleClass',
+indexRuleClass_arbitrary <- R6Class(
+    classname = "indexRuleClass_arbitrary",
+    inherit = indexRuleClass,
     portable = FALSE,
     public = list(
-        name = character(),
-        dimTo = integer()
+        setupResults = NULL,
+        initialize = function(toIndexExprList,
+                              fromIndexExprList,
+                              context,
+                              constantsEnv = new.env()
+                              ) {
+            setupResults <<-
+                indexRule_arbitrary_setup(toIndexExprList,
+                                              fromIndexExprList,
+                                              context,
+                                              constantsEnv = new.env()
+                                              )
+        },
+        applyOne = function(fromIndices) {
+            doApplyOne(fromIndices, setupResults)
+        },
+        apply = function(varRange,
+                         type = c("logical", "indexMatrix")) {
+            ## varRange is a varRangeClass object
+            fromIndices <- evalIndexRange(fromIndexObject, varRange)
+            fromIndices <- unique(fromIndices)
+            toIndices <- unique(unlist(edgesFrom2ToList[fromIndices]))
+            type <- match.arg(type)
+            switch(type,
+                   logical = flatIndices2logicalVarRange(
+                       toIndices,
+                       dimTo),
+                   indexMatrix = flatIndices2indexMatrixVarRange(
+                       toIndices,
+                       dimTo
+                   ),
+                   stop())
+        }
     )
 )
 
-
-arbitraryIndexRuleClass_setup <- function(toIndexExprList,
-                                          fromIndexExprList,
-                                          context,
-                                          constantsEnv = new.env()
-                                          ) {
+indexRule_arbitrary_setup <- function(toIndexExprList,
+                                      fromIndexExprList,
+                                      context,
+                                      constants = list()
+                                      ) {
+    if(is.list(constants))
+        constants <- list2env(constants)
     allReplacements <- c(toIndexExprList,
                          fromIndexExprList)
     toIndexNames <- lapply(names(toIndexExprList),
@@ -34,7 +62,7 @@ arbitraryIndexRuleClass_setup <- function(toIndexExprList,
             allReplacements = allReplacements,
             allReplacementNameExpr = allIndexNames,
             context = context,
-            constantsEnv = constantsEnv
+            constantsEnv = constants
         )
 
     ## Extract the results from the environment.
@@ -253,8 +281,8 @@ arbitraryIndexRuleClass_setup <- function(toIndexExprList,
          )
 }
 
-applyArbitraryIndexRule_single <- function(fromIndices,
-                                           setupResults) {
+indexRule_arbitrary_apply_single <- function(fromIndices,
+                                             setupResults) {
     with(setupResults, {
         from_flat <- from2indicesFunctions$rawIndex2flatIndex(fromIndices)
         iRows <- unlist(from_flat2iRow[from_flat])
@@ -266,52 +294,3 @@ applyArbitraryIndexRule_single <- function(fromIndices,
     else
         as.matrix(toIndices)
 }
-
-arbitraryIndexRuleClass <- R6Class(
-    classname = "arbitraryIndexRuleClass",
-    inherit = indexRuleClass,
-    portable = FALSE,
-    public = list(
-        ## This is a list of edges indexed by the "fromIndex".
-        ## The "fromIndex" is an index of RHS blocks, which may be non-scalar.
-        edgesFrom2ToList = NULL,
-        ## fromIndexObject has the same size as "from" (RHS).
-        ## Its entries are the fromIndex values.
-        ## Using this allows collapsing repetition for RHS non-scalars
-        fromIndexObject = NULL,
-        setupResults = NULL,
-        initialize = function(toIndexExprList,
-                              fromIndexExprList,
-                              context,
-                              constantsEnv = new.env()
-                              ) {
-            setupResults <<-
-                arbitraryIndexRuleClass_setup(toIndexExprList,
-                                              fromIndexExprList,
-                                              context,
-                                              constantsEnv = new.env()
-                                              )
-            
-        },
-        applyOne = function(fromIndices) {
-            doApplyOne(fromIndices, setupResults)
-        },
-        apply = function(varRange,
-                         type = c("logical", "indexMatrix")) {
-            ## varRange is a varRangeClass object
-            fromIndices <- evalIndexRange(fromIndexObject, varRange)
-            fromIndices <- unique(fromIndices)
-            toIndices <- unique(unlist(edgesFrom2ToList[fromIndices]))
-            type <- match.arg(type)
-            switch(type,
-                   logical = flatIndices2logicalVarRange(
-                       toIndices,
-                       dimTo),
-                   indexMatrix = flatIndices2indexMatrixVarRange(
-                       toIndices,
-                       dimTo
-                   ),
-                   stop())
-        }
-    )
-)
