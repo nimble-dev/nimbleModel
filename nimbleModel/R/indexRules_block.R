@@ -22,11 +22,26 @@ indexRuleClass_block <- R6Class(
                 setupResults
             )
         },
-        apply = function(fromIndexRange) {
+        apply_varRange = function(fromVarRange,
+                                  indices) {
+            thisIndexRange <- fromVarRange$getSingleIndexRange(indices)
+            indexRangeResult <- apply_indexRange(thisIndexRange)
+            result <- varRangeClass$new(
+                list(indexRangeResult)
+            )
+            result
+        },
+        apply_indexRange = function(fromIndexRange) {
             indexRule_block_apply(
                 fromIndexRange,
                 setupResults
             )
+        },
+        apply = function(from, ...) {
+            if(inherits(from, 'varRangeClass'))
+                apply_varRange(from, ...)
+            else
+                apply_indexRange(from)
         }
     )
 )

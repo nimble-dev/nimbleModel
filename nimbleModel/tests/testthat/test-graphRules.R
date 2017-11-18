@@ -16,7 +16,6 @@ test_that("makeSeparableIndexSets works", {
                            indexRangeExpr = quote(1:n[i]),
                            )
     
-    
     context_i <- modelContextClass$new(list(singleContext1))
     
     context_ij <- modelContextClass$new(list(singleContext1,
@@ -85,9 +84,76 @@ test_that("graphRules works", {
     rules <- makeGraphIndexRules(LHS = quote(y[i, j]),
                                  RHS = quote(x[i, j]),
                                  context = context_ij)
-    expect_equal(applyGraphIndexRules(c(2, 4), rules),
-                 matrix(c(2, 4), nrow = 1))
+    ## from a matrix indexRange with 1 row
+     expect_equal(
+       test1 <- applyGraphIndexRules(
+           varRangeClass$new(
+                list(
+                    indexRange(
+                        matrix(c(2, 4), nrow = 1))
+                ))
+          , rules)
+       ,
+       test2 <- varRangeClass$new(
+           list(
+               indexRange(quote(matrix(2))),
+               indexRange(quote(matrix(4)))
+           ))
+    )
 
+    ## from a matrix indexRange with multiple rows
+    message('This one is not really correct. The results should be combined into a single result arbitrary index range')
+    expect_equal(
+        test1 <- applyGraphIndexRules(
+            varRangeClass$new(
+                list(
+                    indexRange(
+                        matrix(c(2, 3, 4, 5), byrow = TRUE, nrow = 2)
+                    )
+                ))
+          , rules)
+       ,
+       test2 <- varRangeClass$new(
+           list(
+               indexRange(c(2,4)),
+               indexRange(c(3,5))
+           ))
+    )
+
+    ## from 2 single indexRanges
+   expect_equal(
+       test1 <- applyGraphIndexRules(
+           varRangeClass$new(
+           list(
+               indexRange(quote(matrix(2))),
+               indexRange(quote(matrix(4)))
+           ))
+          , rules)
+       ,
+       test2 <- varRangeClass$new(
+           list(
+               indexRange(quote(matrix(2))),
+               indexRange(quote(matrix(4)))
+           ))
+   )
+    
+    ## from 2 separate arbitrary indexRanges
+    expect_equal(
+        test1 <- applyGraphIndexRules(
+            varRangeClass$new(
+                list(
+                    indexRange(c(2,4)),
+                    indexRange(c(3,5))
+                ))
+          , rules)
+       ,
+        test2 <- varRangeClass$new(
+            list(
+                indexRange(c(2,4)),
+                indexRange(c(3,5))
+            ))
+    )
+    
     rules <- makeGraphIndexRules(LHS = quote(y[i, j]),
                                  RHS = quote(x[j, i]),
                                  context = context_ij)

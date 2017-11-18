@@ -25,8 +25,20 @@ indexRuleClass_arbitrary <- R6Class(
         },
         ## Should conversion from mulitple ranges be done before
         ## calling this, or as part of this?
-        apply = function(fromIndexRange) {
-            ## fromIndexRange is an indexRange object
+        apply_varRange = function(fromVarRange,
+                                  indices) {
+            thisIndexRange <- fromVarRange$getIndexRangeMatrix(indices)
+            toIndices <-
+                indexRule_arbitrary_apply_matrix(
+                    fromIndicesMatrix,
+                    setupResults
+                )
+            result <- varRangeClass$new(
+                list(indexRange_matrix(toIndices))
+            )
+            result
+        },
+        apply_indexRange = function(fromIndexRange) {
             fromIndicesMatrix <- indexRange2matrix(fromIndexRange)
             toIndices <-
                 indexRule_arbitrary_apply_matrix(
@@ -35,6 +47,12 @@ indexRuleClass_arbitrary <- R6Class(
                 )
             toIndices <- indexRange_matrix(toIndices)
             toIndices
+        },
+        apply = function(from, ...) {
+            if(inherits(from, 'varRangeClass'))
+                apply_varRange(from, ...)
+            else
+                apply_indexRange(from)
         }
     )
 )

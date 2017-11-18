@@ -47,52 +47,143 @@ varRangeClass <- R6Class(
         ##  This has a matrix ([3, 11]; [10, 8]) of arbitrary indices
         ## for indexIDs 1 and 3 (first and third indices).  It has a
         ## block (1:2) for the second index.
-        initialize = function(varRange) {
+        initialize = function(indexInfo,
+                              indexOrders = NULL,
+                              name = NULL) {
             ## initialization from an expression
             ## does not support some of the complicated cases.
             ##
             ## We will need some way to initialize more complex
             ## cases returned from graph queries.
             ##
-            if(is.character(varRange))
-                varRange <- parse(text = varRange,
-                                  keep.source = FALSE)[[1]]
-            if(length(varRange)==1) {
-                ## The expression is just a name
-                name <<- as.character(varRange)
-            } else {
-                ## The expression must have some indexing.
-                ## Check that it starts with `[`:               
-                if(!identical(varRange[[1]], as.name("[")))
-                    stop(paste(deparse(varRange),
-                               ' is not valid variable or variable range.'),
-                         call. = TRUE)
-                name <<- deparse(varRange[[2]])
-                indexRangeExprs <<- as.list(varRange[-c(1,2)])
-                indexRanges <<- lapply(
-                    indexRangeExprs,
-                    indexRange
-                )
-                rangeID_2_indexID <<-
-                    as.list(seq_along(indexRanges))
+            if(is.character(indexInfo))
+                indexInfo <- parse(text = indexInfo,
+                                   keep.source = FALSE)[[1]]
+            ## input is an expression
+            if(is.call(indexInfo) | is.name(indexInfo)) {
+                if(length(indexInfo)==1) {
+                    ## The expression is just a name
+                    nameFromExpr <- as.character(indexInfo)
+                } else {
+                    ## The expression must have some indexing.
+                    ## Check that it starts with `[`:               
+                    if(!identical(indexInfo[[1]], as.name("[")))
+                        stop(paste(deparse(indexInfo),
+                                   ' is not valid variable or variable range.'),
+                             call. = TRUE)
+                    nameFromExpr <- deparse(indexInfo[[2]])
+                    indexRangeExprs <<- as.list(indexInfo[-c(1,2)])
+                    indexRanges <<- lapply(
+                        indexRangeExprs,
+                        indexRange
+                    )
+                    rangeID_2_indexID <<-
+                        as.list(seq_along(indexRanges))
+                }
+                if(is.null(name))
+                    name <<- nameFromExpr
+                else
+                    name <<- name
+                return(self)
             }
-            self
+            ## input is a list that should be of indexRanges
+            if(is.list(indexInfo)) {
+                name <<- name
+                setIndexRanges(indexInfo, indexOrders)
+                ## SET RANGEID_2_INDEXID
+            }
         },
-        getIndexRanges = function(indices) {
+        getSingleIndexRange = function(index) {
             ## Iterate over indexRanges rather than indices
             ## so that any matrices can be kept together if possible.
-            
+            varRange_getSingleIndexRange(self,
+                                         index)
         },
-        setIndexRanges = function(indexRanges) {
+        getIndexRangeMatrix = function(indices) {
+            varRange_getIndexRangeMatrix(self,
+                                         indices)
+        },
+        setIndexRanges = function(indexRanges,
+                                  indexOrders = NULL) {
             ## expects a list input, as returned by indexRange
             self$indexRanges <- indexRanges
-            self$indexRangeExprs <- lapply(
-                indexRanges,
-                indexRange2expr
-            )
+            ## self$indexRangeExprs <- lapply(
+            ##     indexRanges,
+            ##     indexRange2expr
+            ## )
+            if(!is.null(indexOrders))
+                self$rangeID_2_indexID <- indexOrders
+            else {
+                nextID <- 1
+                self$rangeID_2_indexID <-
+                    lapply(indexRanges,
+                           function(x) {
+                               numCols <- indexRange_numCols(x)
+                               ans <- nextID-1 + (1:numCols)
+                               nextID <<- nextID + numCols
+                               ans
+                           }
+                           )
+            }
+            self
         }
     )
 )
+
+## extract an indexRange for a single column of a varRange
+varRange_getSingleIndexRange <- function(varRange,
+                                         index) {
+    done <- FALSE
+    iRange <- 1
+    result <- NULL
+    while(!done) {
+        boolIndex <- index == varRange$rangeID_2_indexID[[iRange]]
+        if(any(boolIndex)) {
+            innerIndex <- which(boolIndex)
+            result <- indexRange_getCols(
+                varRange$indexRanges[[iRange]],
+                innerIndex)
+            done <- TRUE
+        }
+        iRange <- iRange + 1
+        if(iRange > length(varRange$indexRanges)) done <- TRUE
+    }
+    result
+}
+
+## extract multiple columns of a varRange expanded as
+## an index matrix.
+varRange_getIndexRangeMatrix <- function(varRange,
+                                         indices) {
+    done <- FALSE
+    iRange <- 1
+    numRequestedIndices <- length(indices)
+    indexRangeResults <- list()
+    iResult <- 1
+    
+    while(!done) {
+        boolIndex <- indices == varRange$rangeID_2_indexID[[iRange]]
+        if(any(boolIndex)) {
+            innerIndices <- which(boolIndex)
+            indexRangeResults[[iResult]] <-
+                indexRange_getCols(
+                    varRange$indexRanges[[iRange]],
+                    innerIndices)
+            iResult <- iResult + 1
+        }
+        iRange <- iRange + 1
+        if(iRange > length(varRange$indexRanges)) done <- TRUE
+    }
+    result <- indexRangeList2matrix(indexRangeResults)
+    result
+}
+
+## extract multiple columns of a varRange, keeping
+## indexRanges intact.  This is returned as a new varRange.
+varRange_getIndexRangeColumns <- function(varRange,
+                                          indices) {
+
+}
 
 ## The following could sensibly be class methods, but
 ## we are going to try to keep classes small.
@@ -124,18 +215,16 @@ numIndices <- function(VR) {
     length(VR$indexRanges)
 }
 
-## need to deal with each kind of combination
-mergeVarRanges <- function(VR1, VR2) {
-    ## This won't work for arbitrary index rows
-    if(length(VR1$indexRangeExprs) != length(VR2$indexRangeExprs))
-        stop( paste0(printVarRange(VR1),
-                     ' has different number of dimensions than ',
-                     printVarRange(VR2)),
-             call. = FALSE)
-
-    if(length(VR1$indexRangeExprs) == 0) return(VR1)
-
-}
+## ## need to deal with each kind of combination
+## mergeVarRanges <- function(VR1, VR2) {
+##     ## This won't work for arbitrary index rows
+##     if(length(VR1$indexRangeExprs) != length(VR2$indexRangeExprs))
+##         stop( paste0(printVarRange(VR1),
+##                      ' has different number of dimensions than ',
+##                      printVarRange(VR2)),
+##              call. = FALSE)
+##     if(length(VR1$indexRangeExprs) == 0) return(VR1)
+## }
 
 ## eval range extracts from one variable the indices
 ## of a varRangeClass object
@@ -146,18 +235,15 @@ mergeVarRanges <- function(VR1, VR2) {
 ##          One may need to look up indices or IDs from a matrix
 ##                  with the same shape as x, say xIndices.
 ##          To do so: evalIndexRange(xIndices, varRangeClass$new(quote(x[2:3, 3:5]))
-evalIndexRange <- function(var2output, varRange) {
-    var2output = substitute(var2output)
+##
+## This will not work if varRange has any matrix indexRanges
+evalIndexRange <- function(x, varRange) {
+    xExpr = substitute(x)
     if(length(varRange$indexRanges)==0)
-        eval(var2output, envir = parent.frame())
+        x
     else {
-        do.call("[", c(list(var2output),
+        do.call("[", c(list(xExpr),
                        varRange$indexRangeExprs),
                 envir = parent.frame())
     }
 }
-
-
-
-## TO DO: combine and difference varRange objects...?
-##        What are the needs here?

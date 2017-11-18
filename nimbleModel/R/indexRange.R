@@ -101,21 +101,72 @@ indexRange_matrix <- function(rangeList) {
               rangeType = "matrix")
 }
 
+indexRange_numCols <- function(inputIndexRange) {
+   switch(attr(inputIndexRange, 'rangeType'),
+           matrix = ncol(inputIndexRange[[1]])
+          ,
+           block = 1,
+           scalar = 1,
+           blank = 1,
+           stop("In inputRange_numCols: invalid type of inputIndexRange.")
+          )
+}
+
+indexRange_getCols <- function(inputIndexRange,
+                              indices = NULL) {
+    switch(attr(inputIndexRange, 'rangeType'),
+           matrix = 
+               if(is.null(indices))
+                   inputIndexRange
+               else
+                   indexRange_matrix(
+                       list(inputIndexRange[[1]][, indices, drop = FALSE])
+                   )
+          ,
+           block = inputIndexRange,
+           scalar = inputIndexRange,
+           blank = inputIndexRange,
+           stop("In inputRange_getCols: invalid type of inputIndexRange.")
+           )
+}
+
 indexRange2matrix <- function(inputIndexRange) {
     switch(attr(inputIndexRange, 'rangeType'),
            matrix = inputIndexRange[[1]],
            block = indexRange_matrix(
-               list(matrix(seq.int(inputIndexRange[[1]],
-                                   inputIndexRange[[2]])))
-              ),
+               list(matrix(seq.int(inputIndexRange[[1]][[1]],
+                                   inputIndexRange[[1]][[2]])))
+           ),
+           scalar = indexRange_matrix(
+               list(matrix(inputIndexRange[[1]]))
+           ),
+           blank = stop("Can't convert from a blank indexRange to a matrix."),
            stop(paste0("Converting from ",
                        inputIndexRange$rangetype,
                        " to matrix is not supported."))
            )
 }
 
+matrix_expand_grid <- function(...) {
+    matrixList <- list(...)
+    indexVectors <- lapply(matrixList,
+                           function(x) seq_len(nrow(x))
+                           )
+    indexGrid <- as.list(do.call("expand.grid",
+                                 c(indexVectors,
+                                   list(KEEP.OUT.ATTRS = FALSE))))
+    unfoldedMatrices <- mapply(
+        function(m, indices) m[indices,, drop = FALSE],
+        matrixList,
+        indexGrid,
+        SIMPLIFY = FALSE
+    )
+    result <- do.call("cbind", unfoldedMatrices)
+    result
+}
+
 indexRangeList2matrix <- function(indexRangeList) {
-    do.call("cbind",
+    do.call("matrix_expand_grid",
             lapply(indexRangeList,
                    function(x) indexRange2matrix(x)[[1]]))
 }

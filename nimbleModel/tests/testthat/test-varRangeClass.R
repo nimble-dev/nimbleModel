@@ -3,6 +3,48 @@ library(testthat)
 
 ## source('model_varRangeClass.R')
 
+test_that("matrix_expand_grid",
+{
+    expect_equal(
+        matrix_expand_grid(list(matrix(1:3, ncol = 1))),
+        matrix(1:3, ncol = 1)
+    )
+
+    expect_equal(
+        matrix_expand_grid(matrix(1:4, ncol = 1),
+                           matrix(c(11:13, 21:23),
+                                  ncol =2)
+                           )
+       ,
+        matrix(
+            c(rep(1:4, 3),
+              rep(11:13, each = 4),
+              rep(21:23, each = 4)
+              ),
+            ncol = 3
+        )
+    )
+
+    expect_equal(
+        matrix_expand_grid(matrix(c(105:109, 115:119),
+                                  ncol =2),
+                           matrix(c(11:13, 21:23),
+                                  ncol =2)
+                           )
+       ,
+        matrix(
+            c(rep(105:109, 3),
+              rep(115:119, 3),
+              rep(11:13, each = 5),
+              rep(21:23, each = 5)
+              ),
+            ncol = 4
+        )
+    )
+
+}
+)
+
 test_that('indexRange conversions between list and expr', {
     input <- quote(x[]) ## the blank, which is wierd if extracted separately
     expect_identical(input[[3]],
@@ -36,7 +78,7 @@ test_that('indexRange conversions between list and expr', {
 }
 )
 
-test_that('varRangeClass', {
+test_that('varRangeClass initialized from expr', {
 
     ## 1D:
     y <- 101:110
@@ -49,10 +91,20 @@ test_that('varRangeClass', {
     ans <- evalIndexRange(y, xVar)
     expect_identical(ans, y[3])
 
+    expect_identical(
+        varRange_getSingleIndexRange(xVar, 1),
+        xVar$indexRanges[[1]]
+    )
+    
     xVar <- varRangeClass$new('x[2:10]')
     ans <- evalIndexRange(y, xVar)
     expect_identical(ans, y[2:10])
 
+    expect_identical(
+        varRange_getSingleIndexRange(xVar, 1),
+        xVar$indexRanges[[1]]
+    )
+    
     xVar <- varRangeClass$new('x[]')
     ans <- evalIndexRange(y, xVar)
     expect_identical(ans, y[])
@@ -64,10 +116,47 @@ test_that('varRangeClass', {
     ans <- evalIndexRange(y, xVar)
     expect_identical(ans, y[3, 4])
 
+    expect_identical(
+        varRange_getSingleIndexRange(xVar, 1),
+        xVar$indexRanges[[1]]
+    )
+
+    expect_identical(
+        varRange_getSingleIndexRange(xVar, 2),
+        xVar$indexRanges[[2]]
+    )
+    
     xVar <- varRangeClass$new('x[3, 2:4]')
     ans <- evalIndexRange(y, xVar)
     expect_identical(ans, y[3, 2:4])
 
+    expect_identical(
+        varRange_getSingleIndexRange(xVar, 1),
+        xVar$indexRanges[[1]]
+    )
+
+    expect_identical(
+        varRange_getSingleIndexRange(xVar, 2),
+        xVar$indexRanges[[2]]
+    )
+
+    expect_equal(
+        varRange_getIndexRangeMatrix(xVar, c(1, 2)),
+        matrix(c(rep(3, 3), 2:4), ncol = 2)
+    )
+
+    expect_equal(
+        varRange_getIndexRangeMatrix(xVar, c(1))
+        ,
+        matrix(3)
+    )
+
+    expect_equal(
+        varRange_getIndexRangeMatrix(xVar, c(2))
+        ,
+        matrix(2:4, ncol = 1)
+    )
+    
     xVar <- varRangeClass$new('x[3:5, 6]')
     ans <- evalIndexRange(y, xVar)
     expect_identical(ans, y[3:5, 6])
@@ -76,6 +165,16 @@ test_that('varRangeClass', {
     ans <- evalIndexRange(y, xVar)
     expect_identical(ans, y[2:10, 3:5])
 
+    expect_equal(
+        varRange_getIndexRangeMatrix(xVar, c(1, 2))
+       ,
+        structure(
+            as.matrix(
+                expand.grid(2:10, 3:5)
+            ),
+            dimnames = NULL)
+    )
+    
     xVar <- varRangeClass$new('x[, 3:5]')
     ans <- evalIndexRange(y, xVar)
     expect_identical(ans, y[, 3:5])
@@ -89,6 +188,12 @@ test_that('varRangeClass', {
     expect_identical(ans, y[, ])
 
 })
+
+test_that("varRange initialized with matrix indexRange(s)",
+{
+    
+}
+)
 
 test_that("varRange expr, char, and indexRange replacement", {
     input <- quote(x[3])

@@ -151,7 +151,6 @@ makeGraphIndexRules <- function(LHS,
             modelContextClass$new(
                 context$singleContexts[indexVarNamesInThisSet]
             )
-        browser()
         ## We try making a block rule.
         ## It it fails, we will throw it away.
         thisIndexRule <- indexRuleClass_block$new(
@@ -172,6 +171,12 @@ makeGraphIndexRules <- function(LHS,
          indexRules = indexRules)
 }
 
+## fromVarRange will have indexRanges that may be
+## blocks, matrices, blanks, or scalars.
+##
+## We need to extract the relevant components of fromVarRange
+## for each rule, apply the rules, and compose the result
+## as a new varRange.
 applyGraphIndexRules <- function(fromVarRange,
                                  rules) {
     ## Some of the steps below will reveal things that
@@ -185,20 +190,29 @@ applyGraphIndexRules <- function(fromVarRange,
     ## nrow needs to come from number of fromIndices provided
     LHSnDim <- length(indexSets$LHSindex2setID)
     ##    lhsIndices <- matrix(ncol = LHSnDim, nrow = 1)
-    message('Need to deal with mixed input to joint rules')
-    ans <- list()
+    ansIndexRanges <- list()
+    ansIndexOrders <- list()
     for(iSet in seq_len(numSets)) {
         # which "from" indices are in this indexSet?
         RHSindicesBool <- indexSets$RHSindex2setID == iSet
         ## extract the relevant indices from fromVarRange
-        thisRHSindices <- fromIndices[RHSindicesBool]
-        thisLHSindexRange <-
+        thisRHSindices <- which(RHSindicesBool)
+        thisLHSvarRange <-
             indexRules[[iSet]]$apply(
-                thisRHSindices
-            )
-##        LHSindicesBool <- indexSets$LHSindex2setID == iSet
-        ##        lhsIndices[, LHSindicesBool] <- thisLHSindices
-        ans[[iSet]] <- thisLHSindexRange
+                                  fromVarRange,
+                                  thisRHSindices
+                              )
+        ## There may be a need to pull apart thisLHSvarRange
+        ## into subsets of its indexRanges
+        ansIndexRanges[[iSet]] <- thisLHSvarRange$indexRanges[[1]]
+        ansIndexOrders[[iSet]] <-
+            which(indexSets$LHSindex2setID == iSet)
     }
+    message('Composition of results needs to know when to expand grid')
+    message('Need to handle correctly invalid results from rules')
+    varRangeClass$new(
+        indexInfo = ansIndexRanges,
+        indexOrders = ansIndexOrders
+    )
 ##    lhsIndices
 }
