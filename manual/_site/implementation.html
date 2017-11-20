@@ -11,7 +11,7 @@
 
 
 
-<title>graph processing</title>
+<title>implementation</title>
 
 <script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -294,15 +294,35 @@ div.tocify {
 
 
 
-<h1 class="title toc-ignore">graph processing</h1>
+<h1 class="title toc-ignore">implementation</h1>
 
 </div>
 
 
-<p><a href="introduction.html">Graph relationships</a></p>
-<p><a href="overall_strategy.html">Overall strategy</a></p>
-<p><a href="index_inversion.html">Index inversion</a></p>
-<p><a href="implementation.html">Implementation</a></p>
+<div id="implementation-of-graph-and-index-relationships." class="section level1">
+<h1>Implementation of graph and index relationships.</h1>
+<ul>
+<li><p>An <code>indexRange</code> manages the index content of one dimension of one variable.</p>
+<ul>
+<li>This is implemented as a list, with attributes for <code>class</code> and <code>rangeType</code></li>
+<li><code>rangeType</code>s include block (<code>1:10</code>), vector (arbitrary), scalar, and blank.</li>
+</ul></li>
+<li><p>An <code>indexRule</code> manages the determination of LHS indices from RHS indices for one or more <code>indexRange</code>s. (Sometimes multiple index dimensions needs to be solved jointly.)</p>
+<ul>
+<li>Kinds of <code>indexRule</code>s include block and arbitrary.</li>
+<li>Inputs and outputs to application of an <code>indexRule</code> may be an <code>indexRange</code> and/or <code>varRange</code> (somewhat TBD).</li>
+</ul></li>
+<li><p>A <code>varRange</code> manages a set of <code>indexRange</code>s representing all dimensions of a variable.</p>
+<ul>
+<li>A <code>varRange</code> also keeps track of how each <code>indexRange</code> would be crossed or combined with others to represent the set of variable elements correctly.</li>
+</ul></li>
+<li><p>A <code>graphRule</code> manages the set of <code>indexRule</code>s needed to determine all LHS indices from all RHS indices for one set of edges created one of the RHS variables and the LHS variable of a single declaration.</p>
+<ul>
+<li>Inputs and outputs to a <code>graphRule</code> are <code>varRange</code>s.</li>
+</ul></li>
+<li><p>A <code>varRules</code> manages the set of <code>graphRule</code>s for the same variable (RHS).</p></li>
+</ul>
+</div>
 
 
 

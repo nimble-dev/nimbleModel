@@ -1,0 +1,32 @@
+---
+title: "implementation"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Implementation of graph and index relationships.
+
+- An `indexRange` manages the index content of one dimension of one variable.
+
+    - This is implemented as a list, with attributes for `class` and `rangeType`
+    - `rangeType`s include block (`1:10`), vector (arbitrary), scalar, and blank.
+
+- An `indexRule` manages the determination of LHS indices from RHS indices for one or more `indexRange`s.  (Sometimes multiple index dimensions needs to be solved jointly.)
+
+    - Kinds of `indexRule`s include block and arbitrary.
+    - Inputs and outputs to application of an `indexRule` may be an `indexRange` and/or `varRange` (somewhat TBD).
+    
+- A `varRange` manages a set of `indexRange`s representing all dimensions of a variable.
+
+    - A `varRange` also keeps track of how each `indexRange` would be crossed or combined with others to represent the set of variable elements correctly.
+
+- A `graphRule` manages the set of `indexRule`s needed to determine all LHS indices from all RHS indices for one set of edges created one of the RHS variables and the LHS variable of a single declaration.
+
+    - Inputs and outputs to a `graphRule` are `varRange`s.
+    
+- A `varRules` manages the set of `graphRule`s for the same variable (RHS).
+
+

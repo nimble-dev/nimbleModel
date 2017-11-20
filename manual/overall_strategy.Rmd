@@ -14,7 +14,7 @@ The overall strategy for representing a set of graph relationships (edges from o
 - Create index inversion methods for different cases.  In particular, methods will be needed for:
 
     - Blank or constant indices.
-    - Index blocks with simple index shifts.  E.g.: `y[i + 1] \leftarrow x[i]`.
-    - Arbitrary index mapping.  E.g.: `y[i] \leftarray x[ k[i] ]` where `k` is a constant index vector.
+    - Index blocks with simple index shifts.  E.g.: `y[i + 1] <- foo(x[i])`.
+    - Arbitrary index mapping.  E.g.: `y[i] <- foo(x[ k[i] ])` where `k` is a constant index vector.
     
     
