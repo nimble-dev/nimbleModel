@@ -313,16 +313,27 @@ indexRule_arbitrary_apply_single <- function(fromIndices,
 }
 
 indexRule_arbitrary_apply_matrix <- function(fromIndices,
-                                             setupResults) {
+                                             setupResults,
+                                             collapse = TRUE) {
     with(setupResults, {
+        ## from_flat is the flat index of each row of "from" indices
         from_flat <-
             from2indicesFunctions$rawIndex2flatIndex_multi(fromIndices)
-        iRows <- unlist(from_flat2iRow[from_flat])
+        ## iRowsList has the declaration iRows for each from_flat
+        iRowsList <- from_flat2iRow[from_flat]
 ### unique???
-        toIndices <<- do.call("rbind", iRow2toIndices[iRows])
+        ## toIndicesList has the matrix of "to" indices for each from_flat 
+        toIndicesList <<- lapply(iRowsList,
+                                 function(x)
+                                     do.call('rbind',
+                                             iRow2toIndices[x])
+                                 )
     })
-    if(is.null(toIndices))
-        matrix(nrow = 0, ncol = length(setupResults$toInfo))
+    if(collapse) 
+        if(length(toIndicesList) == 0)
+            matrix(nrow = 0, ncol = length(setupResults$toInfo))
+        else
+            as.matrix(do.call('rbind', toIndicesList))
     else
-        as.matrix(toIndices)
+        toIndicesList
 }

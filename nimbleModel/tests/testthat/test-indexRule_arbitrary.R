@@ -157,19 +157,50 @@ test_that("arbitraryIndexRuleClass", {
         context = context_ij,
         constants = new.env())
     
-    expect_equal(indexRule_arbitrary_apply_single(c(5, 3),
-                                                setupRules),
-                 matrix(c(4, 1), nrow = 1))
+    expect_equal(
+        indexRule_arbitrary_apply_single(c(5, 3),
+                                         setupRules)
+       ,
+        matrix(c(4, 1), nrow = 1)
+    )
 
-    expect_equal(indexRule_arbitrary_apply_matrix(matrix(c(5, 3, 6, 3),
-                                                         byrow = TRUE,
-                                                         nrow = 2),
-                                                  setupRules),
-                 matrix(c(4, 1, 5, 1),
-                        byrow = TRUE,
-                        nrow = 2))
+    expect_equal(
+        indexRule_arbitrary_apply_matrix(matrix(c(5, 3, 6, 3),
+                                                byrow = TRUE,
+                                                nrow = 2),
+                                         setupRules)
+       ,
+        matrix(c(4, 1, 5, 1),
+               byrow = TRUE,
+               nrow = 2)
+    )
 
+    expect_equal(
+        indexRule_arbitrary_apply_matrix(matrix(c(5, 3, 6, 3),
+                                                byrow = TRUE,
+                                                nrow = 2),
+                                         setupRules,
+                                         collapse = FALSE)
+       ,
+        list(
+            matrix(c(4, 1), nrow = 1),
+            matrix(c(5, 1), nrow = 1)
+            )
+    )
+
+    expect_equal(
+        indexRule_arbitrary_apply_matrix(matrix(c(15, 3, 16, 3),
+                                                byrow = TRUE,
+                                                nrow = 2),
+                                         setupRules)
+       ,
+        matrix(ncol = 2,
+               nrow = 0)
+    )
+
+    
     ## re-do previous case using indexRuleClass_arbitrary
+    ## to wrap control of lower-level features
     thisRule <- indexRuleClass_arbitrary$new(
         toIndexExprList = list(
             t1 = quote(i),
