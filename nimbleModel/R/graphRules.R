@@ -116,7 +116,7 @@ makeSeparableIndexSets <- function(LHS,
 }
 
 ## The following functions may be used from class methods in the future.
-## For now they are standalone for development and debuggin.
+## For now they are standalone for development and debugging.
 makeGraphIndexRules <- function(LHS,
                                 RHS,
                                 context,
@@ -192,15 +192,17 @@ applyGraphIndexRules <- function(fromVarRange,
     ##    lhsIndices <- matrix(ncol = LHSnDim, nrow = 1)
     ansIndexRanges <- list()
     ansIndexOrders <- list()
+    RHShandlingRules <- numeric(
     for(iSet in seq_len(numSets)) {
         # which "from" indices are in this indexSet?
         RHSindicesBool <- indexSets$RHSindex2setID == iSet
         ## extract the relevant indices from fromVarRange
         thisRHSindices <- which(RHSindicesBool)
-        thisLHSvarRange <-
+        thisLHSresult <-
             indexRules[[iSet]]$apply(
                                   fromVarRange,
-                                  thisRHSindices
+                                  thisRHSindices,
+                                  collapse = FALSE
                               )
         ## There may be a need to pull apart thisLHSvarRange
         ## into subsets of its indexRanges
@@ -208,6 +210,27 @@ applyGraphIndexRules <- function(fromVarRange,
         ansIndexOrders[[iSet]] <-
             which(indexSets$LHSindex2setID == iSet)
     }
+    ## Compose results:
+    ## 1. find results from input matrix indexRanges that were handled by
+    ## different rules.
+    numInputRanges <- length(fromVarRules$indexRanges)
+    for(iRangeID in seq_len(numInputRanges)) {
+        ## which indices does this indexRange handle
+        RHSindexIDs <- fromVarRules$rangeID_2_indexID[[iRangeID]]
+        ## which sets were these indices handled by?
+        setIDs <- indexSets$RHSindex2setID[RHSindexIDs]
+        ## If they were handled by multiple sets:
+        ## (At this point, the indexRange must definitely be a matrix.)
+        if(length(unique(setIDs)) > 1) {
+            ## (Make blockRule(matrix) --> matrixList)
+            ## Any part expanded by an arbitrary rule will yield a matrixList
+            ##
+            ## Results will definitely be (matrixList, matrixList, ...)
+            ## We need to expand grid across matrixList entries
+            
+        }
+    }
+    
     message('Composition of results needs to know when to expand grid')
     message('Need to handle correctly invalid results from rules')
     varRangeClass$new(

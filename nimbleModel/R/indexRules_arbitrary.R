@@ -26,24 +26,28 @@ indexRuleClass_arbitrary <- R6Class(
         ## Should conversion from mulitple ranges be done before
         ## calling this, or as part of this?
         apply_varRange = function(fromVarRange,
-                                  indices) {
+                                  indices,
+                                  collapse = TRUE) {
             thisIndexRange <- fromVarRange$getIndexRangeMatrix(indices)
             toIndices <-
                 indexRule_arbitrary_apply_matrix(
                     fromIndicesMatrix,
-                    setupResults
+                    setupResults,
+                    collapse = collapse
                 )
             result <- varRangeClass$new(
                 list(indexRange_matrix(toIndices))
             )
             result
         },
-        apply_indexRange = function(fromIndexRange) {
+        apply_indexRange = function(fromIndexRange,
+                                    collapse = TRUE) {
             fromIndicesMatrix <- indexRange2matrix(fromIndexRange)
             toIndices <-
                 indexRule_arbitrary_apply_matrix(
                     fromIndicesMatrix,
-                    setupResults
+                    setupResults,
+                    collapse = collapse
                 )
             toIndices <- indexRange_matrix(toIndices)
             toIndices

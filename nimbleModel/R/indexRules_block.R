@@ -22,8 +22,11 @@ indexRuleClass_block <- R6Class(
                 setupResults
             )
         },
+        ## `...` allows arguments (like "collapse") from generic calls
+        ## to be absorbed.
         apply_varRange = function(fromVarRange,
-                                  indices) {
+                                  indices,
+                                  ...) {
             thisIndexRange <- fromVarRange$getSingleIndexRange(indices)
             indexRangeResult <- apply_indexRange(thisIndexRange)
             result <- varRangeClass$new(

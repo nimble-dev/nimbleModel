@@ -85,7 +85,8 @@ test_that("graphRules works", {
                                  RHS = quote(x[i, j]),
                                  context = context_ij)
     ## from a matrix indexRange with 1 row
-     expect_equal(
+    debug(applyGraphIndexRules)
+    expect_equal(
        test1 <- applyGraphIndexRules(
            varRangeClass$new(
                 list(
@@ -103,6 +104,7 @@ test_that("graphRules works", {
 
     ## from a matrix indexRange with multiple rows
     message('This one is not really correct. The results should be combined into a single result arbitrary index range')
+    debug(applyGraphIndexRules)
     expect_equal(
         test1 <- applyGraphIndexRules(
             varRangeClass$new(
