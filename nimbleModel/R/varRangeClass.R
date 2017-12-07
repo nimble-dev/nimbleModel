@@ -38,6 +38,7 @@ varRangeClass <- R6Class(
         ## created by indexRange for the indexRangeExprs
         indexRanges = list(),
         rangeID_2_indexID = list(),
+        indexID_2_rangeID = list(),
         ## a list indexed by order of indexRanges
         ## each element is a vector of the "columns" (indexID)
         ## managed by that index Range.
@@ -47,6 +48,8 @@ varRangeClass <- R6Class(
         ##  This has a matrix ([3, 11]; [10, 8]) of arbitrary indices
         ## for indexIDs 1 and 3 (first and third indices).  It has a
         ## block (1:2) for the second index.
+        ## This would have rangeID_2_indexID[[1]]: c(1, 3)
+        ##                 rangeID_2_indexID[[2]]: 2
         initialize = function(indexInfo,
                               indexOrders = NULL,
                               name = NULL) {

@@ -192,7 +192,49 @@ applyGraphIndexRules <- function(fromVarRange,
     ##    lhsIndices <- matrix(ncol = LHSnDim, nrow = 1)
     ansIndexRanges <- list()
     ansIndexOrders <- list()
-    RHShandlingRules <- numeric(
+    RHShandlingRules <- numeric()
+
+    ## Set up the implied (times, rep) for each indexRange:
+    timesRepList <- list()
+    numIndexRanges <- length(fromVarRange$indexRanges)
+    if(numIndexRanges == 0)
+        stop('fromVarRange has no indexRanges')
+    if(numIndexRanges == 1)
+        message('implement simpler case for 1 indexRange')
+    rangeLengths <- lapply(fromVarRanges$indexRanges,
+                           indexRange_getLength)
+    
+    for(i in 1:numIndexRanges) {
+        thisTimes <- if(i < numIndexRanges)
+                         prod(rangeLengths[(i+1):numIndexRanges])
+                     else
+                         1
+        thisRep <- if(i > 1)
+                       prod(rangeLengths[1:(i-1)])
+                   else
+                       1
+        timesRepList[[i]] <- c(thisTimes, thisRep)
+    }
+    
+    ## Determine which RHSindices will be used for each rule
+    ## and set up index crossing and aligning needs.
+    for(iSet in seq_len(numSets)) {
+        # which "from" indices are in this indexSet?
+        RHSindicesBool <- indexSets$RHSindex2setID == iSet
+        ## extract the relevant indices from fromVarRange
+        thisRHSindices <- which(RHSindicesBool)
+        thisIndicesNeedCrossing <-
+            if(length(thisRHSindices) == 1)
+                FALSE
+            else {
+                thisRangeIDs <-
+                    unlist(fromVarRange$indexID_2_rangeID[thisRHSindices])
+                length(unique(thisRangeIDs)) > 1
+            }
+        if(thisIndicesNeedCrossing)
+            stop('Some indices need crossing: not implemented yet.')
+    }
+    
     for(iSet in seq_len(numSets)) {
         # which "from" indices are in this indexSet?
         RHSindicesBool <- indexSets$RHSindex2setID == iSet
