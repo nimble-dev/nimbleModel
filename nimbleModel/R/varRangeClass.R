@@ -96,15 +96,17 @@ varRangeClass <- R6Class(
                 ## SET RANGEID_2_INDEXID
             }
         },
-        getSingleIndexRange = function(index) {
+        getSingleIndexRange = function(index, ...) {
             ## Iterate over indexRanges rather than indices
             ## so that any matrices can be kept together if possible.
             varRange_getSingleIndexRange(self,
-                                         index)
+                                         index,
+                                         ...)
         },
-        getIndexRangeMatrix = function(indices) {
+        getIndexRangeMatrix = function(indices, ...) {
             varRange_getIndexRangeMatrix(self,
-                                         indices)
+                                         indices,
+                                         ...)
         },
         setIndexRanges = function(indexRanges,
                                   indexOrders = NULL) {
@@ -133,12 +135,26 @@ varRangeClass <- R6Class(
     )
 )
 
+invertIndexList <- function(indexList) {
+    browser()
+    inputLengths <- lapply(indexList, length)
+    inputEntries <- unlist(indexList)
+    inputLabels <- rep(seq_along(indexList), times = inputLengths)
+    s <- split(inputLabels, inputEntries)
+    indices <- as.integer(names(s))
+    ans <- vector('list', length = max(indices))
+    ans[indices] <- s
+    ans
+}
+
 ## extract an indexRange for a single column of a varRange
 varRange_getSingleIndexRange <- function(varRange,
-                                         index) {
+                                         index,
+                                         details = FALSE) {
     done <- FALSE
     iRange <- 1
     result <- NULL
+    usedRanges <- integer()
     while(!done) {
         boolIndex <- index == varRange$rangeID_2_indexID[[iRange]]
         if(any(boolIndex)) {
@@ -146,26 +162,32 @@ varRange_getSingleIndexRange <- function(varRange,
             result <- indexRange_getCols(
                 varRange$indexRanges[[iRange]],
                 innerIndex)
+            usedRanges <- append(usedRanges, iRange) 
             done <- TRUE
         }
         iRange <- iRange + 1
         if(iRange > length(varRange$indexRanges)) done <- TRUE
     }
-    result
+    if(!details)
+        result
+    else
+        list(result = result,
+             usedRanges = usedRanges)
 }
 
 ## extract multiple columns of a varRange expanded as
 ## an index matrix.
 varRange_getIndexRangeMatrix <- function(varRange,
-                                         indices) {
+                                         indices,
+                                         details = FALSE) {
     done <- FALSE
     iRange <- 1
     numRequestedIndices <- length(indices)
     indexRangeResults <- list()
     iResult <- 1
-    
+    usedRanges <- integer()
     while(!done) {
-        boolIndex <- indices == varRange$rangeID_2_indexID[[iRange]]
+        boolIndex <- indices %in% varRange$rangeID_2_indexID[[iRange]]
         if(any(boolIndex)) {
             innerIndices <- which(boolIndex)
             indexRangeResults[[iResult]] <-
@@ -173,12 +195,17 @@ varRange_getIndexRangeMatrix <- function(varRange,
                     varRange$indexRanges[[iRange]],
                     innerIndices)
             iResult <- iResult + 1
+            usedRanges <- append(usedRanges, iRange)
         }
         iRange <- iRange + 1
         if(iRange > length(varRange$indexRanges)) done <- TRUE
     }
     result <- indexRangeList2matrix(indexRangeResults)
-    result
+    if(!details)
+        result
+    else
+        list(result = result,
+             userRanges = usedRanges)
 }
 
 ## extract multiple columns of a varRange, keeping

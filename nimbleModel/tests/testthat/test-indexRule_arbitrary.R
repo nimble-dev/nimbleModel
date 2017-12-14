@@ -140,7 +140,6 @@ test_that("arbitraryIndexRuleClass", {
     
     context_ijni<- modelContextClass$new(list(singleContext1,
                                               singleContext2ni))
-
     
 ## Example case:
 ## for(i in 1:10)
@@ -175,6 +174,23 @@ test_that("arbitraryIndexRuleClass", {
                nrow = 2)
     )
 
+   expect_equal(
+        indexRule_arbitrary_apply_matrix(matrix(c(5, 3, 6, 3),
+                                                byrow = TRUE,
+                                                nrow = 2),
+                                         setupRules,
+                                         collapse = FALSE)
+       ,
+       list(matrix(c(4, 1),
+                   byrow = TRUE,
+                   nrow = 1),
+            matrix(c(5, 1),
+                   byrow = TRUE,
+                   nrow = 1)
+            )
+    )
+
+    
     expect_equal(
         indexRule_arbitrary_apply_matrix(matrix(c(5, 3, 6, 3),
                                                 byrow = TRUE,
@@ -211,7 +227,7 @@ test_that("arbitraryIndexRuleClass", {
         context = context_ij)
 
     thisRule$applyOne(c(5, 3))
-    options(error = recover)
+    ##options(error = recover)
     thisAns <- thisRule$apply(indexRange_matrix(matrix(c(5, 3, 6, 3),
                                                        byrow = TRUE,
                                                        nrow = 2)))

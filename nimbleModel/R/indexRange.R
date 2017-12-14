@@ -56,10 +56,17 @@ indexRange <- function(expr) {
             structure(list(expr),
                       class = "indexRange",
                       rangeType = "blank")
-        else
-            structure(list(expr),
-                      class = "indexRange",
-                      rangeType = "scalar")
+        else {
+            if(is.matrix(expr)) {
+                structure(list(expr),
+                          class = "indexRange",
+                          rangeType = "matrix")
+            } else {
+                structure(list(expr),
+                          class = "indexRange",
+                          rangeType = "scalar")
+            }
+        }
     }
 }
 
@@ -101,6 +108,15 @@ indexRange_matrix <- function(rangeList) {
               rangeType = "matrix")
 }
 
+indexRange_matrixList <- function(rangeList) {
+    structure(if(is.list(rangeList))
+                  rangeList
+              else
+                  list(rangeList),
+              class = "indexRange",
+              rangeType = "matrixList")
+}
+
 indexRange_numCols <- function(inputIndexRange) {
    switch(attr(inputIndexRange, 'rangeType'),
            matrix = ncol(inputIndexRange[[1]])
@@ -110,6 +126,18 @@ indexRange_numCols <- function(inputIndexRange) {
            blank = 1,
            stop("In inputRange_numCols: invalid type of inputIndexRange.")
           )
+}
+
+indexRange_numRows <- function(inputIndexRange,
+                                 indices = NULL) {
+    switch(attr(inputIndexRange, 'rangeType'),
+           matrix = nrow(inputIndexRange[[1]])
+          ,
+           block = inputIndexRange[[1]][[2]] - inputIndexRange[[1]][[1]] + 1,
+           scalar = 1,
+           blank = NA,
+           stop("In inputRange_numRows: invalid type of inputIndexRange.")
+           )
 }
 
 indexRange_getCols <- function(inputIndexRange,
@@ -132,7 +160,7 @@ indexRange_getCols <- function(inputIndexRange,
 
 indexRange2matrix <- function(inputIndexRange) {
     switch(attr(inputIndexRange, 'rangeType'),
-           matrix = inputIndexRange[[1]],
+           matrix = inputIndexRange,
            block = indexRange_matrix(
                list(matrix(seq.int(inputIndexRange[[1]][[1]],
                                    inputIndexRange[[1]][[2]])))
@@ -140,10 +168,24 @@ indexRange2matrix <- function(inputIndexRange) {
            scalar = indexRange_matrix(
                list(matrix(inputIndexRange[[1]]))
            ),
+           matrixList = indexRange_matrix(
+               do.call("rbind",
+                       inputIndexRange)
+           ),
            blank = stop("Can't convert from a blank indexRange to a matrix."),
            stop(paste0("Converting from ",
                        inputIndexRange$rangetype,
                        " to matrix is not supported."))
+           )
+}
+
+expandIndexRangeMatrices <- function(inputIndexRange) {
+    switch(attr(inputIndexRange, 'rangeType'),
+           matrix = stop('expandIndexRangeMatrices on a matrix indexRange not expected'),
+           matrixList = inputIndexRange,
+           block = lapply(seq.int(inputIndexRange[[1]][[1]],
+                                  inputIndexRange[[1]][[2]]),
+                          matrix)
            )
 }
 
@@ -159,7 +201,8 @@ matrix_expand_grid <- function(...) {
         function(m, indices) m[indices,, drop = FALSE],
         matrixList,
         indexGrid,
-        SIMPLIFY = FALSE
+        SIMPLIFY = FALSE,
+        USE.NAMES = FALSE
     )
     result <- do.call("cbind", unfoldedMatrices)
     result
@@ -169,6 +212,21 @@ indexRangeList2matrix <- function(indexRangeList) {
     do.call("matrix_expand_grid",
             lapply(indexRangeList,
                    function(x) indexRange2matrix(x)[[1]]))
+}
+
+collapse_indexRangeMatrices <- function(indexRangeMatrices) {
+    expandedMatrices <- lapply(indexRangeMatrices,
+                               expandIndexRangeMatrices)    
+    indexRange_matrix(
+        do.call("rbind",
+                do.call("mapply", c(list(as.name("matrix_expand_grid")),
+                                    expandedMatrices,
+                                    list(SIMPLIFY = FALSE,
+                                         USE.NAMES = FALSE)
+                                    )
+                        )
+                )
+    )
 }
 
 getRangeType <- function(IRL) {

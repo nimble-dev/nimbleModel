@@ -25,36 +25,42 @@ indexRuleClass_arbitrary <- R6Class(
         },
         ## Should conversion from mulitple ranges be done before
         ## calling this, or as part of this?
-        apply_varRange = function(fromVarRange,
-                                  indices,
-                                  collapse = TRUE) {
-            thisIndexRange <- fromVarRange$getIndexRangeMatrix(indices)
-            toIndices <-
-                indexRule_arbitrary_apply_matrix(
-                    fromIndicesMatrix,
-                    setupResults,
-                    collapse = collapse
-                )
-            result <- varRangeClass$new(
-                list(indexRange_matrix(toIndices))
-            )
-            result
-        },
+        ## apply_varRange = function(fromVarRange,
+        ##                           indices,
+        ##                           collapse = TRUE) {
+        ##     thisIndexRange <- fromVarRange$getIndexRangeMatrix(indices)
+        ##     toIndices <-
+        ##         indexRule_arbitrary_apply_matrix(
+        ##             ##fromIndicesMatrix,
+        ##             thisIndexRange,
+        ##             setupResults,
+        ##             collapse = collapse
+        ##         )
+        ##     result <- varRangeClass$new(
+        ##         list(indexRange_matrix(toIndices))
+        ##     )
+        ##     result
+        ## },
         apply_indexRange = function(fromIndexRange,
                                     collapse = TRUE) {
-            fromIndicesMatrix <- indexRange2matrix(fromIndexRange)
+            fromIndicesMatrix <- indexRange2matrix(fromIndexRange)[[1]]
             toIndices <-
                 indexRule_arbitrary_apply_matrix(
                     fromIndicesMatrix,
+                    ##fromIndexRange,
                     setupResults,
                     collapse = collapse
                 )
-            toIndices <- indexRange_matrix(toIndices)
+            toIndices <- if(collapse)
+                             indexRange_matrix(toIndices)
+                         else
+                             indexRange_matrixList(toIndices)
             toIndices
         },
         apply = function(from, ...) {
             if(inherits(from, 'varRangeClass'))
-                apply_varRange(from, ...)
+                ##apply_varRange(from, ...)
+                stop('an indexRule should be applied to an indexRange')
             else
                 apply_indexRange(from)
         }
@@ -144,9 +150,10 @@ indexRule_arbitrary_setup <- function(toIndexExprList,
         convertSingle <- function(F) {
             shiftedF <- F-offsets
             valid <- all(shiftedF >= 1 & shiftedF <= sizes)
-            if(!valid)
-                matrix(nrow = 0, ncol = length(sizes))
-            else
+            if(!valid) {
+                matrix(data = numeric(),
+                       nrow = 0, ncol = length(sizes))
+            } else
                 1 + (sum((shiftedF - 1) * strides))
         }
         invertSingle <- function(flat) {
@@ -311,7 +318,8 @@ indexRule_arbitrary_apply_single <- function(fromIndices,
         toIndices <<- do.call("rbind", iRow2toIndices[iRows])
     })
     if(is.null(toIndices))
-        matrix(nrow = 0, ncol = length(setupResults$toInfo))
+        matrix(data = numeric(),
+               nrow = 0, ncol = length(setupResults$toInfo))
     else
         as.matrix(toIndices)
 }
@@ -322,7 +330,9 @@ indexRule_arbitrary_apply_matrix <- function(fromIndices,
     with(setupResults, {
         ## from_flat is the flat index of each row of "from" indices
         from_flat <-
-            from2indicesFunctions$rawIndex2flatIndex_multi(fromIndices)
+            unlist(
+                from2indicesFunctions$rawIndex2flatIndex_multi(fromIndices)
+            )
         ## iRowsList has the declaration iRows for each from_flat
         iRowsList <- from_flat2iRow[from_flat]
 ### unique???
@@ -333,11 +343,16 @@ indexRule_arbitrary_apply_matrix <- function(fromIndices,
                                              iRow2toIndices[x])
                                  )
     })
-    if(collapse) 
+    if(collapse) {
+        if(length(toIndicesList) > 0)
+            toIndicesList <-
+                toIndicesList[!unlist(lapply(toIndicesList, is.null))]
         if(length(toIndicesList) == 0)
-            matrix(nrow = 0, ncol = length(setupResults$toInfo))
+            matrix(data = numeric(),
+                   nrow = 0, ncol = length(setupResults$toInfo))
         else
             as.matrix(do.call('rbind', toIndicesList))
+    }
     else
         toIndicesList
 }

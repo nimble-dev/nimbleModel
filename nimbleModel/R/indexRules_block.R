@@ -24,68 +24,96 @@ indexRuleClass_block <- R6Class(
         },
         ## `...` allows arguments (like "collapse") from generic calls
         ## to be absorbed.
-        apply_varRange = function(fromVarRange,
-                                  indices,
-                                  ...) {
-            thisIndexRange <- fromVarRange$getSingleIndexRange(indices)
-            indexRangeResult <- apply_indexRange(thisIndexRange)
-            result <- varRangeClass$new(
-                list(indexRangeResult)
-            )
-            result
-        },
-        apply_indexRange = function(fromIndexRange) {
+        ## apply_varRange = function(fromVarRange,
+        ##                           indices,
+        ##                           ...) {
+        ##     thisIndexRange <- fromVarRange$getSingleIndexRange(indices)
+        ##     indexRangeResult <- apply_indexRange(thisIndexRange)
+        ##     result <- varRangeClass$new(
+        ##         list(indexRangeResult)
+        ##     )
+        ##     result
+        ## },
+        apply_indexRange = function(fromIndexRange,
+                                    ...) {
             indexRule_block_apply(
                 fromIndexRange,
-                setupResults
+                setupResults,
+                ...
             )
         },
         apply = function(from, ...) {
             if(inherits(from, 'varRangeClass'))
-                apply_varRange(from, ...)
+                ##apply_varRange(from, ...)
+                stop('an index rule should be applied to an indexRange')
             else
-                apply_indexRange(from)
+                apply_indexRange(from, ...)
         }
     )
 )
 
 indexRule_block_apply_single <- function(fromIndices,
                                          setupResults,
-                                         make.matrix = TRUE) {
+                                         make.matrix = TRUE,
+                                         ...) {
     if(fromIndices < setupResults$from_min |
        fromIndices > setupResults$from_max)
-        return(matrix(nrow = 0, ncol = 1))
+        return(matrix(data = numeric(), nrow = 0, ncol = 1))
     toIndices <- fromIndices + setupResults$offset
     if(make.matrix) as.matrix(toIndices)
     else toIndices
 }
 
 indexRule_block_apply_matrix <- function(fromIndices,
-                                         setupResults) {
+                                         setupResults,
+                                         collapse = TRUE,
+                                         ...) {
     valid <-
         fromIndices >= setupResults$from_min &
         fromIndices <= setupResults$from_max
     if(sum(valid) == 0)
-        return(matrix(nrow = 0, ncol = 1))
+        return(matrix(data = numeric(), nrow = 0, ncol = 1))
     toIndices <- fromIndices[valid] + setupResults$offset
-    as.matrix(toIndices)
+    if(collapse)
+        as.matrix(toIndices)
+    else
+        lapply(toIndices, as.matrix)
 }
 
 indexRule_block_apply_block <- function(fromIR,
-                                        setupResults) {
+                                        setupResults,
+                                        collapse = TRUE,
+                                        ...) {
     ## fromIR should be an indexRange
+    start <- fromIR[[1]][[1]]
+    end <- fromIR[[1]][[2]]
+    if(start > end |
+       start > setupResults$from_max |
+       end < setupResults$from_min)
+        return(indexRange_matrix(
+            matrix(data = numeric(), nrow = 0, ncol = 1)))
+
+    startAns <- if(start < setupResults$from_min)
+                    setupResults$from_min + setupResults$offset
+                else
+                    start + setupResults$offset
+
+    endAns <- if(end > setupResults$from_max)
+                  setupResults$from_max + setupResults$offset
+              else
+                  end + setupResults$offset
+    
     toIR <-
         indexRange_block(
-            lapply(fromIR[[1]],
-                   indexRule_block_apply_single,
-                   setupResults = setupResults,
-                   make.matrix = FALSE)
+            list(startAns, endAns)
         )
     toIR
 }
 
 indexRule_block_apply <- function(fromIR,
-                                  setupResults) {
+                                  setupResults,
+                                  collapse = TRUE,
+                                  ...) {
     ## fromIR should be an indexRange.
     ## This is essentially dispatching on types,
     ## which often a class hierarchy would manage.
@@ -93,22 +121,51 @@ indexRule_block_apply <- function(fromIR,
     switch(attr(fromIR, "rangeType"),
            scalar = indexRange_scalar(
                indexRule_block_apply_single(fromIR[[1]],
-                                            setupResults)
+                                            setupResults,
+                                            collapse = collapse,
+                                            ...
+                                            )
            ),
            block = indexRule_block_apply_block(fromIR,
-                                               setupResults),
-           matrix = indexRange_matrix(
-               indexRule_block_apply_matrix(fromIR[[1]],
-                                            setupResults)
-           )
+                                               setupResults,
+                                               collapse = collapse,
+                                               ...),
+           matrix = {
+               result <- indexRule_block_apply_matrix(fromIR[[1]],
+                                                      setupResults,
+                                                      collapse = collapse,
+                                                      ...)
+               if(collapse)
+                   indexRange_matrix(result)
+               else
+                   indexRange_matrixList(result)
+           }
            )
 }
 
-## returns NULL if a block cannot be set up
+## returns NULL if a block cannot be set up.
+## To do: add more complete logic to determine that.
 indexRule_block_setup <- function(toIndexExprList,
                                   fromIndexExprList,
                                   context,
                                   constants = list()) {
+    ans <- try(
+        indexRule_block_setup_internal(toIndexExprList,
+                                       fromIndexExprList,
+                                       context,
+                                       constants),
+        silent = TRUE
+    )
+    ## If anything failed, conclude that a sequence rule is not valid.
+   if(inherits(ans, 'try-error'))
+       return(NULL)
+    ans
+}
+
+indexRule_block_setup_internal <- function(toIndexExprList,
+                                           fromIndexExprList,
+                                           context,
+                                           constants = list()) {
     if(is.list(constants))
         constants <- list2env(constants)
 
@@ -145,7 +202,8 @@ indexRule_block_setup <- function(toIndexExprList,
 
     ## We rely on eval here, but we could instead pick out
     ## arguments of `:`
-    from_range <- range(eval(indexRangeExpr, envir = constants))
+    from_range <- 
+        range(eval(indexRangeExpr, envir = constants))
     
     list(offset_from2to = offset_from2to,
          sign_from2to = sign_from2to,
@@ -153,6 +211,8 @@ indexRule_block_setup <- function(toIndexExprList,
          from_max = from_range[2] + fromSignAndOffset$offset
         )
 }
+
+
 
 ## placeholder functionalitiy:
 ## Look only for i +/- offset.

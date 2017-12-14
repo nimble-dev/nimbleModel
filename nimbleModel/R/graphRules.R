@@ -12,9 +12,9 @@ graphRuleClass <- R6Class(
                                     RHS,
                                     context)
         },
-        apply = function(fromIndices) {
+        apply = function(fromVarRange) {
             applyGraphIndexRules(
-                fromIndices,
+                fromVarRange,
                 indexRules
             )
         }
@@ -200,29 +200,35 @@ applyGraphIndexRules <- function(fromVarRange,
     if(numIndexRanges == 0)
         stop('fromVarRange has no indexRanges')
     if(numIndexRanges == 1)
-        message('implement simpler case for 1 indexRange')
-    rangeLengths <- lapply(fromVarRanges$indexRanges,
-                           indexRange_getLength)
-    
-    for(i in 1:numIndexRanges) {
-        thisTimes <- if(i < numIndexRanges)
-                         prod(rangeLengths[(i+1):numIndexRanges])
-                     else
-                         1
-        thisRep <- if(i > 1)
-                       prod(rangeLengths[1:(i-1)])
-                   else
-                       1
-        timesRepList[[i]] <- c(thisTimes, thisRep)
+        message('implement simpler handling for 1 indexRange')
+    rangeLengths <- unlist(lapply(fromVarRange$indexRanges,
+                                  indexRange_numRows))
+    ## Following will be used in some complicated cases not
+    ## yet implemented.  It is deactivated behind if(FALSE) {}.
+    if(FALSE) {
+        for(i in 1:numIndexRanges) {
+            thisTimes <- if(i < numIndexRanges)
+                             prod(rangeLengths[(i+1):numIndexRanges])
+                         else
+                             1
+            
+            thisRep <- if(i > 1)
+                           prod(rangeLengths[1:(i-1)])
+                       else
+                           1
+            timesRepList[[i]] <- c(thisTimes, thisRep)
+        }
     }
-    
     ## Determine which RHSindices will be used for each rule
     ## and set up index crossing and aligning needs.
+    setID_2_RHSindices <- vector('list', length = numSets)
+    ## each set corresponds to one rule
     for(iSet in seq_len(numSets)) {
         # which "from" indices are in this indexSet?
         RHSindicesBool <- indexSets$RHSindex2setID == iSet
         ## extract the relevant indices from fromVarRange
         thisRHSindices <- which(RHSindicesBool)
+        setID_2_RHSindices[[iSet]] <- thisRHSindices
         thisIndicesNeedCrossing <-
             if(length(thisRHSindices) == 1)
                 FALSE
@@ -234,50 +240,100 @@ applyGraphIndexRules <- function(fromVarRange,
         if(thisIndicesNeedCrossing)
             stop('Some indices need crossing: not implemented yet.')
     }
+
+    inputIndexRanges <- fromVarRange$indexRanges
+    numIndexRanges <- length(inputIndexRanges) ## reset in case something changes
+   ## indexID_2_rangeID <- fromVarRange$indexID_2_rangeID
+   ## rangeID_2_indexID <- fromVarRange$rangeID_2_indexID
+    ## modify by expansion if needed,
+    ## until application of rules is nested within inputIndexRanges
+    ## can test equivalence of new indexRules by full expansion
+
+    ## At this point we assume the columns needed come from only a single
+    ## indexRange.
+    ## Need to track which rules apply to which input indexRange
+    ## And expand their results together.
     
+    ## which setIDs are part of an input rangeID
+    rangeID_2_setIDs <- lapply(seq_len(numIndexRanges),
+                               function(x) integer())
     for(iSet in seq_len(numSets)) {
-        # which "from" indices are in this indexSet?
-        RHSindicesBool <- indexSets$RHSindex2setID == iSet
-        ## extract the relevant indices from fromVarRange
-        thisRHSindices <- which(RHSindicesBool)
+        thisRHSindices <- setID_2_RHSindices[[iSet]]
+        ##fromVarRange$rangeID_2_indexID
+        fromIndicesInfo <-
+            if(length(thisRHSindices)==1)
+                fromVarRange$getSingleIndexRange(thisRHSindices,
+                                                 details = TRUE)
+            else
+                fromVarRange$getIndexRangeMatrix(thisRHSindices,
+                                                 details = TRUE)
+        fromIndices <- fromIndicesInfo$result
+        ## used ranges is a vector of rangeIDs from RHS from which
+        ## fromIndicesInfo were extracted
+        usedRanges <- fromIndicesInfo$usedRanges
+        for(ur in usedRanges)
+            rangeID_2_setIDs[[ur]] <- append(rangeID_2_setIDs[[ur]], iSet)
         thisLHSresult <-
-            indexRules[[iSet]]$apply(
-                                  fromVarRange,
-                                  thisRHSindices,
-                                  collapse = FALSE
-                              )
+            indexRules[[iSet]]$apply(fromIndices,
+                                     collapse = FALSE
+                                     )
         ## There may be a need to pull apart thisLHSvarRange
         ## into subsets of its indexRanges
-        ansIndexRanges[[iSet]] <- thisLHSvarRange$indexRanges[[1]]
+        ansIndexRanges[[iSet]] <- thisLHSresult
         ansIndexOrders[[iSet]] <-
             which(indexSets$LHSindex2setID == iSet)
     }
-    ## Compose results:
-    ## 1. find results from input matrix indexRanges that were handled by
-    ## different rules.
-    numInputRanges <- length(fromVarRules$indexRanges)
-    for(iRangeID in seq_len(numInputRanges)) {
-        ## which indices does this indexRange handle
-        RHSindexIDs <- fromVarRules$rangeID_2_indexID[[iRangeID]]
-        ## which sets were these indices handled by?
-        setIDs <- indexSets$RHSindex2setID[RHSindexIDs]
-        ## If they were handled by multiple sets:
-        ## (At this point, the indexRange must definitely be a matrix.)
-        if(length(unique(setIDs)) > 1) {
-            ## (Make blockRule(matrix) --> matrixList)
-            ## Any part expanded by an arbitrary rule will yield a matrixList
-            ##
-            ## Results will definitely be (matrixList, matrixList, ...)
-            ## We need to expand grid across matrixList entries
-            
+    ## Compose results: aggregate results from multiple rules
+    ## applied to one input.
+    finalIndexRanges <- list()
+    finalIndexOrders <- list()
+    iAns <- 1
+    for(iRange in seq_len(numIndexRanges)) {
+        if(length(rangeID_2_setIDs[[iRange]]) > 1) {
+            indexRangeExpandedMatrices <-
+                ansIndexRanges[ rangeID_2_setIDs[[iRange]] ]
+            finalIndexRanges[[iAns]] <-
+                collapse_indexRangeMatrices(indexRangeExpandedMatrices)
+            finalIndexOrders[[iAns]] <-
+                do.call('c',
+                        ansIndexOrders[ rangeID_2_setIDs[[iRange]] ] )
+            sortedIndexOrders <- order(finalIndexOrders[[iAns]])
+            if(!identical(sortedIndexOrders, seq_along(sortedIndexOrders))) {
+                finalIndexOrders[[iAns]] <-
+                    finalIndexOrders[[iAns]][sortedIndexOrders]
+                finalIndexRanges[[iAns]] <-
+                    indexRange_matrix(
+                        finalIndexRanges[[iAns]][[1]][, sortedIndexOrders, drop = FALSE])
+            }
+        } else {
+            finalIndexRanges[iAns] <-
+                ansIndexRanges[ rangeID_2_setIDs[[iRange]] ]
+            if(identical(
+                attr(finalIndexRanges[[iAns]], 'rangeType'),
+                'matrixList'
+               ))
+                finalIndexRanges[[iAns]] <-
+                    indexRange2matrix(finalIndexRanges[[iAns]])
+                    
+            finalIndexOrders[iAns] <-
+                ansIndexOrders[ rangeID_2_setIDs[[iRange]] ]
         }
+        ## Sometimes this shouldn't increment...?
+        iAns <- iAns + 1
     }
-    
-    message('Composition of results needs to know when to expand grid')
-    message('Need to handle correctly invalid results from rules')
+
+    ## Put final results in natural order in case they are not already.
+    finalIndexOrderStarts <- unlist(lapply(finalIndexOrders, `[`, 1))
+    orderFinalIndexOrderStarts <- order(finalIndexOrderStarts)
+    if(!identical(orderFinalIndexOrderStarts,
+                  seq_along(orderFinalIndexOrderStarts))) {
+        finalIndexRanges <- finalIndexRanges[orderFinalIndexOrderStarts]
+        finalIndexOrders <- finalIndexOrders[orderFinalIndexOrderStarts]
+    }
+
     varRangeClass$new(
-        indexInfo = ansIndexRanges,
-        indexOrders = ansIndexOrders
+        indexInfo = finalIndexRanges,
+        indexOrders = finalIndexOrders
     )
 ##    lhsIndices
 }
