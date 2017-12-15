@@ -125,14 +125,31 @@ makeGraphIndexRules <- function(LHS,
                         constants
                     else
                         list2env(constants)
-    
+
+    ## Assume there is LHS indexing
+    LHSindexExprs <- as.list(LHS[-c(1,2)])
+
+    ## Handle a case like y[i] <- foo(x)
+    if(is.name(RHS)) {
+        indexSets <- NULL
+        indexRules <- indexRuleClass_any$new(
+            LHSindexExprs,
+            NULL,
+            context,
+            constants
+        )
+        return(
+            list(indexSets = indexSets,
+                 indexRules = indexRules)
+        )
+    }
+        
     indexSets <-
         makeSeparableIndexSets(LHS, RHS, context)
 
-    ## Assume there is indexing.
-    LHSindexExprs <- as.list(LHS[-c(1,2)])
+    ## Now assume there is RHS indexing.
     RHSindexExprs <- as.list(RHS[-c(1,2)])
-    
+     
     numSets <- indexSets$numSets
     indexRules <- list()
     for(iSet in seq_len(numSets)) {
@@ -183,6 +200,18 @@ applyGraphIndexRules <- function(fromVarRange,
     ## could be cached and re-used.
     indexSets <- rules$indexSets
     indexRules <- rules$indexRules
+
+    ## First handle cases like indexRules_any
+    if(is.null(indexSets)) {
+        answer <- indexRules$apply(fromVarRange)
+        return(
+            varRangeClass$new(
+                indexInfo = list(ans),
+                indexOrders = list(1)
+            )
+        )
+    }
+    
     numSets <- indexSets$numSets
     ## Currently this will handle one set of fromIndices,
     ## not multiples.

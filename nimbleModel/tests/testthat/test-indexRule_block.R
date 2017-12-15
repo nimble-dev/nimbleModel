@@ -6,7 +6,6 @@ test_that("indexRule_block works",
         modelSingleContext(forCode = quote(for(i in 1:10){}))
     
     context_i <- modelContextClass$new(list(singleContext1))
-    
     setupResults <- indexRule_block_setup(list(quote(i + 1)),
                                           list(quote(i + 3)),
                                           context_i)

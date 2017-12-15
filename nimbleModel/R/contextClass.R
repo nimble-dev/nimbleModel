@@ -66,6 +66,15 @@ modelContextClass <-
             },
             ## sets all fields, which never change.
             setup = function(singleContexts) {
+                singleContexts <- lapply(singleContexts,
+                                         function(x)
+                                             if(is.call(x))
+                                                 modelSingleContext(
+                                                     forCode = x
+                                                 )
+                                             else
+                                                 x
+                                         )
                 singleContexts <<- singleContexts
                 indexVarExprs <<- lapply(singleContexts,
                                          function(x) x$indexVarExpr)

@@ -13,6 +13,11 @@ modelDefClass <- R6Class(
         processModelCode = function() {
             processModelCode_impl(self,
                                   modelCode)
+        },
+        processDecls = function() {
+            for(i in seq_along(declInfo)) {
+                declInfo[[i]]$process()
+            }
         }
     )
 )

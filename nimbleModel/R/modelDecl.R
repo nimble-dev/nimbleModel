@@ -1,10 +1,17 @@
 ## Modified from old BUGSdeclClass
 
+## modelDeclClass replaces BUGSdeclClass.
+## There are components not yet moved from current nimble that will be needed.
+## I think these will include targetIndexNamePieces and parentIndexNamePieces.
+## I don't think these will include the various *replacements*.
 modelDeclClass <- R6Class(
     classname = 'modelDeclClass',
     portable = FALSE,
     public = list(
-        contextID = NULL,
+        ## In current nimble we record contextID here.
+        ## We really need the context itself,
+        ## so I switched to recording that.
+        context = NULL,
         sourceLineNumber = NULL,
         code = NULL,
         type = NULL,
@@ -19,56 +26,67 @@ modelDeclClass <- R6Class(
         truncated = NULL,
         boundExprs = NULL,
         symbolicParentNodes = NULL,
+        downstreamRules = NULL,
         setup = function(code,
-                         contextID,
+                         context,
                          sourceLineNum,
                          truncated = FALSE,
                          boundExprs = NULL) {
             modelDeclClass_setup(self,
                                  code,
-                                 contextID,
+                                 context,
                                  sourceLineNum,
                                  truncated,
                                  boundExprs)
         },
+        process = function() {
+            genSymbolicParentNodes()
+            makeDownstreamRules()
+        },
         genSymbolicParentNodes = function(constantsNamesList,
-                                          context,
                                           nimFunNames) {
-    ## sets the field symbolicparentNodes
+            indexVarExprs <- if(is.null(context))
+                                 list()
+                             else
+                                 context$indexVarExprs
             symbolicParentNodes <<-
                 unique(
                     getSymbolicParentNodes(valueExpr,
                                            constantsNamesList,
-                                           context$indexVarExprs,
-                                           nimFunNames,
-                                           contextID = contextID)
+                                           indexVarExprs,
+                                           nimFunNames)
                 ) 
         },
         makeDownstreamRules = function() {
-            
+            if(is.null(symbolicParentNodes))
+                genSymbolicParentNodes(list(),
+                                       context$indexVarExprs)
+            downstreamRules <- vector('list',
+                                      length(symbolicParentNodes))
+            for(i in seq_along(symbolicParentNodes)) {
+                downstreamRules[[i]] <-
+                    graphRuleClass$new(targetNodeExpr,
+                                       symbolicParentNodes[[i]],
+                                       context)
+            }
         }
     )
 )
 
-getAllDistributionsInfo <- function(...) {
-    message('Set up getAllDistributionsInfo')
-    'none'
-}
-
 modelDeclClass_setup <- function(modelDecl,
                                  code,
-                                 contextID,
+                                 context,
                                  sourceLineNum,
                                  truncated = FALSE,
                                  boundExprs = NULL) {
-    ## Argument 'contextID' is used to set field: contextID.
+    ## Argument 'context' is used to set field: context.
     ## Argument 'code' is used to set the fields:
     ##  code
     ##  targetExpr, valueExpr
     ##  targetVarExpr, targetNodeExpr
     ##  targetVarName, targetNodeName
         
-    modelDecl$contextID <- contextID
+    modelDecl$context <- context
     modelDecl$sourceLineNumber <- sourceLineNum
     modelDecl$code <- code
     modelDecl$truncated <- truncated

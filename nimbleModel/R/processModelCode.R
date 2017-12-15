@@ -34,7 +34,9 @@ processModelCode_impl <- function(modelDef = modelDefClass$new(),
                                'checkUserDefinedDistribution, and\n',
                                'checkForDeterministicDorR back on.'))
             
-            modelDeclClassObject$setup(code[[i]], contextID, lineNumber)
+            modelDeclClassObject$setup(code[[i]],
+                                       modelDef$contexts[[contextID]],
+                                       lineNumber)
             modelDef$declInfo[[iAns]] <<- modelDeclClassObject
         }
         if(code[[i]][[1]] == 'for') {
@@ -86,19 +88,23 @@ processModelCode_impl <- function(modelDef = modelDefClass$new(),
             }
             ## Recursive call to process the contents of the for loop
             lineNumber <-
-                processModelCode(recurseCode,
-                                nextContextID,
-                                lineNumber = lineNumber,
-                                userEnv = userEnv)  
+                processModelCode_impl(
+                    modelDef,
+                    recurseCode,
+                    nextContextID,
+                    lineNumber = lineNumber,
+                    userEnv = userEnv)
         }
         if(code[[i]][[1]] == '{') {
             ## recursive call to a block contained in a {},
             ## perhaps as a result of processCodeIfThenElse
             lineNumber <-
-                processModelCode(code[[i]],
-                                contextID,
-                                lineNumber = lineNumber,
-                                userEnv = userEnv)
+                processModelCode_impl(
+                    modelDef,
+                    code[[i]],
+                    contextID,
+                    lineNumber = lineNumber,
+                    userEnv = userEnv)
         }
         if(!deparse(code[[i]][[1]]) %in% c('~', '<-', 'for', '{')) 
             stop("Error: ",
@@ -110,4 +116,22 @@ processModelCode_impl <- function(modelDef = modelDefClass$new(),
         lineNumber
     else
         modelDef
+}
+
+reprioritizeColonOperator <- function(code) {
+    split.code <- strsplit(deparse(code), ":")
+    if(length(split.code[[1]]) == 2)
+        return(
+            parse(
+                text = paste0("(",
+                              split.code[[1]][1],
+                              "):(",
+                              split.code[[1]][2],
+                              ")"),
+                keep.source = FALSE)[[1]])
+    if(length(split.code[[1]]) > 2)
+        stop(paste0('Error with this code: ',
+                    deparse(code))
+             )
+    return(code)
 }
