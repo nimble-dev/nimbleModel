@@ -299,6 +299,20 @@ div.tocify {
 </div>
 
 
+<div id="overall-strategy" class="section level1">
+<h1>Overall strategy</h1>
+<p>The overall strategy for representing a set of graph relationships (edges from one variable to another variable from a particular contenxt) is the following:</p>
+<ul>
+<li>Identify minimum separable index sets.</li>
+<li>Do index inversion separately for each separable index set and compose the results.</li>
+<li><p>Create index inversion methods for different cases. In particular, methods will be needed for:</p>
+<ul>
+<li>Blank or constant indices.</li>
+<li>Index blocks with simple index shifts. E.g.: <code>y[i + 1] &lt;- foo(x[i])</code>.</li>
+<li>Arbitrary index mapping. E.g.: <code>y[i] &lt;- foo(x[ k[i] ])</code> where <code>k</code> is a constant index vector.</li>
+</ul></li>
+</ul>
+</div>
 <div id="introduction" class="section level1">
 <h1>Introduction</h1>
 <p>Say we have model code:</p>

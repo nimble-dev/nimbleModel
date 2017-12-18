@@ -11,7 +11,7 @@
 
 
 
-<title>graph processing</title>
+<title>calculation determinations</title>
 
 <script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -294,18 +294,18 @@ div.tocify {
 
 
 
-<h1 class="title toc-ignore">graph processing</h1>
+<h1 class="title toc-ignore">calculation determinations</h1>
 
 </div>
 
 
-<p><a href="overview.html">Overview of new nimbleModel</a></p>
-<p><a href="implementation.html">Implementation</a></p>
-<p><a href="graph_relationships.html">Graph relationships</a></p>
-<!-- [Overall strategy](overall_strategy.html) -->
-<p><a href="index_inversion.html">Index inversion</a></p>
-<p><a href="topo_sorting.html">Topological sorting</a></p>
-<p><a href="calculation_determinations.html">Calculation determinations</a></p>
+<p>Roughly the order of operations here is</p>
+<ul>
+<li>User asks for calculation on a set of <code>varRange</code>s, either by specifying them directly or asking for dependencies and thereby inducing <code>graphRule</code> processing</li>
+<li><code>calcRule</code> processing is called on a set of <code>varRange</code>s</li>
+<li>This processing checks the topological ordering of variable elements, possibly splitting <code>varRange</code>s based on their declarations</li>
+<li>For each individual <code>varRange</code>, <code>nodeFunctionRule</code> processing determines the nodeFunction form that needs to be called and the original index values needed, producing a <code>calcRange</code></li>
+</ul>
 
 
 

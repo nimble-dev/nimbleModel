@@ -11,7 +11,7 @@
 
 
 
-<title>graph processing</title>
+<title>Overview of design for new nimbleModel</title>
 
 <script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -294,18 +294,21 @@ div.tocify {
 
 
 
-<h1 class="title toc-ignore">graph processing</h1>
+<h1 class="title toc-ignore">Overview of design for new nimbleModel</h1>
 
 </div>
 
 
-<p><a href="overview.html">Overview of new nimbleModel</a></p>
-<p><a href="implementation.html">Implementation</a></p>
-<p><a href="graph_relationships.html">Graph relationships</a></p>
-<!-- [Overall strategy](overall_strategy.html) -->
-<p><a href="index_inversion.html">Index inversion</a></p>
-<p><a href="topo_sorting.html">Topological sorting</a></p>
-<p><a href="calculation_determinations.html">Calculation determinations</a></p>
+<p>To more efficiently process nimbleModels and provide for scalability, we are redesigning key aspects of nimbleModel defining and building. The key pieces of this are:</p>
+<ul>
+<li>representing values of individual indexes (and groups of indexes when paired in arbitrary ways) of a variable as abstractions called varRanges rather than (unless required) complete unrolling</li>
+<li>providing functionality to determine graph dependencies abstractly based on the index abstraction, including child and parent relationships, using what we call index inversion</li>
+<li>representing the relationship between variable indexes and nodeFunction code, such as <code>y[i+1] &lt;- x[i]</code></li>
+<li>providing topological sorting at the declaration level that allows for ties</li>
+<li>determining what nodeFunction calculations need to be done based on the variables and their indexes provided by a user or by a dependency calculation</li>
+<li>providing multiple versions of nodeFunctions so as to allow vectorized calculations, and determining which version to call</li>
+<li>providing efficient (sparse in some form) storage of variable information, including topological order, isData status, node type, etc.</li>
+</ul>
 
 
 

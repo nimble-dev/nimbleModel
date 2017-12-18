@@ -7,6 +7,20 @@ output: html_document
 knitr::opts_chunk$set(eval = FALSE)
 ```
 
+# Overall strategy
+
+
+The overall strategy for representing a set of graph relationships (edges from one variable to another variable from a particular contenxt) is the following:
+
+- Identify minimum separable index sets.
+- Do index inversion separately for each separable index set and compose the results.
+- Create index inversion methods for different cases.  In particular, methods will be needed for:
+
+    - Blank or constant indices.
+    - Index blocks with simple index shifts.  E.g.: `y[i + 1] <- foo(x[i])`.
+    - Arbitrary index mapping.  E.g.: `y[i] <- foo(x[ k[i] ])` where `k` is a constant index vector.
+    
+ 
 # Introduction
 
 Say we have model code:

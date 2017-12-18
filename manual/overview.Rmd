@@ -1,0 +1,19 @@
+---
+title: "Overview of design for new nimbleModel"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+To more efficiently process nimbleModels and provide for scalability, we are redesigning key aspects of nimbleModel defining and building. The key pieces of this are:
+
+- representing values of individual indexes (and groups of indexes when paired in arbitrary ways) of a variable as abstractions called varRanges rather than (unless required) complete unrolling
+- providing functionality to determine graph dependencies abstractly based on the index abstraction, including child and parent relationships, using what we call index inversion
+- representing the relationship between variable indexes and nodeFunction code, such as `y[i+1] <- x[i]`
+- providing topological sorting at the declaration level that allows for ties
+- determining what nodeFunction calculations need to be done based on the variables and their indexes provided by a user or by a dependency calculation
+- providing multiple versions of nodeFunctions so as to allow vectorized calculations, and determining which version to call
+- providing efficient (sparse in some form) storage of variable information, including topological order, isData status, node type, etc.
+

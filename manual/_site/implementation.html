@@ -299,8 +299,8 @@ div.tocify {
 </div>
 
 
-<div id="implementation-of-graph-and-index-relationships." class="section level1">
-<h1>Implementation of graph and index relationships.</h1>
+<div id="implementation-of-graph-index-and-calculation-relationships." class="section level1">
+<h1>Implementation of graph, index, and calculation relationships.</h1>
 <ul>
 <li><p>An <code>indexRange</code> manages the index content of one dimension of one variable.</p>
 <ul>
@@ -311,16 +311,50 @@ div.tocify {
 <ul>
 <li>Kinds of <code>indexRule</code>s include block and arbitrary.</li>
 <li>Inputs and outputs to application of an <code>indexRule</code> may be an <code>indexRange</code> and/or <code>varRange</code> (somewhat TBD).</li>
+<li>Inputs that are out of range do not produce output</li>
+<li>Includes checks for going out of range</li>
+<li>By reversing the order of a declaration, we can create both parent and child rules</li>
+</ul></li>
+<li><p>An <code>originalIndexRule</code> manages the determination of nodeFunction indices from actual index values, e.g., with a declaration such as <code>y[i+1] &lt;- x[i]</code>, determining that calculation for <code>y[2]</code> is handled with <code>i=1</code>.</p>
+<ul>
+<li>This can be handled with the <code>indexRule</code> functionality by making dummy declarations such as <code>w[i,j] &lt;- y[i+j]</code> if the focal declaration is, say, <code>y[i+j] &lt;- x[i] + x[j]</code>.</li>
 </ul></li>
 <li><p>A <code>varRange</code> manages a set of <code>indexRange</code>s representing all dimensions of a variable.</p>
 <ul>
 <li>A <code>varRange</code> also keeps track of how each <code>indexRange</code> would be crossed or combined with others to represent the set of variable elements correctly.</li>
+<li>Ultimately we may want to be able to collapse multiple <code>varRange</code>s to a single <code>varRange</code> when possible.</li>
 </ul></li>
 <li><p>A <code>graphRule</code> manages the set of <code>indexRule</code>s needed to determine all LHS indices from all RHS indices for one set of edges created one of the RHS variables and the LHS variable of a single declaration.</p>
 <ul>
 <li>Inputs and outputs to a <code>graphRule</code> are <code>varRange</code>s.</li>
 </ul></li>
 <li><p>A <code>varRules</code> manages the set of <code>graphRule</code>s for the same variable (RHS).</p></li>
+<li><p>A <code>calcRange</code> manages the indexing for a single calculation for a variable</p>
+<ul>
+<li>Keeps track of declaration ID, indexing (probably using <code>indexRange</code>s), index values, and nodeFunction version to be used</li>
+</ul></li>
+<li><p>A <code>calcRule</code> manages the determination of calculations for one or more <code>varRange</code>s.</p>
+<ul>
+<li>Makes use of topological sort values for variable and of <code>originalIndexRule</code>s</li>
+<li>Determines order of <code>varRange</code>s that must be calculated, splitting a <code>varRange</code> if necessary when elements are not topologically tied</li>
+<li>Calls <code>nodeFunctionRule</code> for each resulting <code>varRange</code></li>
+<li>Input is a set of <code>varRange</code>s</li>
+<li>Output is a set of <code>calcRange</code>s in sorted order</li>
+</ul></li>
+<li><p>A <code>nodeFunctionRule</code> manages what nodeFunction is called for a single <code>varRange</code></p>
+<ul>
+<li>Output is a <code>calcRange</code></li>
+<li>Uses <code>originalIndexRule</code>s to relate back to original index values in the declaration context</li>
+<li>Multiple <code>nodeFunction</code>s will exist for a given declaration, allowing for vectorized calculations of various sorts</li>
+</ul></li>
+<li><p>A <code>copyRule</code> manages the determination of copying for a <code>varRange</code></p></li>
+<li><p>A <code>variableStore</code> manages array-like information for variables</p>
+<ul>
+<li>Stores information such as sort ID, isData, node types</li>
+<li>Could be integer, logical, or character-valued</li>
+<li>Should efficiently handle case where all values are the same</li>
+<li>Ultimately may want to handle additional structure, such as blocks of equal values</li>
+</ul></li>
 </ul>
 </div>
 

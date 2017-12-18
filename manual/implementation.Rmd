@@ -7,7 +7,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Implementation of graph and index relationships.
+# Implementation of graph, index, and calculation relationships.
 
 - An `indexRange` manages the index content of one dimension of one variable.
 
@@ -18,15 +18,51 @@ knitr::opts_chunk$set(echo = TRUE)
 
     - Kinds of `indexRule`s include block and arbitrary.
     - Inputs and outputs to application of an `indexRule` may be an `indexRange` and/or `varRange` (somewhat TBD).
-    
+    - Inputs that are out of range do not produce output
+    - Includes checks for going out of range
+    - By reversing the order of a declaration, we can create both parent and child rules
+
+- An `originalIndexRule` manages the determination of nodeFunction indices from actual index values, e.g., with a declaration such as `y[i+1] <- x[i]`, determining that calculation for `y[2]` is handled with `i=1`.
+
+    - This can be handled with the `indexRule` functionality by making dummy declarations such as `w[i,j] <- y[i+j]` if the focal declaration is, say, `y[i+j] <- x[i] + x[j]`.
+
 - A `varRange` manages a set of `indexRange`s representing all dimensions of a variable.
 
     - A `varRange` also keeps track of how each `indexRange` would be crossed or combined with others to represent the set of variable elements correctly.
+    - Ultimately we may want to be able to collapse multiple `varRange`s to a single `varRange` when possible.
 
 - A `graphRule` manages the set of `indexRule`s needed to determine all LHS indices from all RHS indices for one set of edges created one of the RHS variables and the LHS variable of a single declaration.
 
     - Inputs and outputs to a `graphRule` are `varRange`s.
     
 - A `varRules` manages the set of `graphRule`s for the same variable (RHS).
+
+- A `calcRange` manages the indexing for a single calculation for a variable
+
+    - Keeps track of declaration ID, indexing (probably using `indexRange`s), index values, and nodeFunction version to be used
+
+- A `calcRule` manages the determination of calculations for one or more `varRange`s. 
+
+    - Makes use of topological sort values for variable and of `originalIndexRule`s
+    - Determines order of `varRange`s that must be calculated, splitting a `varRange` if necessary when elements are not topologically tied
+    - Calls `nodeFunctionRule` for each resulting `varRange`
+    - Input is a set of `varRange`s
+    - Output is a set of `calcRange`s in sorted order
+
+- A `nodeFunctionRule` manages what nodeFunction is called for a single `varRange`
+
+    - Output is a `calcRange`
+    - Uses `originalIndexRule`s to relate back to original index values in the declaration context
+    - Multiple `nodeFunction`s will exist for a given declaration, allowing for vectorized calculations of various sorts
+
+- A `copyRule` manages the determination of copying for a `varRange`
+
+- A `variableStore` manages array-like information for variables
+
+    - Stores information such as sort ID, isData, node types
+    - Could be integer, logical, or character-valued
+    - Should efficiently handle case where all values are the same
+    - Ultimately may want to handle additional structure, such as blocks of equal values
+
 
 

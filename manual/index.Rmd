@@ -7,10 +7,17 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-[Graph relationships](introduction.html)
+[Overview of new nimbleModel](overview.html)
 
-[Overall strategy](overall_strategy.html)
+[Implementation](implementation.html)
+
+[Graph relationships](graph_relationships.html)
+
+<!-- [Overall strategy](overall_strategy.html) -->
 
 [Index inversion](index_inversion.html)
 
-[Implementation](implementation.html)
+[Topological sorting](topo_sorting.html)
+
+[Calculation determinations](calculation_determinations.html)
+
