@@ -1,8 +1,8 @@
-## This is for a case like y[i] <- foo(x).
+## This is for a case like y[i] <- foo(x) or y[i] <- foo(x[]).
 ## It is possible x is non-scalar, but the relationships
 ## does not use any indices in x.
-indexRuleClass_any <- R6Class(
-    classname = "indexRuleClass_any",
+indexRuleClass_all <- R6Class(
+    classname = "indexRuleClass_all",
     inherit = indexRuleClass,
     portable = FALSE,
     public = list(
@@ -13,13 +13,20 @@ indexRuleClass_any <- R6Class(
                               context,
                               constants = list()
                               ) {
-            setupResults <<-
-                indexRule_any_setup(toIndexExprList,
-                                    fromIndexExprList,
-                                    context,
-                                    constants
-                                    )
-            constantAnswer <<- setupResults
+            ## This rule is only valid if the index is not on RHS,
+            ## so return NULL is it will not be valid.
+            if(length(fromIndexExprList) != 0) {
+                setupResults <<- NULL
+                return
+            } else {
+                setupResults <<-
+                    indexRule_all_setup(toIndexExprList,
+                                        fromIndexExprList,
+                                        context,
+                                        constants
+                                        )
+                constantAnswer <<- indexRange_block(as.list(setupResults))
+            }
         },
         applyOne = function(fromIndices) {
             constantAnswer
@@ -34,7 +41,7 @@ indexRuleClass_any <- R6Class(
     )
 )
 
-indexRule_any_setup <- function(toIndexExprList,
+indexRule_all_setup <- function(toIndexExprList,
                                 fromIndexExprList,
                                 context,
                                 constants = list()) {

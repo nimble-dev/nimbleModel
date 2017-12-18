@@ -16,7 +16,7 @@ Collate:
     distributions_processInputList.R
     indexRange.R
     indexRules.R
-    indexRules_any.R
+    indexRules_all.R
     indexRules_arbitrary.R
     indexRules_block.R
     getSymbolicParentNodes.R
