@@ -10,6 +10,6 @@ knitr::opts_chunk$set(echo = TRUE)
 Roughly the order of operations here is
 
 - User asks for calculation on a set of `varRange`s, either by specifying them directly or asking for dependencies and thereby inducing `graphRule` processing
-- `calcRule` processing is called on a set of `varRange`s
-- This processing checks the topological ordering of variable elements, possibly splitting `varRange`s based on their declarations
-- For each individual `varRange`, `nodeFunctionRule` processing determines the nodeFunction form that needs to be called and the original index values needed, producing a `calcRange` 
+- For each `varRange`, all `calcRule`s for the variable are checked and one or more `calcRange`s are returned.
+- Multiple `calcRange`s can be sorted based on their sort ID and then full calculation can be done.
+

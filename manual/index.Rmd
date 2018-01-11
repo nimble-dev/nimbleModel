@@ -21,3 +21,6 @@ knitr::opts_chunk$set(echo = TRUE)
 
 [Calculation determinations](calculation_determinations.html)
 
+Todos (completely incomplete):
+
+- graphRules need to be augmented to deal with scalar and block constants and with missing values.

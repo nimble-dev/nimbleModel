@@ -39,23 +39,25 @@ knitr::opts_chunk$set(echo = TRUE)
 
 - A `calcRange` manages the indexing for a single calculation for a variable
 
-    - Keeps track of declaration ID, indexing (probably using `indexRange`s), index values, and nodeFunction version to be used
+    - Keeps track of declaration ID, indexing (probably using `indexRange`s), index values, and nodeFunction version to be used.
+    - Includes sort ID so that multiple `calcRange`s can be calculated in correct order.
+    - Eventually might deal with doing calcs that don't have complete sort ties, e.g., `y[i]~dfoo(y[i-1])`, as a block but probably not to start.
 
-- A `calcRule` manages the determination of calculations for one or more `varRange`s. 
+- A `calcRule` manages a single `varRange` that can be calculated jointly.
 
-    - Makes use of topological sort values for variable and of `originalIndexRule`s
-    - Determines order of `varRange`s that must be calculated, splitting a `varRange` if necessary when elements are not topologically tied
-    - Calls `nodeFunctionRule` for each resulting `varRange`
-    - Input is a set of `varRange`s
-    - Output is a set of `calcRange`s in sorted order
+    - An individual `calcRule` is produced from the elements in a declaration that are tied in terms of their sort order.
+    - When passed another `varRange` it returns a `calcRange` (or nothing if there is no overlap between the input `varRange` and the `varRange` of the rule) that can be used for calculation.
+    - Uses (contains?) `originalIndexRule`s to relate back to original index values in the declaration context.
+    - Contains the sort ID for the `varRange`
 
-- A `nodeFunctionRule` manages what nodeFunction is called for a single `varRange`
+- A `varCalcRules` manages the set of `calcRule`s for a given variable. 
 
-    - Output is a `calcRange`
-    - Uses `originalIndexRule`s to relate back to original index values in the declaration context
-    - Multiple `nodeFunction`s will exist for a given declaration, allowing for vectorized calculations of various sorts
+- A `copyRule` manages the determination of copying for a variable
 
-- A `copyRule` manages the determination of copying for a `varRange`
+    - presumably trivial but a bit fuzzy at the moment
+    - Input is a `varRange`?
+    - Output is a `varRange`.
+    - Perhaps all it needs to do is check for out of bounds and expand missing indexes?
 
 - A `variableStore` manages array-like information for variables
 
@@ -64,5 +66,11 @@ knitr::opts_chunk$set(echo = TRUE)
     - Should efficiently handle case where all values are the same
     - Ultimately may want to handle additional structure, such as blocks of equal values
 
+- There will be multiple `nodeFunction`s for a given declaration, allowing for various types of vectorized calculations.
 
+- Topological sorting needs to:
 
+    - create a sort ID for each element of each variable (for tracking dependencies), stored in a `variableStore`.
+    - also create sort IDs in the 'original index space' - perhaps this just means assigning a sort ID to each `calcRule`?
+
+- Dynamic indexing still needs consideration. 

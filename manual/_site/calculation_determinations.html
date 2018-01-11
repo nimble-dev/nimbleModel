@@ -302,9 +302,8 @@ div.tocify {
 <p>Roughly the order of operations here is</p>
 <ul>
 <li>User asks for calculation on a set of <code>varRange</code>s, either by specifying them directly or asking for dependencies and thereby inducing <code>graphRule</code> processing</li>
-<li><code>calcRule</code> processing is called on a set of <code>varRange</code>s</li>
-<li>This processing checks the topological ordering of variable elements, possibly splitting <code>varRange</code>s based on their declarations</li>
-<li>For each individual <code>varRange</code>, <code>nodeFunctionRule</code> processing determines the nodeFunction form that needs to be called and the original index values needed, producing a <code>calcRange</code></li>
+<li>For each <code>varRange</code>, all <code>calcRule</code>s for the variable are checked and one or more <code>calcRange</code>s are returned.</li>
+<li>Multiple <code>calcRange</code>s can be sorted based on their sort ID and then full calculation can be done.</li>
 </ul>
 
 

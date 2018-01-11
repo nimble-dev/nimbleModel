@@ -331,23 +331,25 @@ div.tocify {
 <li><p>A <code>varRules</code> manages the set of <code>graphRule</code>s for the same variable (RHS).</p></li>
 <li><p>A <code>calcRange</code> manages the indexing for a single calculation for a variable</p>
 <ul>
-<li>Keeps track of declaration ID, indexing (probably using <code>indexRange</code>s), index values, and nodeFunction version to be used</li>
+<li>Keeps track of declaration ID, indexing (probably using <code>indexRange</code>s), index values, and nodeFunction version to be used.</li>
+<li>Includes sort ID so that multiple <code>calcRange</code>s can be calculated in correct order.</li>
+<li>Eventually might deal with doing calcs that don’t have complete sort ties, e.g., <code>y[i]~dfoo(y[i-1])</code>, as a block but probably not to start.</li>
 </ul></li>
-<li><p>A <code>calcRule</code> manages the determination of calculations for one or more <code>varRange</code>s.</p>
+<li><p>A <code>calcRule</code> manages a single <code>varRange</code> that can be calculated jointly.</p>
 <ul>
-<li>Makes use of topological sort values for variable and of <code>originalIndexRule</code>s</li>
-<li>Determines order of <code>varRange</code>s that must be calculated, splitting a <code>varRange</code> if necessary when elements are not topologically tied</li>
-<li>Calls <code>nodeFunctionRule</code> for each resulting <code>varRange</code></li>
-<li>Input is a set of <code>varRange</code>s</li>
-<li>Output is a set of <code>calcRange</code>s in sorted order</li>
+<li>An individual <code>calcRule</code> is produced from the elements in a declaration that are tied in terms of their sort order.</li>
+<li>When passed another <code>varRange</code> it returns a <code>calcRange</code> (or nothing if there is no overlap between the input <code>varRange</code> and the <code>varRange</code> of the rule) that can be used for calculation.</li>
+<li>Uses (contains?) <code>originalIndexRule</code>s to relate back to original index values in the declaration context.</li>
+<li>Contains the sort ID for the <code>varRange</code></li>
 </ul></li>
-<li><p>A <code>nodeFunctionRule</code> manages what nodeFunction is called for a single <code>varRange</code></p>
+<li><p>A <code>varCalcRules</code> manages the set of <code>calcRule</code>s for a given variable.</p></li>
+<li><p>A <code>copyRule</code> manages the determination of copying for a variable</p>
 <ul>
-<li>Output is a <code>calcRange</code></li>
-<li>Uses <code>originalIndexRule</code>s to relate back to original index values in the declaration context</li>
-<li>Multiple <code>nodeFunction</code>s will exist for a given declaration, allowing for vectorized calculations of various sorts</li>
+<li>presumably trivial but a bit fuzzy at the moment</li>
+<li>Input is a <code>varRange</code>?</li>
+<li>Output is a <code>varRange</code>.</li>
+<li>Perhaps all it needs to do is check for out of bounds and expand missing indexes?</li>
 </ul></li>
-<li><p>A <code>copyRule</code> manages the determination of copying for a <code>varRange</code></p></li>
 <li><p>A <code>variableStore</code> manages array-like information for variables</p>
 <ul>
 <li>Stores information such as sort ID, isData, node types</li>
@@ -355,6 +357,13 @@ div.tocify {
 <li>Should efficiently handle case where all values are the same</li>
 <li>Ultimately may want to handle additional structure, such as blocks of equal values</li>
 </ul></li>
+<li><p>There will be multiple <code>nodeFunction</code>s for a given declaration, allowing for various types of vectorized calculations.</p></li>
+<li><p>Topological sorting needs to:</p>
+<ul>
+<li>create a sort ID for each element of each variable (for tracking dependencies), stored in a <code>variableStore</code>.</li>
+<li>also create sort IDs in the ‘original index space’ - perhaps this just means assigning a sort ID to each <code>calcRule</code>?</li>
+</ul></li>
+<li><p>Dynamic indexing still needs consideration.</p></li>
 </ul>
 </div>
 
