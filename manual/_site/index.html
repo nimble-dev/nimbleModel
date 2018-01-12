@@ -305,10 +305,15 @@ div.tocify {
 <!-- [Overall strategy](overall_strategy.html) -->
 <p><a href="index_inversion.html">Index inversion</a></p>
 <p><a href="topo_sorting.html">Topological sorting</a></p>
-<p><a href="calculation_determinations.html">Calculation determinations</a></p>
+<p><a href="calculation_processing.html">Calculation processing</a></p>
 <p>Todos (completely incomplete):</p>
 <ul>
-<li>graphRules need to be augmented to deal with scalar and block constants and with missing values.</li>
+<li><p>graphRules need to be augmented to deal with scalar and block constants and with missing values.</p></li>
+<li><p>generate downstreamRules, upstreamRules, and originalIndexRules in modelDef processing</p></li>
+<li><p>add varRange of LHS for each declaration</p></li>
+<li><p>topological sorting to produce sortID for each variable</p></li>
+<li><p>develop calcRule code and use for calcRules for each variable</p></li>
+<li><p>develop code to produce calcRanges given a varRange and a calcRule</p></li>
 </ul>
 
 

@@ -10,6 +10,7 @@ export(modelDefClass)
 export(modelDeclClass)
 export(indexRuleClass_arbitrary)
 export(varRangeClass)
+export(varStoreClass)
 
 ## functions and other objects
 export(applyGraphIndexRules)

@@ -23,5 +23,6 @@ Collate:
     processModelCode.R
     varRangeClass.R
     varRules.R
+    varStore.R
     
     

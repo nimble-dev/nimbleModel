@@ -11,7 +11,7 @@
 
 
 
-<title>calculation determinations</title>
+<title>calculation processing</title>
 
 <script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -294,12 +294,17 @@ div.tocify {
 
 
 
-<h1 class="title toc-ignore">calculation determinations</h1>
+<h1 class="title toc-ignore">calculation processing</h1>
 
 </div>
 
 
-<p>Roughly the order of operations here is</p>
+<p>Model preprocessing:</p>
+<ul>
+<li><p>Each declaration should produce one or more <code>calcRule</code>s for the LHS variable, where there is one <code>calcRule</code> for each unique sortID in the sortIDs corresponding to the <code>varRange</code> of the LHS variable.</p></li>
+<li><p>Each declaration will have multiple calculate functions, potentially allowing for various types of vectorized calculations (pure nimble vectorization, Eigen vectorization, looping over sets, looping over blocks)</p></li>
+</ul>
+<p>Roughly the order of operations when calculate is invoked is</p>
 <ul>
 <li>User asks for calculation on a set of <code>varRange</code>s, either by specifying them directly or asking for dependencies and thereby inducing <code>graphRule</code> processing</li>
 <li>For each <code>varRange</code>, all <code>calcRule</code>s for the variable are checked and one or more <code>calcRange</code>s are returned.</li>

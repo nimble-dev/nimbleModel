@@ -86,7 +86,7 @@ processModelCode_impl <- function(modelDef = modelDefClass$new(),
             }
             ## Recursive call to process the contents of the for loop
             lineNumber <-
-                processModelCode(recurseCode,
+                processModelCode_impl(recurseCode,
                                 nextContextID,
                                 lineNumber = lineNumber,
                                 userEnv = userEnv)  
@@ -95,7 +95,7 @@ processModelCode_impl <- function(modelDef = modelDefClass$new(),
             ## recursive call to a block contained in a {},
             ## perhaps as a result of processCodeIfThenElse
             lineNumber <-
-                processModelCode(code[[i]],
+                processModelCode_impl(code[[i]],
                                 contextID,
                                 lineNumber = lineNumber,
                                 userEnv = userEnv)
