@@ -48,4 +48,5 @@ export(varRange2expr)
 export(varRange_getSingleIndexRange)
 export(varRange_getIndexRangeMatrix)
 
-
+export(`[.varStoreClass`)
+export(`[<-.varStoreClass`)

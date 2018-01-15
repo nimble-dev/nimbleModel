@@ -7,6 +7,8 @@
 ## Expected usage of the class is to ask for a subset of values. Currently if
 ## all values in the object are equal then the result is a singleton.
 
+## https://stackoverflow.com/questions/37462850/r-r6-operator-overloading
+
 ## For now we assume that when user assigns entire object, user wants in form of a
 ## varStoreClass not the equivalent vector/matrix/array.
 varStoreClass <- R6Class(
@@ -42,7 +44,18 @@ varStoreClass <- R6Class(
 )
 
 
-## helper functions 
+## helper functions
+
+# FIXME: remove when we pull this in from current nimble
+dimOrLength <- function (obj, scalarize = FALSE) 
+{
+    if (scalarize) 
+        if (length(obj) == 1) 
+            return(numeric(0))
+    if (is.null(dim(obj))) 
+        return(length(obj))
+    return(dim(obj))
+}
 
 getLength <- function(index) {
     ## find the number of values represented by a single index
@@ -84,15 +97,18 @@ nimAllEqual <- function(value) {
 ## can explicitly do missing(..1) but not sure how to do that programmatically
 ## with missing elements, using list(...) fails. Therefore code here manipulates
 ## the argument list as code.
+
+## FIXME: 'drop' argument not implemented
 `[.varStoreClass` = function(self, ..., expand = FALSE) {
     if(self$allEqual) {
         args <- match.call(expand.dots = TRUE)[-1]
         indexes <- as.list(args[names(args) == ""])  # unnamed arguments are indexes from ...
         indexes[indexes == ""] <- sapply(self$dim, insertSequence)[indexes == ""] # insert 1:n for missing indexes
-        if(length(indexes) != length(self$dim))
-            stop("Error in ", match.call(), ": incorrect number of dimensions")
+        ## FIXME: deparse(match.call()) prints out as function call not as user-friendly [ operator
+        if(length(indexes) > 1 && length(indexes) != length(self$dim))
+            stop("Error in ", deparse(match.call()), ": incorrect number of dimensions")
         if(any(sapply(indexes, getMaxIndex) > self$dim))
-            stop("Error in ", match.call(), ": subscript out of bounds")
+            stop("Error in ", deparse(match.call()), ": subscript out of bounds")
         if(!expand) {
             return(self$value)
         } else {
@@ -109,6 +125,15 @@ nimAllEqual <- function(value) {
 `[<-.varStoreClass` = function(self, ..., value) {
     if(typeof(value) != self$type)
         stop("varStoreClass: input type is not the same as the stored type.")
+
+    args <- match.call(expand.dots = TRUE)[-1]
+    indexes <- as.list(args[names(args) == ""])  # unnamed arguments are indexes from ...
+    indexes[indexes == ""] <- sapply(self$dim, insertSequence)[indexes == ""] # insert 1:n for missing indexes
+    if(length(indexes) > 1 && length(indexes) != length(self$dim))
+       stop("Error in ", deparse(match.call()), ": incorrect number of dimensions")
+    if(any(sapply(indexes, getMaxIndex) > self$dim))
+        stop("Error in ", deparse(match.call()), ": subscript out of bounds")
+
     if(!(self$allEqual && value[1] == self$value && length(unique(c(value))) == 1)) {
         if(self$allEqual) {
             self$allEqual <- FALSE
