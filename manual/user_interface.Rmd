@@ -1,0 +1,51 @@
+---
+title: "user interface"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Some notes on how the data structures and methods will be used to respond to internal and user-requested queries and processing.
+
+# nodeFunction-based calculations (`calculate`, `simulate`).
+
+Example: `calculate(c('y[1:3]', 'z[2:4, 1:3]'))`
+
+- Input is one or more `varRange`s
+- `calcRule`s are invoked via `varCalcRules`.
+- Intermediate output is an ordered set of `calcRange`s.
+- Appropriate nodeFunctions associated with the `calcRanges` are called in order (in run code if in a nf context).
+
+In the compilation process, we will need to take calls like `nodes <- getDependencies(target)` in setup code and `calculate(nodes)` in run code and produce an ordered set of `calcRanges`. Then in the run code we will call `calculate` on the set of `calcRange`(s).
+
+Possibly use this functionality for other nodeFunctions such as `getParam` and `getBound`, but there do not need topological ordering.
+
+# Graph-based queries
+
+These include `getDependencies` and `getParents`.
+
+Example: `getDependencies(c('y[1:3]', 'z[2:4, 1:3]'))`
+
+- Input is one or more `varRange`s.
+- `graphRule`s are invoked.
+- Output is a set of `varRange`s.
+
+Presumably we want to process the result to [combine `varRange`s that can be combined](combining_ranges.html).
+
+# Node queries
+
+These include `expandNodeNames` and `getNodeNames`.
+
+- Inputs include flags (e.g., `latentOnly`) and `varRange`(s).
+- `nodeRule`s are invoked.
+- Output is a set of `nodeRanges`.
+- Output could be further processed to create our format of a vector of character node names.
+
+Will potentially need to use `varStore`s such as information on which nodes are latent. However, if all nodes in a `nodeRange` have same type, then might not need to use `varStore` for subsetting.
+
+
+
+
+

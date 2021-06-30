@@ -1,0 +1,35 @@
+---
+title: "combining ranges"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Given a `varRange`, we need to be able to combine multiple ranges into a single range. Similar capabilities are needed for `nodeRange`s and blocks of `variableStore`s.
+
+Examples:
+
+- `y[2:4] + y[4:7] = y[2:7]`
+- `y[1:3, 4:5] + y[1:3, 4:8] = y[1:3, 4:8]`
+- `y[2] + y[1:3] = y[1:3]`
+- `y[1:3, 1:3] + y[4:6, 4:6] = y[1:3, 1:3] + y[4:6, 4:6]` (no possible to combine)
+
+Implementation:
+
+Need logic to deal with adjancent ranges, overlapping ranges, and 'fully encompassing' ranges (e.g, Case 3 above).
+
+With multi-dimensional ranges, need to check that all dimensions have exactly the same ranges except for at most one dimension (e.g., Case 2 above), or that all dimensions of one are fully embedded in the dimensions of the other. 
+
+Complication:
+
+If combining more than two ranges, order can matter.
+
+For example with
+
+`y[1:3, 1:3] + y[4:6, 4:6] + y[1:3, 4:6] + y[4:6, 1:3] = y[1:6, 1:6]`
+
+but can't do addition left to right. 
+
+Hypothesis: attempting all pairwise additions in any order gives a unique solution regardless of ordering. So implementation could be to repeatedly pass over the expression left to right, attempting all possible pairwise additions. 

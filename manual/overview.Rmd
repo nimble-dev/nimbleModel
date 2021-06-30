@@ -12,6 +12,7 @@ To more efficiently process nimbleModels and provide for scalability, we are red
 - representing values of individual indexes (and groups of indexes when paired in arbitrary ways) of a variable as abstractions called varRanges rather than (unless required) complete unrolling
 - providing functionality to determine graph dependencies abstractly based on the index abstraction, including child and parent relationships, using what we call index inversion
 - representing the relationship between variable indexes and nodeFunction code, such as `y[i+1] <- x[i]`
+- representing a set of equivalent (in some sense) nodes within a variable in a compact representation called a `nodeRange` (perhaps `nodeSet`), such as `y[i, 1:3] for i in 1:500`.
 - providing topological sorting at the declaration level that allows for ties
 - determining what nodeFunction calculations need to be done based on the variables and their indexes provided by a user or by a dependency calculation
 - providing multiple versions of nodeFunctions so as to allow vectorized calculations, and determining which version to call

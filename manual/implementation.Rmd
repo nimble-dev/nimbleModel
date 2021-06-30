@@ -21,6 +21,7 @@ knitr::opts_chunk$set(echo = TRUE)
     - Inputs that are out of range do not produce output
     - Includes checks for going out of range
     - By reversing the order of a declaration, we can create both parent and child rules
+    - Consider all possibilities of LHS blank, constant, vector/block and RHS blank, constant, vector/block.
 
 - An `originalIndexRule` manages the determination of nodeFunction indices from actual index values, e.g., with a declaration such as `y[i+1] <- x[i]`, determining that calculation for `y[2]` is handled with `i=1`.
 
@@ -29,7 +30,7 @@ knitr::opts_chunk$set(echo = TRUE)
 - A `varRange` manages a set of `indexRange`s representing all dimensions of a variable.
 
     - A `varRange` also keeps track of how each `indexRange` would be crossed or combined with others to represent the set of variable elements correctly.
-    - Ultimately we may want to be able to collapse multiple `varRange`s to a single `varRange` when possible.
+    - Ultimately we may want to be able to [collapse multiple `varRange`s to a single `varRange`](combining_ranges.html) when possible.
 
 - A `graphRule` manages the set of `indexRule`s needed to determine all LHS indices from all RHS indices for one set of edges created one of the RHS variables and the LHS variable of a single declaration.
 
@@ -40,6 +41,7 @@ knitr::opts_chunk$set(echo = TRUE)
 - A `calcRange` manages the indexing for a single calculation for a variable
 
     - Keeps track of declaration ID, indexing (probably using `indexRange`s), index values, and nodeFunction version to be used.
+    - Index values are based on original declaration context, e.g., a declaration of `y[i+1] ~ dnorm(x[i], 1)` with `i=1:5` has `calcRange` indexing of `1:5` since nodeFunctions use `i` directly. 
     - Includes sort ID so that multiple `calcRange`s can be calculated in correct order.
     - Eventually might deal with doing calcs that don't have complete sort ties, e.g., `y[i]~dfoo(y[i-1])`, as a block but probably not to start.
 
@@ -48,9 +50,25 @@ knitr::opts_chunk$set(echo = TRUE)
     - An individual `calcRule` is produced from the elements in a declaration that are tied in terms of their sort order.
     - When passed another `varRange` it returns a `calcRange` (or nothing if there is no overlap between the input `varRange` and the `varRange` of the rule) that can be used for calculation.
     - Uses (contains?) `originalIndexRule`s to relate back to original index values in the declaration context.
+       - Indexing is based on indexes of the variable, not the original index values, e.g., `y[i+1] ~ dnorm(x[i], 1)` with `i=1:5` has the `varRange` of `y[2:6]`. 
     - Contains the sort ID for the `varRange`
 
-- A `varCalcRules` manages the set of `calcRule`s for a given variable. 
+- A `varCalcRules` manages the set of `calcRule`s for a given variable.
+
+- A `nodeRule` manages a single set of nodes from a declaration that are equivalent in some sense. Given a `varRange`, it produces a `nodeRange` (or nothing if no overlap). 
+
+    - Input is a `varRange`.
+    - Output is a `nodeRange`.
+    - "Equivalent" needs to be defined:
+       - Could be nodes declared in the same way, possibly with identical sort ID.
+       - Could be nodes all of the same type (noting that `theta[i] ~ dnorm(theta0[i], 1)` are not necessarily all latent or all top nodes, as it depends on how `theta0[i]` are declared; this would involve splitting an original `nodeRule` when graph processing is done.
+       - Potentially handle both with polymorphism/nested structures
+       - A single `nodeRule` is associated with a single nodeFunction.
+    - Could represent canonical set of equivalent nodes as an embedded `nodeRange`
+
+- A `nodeRange` compactly represents a set of equivalent nodes
+
+    - E.g., `y[i, 1:3] for i in 1:500` or `y[i, j] for i in 1:5, j in 1:20`
 
 - A `copyRule` manages the determination of copying for a variable
 
@@ -65,6 +83,8 @@ knitr::opts_chunk$set(echo = TRUE)
     - Could be integer, logical, or character-valued
     - Should efficiently handle case where all values are the same
     - Ultimately may want to handle additional structure, such as blocks of equal values
+       - Could have sets of blocks, with remaining values a "discontinuous block" if all the same.
+    - Ultimately may want to handle simple sequential values (e.g., row-major or column-major in a matrix) as this could be useful for sort ID values in state-space/time-series contexts.
 
 - There will be multiple `nodeFunction`s for a given declaration, allowing for various types of vectorized calculations.
 
@@ -73,4 +93,7 @@ knitr::opts_chunk$set(echo = TRUE)
     - create a sort ID for each element of each variable (for tracking dependencies), stored in a `variableStore`.
     - also create sort IDs in the 'original index space' - perhaps this just means assigning a sort ID to each `calcRule`?
 
-- Dynamic indexing still needs consideration. 
+- Dynamic indexing still needs consideration.
+
+    - Currently we introduce a hidden 'unknownIndex' lifted node that allows for our standard dependency processing.
+    - Possibly handle things similarly to current approach: have one `graphRule` with `varRange` of the 'unknownIndex' as the LHS and another `graphRule` with `varRange` of the 'unknownIndex' as the RHS.

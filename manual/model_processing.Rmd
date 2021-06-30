@@ -1,0 +1,18 @@
+---
+title: "model processing"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Fully incomplete notes on how we might use the new nimbleModel framework when creating a modelDef and a model.
+
+- As we process each declaration, we will produce one or more `graphRule`s.
+- As we process each declaration, we will initially produce one `nodeRule`.
+   - In further processing where we determine node types, we might split a `nodeRule` into multiple `nodeRule`s. E.g. the case of `theta[i] ~ dnorm(theta0[i], 1)` might have some theta[i]s being latent and some being top nodes.
+- As we process each declaration, we will produce one `calcRule`.
+- In further passes we will produce various `variableStore`s.
+
+My initial take is that we will no longer need the maps and no longer have the notions of vertices or element IDs. 
