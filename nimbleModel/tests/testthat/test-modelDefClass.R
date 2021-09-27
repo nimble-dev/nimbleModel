@@ -40,7 +40,7 @@ test_that("processModelCode works",
 }
 )
 
-test_that("makeDowntreamRules works",
+test_that("makeDownstreamRules works",
 {
     modelCode <- quote({
         for(i in 1:10)
