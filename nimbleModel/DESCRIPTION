@@ -10,9 +10,13 @@ License: What license is it under?
 Encoding: UTF-8
 LazyData: true
 Collate:
+    aaa.R
     contextClass.R
+    distributions_inputList.R
+    distributions_processInputList.R
     indexRange.R
     indexRules.R
+    indexRules_all.R
     indexRules_arbitrary.R
     indexRules_block.R
     getSymbolicParentNodes.R

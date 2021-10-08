@@ -125,14 +125,16 @@ makeGraphIndexRules <- function(LHS,
                         constants
                     else
                         list2env(constants)
-    
+
+    ## Assume there is LHS indexing
+    LHSindexExprs <- as.list(LHS[-c(1,2)])
+        
     indexSets <-
         makeSeparableIndexSets(LHS, RHS, context)
 
-    ## Assume there is indexing.
-    LHSindexExprs <- as.list(LHS[-c(1,2)])
+    ## Now assume there is RHS indexing.
     RHSindexExprs <- as.list(RHS[-c(1,2)])
-    
+     
     numSets <- indexSets$numSets
     indexRules <- list()
     for(iSet in seq_len(numSets)) {
@@ -142,22 +144,33 @@ makeGraphIndexRules <- function(LHS,
             LHSindexExprs[LHSindicesBool],
             names = paste0("t", seq_len(sum(LHSindicesBool)))
         )
+        numRHSbool <- sum(RHSindicesBool)
         thisRHSindexExprs <- structure(
             RHSindexExprs[RHSindicesBool],
-            names = paste0("f", seq_len(sum(RHSindicesBool)))
+            names = if(numRHSbool)
+                        paste0("f", seq_len(numRHSbool))
+                    else
+                        character(0)
         )
         indexVarNamesInThisSet <- indexSets$indexVarNameSets[[iSet]]
         thisContext <-
             modelContextClass$new(
                 context$singleContexts[indexVarNamesInThisSet]
             )
-        ## We try making a block rule.
-        ## It it fails, we will throw it away.
-        thisIndexRule <- indexRuleClass_block$new(
+        ## We try making each rule in order.
+        ## It one fails, we will throw it away and try to make the next.
+        thisIndexRule <- indexRuleClass_all$new(
             toIndexExprList = thisLHSindexExprs,
             fromIndexExprList = thisRHSindexExprs,
             context = thisContext,
             constants = constantsEnv)
+        if(is.null(thisIndexRule$setupRules)) {
+            thisIndexRule <- indexRuleClass_block$new(
+            toIndexExprList = thisLHSindexExprs,
+            fromIndexExprList = thisRHSindexExprs,
+            context = thisContext,
+            constants = constantsEnv)
+        }
         if(is.null(thisIndexRule$setupResults)) {
             thisIndexRule <- indexRuleClass_arbitrary$new(
                 toIndexExprList = thisLHSindexExprs,
@@ -183,6 +196,18 @@ applyGraphIndexRules <- function(fromVarRange,
     ## could be cached and re-used.
     indexSets <- rules$indexSets
     indexRules <- rules$indexRules
+
+    ## First handle cases like indexRules_any
+    if(is.null(indexSets)) {
+        answer <- indexRules$apply(fromVarRange)
+        return(
+            varRangeClass$new(
+                indexInfo = list(ans),
+                indexOrders = list(1)
+            )
+        )
+    }
+    
     numSets <- indexSets$numSets
     ## Currently this will handle one set of fromIndices,
     ## not multiples.

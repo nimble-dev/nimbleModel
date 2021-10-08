@@ -1,6 +1,3 @@
-distributionFuns <- character()
-message('Add distributionFuns')
-
 nimbleOrRfunctionNames <- c('[',
                             '+',
                             '-',

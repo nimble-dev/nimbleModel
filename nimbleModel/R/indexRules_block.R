@@ -178,6 +178,8 @@ indexRule_block_setup_internal <- function(toIndexExprList,
     
     toIndexExpr <- toIndexExprList[[1]]
     fromIndexExpr <- fromIndexExprList[[1]]
+    ## I'm not sure this will always need 1st indexVarName.
+    ## It might need a different element.
     indexVarName <- context$indexVarNames[1]
     ##
     toSignAndOffset <- getSignAndOffset(toIndexExpr,

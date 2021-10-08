@@ -1,6 +1,8 @@
 context("graphRules")
 
 bruteForceNestedIndexing <- function(indexVector, indexQuery) {
+    ## See below for where this is used to brute-force check some tests.
+    ##
     ## Trickier use of which and sorting
     ## did not quickly handle all needs.
     ## It was decided that for testing purposes a slow
@@ -51,15 +53,27 @@ test_that("makeSeparableIndexSets works", {
                                             quote(x[i, 3]),
                                             context_ij)$indexVarNameSets,
                      list(c(i = "i"), c(j = "j")))
-    
+
+    expect_identical(makeSeparableIndexSets(quote(y[j + i]),
+                                            quote(x[i, 3]),
+                                            context_ij)$indexVarNameSets,
+                     list(c(i = "i", j = "j")))
+
     expect_identical(makeSeparableIndexSets(quote(y[j, i]),
                                             quote(x[i, 1:3]),
                                             context_ij)$indexVarNameSets,
                      list(c(i = "i"), c(j = "j")))
 
-    expect_identical(makeSeparableIndexSets(quote(y[j, i]),
-                                            quote(x[i, ]),
+    expect_identical(makeSeparableIndexSets(quote(y[j + i]),
+                                            quote(x[,]),
                                             context_ij)$indexVarNameSets,
+                     list(c(i = "i", j = "j")))
+
+    expect_identical(
+        makeSeparableIndexSets(quote(y[j, i]),
+                               quote(x[ ]),
+                               context_ij)$indexVarNameSets
+       ,
                      list(c(i = "i"), c(j = "j")))
     
     expect_identical(makeSeparableIndexSets(quote(y[j, i]),
@@ -73,6 +87,19 @@ test_that("makeSeparableIndexSets works", {
                      list(c(i = "i"), c(j = "j"), c(k = "k")))
 }
 )
+
+test_that("graphRules works for 1D all rule", {
+    singleContext1 <-
+        modelSingleContext(forCode = quote(for(i in 1:10){}))
+    context_i <- modelContextClass$new(list(singleContext1))
+
+    debugonce(makeGraphIndexRules)
+    rule1 <- makeGraphIndexRules(LHS = quote(y[i]),
+                                 RHS = quote(x[]),
+                                 context = context_i)
+    
+})
+
 
 test_that("graphRules works for 1D sequence rule", {
     singleContext1 <-

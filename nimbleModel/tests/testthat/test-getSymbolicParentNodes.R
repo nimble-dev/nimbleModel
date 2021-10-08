@@ -4,7 +4,7 @@ test_that("getSymbolicParentNodes works",
 {
     expect_equal(
         test1 <- getSymbolicParentNodes(
-            quote(foo(a, x[i] + w)),
+            quote(foo(a, x[i] * y[i+1] + w)),
             constNames = list(),
             indexNames = list(quote(i)),
             nimbleFunctionNames = list(quote(foo)),
@@ -13,6 +13,7 @@ test_that("getSymbolicParentNodes works",
        ,
         test2 <- list(quote(a),
                       quote(x[i]),
+                      quote(y[i+1]),
                       quote(w))
     )
 }
