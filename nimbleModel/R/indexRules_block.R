@@ -204,8 +204,11 @@ indexRule_block_setup_internal <- function(toIndexExprList,
 
     ## We rely on eval here, but we could instead pick out
     ## arguments of `:`
+    ## from_range <- 
+    ##    range(eval(indexRangeExpr, envir = constants))
     from_range <- 
-        range(eval(indexRangeExpr, envir = constants))
+        c(eval(indexRangeExpr[[2]], envir = constants),
+          eval(indexRangeExpr[[3]], envir = constants))
     
     list(offset_from2to = offset_from2to,
          sign_from2to = sign_from2to,
