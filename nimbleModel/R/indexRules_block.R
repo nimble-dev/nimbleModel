@@ -195,10 +195,10 @@ indexRule_block_setup_internal <- function(toIndexExprList,
     if(is.null(fromSignAndOffset))
         return(NULL)
 
-    offset_from2to <-
+    offset <-
         toSignAndOffset$offset - fromSignAndOffset$offset
         
-    sign_from2to <- 1
+    sign <- 1
 
     indexRangeExpr <- context$singleContexts[[1]]$indexRangeExpr
 
@@ -210,8 +210,8 @@ indexRule_block_setup_internal <- function(toIndexExprList,
         c(eval(indexRangeExpr[[2]], envir = constants),
           eval(indexRangeExpr[[3]], envir = constants))
     
-    list(offset_from2to = offset_from2to,
-         sign_from2to = sign_from2to,
+    list(offset = offset,
+         sign = sign,
          from_min = from_range[1] + fromSignAndOffset$offset,
          from_max = from_range[2] + fromSignAndOffset$offset
         )

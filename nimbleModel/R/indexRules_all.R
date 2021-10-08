@@ -53,12 +53,10 @@ indexRule_all_setup <- function(toIndexExprList,
                                         indexVarName,
                                         constants)
     indexRangeExpr <- context$singleContexts[[1]]$indexRangeExpr
-     ## We rely on eval here, but we could instead pick out
-    ## arguments of `:`
-    index_range <- 
-        range(eval(indexRangeExpr, envir = constants))
 
-    indexRange_block(as.list(index_range + toSignAndOffset$offset))
-    
+    index_range <- 
+        c(eval(indexRangeExpr[[2]], envir = constants),
+          eval(indexRangeExpr[[3]], envir = constants))
+
     toSignAndOffset$offset + index_range
 }
