@@ -19,5 +19,33 @@ test_that("indexRule_all works",
         thisRule$apply(NULL),
         indexRange_block(list(2, 11))
     )
+
+    thisRule <- nimbleModel:::indexRuleClass_all$new(list(quote(i + 1)),
+                                       list(2),
+                                       context_i)
+    expect_equal(
+        thisRule$apply(2),
+        indexRange_block(list(2, 11))
+    )
+    expect_equal(
+        thisRule$apply(3),
+        matrix(numeric(),0,1)
+    )
+
+    thisRule <- nimbleModel:::indexRuleClass_all$new(list(quote(i + 1)),
+                                       list(2:3),
+                                       context_i)
+    expect_equal(
+        thisRule$apply(2),
+        indexRange_block(list(2, 11))
+    )
+    expect_equal(
+        thisRule$apply(3:4),
+        indexRange_block(list(2, 11))
+    )
+    expect_equal(
+        thisRule$apply(5:7),
+        matrix(numeric(),0,1)
+    )
 }
 )

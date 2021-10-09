@@ -16,7 +16,7 @@ indexRuleClass_block <- R6Class(
                                       constants
                                       )
         },
-        applyOne = function(fromIndices) {
+        apply_one = function(fromIndices) {
             indexRule_block_apply_single(
                 fromIndices,
                 setupResults
