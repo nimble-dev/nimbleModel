@@ -42,8 +42,15 @@ makeSeparableIndexSets <- function(LHS,
     numIndexVars <- length(indexVarNames)
     LHSindexExprs <- as.list(LHS[-c(1,2)])
     LHSnDim <- length(LHSindexExprs)
-    RHSindexExprs <- as.list(RHS[-c(1,2)])
-    RHSnDim <- length(RHSindexExprs)
+    
+    if(length(RHS) < 3) {  # no RHS indexing
+        RHSindexExprs <- NULL
+        RHSnDim <- 0
+    } else {
+        RHSindexExprs <- as.list(RHS[-c(1,2)])
+        RHSnDim <- length(RHSindexExprs)
+    }
+    
     make_BoolIndexVarList <-
         function(indexExpr)
             structure(
@@ -87,7 +94,7 @@ makeSeparableIndexSets <- function(LHS,
             allAdditionalIndexVarNames <- setdiff(unique(c(LHSadditionalIndexVars,
                                                            RHSadditionalIndexVars)),
                                                   currentIndexVarNames)
-            if(length(allAdditionalIndexVarNames)==0) {
+            if(!length(allAdditionalIndexVarNames)) {
                 done <- TRUE
             } else {
                 currentIndexVarNames <- c(currentIndexVarNames,
@@ -125,15 +132,17 @@ makeGraphIndexRules <- function(LHS,
                         constants
                     else
                         list2env(constants)
-
-    ## Assume there is LHS indexing
-    LHSindexExprs <- as.list(LHS[-c(1,2)])
         
     indexSets <-
         makeSeparableIndexSets(LHS, RHS, context)
 
-    ## Now assume there is RHS indexing.
-    RHSindexExprs <- as.list(RHS[-c(1,2)])
+    ## Assume there is LHS indexing
+    LHSindexExprs <- as.list(LHS[-c(1,2)])
+
+    if(length(RHS) >= 3 && RHS[[1]] == '[') {
+        RHSindexExprs <- as.list(RHS[-c(1,2)])
+    } else if(length(RHS) == 1) RHSindexExprs <- list() else
+        stop("makeGraphIndexRules: 'RHS' should be an index expression or variable name")
      
     numSets <- indexSets$numSets
     indexRules <- list()
@@ -164,7 +173,7 @@ makeGraphIndexRules <- function(LHS,
             fromIndexExprList = thisRHSindexExprs,
             context = thisContext,
             constants = constantsEnv)
-        if(is.null(thisIndexRule$setupRules)) {
+        if(is.null(thisIndexRule$setupResults)) {
             thisIndexRule <- indexRuleClass_block$new(
             toIndexExprList = thisLHSindexExprs,
             fromIndexExprList = thisRHSindexExprs,

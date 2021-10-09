@@ -27,10 +27,18 @@ test_that("indexRule_block works",
     )
 
     expect_identical(
+        indexRule_block_apply(indexRange(matrix(c(4,6,8), nrow = 3)),
+                              setupResults)
+       ,
+        indexRange(matrix(c(2,4,6), nrow = 3))
+    )
+
+    expect_identical(
         indexRule_block_apply(indexRange(quote(4:5)),
                               setupResults)
        ,
         indexRange(quote(2:3))
     )
+    
 }
 )

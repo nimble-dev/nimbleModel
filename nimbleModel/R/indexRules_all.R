@@ -14,18 +14,12 @@ indexRuleClass_all <- R6Class(
                               context,
                               constants = list()
                               ) {
-            ## Need check that RHS indexing is constant if present
-            ## and then return NULL if not the case
-            if(FALSE) {
-                setupResults <<- NULL
-            } else {
                 setupResults <<-
                     indexRule_all_setup(toIndexExprList,
                                         fromIndexExprList,
                                         context,
                                         constants
                                         )
-            }
         },
         apply_one = function(fromIndices) {
             indexRule_all_apply_single(
@@ -35,7 +29,7 @@ indexRuleClass_all <- R6Class(
         },
         apply_indexRange = function(fromIndexRange,
                                     ...) {
-            indexRule_all_apply_block(
+            indexRule_all_apply(
                 fromIndexRange,
                 setupResults,
                 ...
@@ -46,9 +40,11 @@ indexRuleClass_all <- R6Class(
                 ##apply_varRange(from, ...)
                 stop('an index rule should be applied to an indexRange')
             else {
-                if(is(from, 'indexRange')) 
+                if(is.null(from)) {   # no RHS indexing
+                    return(setupResults$all)
+                } else if(is(from, 'indexRange')) 
                     apply_indexRange(from, ...)
-                else apply_one(from)
+                else apply_one(from, ...)
             }
         }        
     )
@@ -56,12 +52,11 @@ indexRuleClass_all <- R6Class(
 
 indexRule_all_apply_single <- function(fromIndices,
                                          setupResults) {
-    if(!is.null(fromIndices) && (fromIndices < setupResults$from_min ||
-       fromIndices > setupResults$from_max))
+    if(fromIndices < setupResults$from_min ||
+       fromIndices > setupResults$from_max)
         return(matrix(data = numeric(), nrow = 0, ncol = 1))
     return(setupResults$all)
 }
-
 
 indexRule_all_apply_block <- function(fromIR,
                                         setupResults,
@@ -74,14 +69,46 @@ indexRule_all_apply_block <- function(fromIR,
     return(setupResults$all)
 }
 
+indexRule_all_apply_matrix <- function(fromIR,
+                                        setupResults,
+                                        collapse = TRUE,
+                                      ...) {
+    if(!(any(fromIR[ , 1] >= setupResults$from_min &&
+             fromIR[ , 1] <= setupResults$from_max)))
+        return(matrix(data = numeric(), nrow = 0, ncol = 1))
+    return(setupResults$all)
+}
+
+indexRule_all_apply <- function(fromIR,
+                                  setupResults,
+                                  collapse = TRUE,
+                                ...) {
+    switch(attr(fromIR, "rangeType"),
+           scalar = indexRange_scalar(
+               indexRule_all_apply_single(fromIR[[1]],
+                                            setupResults,
+                                            collapse = collapse,
+                                            ...
+                                            )
+           ),
+           block = indexRule_all_apply_block(fromIR,
+                                               setupResults,
+                                               collapse = collapse,
+                                               ...),
+           matrix =  indexRule_all_apply_matrix(fromIR[[1]],
+                                                      setupResults,
+                                                      collapse = collapse,
+                                                ...)
+           )
+}
+    
 
 indexRule_all_setup <- function(toIndexExprList,
                                 fromIndexExprList,
                                 context,
                                 constants = list()) {
     toIndexExpr <- toIndexExprList[[1]]
-    if(length(fromIndexExprList))
-        fromIndexExpr <- fromIndexExprList[[1]] else fromIndexExpr <- NULL
+
     ## May need to generalize which indexVarName is used:
     indexVarName <- context$indexVarNames[1]
     ## May need to fail cleanly if RHS is like y[k[i]] or other complication.
@@ -96,11 +123,14 @@ indexRule_all_setup <- function(toIndexExprList,
 
     ## Need to figure out when we would know full extent of the variable dimension
     ## and how to access that information.
-    if(is.null(fromIndexExpr)) {
+    if(is.null(fromIndexExprList)) {   # no RHS indexing
+        from_range <- rep(as.numeric(NA), 2)
+    } else if(!length(fromIndexExprList)) {  # RHS blank
         warning("Not yet checking extent of variable dimension in blank case.")
         from_range <- c(1, Inf)
-    } else {
-        from_range <- eval(fromIndexExpr, envir = constants)
+    } else {     
+        from_range <- try(eval(fromIndexExprList[[1]], envir = constants))
+        if(is(from_range, 'try-error')) return(NULL)  # should be when indexing on RHS
         if(length(from_range) == 1)
             from_range <- rep(from_range, 2)
     }
