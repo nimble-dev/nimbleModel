@@ -93,11 +93,44 @@ test_that("graphRules works for 1D all rule", {
         modelSingleContext(forCode = quote(for(i in 1:10){}))
     context_i <- modelContextClass$new(list(singleContext1))
 
-    debugonce(makeGraphIndexRules)
-    rule1 <- makeGraphIndexRules(LHS = quote(y[i]),
+    rule1 <- makeGraphIndexRules(LHS = quote(y[i+1]),
                                  RHS = quote(x[]),
                                  context = context_i)
-    
+    expect_equal(
+        rule1$indexRules[[1]]$apply(2),
+        indexRange_block(list(2,11)))
+    ## fails with rangeID_2_setIDs being empty
+    expect_equal(
+        applyGraphIndexRules(
+            varRangeClass$new(
+                              list(
+                                  indexRange(
+                                      quote(3)
+                                  )))
+          , rule1),
+        varRangeClass$new(
+           list(
+               indexRange(
+                   quote(2:11)
+           ))))
+
+   rule1 <- makeGraphIndexRules(LHS = quote(y[i+1]),
+                                 RHS = quote(x[2]),
+                                 context = context_i)
+ 
+    expect_equal(
+        applyGraphIndexRules(
+            varRangeClass$new(
+                              list(
+                                  indexRange(
+                                      quote(2)
+                                  )))
+          , rule1),
+        varRangeClass$new(
+           list(
+               indexRange(
+                   quote(2:11)
+           ))))
 })
 
 

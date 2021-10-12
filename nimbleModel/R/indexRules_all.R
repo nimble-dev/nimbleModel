@@ -14,6 +14,11 @@ indexRuleClass_all <- R6Class(
                               context,
                               constants = list()
                               ) {
+            ## Rule only applicable if no RHS indexing.
+            if(length(fromIndexExprList) != 0) {
+                setupResults <<- NULL
+                return()
+            } else 
                 setupResults <<-
                     indexRule_all_setup(toIndexExprList,
                                         fromIndexExprList,
@@ -44,7 +49,9 @@ indexRuleClass_all <- R6Class(
                     return(setupResults$all)
                 } else if(is(from, 'indexRange')) 
                     apply_indexRange(from, ...)
-                else apply_one(from, ...)
+                else if(is.numeric(from) && length(from) == 1) 
+                    apply_one(from, ...)
+                else stop('cannot operate on provided input')
             }
         }        
     )
@@ -137,5 +144,5 @@ indexRule_all_setup <- function(toIndexExprList,
     
     list(from_min = from_range[1],
          from_max = from_range[2],
-        all = indexRange_block(as.list(toSignAndOffset$offset + index_range)))
+         all = indexRange_block(as.list(toSignAndOffset$offset + index_range)))
 }

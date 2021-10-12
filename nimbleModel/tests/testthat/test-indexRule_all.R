@@ -31,6 +31,10 @@ test_that("indexRule_all works",
         thisRule$apply(3),
         matrix(numeric(),0,1)
     )
+    expect_equal(
+        thisRule$apply(indexRange(quote(2:3))),
+        indexRange_block(list(2, 11))
+    )
 
     thisRule <- nimbleModel:::indexRuleClass_all$new(list(quote(i + 1)),
                                        list(2:3),
@@ -40,12 +44,25 @@ test_that("indexRule_all works",
         indexRange_block(list(2, 11))
     )
     expect_equal(
-        thisRule$apply(3:4),
+        thisRule$apply(indexRange(quote(3:4))),
         indexRange_block(list(2, 11))
     )
     expect_equal(
-        thisRule$apply(5:7),
+        thisRule$apply(indexRange(quote(5:6))),
         matrix(numeric(),0,1)
     )
+    expect_error(
+        thisRule$apply(3:4))
 }
+
+## RHS no index
+thisRule <- nimbleModel:::indexRuleClass_all$new(list(quote(i + 1)),
+                                       NULL,
+                                       context_i)
+    expect_equal(
+        thisRule$apply(NULL)
+        indexRange_block(list(2, 11))
+    )
+## Note presumably further upstream we would trap if try to look for dependencies of `x[2]` if no RHS indexing
+
 )

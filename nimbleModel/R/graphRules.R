@@ -294,6 +294,8 @@ applyGraphIndexRules <- function(fromVarRange,
     for(iSet in seq_len(numSets)) {
         thisRHSindices <- setID_2_RHSindices[[iSet]]
         ##fromVarRange$rangeID_2_indexID
+
+        ## How handle missing indexing?
         fromIndicesInfo <-
             if(length(thisRHSindices)==1)
                 fromVarRange$getSingleIndexRange(thisRHSindices,
