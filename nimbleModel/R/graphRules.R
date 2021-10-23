@@ -40,8 +40,15 @@ makeSeparableIndexSets <- function(LHS,
     indexVarNames <- structure(context$indexVarNames,
                                names = context$indexVarNames)
     numIndexVars <- length(indexVarNames)
-    LHSindexExprs <- as.list(LHS[-c(1,2)])
-    LHSnDim <- length(LHSindexExprs)
+
+    ## need to check this is working ok for no LHS index case
+    if(length(LHS) < 3) {  # no LHS indexing
+        LHSindexExprs <- NULL
+        LHSnDim <- 0
+    } else {
+        LHSindexExprs <- as.list(LHS[-c(1,2)])
+        LHSnDim <- length(LHSindexExprs)
+    }
     
     if(length(RHS) < 3) {  # no RHS indexing
         RHSindexExprs <- NULL
@@ -122,6 +129,22 @@ makeSeparableIndexSets <- function(LHS,
          )
 }
 
+
+makeConstraints <- function(RHSindexExprs, constrainedBool) {
+    constraints <- list()
+    cnt <- 0
+    for(idx in seq_along(RHSindexExprs)) {
+        if(constrainedBool[idx]) {
+            cnt <- cnt + 1
+            constraints[[cnt]] <- list(RHSindex = idx)
+            if(RHSindexExprs[[idx]] == '') { # x[] case
+                constraints[[cnt]]$constraint <- character(0)
+            } else constraints[[cnt]]$constraint <- RHSindexExprs[[idx]]
+        }
+    }
+    return(constraints)
+}
+
 ## The following functions may be used from class methods in the future.
 ## For now they are standalone for development and debugging.
 makeGraphIndexRules <- function(LHS,
@@ -136,14 +159,26 @@ makeGraphIndexRules <- function(LHS,
     indexSets <-
         makeSeparableIndexSets(LHS, RHS, context)
 
-    ## Assume there is LHS indexing
-    LHSindexExprs <- as.list(LHS[-c(1,2)])
+    ## x[i,2,] gives 'i', 2, '' as indexExprs
+    ## x gives empty list
+    
+    if(length(LHS) >= 3 && LHS[[1]] == '[') {
+        LHSindexExprs <- as.list(LHS[-c(1,2)])
+    } else if(length(LHS) == 1) LHSindexExprs <- list() else
+        stop("makeGraphIndexRules: 'LHS' should be an index expression or variable name")
 
     if(length(RHS) >= 3 && RHS[[1]] == '[') {
         RHSindexExprs <- as.list(RHS[-c(1,2)])
     } else if(length(RHS) == 1) RHSindexExprs <- list() else
         stop("makeGraphIndexRules: 'RHS' should be an index expression or variable name")
-     
+
+    RHSconstraints <- list()
+    RHSindicesBool <- indexSets$RHSindex2setID == 0
+    if(any(RHSindicesBool)) 
+        RHSconstraints <- makeConstraints(RHSindexExprs, RHSindicesBool)
+    if(!length(RHSindexExprs))  # placeholder for now for 'x' case (no indexing)
+        RHSconstraints <- list(list(RHSindex = 0, constraint = 0))
+    
     numSets <- indexSets$numSets
     indexRules <- list()
     for(iSet in seq_len(numSets)) {
@@ -190,7 +225,31 @@ makeGraphIndexRules <- function(LHS,
         indexRules[[iSet]] <- thisIndexRule
     }
     list(indexSets = indexSets,
-         indexRules = indexRules)
+         indexRules = indexRules,
+         RHSconstraints = RHSconstraints)
+}
+
+## if indexRanges were R6 classes with inheritance, we could move the
+## checking into methods of the indexRange classes.
+checkOneConstraint <- function(indexRange, constraint) {
+    if(!length(constraint)) {
+        warning("Not yet checking input to blank index case.")
+        return(TRUE)
+    }
+    if(!attr(indexRange, 'rangeType') %in% c('scalar', 'block')) {
+        warning("Not yet checking input in case of non-scalar/non-block indexRanges.")
+        return(TRUE)
+    }
+    rg <- unlist(indexRange)
+    if(max(constraint) < min(rg) || min(constraint) > max(rg))
+        return(FALSE) else return(TRUE)
+}
+
+checkConstraints <- function(fromVarRange, constraints) {
+    for(i in seq_along(constraints)) 
+        if(!checkOneConstraint(fromVarRange$indexRanges[[constraints[[i]]$RHSindex]], constraints[[i]]$constraint))
+           return(FALSE)
+    return(TRUE)
 }
 
 ## fromVarRange will have indexRanges that may be
@@ -205,9 +264,21 @@ applyGraphIndexRules <- function(fromVarRange,
     ## could be cached and re-used.
     indexSets <- rules$indexSets
     indexRules <- rules$indexRules
+    
+    ## Check valid RHS
+    ## use RHSconstraints to check that RHS is valid for x, x[i,2], x[i,3:5], x[i,] cases
+    ## If not, currently return as many empty indexRanges as sets. 
+    if(!checkConstraints(fromVarRange, rules$RHSconstraints)) {
+        tmp <- list()
+        length(tmp) <- length(indexSets$numSets)  ## check this is correct in complicated cases
+        for(i in seq_along(tmp))
+            tmp[[i]] <- indexRange_matrix(matrix(data = numeric(), nrow = 0, ncol = 1))
+        return(varRangeClass$new(tmp))
+    }
 
     ## First handle cases like indexRules_any
     if(is.null(indexSets)) {
+            
         answer <- indexRules$apply(fromVarRange)
         return(
             varRangeClass$new(
@@ -295,20 +366,24 @@ applyGraphIndexRules <- function(fromVarRange,
         thisRHSindices <- setID_2_RHSindices[[iSet]]
         ##fromVarRange$rangeID_2_indexID
 
-        ## How handle missing indexing?
-        fromIndicesInfo <-
-            if(length(thisRHSindices)==1)
-                fromVarRange$getSingleIndexRange(thisRHSindices,
-                                                 details = TRUE)
-            else
-                fromVarRange$getIndexRangeMatrix(thisRHSindices,
-                                                 details = TRUE)
-        fromIndices <- fromIndicesInfo$result
-        ## used ranges is a vector of rangeIDs from RHS from which
-        ## fromIndicesInfo were extracted
-        usedRanges <- fromIndicesInfo$usedRanges
-        for(ur in usedRanges)
-            rangeID_2_setIDs[[ur]] <- append(rangeID_2_setIDs[[ur]], iSet)
+        if(length(thisRHSindices)) {
+            fromIndicesInfo <-
+                if(length(thisRHSindices)==1)
+                    fromVarRange$getSingleIndexRange(thisRHSindices,
+                                                     details = TRUE)
+                else
+                    fromVarRange$getIndexRangeMatrix(thisRHSindices,
+                                                     details = TRUE)
+            fromIndices <- fromIndicesInfo$result
+            ## used ranges is a vector of rangeIDs from RHS from which
+            ## fromIndicesInfo were extracted
+            usedRanges <- fromIndicesInfo$usedRanges
+            for(ur in usedRanges)
+                rangeID_2_setIDs[[ur]] <- append(rangeID_2_setIDs[[ur]], iSet)
+        } else {  ## no indexing or constant indexing
+            fromIndices <- NULL
+        }
+            
         thisLHSresult <-
             indexRules[[iSet]]$apply(fromIndices,
                                      collapse = FALSE
@@ -341,8 +416,8 @@ applyGraphIndexRules <- function(fromVarRange,
                     indexRange_matrix(
                         finalIndexRanges[[iAns]][[1]][, sortedIndexOrders, drop = FALSE])
             }
-        } else {
-            finalIndexRanges[iAns] <-
+        } else if(length(rangeID_2_setIDs[[iRange]])) {
+            finalIndexRanges[[iAns]] <-
                 ansIndexRanges[ rangeID_2_setIDs[[iRange]] ]
             if(identical(
                 attr(finalIndexRanges[[iAns]], 'rangeType'),
@@ -351,13 +426,20 @@ applyGraphIndexRules <- function(fromVarRange,
                 finalIndexRanges[[iAns]] <-
                     indexRange2matrix(finalIndexRanges[[iAns]])
                     
-            finalIndexOrders[iAns] <-
+            finalIndexOrders[[iAns]] <-
                 ansIndexOrders[ rangeID_2_setIDs[[iRange]] ]
-        }
+        } 
         ## Sometimes this shouldn't increment...?
         iAns <- iAns + 1
     }
 
+    ## Add in rules that have no RHS index (not present, blank, or constant)
+    missedSets <- which(!seq_along(ansIndexRanges) %in% unlist(rangeID_2_setIDs))
+    if(length(missedSets)) {
+        finalIndexRanges <- c(finalIndexRanges, ansIndexRanges[missedSets])
+        finalIndexOrders <- c(finalIndexOrders, ansIndexOrders[missedSets])
+    }
+    
     ## Put final results in natural order in case they are not already.
     finalIndexOrderStarts <- unlist(lapply(finalIndexOrders, `[`, 1))
     orderFinalIndexOrderStarts <- order(finalIndexOrderStarts)

@@ -8,7 +8,6 @@ indexRuleClass_all <- R6Class(
     portable = FALSE,
     public = list(
         setupResults = NULL,
-        constantAnswer = NULL,
         initialize = function(toIndexExprList,
                               fromIndexExprList,
                               context,
@@ -27,36 +26,41 @@ indexRuleClass_all <- R6Class(
                                         )
         },
         apply_one = function(fromIndices) {
-            indexRule_all_apply_single(
-                fromIndices,
-                setupResults
-            )
+            return(setupResults$all)
+            ## indexRule_all_apply_single(
+            ##     fromIndices,
+            ##     setupResults
+            ## )
         },
         apply_indexRange = function(fromIndexRange,
                                     ...) {
-            indexRule_all_apply(
-                fromIndexRange,
-                setupResults,
-                ...
-            )
+            return(setupResults$all)
+            ## indexRule_all_apply(
+            ##     fromIndexRange,
+            ##     setupResults,
+            ##     ...
+            ## )
         },
         apply = function(from, ...) {
-            if(inherits(from, 'varRangeClass'))
-                ##apply_varRange(from, ...)
-                stop('an index rule should be applied to an indexRange')
-            else {
-                if(is.null(from)) {   # no RHS indexing
-                    return(setupResults$all)
-                } else if(is(from, 'indexRange')) 
-                    apply_indexRange(from, ...)
-                else if(is.numeric(from) && length(from) == 1) 
-                    apply_one(from, ...)
-                else stop('cannot operate on provided input')
-            }
+            return(setupResults$all)
+            ## if(inherits(from, 'varRangeClass'))
+            ##     ##apply_varRange(from, ...)
+            ##     stop('an index rule should be applied to an indexRange')
+            ## else {
+            ##     if(is.null(from)) {   # no RHS indexing
+            ##         return(setupResults$all)
+            ##     } else if(is(from, 'indexRange')) 
+            ##         apply_indexRange(from, ...)
+            ##     else if(is.numeric(from) && length(from) == 1) 
+            ##         apply_one(from, ...)
+            ##     else stop('cannot operate on provided input')
+            ## }
         }        
     )
 )
 
+## These are presumably not needed if check RHS constraints
+## for a graphRule separately from indexRules.
 indexRule_all_apply_single <- function(fromIndices,
                                          setupResults) {
     if(fromIndices < setupResults$from_min ||
