@@ -58,10 +58,10 @@ indexRule_block_apply_single <- function(fromIndices,
                                          ...) {
     if(fromIndices < setupResults$from_min |
        fromIndices > setupResults$from_max)
-        return(matrix(data = numeric(), nrow = 0, ncol = 1))
+        return(indexRange_empty())
     toIndices <- fromIndices + setupResults$offset
-    if(make.matrix) as.matrix(toIndices)
-    else toIndices
+    if(make.matrix) toIndices <- as.matrix(toIndices)
+    return(indexRange_scalar(toIndices))
 }
 
 indexRule_block_apply_matrix <- function(fromIndices,
@@ -72,12 +72,12 @@ indexRule_block_apply_matrix <- function(fromIndices,
         fromIndices >= setupResults$from_min &
         fromIndices <= setupResults$from_max
     if(sum(valid) == 0)
-        return(matrix(data = numeric(), nrow = 0, ncol = 1))
+        return(indexRange_empty())
     toIndices <- fromIndices[valid] + setupResults$offset
     if(collapse)
-        as.matrix(toIndices)
+        indexRange_matrix(as.matrix(toIndices))
     else
-        lapply(toIndices, as.matrix)
+        indexRange_matrix(lapply(toIndices, as.matrix))
 }
 
 indexRule_block_apply_block <- function(fromIR,
@@ -90,8 +90,7 @@ indexRule_block_apply_block <- function(fromIR,
     if(start > end |
        start > setupResults$from_max |
        end < setupResults$from_min)
-        return(indexRange_matrix(
-            matrix(data = numeric(), nrow = 0, ncol = 1)))
+        return(indexRange_empty())
 
     startAns <- if(start < setupResults$from_min)
                     setupResults$from_min + setupResults$offset
@@ -119,13 +118,11 @@ indexRule_block_apply <- function(fromIR,
     ## which often a class hierarchy would manage.
     ## In this case it makes sense to do via switch().
     switch(attr(fromIR, "rangeType"),
-           scalar = indexRange_scalar(
-               indexRule_block_apply_single(fromIR[[1]],
+           scalar = indexRule_block_apply_single(fromIR[[1]],
                                             setupResults,
                                             collapse = collapse,
                                             ...
-                                            )
-           ),
+                                            ),
            block = indexRule_block_apply_block(fromIR,
                                                setupResults,
                                                collapse = collapse,
@@ -170,7 +167,7 @@ indexRule_block_setup_internal <- function(toIndexExprList,
         constants <- list2env(constants)
 
     ##  only allow a single index slot 
-    if(length(toIndexExprList) != 1 | length(fromIndexExprList) != 1)
+    if(length(toIndexExprList) != 1 || length(fromIndexExprList) != 1)
         return(NULL)
 
     if(length(context$singleContexts) != 1)

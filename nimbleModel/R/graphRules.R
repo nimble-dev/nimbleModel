@@ -272,7 +272,7 @@ applyGraphIndexRules <- function(fromVarRange,
         tmp <- list()
         length(tmp) <- length(indexSets$numSets)  ## check this is correct in complicated cases
         for(i in seq_along(tmp))
-            tmp[[i]] <- indexRange_matrix(matrix(data = numeric(), nrow = 0, ncol = 1))
+            tmp[[i]] <- indexRange_empty()
         return(varRangeClass$new(tmp))
     }
 
@@ -418,7 +418,7 @@ applyGraphIndexRules <- function(fromVarRange,
             }
         } else if(length(rangeID_2_setIDs[[iRange]])) {
             finalIndexRanges[[iAns]] <-
-                ansIndexRanges[ rangeID_2_setIDs[[iRange]] ]
+                ansIndexRanges[[ rangeID_2_setIDs[[iRange]] ]]
             if(identical(
                 attr(finalIndexRanges[[iAns]], 'rangeType'),
                 'matrixList'

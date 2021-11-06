@@ -74,10 +74,14 @@ indexRange <- function(expr) {
 ##
 ## We may need to distinguish vector from matrix
 ##
-## We may need a "nothing" type, which can be returned when
-## the result of applying a rule is empty.  Or we may decide
-## to define that as NULL.
-##
+
+## "Nothing" type returned when result of applying a rule is empty.
+## Could also just define as NULL.
+indexRange_empty <- function() {
+    structure(numeric(0)),
+    class = "indexRange",
+    rangeType = "empty"
+}
 
 indexRange_scalar <- function(rangeList) {
     structure(if(is.list(rangeList))
