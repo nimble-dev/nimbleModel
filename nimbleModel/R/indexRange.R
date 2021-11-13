@@ -78,9 +78,9 @@ indexRange <- function(expr) {
 ## "Nothing" type returned when result of applying a rule is empty.
 ## Could also just define as NULL.
 indexRange_empty <- function() {
-    structure(numeric(0)),
+    structure(numeric(0),
     class = "indexRange",
-    rangeType = "empty"
+    rangeType = "empty")
 }
 
 indexRange_scalar <- function(rangeList) {

@@ -76,8 +76,8 @@ indexRule_block_apply_matrix <- function(fromIndices,
     toIndices <- fromIndices[valid] + setupResults$offset
     if(collapse)
         indexRange_matrix(as.matrix(toIndices))
-    else
-        indexRange_matrix(lapply(toIndices, as.matrix))
+    else  
+        indexRange_matrixList(lapply(toIndices, as.matrix))
 }
 
 indexRule_block_apply_block <- function(fromIR,
@@ -127,16 +127,10 @@ indexRule_block_apply <- function(fromIR,
                                                setupResults,
                                                collapse = collapse,
                                                ...),
-           matrix = {
-               result <- indexRule_block_apply_matrix(fromIR[[1]],
+           matrix = indexRule_block_apply_matrix(fromIR[[1]],
                                                       setupResults,
                                                       collapse = collapse,
                                                       ...)
-               if(collapse)
-                   indexRange_matrix(result)
-               else
-                   indexRange_matrixList(result)
-           }
            )
 }
 

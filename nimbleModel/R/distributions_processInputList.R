@@ -870,7 +870,7 @@ scalar_distribution_bool <- unlist(lapply(getAllDistributionsInfo('namesVector')
 scalar_distribution_dFuns <- BUGSdistToRdist(getAllDistributionsInfo('namesVector')[scalar_distribution_bool], dIncluded = TRUE)
 scalar_distribution_rFuns <- gsub("^d", "r", scalar_distribution_dFuns)
 
-scalar_pqAvail_bool <- nimble:::getAllDistributionsInfo('pqAvail') & scalar_distribution_bool
+scalar_pqAvail_bool <- getAllDistributionsInfo('pqAvail') & scalar_distribution_bool
 scalar_pqAvail_dFuns <- BUGSdistToRdist(getAllDistributionsInfo('namesVector')[scalar_pqAvail_bool], dIncluded = TRUE)
 scalar_distribution_pFuns <- gsub("^d", "p", scalar_pqAvail_dFuns)
 scalar_distribution_qFuns <- gsub("^d", "q", scalar_pqAvail_dFuns)

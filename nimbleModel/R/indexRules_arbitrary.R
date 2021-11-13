@@ -1,3 +1,6 @@
+## TODO:
+## 2021-11-13: have result of apply be indexRange_matrix not matrix;
+## also make use of indexRange_empty, and modify tests accordingly
 
 indexRuleClass_arbitrary <- R6Class(
     classname = "indexRuleClass_arbitrary",

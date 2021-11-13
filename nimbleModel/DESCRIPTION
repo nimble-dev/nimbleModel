@@ -19,6 +19,7 @@ Collate:
     indexRules_all.R
     indexRules_arbitrary.R
     indexRules_block.R
+    indexRules_constant.R
     getSymbolicParentNodes.R
     graphRules.R
     modelDecl.R

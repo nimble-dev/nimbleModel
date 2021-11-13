@@ -393,8 +393,7 @@ addUnknownIndexToVarNameInBracketExpr <- function(parentExpr) {
     parentExpr[[2]] <-
         as.name(
             addUnknownIndexToVarName(parentExpr[[2]],
-                                     Rname2CppName(parentExpr),
-                                     contextID)
+                                     Rname2CppName(parentExpr))
         )
     parentExpr
 }
