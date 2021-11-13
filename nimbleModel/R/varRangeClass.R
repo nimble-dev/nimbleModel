@@ -121,14 +121,19 @@ varRangeClass <- R6Class(
             else {
                 nextID <- 1
                 self$rangeID_2_indexID <-
-                    lapply(indexRanges,
-                           function(x) {
-                               numCols <- indexRange_numCols(x)
-                               ans <- nextID-1 + (1:numCols)
-                               nextID <<- nextID + numCols
-                               ans
-                           }
-                           )
+                    ## Added extra layer to match output of applyGraphIndexRules.
+                    ## Not clear whether extra layers should generally be there.
+                    ## Need to better understand whether structure of finalIndexOrders
+                    ## needs the extra layer.
+                    list(  
+                        lapply(indexRanges,
+                               function(x) {
+                                   numCols <- indexRange_numCols(x)
+                                   ans <- nextID-1 + (1:numCols)
+                                   nextID <<- nextID + numCols
+                                   as.integer(ans)
+                               })
+                    )
             }
             self
         }
