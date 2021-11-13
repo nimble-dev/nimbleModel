@@ -66,9 +66,9 @@ test_that("indexRule_block works",
     )
 
     ## use of API
-    ir <- nimbleModel:::indexRuleClass_block$new(list(quote(i+1)), list(quote(i+3)), context_i)
+    rule <- nimbleModel:::indexRuleClass_block$new(list(quote(i+1)), list(quote(i+3)), context_i)
     expect_identical(
-        ir$apply(indexRange(quote(4:5))),
+        rule$apply(indexRange(quote(4:5))),
         indexRange(quote(2:3)))
 
 

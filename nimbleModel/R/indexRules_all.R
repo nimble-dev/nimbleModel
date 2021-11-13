@@ -27,8 +27,10 @@ indexRuleClass_all <- R6Class(
         },
         apply_indexRange = function(fromIndexRange,
                                     ...) {
-            if(!is.null(fromIndexRange))
-                stop("Input to constant indexRule is not NULL.")
+            ## Presumably checking of from indexing should be done in graphRule processing
+            ## not here.
+            ## if(!is.null(fromIndexRange))
+            ##    stop("Input to constant indexRule is not NULL.")
             return(setupResults$all)
         },
         apply = function(from, ...) {
