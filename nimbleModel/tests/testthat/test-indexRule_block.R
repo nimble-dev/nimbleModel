@@ -13,6 +13,9 @@ test_that("indexRule_block works",
     irEmpty <- nimbleModel:::indexRange_empty()
 
     ## Direct use of the methods
+
+    ## Application to a scalar produces a matrix.
+    ## Is this what we want?
     expect_equal(indexRule_block_apply_single(13,
                                               setupResults),
                  matrix(11))

@@ -78,7 +78,7 @@ indexRange <- function(expr) {
 ## "Nothing" type returned when result of applying a rule is empty.
 ## Could also just define as NULL.
 indexRange_empty <- function() {
-    structure(numeric(0),
+    structure(list(numeric(0)),
     class = "indexRange",
     rangeType = "empty")
 }
@@ -128,6 +128,7 @@ indexRange_numCols <- function(inputIndexRange) {
            block = 1,
            scalar = 1,
            blank = 1,
+           empty = 0,
            stop("In inputRange_numCols: invalid type of inputIndexRange.")
           )
 }

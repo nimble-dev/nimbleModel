@@ -90,7 +90,7 @@ test_that("makeSeparableIndexSets works", {
 
 ## Test various child cases:
 
-## [block] y[i] <- x[i], x[i,2], x[i,]
+## (done) [block] y[i] <- x[i], x[i,2], x[i,2:3], x[i,]
 ## [all] y[i] <- x, x[2], x[2:3], x[], x[2,3], x[2,]
 ## [constant] y[2:3] <- x, x[2], x[2:3], x[], x[2,3], x[2,]
 ## [constant] y <- x, x[2], x[2:3], x[], x[2,3], x[2,]
@@ -117,6 +117,9 @@ test_that("makeSeparableIndexSets works", {
 ## need to consider arbitrary indexes in the various cases above, e.g., y[i] <- x[k[i]]
 ## also y[k[i]] <- x[i] or y[k[i]] <- x[j[i]]
 
+irEmpty <- nimbleModel:::indexRange_empty()
+vrEmpty <- varRangeClass$new(list(irEmpty))
+
 test_that("graphRules works for 1D sequence rule", {
     singleContext1 <-
         modelSingleContext(forCode = quote(for(i in 1:10){}))
@@ -132,66 +135,42 @@ test_that("graphRules works for 1D sequence rule", {
     expect_equal(
         applyGraphIndexRules(
             varRangeClass$new(list(indexRange(quote(3:6)))), rule),
-        varRangeClass$new(list(indexRange(quote(2:5)))),
+        varRangeClass$new(list(indexRange(quote(2:5))))
     )
 
-    ## HERE
-    
     ## Apply rule to a matrix indexRange
     expect_equal(
-       test1 <- applyGraphIndexRules(
-           varRangeClass$new(
-                list(
-                    indexRange(
-                        matrix(c(2, 4), nrow = 2)
-                    )))
-          , rule)
-       ,
-       test2 <- varRangeClass$new(
-           list(
-               indexRange(
-                   matrix(c(1, 3), nrow = 2)
+        applyGraphIndexRules(
+            varRangeClass$new(list(indexRange(
+                              matrix(c(2, 4), nrow = 2)
+                          ))), rule),
+        varRangeClass$new(list(indexRange(
+                          matrix(c(1, 3), nrow = 2)
            )))
     )
 
     ## Apply rule to a matrix indexRange with only 1 row
     expect_equal(
-       test1 <- applyGraphIndexRules(
-           varRangeClass$new(
-                list(
-                    indexRange(
-                        matrix(c(3), nrow = 1)
-                    )))
-          , rule)
-       ,
-       test2 <- varRangeClass$new(
-           list(
-               indexRange(
+       applyGraphIndexRules(
+           varRangeClass$new(list(indexRange(
+                             matrix(c(3), nrow = 1)
+                         ))), rule),
+       varRangeClass$new(list(indexRange(
                    matrix(c(2), nrow = 1)
            )))
     )
 
-    ## Apply rule to a scalar indexRange.
-    ## I AM NOT SURE WHAT BEHAVIOR WE WANT HERE.
-    ## CURRENTLY, THE RESULT OF APPLYING RULE TO A SCALAR IS A MATRIX
-    message('not sure what behavior is wanted for applying a sequence rule to a scalar')
-    ## debugonce(applyGraphIndexRules)
-    ## expect_equal(
-    ##    test1 <- applyGraphIndexRules(
-    ##        varRangeClass$new(
-    ##             list(
-    ##                 indexRange(
-    ##                     3
-    ##                 )))
-    ##       , rule)
-    ##    ,
-    ##    test2 <- varRangeClass$new(
-    ##        list(
-    ##            indexRange(
-    ##                matrix(2, nrow = 1)
-    ##        )))
-    ## )
+    ## check out of bounds case
 
+    ## Apply to a matrix with no inputs in the right range
+    expect_equal(
+       applyGraphIndexRules(varRangeClass$new(list(indexRange(
+                                              matrix(c(12, 13), nrow = 2)
+                    ))), rule),
+       vrEmpty)
+    
+    ## Are the following worth testing these given we have equivalent testing in test-indexRules_block.R?
+    
     ## Apply to a matrix with one of two inputs in the right range
     expect_equal(
        test1 <- applyGraphIndexRules(
@@ -209,23 +188,7 @@ test_that("graphRules works for 1D sequence rule", {
            )))
     )
 
-    ## Apply to a matrix with no inputs in the right range
-    expect_equal(
-       test1 <- applyGraphIndexRules(
-           varRangeClass$new(
-                list(
-                    indexRange(
-                        matrix(c(12, 13), nrow = 2)
-                    )))
-          , rule)
-       ,
-       test2 <- varRangeClass$new(
-           list(
-               indexRange_matrix(
-                   matrix(nrow = 0, ncol = 1)
-           )))
-    )
-    
+
     ## Apply to a block with not all valid inputs
     expect_equal(
        test1 <- applyGraphIndexRules(
@@ -268,13 +231,7 @@ test_that("graphRules works for 1D sequence rule", {
                         quote(12:15)
                     )))
           , rule)
-       ,
-       test2 <-  varRangeClass$new(
-           list(
-               indexRange_matrix(
-                   matrix(nrow = 0, ncol = 1)
-               )))
-    )
+       , vrEmpty)
 
     expect_equal(
         test1 <- applyGraphIndexRules(
@@ -284,13 +241,85 @@ test_that("graphRules works for 1D sequence rule", {
                         quote(0:1)
                     )))
           , rule)
-       ,
-       test2 <-  varRangeClass$new(
-           list(
-               indexRange_matrix(
-                   matrix(nrow = 0, ncol = 1)
-               )))
+       , vrEmpty)
+
+
+    ## Simple sequence rule with additional indexing cases
+    
+    rule <- makeGraphIndexRules(LHS = quote(y[i]),
+                                 RHS = quote(x[2, i+1]),
+                                 context = context_i)
+
+    expect_equal(
+        applyGraphIndexRules(
+            varRangeClass$new(list(
+                              indexRange(quote(2)),
+                              indexRange(quote(3:6)))), rule),
+        varRangeClass$new(list(indexRange(quote(2:5))))
     )
+
+
+    expect_equal(
+        applyGraphIndexRules(
+            varRangeClass$new(list(
+                              indexRange(quote(3)),
+                              indexRange(quote(3:6)))), rule),
+        vrEmpty)
+
+    rule <- makeGraphIndexRules(LHS = quote(y[i]),
+                                 RHS = quote(x[2:3, i+1]),
+                                 context = context_i)
+    expect_equal(
+        applyGraphIndexRules(
+            varRangeClass$new(list(
+                              indexRange(quote(2:3)),
+                              indexRange(quote(3:6)))), rule),
+        varRangeClass$new(list(indexRange(quote(2:5))))
+    )
+    
+    expect_equal(
+        applyGraphIndexRules(
+            varRangeClass$new(list(
+                              indexRange(quote(3)),
+                              indexRange(quote(3:6)))), rule),
+        varRangeClass$new(list(indexRange(quote(2:5))))
+    )
+
+    expect_equal(
+        applyGraphIndexRules(
+            varRangeClass$new(list(
+                              indexRange(quote(3:4)),
+                              indexRange(quote(3:6)))), rule),
+        varRangeClass$new(list(indexRange(quote(2:5))))
+    )
+
+    expect_equal(
+        applyGraphIndexRules(
+            varRangeClass$new(list(
+                              indexRange(quote(4:5)),
+                              indexRange(quote(3:6)))), rule),
+        vrEmpty)
+
+    rule <- makeGraphIndexRules(LHS = quote(y[i]),
+                                RHS = quote(x[, i+1]),
+                                context = context_i)
+
+    expect_equal(
+        applyGraphIndexRules(
+            varRangeClass$new(list(
+                              indexRange(quote(2)),
+                              indexRange(quote(3:6)))), rule),
+        varRangeClass$new(list(indexRange(quote(2:5))))
+    )
+
+    expect_equal(
+        applyGraphIndexRules(
+            varRangeClass$new(list(
+                              indexRange(quote(2:3)),
+                              indexRange(quote(3:6)))), rule),
+        varRangeClass$new(list(indexRange(quote(2:5))))
+    )
+
 })
 
 test_that("graphRules works for 1D all rule", {
@@ -298,28 +327,35 @@ test_that("graphRules works for 1D all rule", {
         modelSingleContext(forCode = quote(for(i in 1:10){}))
     context_i <- modelContextClass$new(list(singleContext1))
 
-    rule1 <- makeGraphIndexRules(LHS = quote(y[i+1]),
+    rule <- makeGraphIndexRules(LHS = quote(y[i+1]),
                                  RHS = quote(x[]),
                                  context = context_i)
-    expect_equal(
-        rule1$indexRules[[1]]$apply(2),
-        indexRange_block(list(2,11)))
-    ## fails with rangeID_2_setIDs being empty
+
     expect_equal(
         applyGraphIndexRules(
-            varRangeClass$new(
-                              list(
-                                  indexRange(
-                                      quote(3)
-                                  )))
-          , rule1),
-        varRangeClass$new(
-           list(
-               indexRange(
-                   quote(2:11)
-           ))))
+            varRangeClass$new(list(
+                              indexRange(quote(3)))), rule),
+        varRangeClass$new(list(indexRange(quote(2:11)))))
+    
+    rule <- makeGraphIndexRules(LHS = quote(y[i+1]),
+                                 RHS = quote(x[2]),
+                                 context = context_i)
 
-   rule1 <- makeGraphIndexRules(LHS = quote(y[i+1]),
+    expect_equal(
+        applyGraphIndexRules(
+            varRangeClass$new(list(
+                              indexRange(quote(2)))), rule),
+        varRangeClass$new(list(indexRange(quote(2:11)))))
+
+    expect_equal(
+        applyGraphIndexRules(
+            varRangeClass$new(list(
+                              indexRange(quote(3)))), rule),
+        vrEmpty)
+
+        #HERE y[i] <- x, x[2:3], x[2,3], x[2,]
+    
+    rule1 <- makeGraphIndexRules(LHS = quote(y[i+1]),
                                  RHS = quote(x[2]),
                                  context = context_i)
  

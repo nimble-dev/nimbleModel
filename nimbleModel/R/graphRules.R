@@ -139,7 +139,16 @@ makeConstraints <- function(RHSindexExprs, constrainedBool) {
             constraints[[cnt]] <- list(RHSindex = idx)
             if(RHSindexExprs[[idx]] == '') { # x[] case
                 constraints[[cnt]]$constraint <- character(0)
-            } else constraints[[cnt]]$constraint <- RHSindexExprs[[idx]]
+            } else {
+                tmp <- RHSindexExprs[[idx]]
+                if(is.numeric(tmp)) {
+                    constraints[[cnt]]$constraint <- rep(tmp, 2)
+                } else {
+                    if(tmp[[1]] != ":") stop("Unexpected indexing in ", tmp)
+                    constraints[[cnt]]$constraint <- c(tmp[[2]], tmp[[3]])
+                }
+            }
+                
         }
     }
     return(constraints)
@@ -241,7 +250,7 @@ checkOneConstraint <- function(indexRange, constraint) {
         return(TRUE)
     }
     rg <- unlist(indexRange)
-    if(max(constraint) < min(rg) || min(constraint) > max(rg))
+    if(constraint[2] < min(rg) || constraint[1] > max(rg))
         return(FALSE) else return(TRUE)
 }
 
@@ -274,7 +283,7 @@ applyGraphIndexRules <- function(fromVarRange,
         for(i in seq_along(tmp))
             tmp[[i]] <- indexRange_empty()
         return(varRangeClass$new(tmp))
-    }
+    } 
 
     ## First handle cases like indexRules_any
     if(is.null(indexSets)) {
@@ -416,6 +425,7 @@ applyGraphIndexRules <- function(fromVarRange,
                     indexRange_matrix(
                         finalIndexRanges[[iAns]][[1]][, sortedIndexOrders, drop = FALSE])
             }
+            iAns <- iAns + 1
         } else if(length(rangeID_2_setIDs[[iRange]])) {
             finalIndexRanges[[iAns]] <-
                 ansIndexRanges[[ rangeID_2_setIDs[[iRange]] ]]
@@ -427,10 +437,9 @@ applyGraphIndexRules <- function(fromVarRange,
                     indexRange2matrix(finalIndexRanges[[iAns]])
                     
             finalIndexOrders[[iAns]] <-
-                ansIndexOrders[ rangeID_2_setIDs[[iRange]] ]
+                ansIndexOrders[[ rangeID_2_setIDs[[iRange]] ]]
+            iAns <- iAns + 1
         } 
-        ## Sometimes this shouldn't increment...?
-        iAns <- iAns + 1
     }
 
     ## Add in rules that have no RHS index (not present, blank, or constant)
