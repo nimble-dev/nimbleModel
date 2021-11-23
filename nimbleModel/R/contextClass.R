@@ -62,7 +62,9 @@ modelContextClass <-
             ## For some reason, previously, setup was not always
             ## done at initialize. That flexibility is preserved for now.
             initialize = function(...) {
-                if(length(list(...)) > 0) setup(...)
+                if(length(list(...)) > 0) {
+                    setup(...)
+                } else indexVarExprs <<- NULL
             },
             ## sets all fields, which never change.
             setup = function(singleContexts) {

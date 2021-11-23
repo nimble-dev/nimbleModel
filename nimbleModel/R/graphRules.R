@@ -186,37 +186,48 @@ makeGraphIndexRules <- function(LHS,
     if(any(RHSindicesBool)) 
         RHSconstraints <- makeConstraints(RHSindexExprs, RHSindicesBool)
     if(!length(RHSindexExprs))  # placeholder for now for 'x' case (no indexing)
-        RHSconstraints <- list(list(RHSindex = 0, constraint = 0))
+        RHSconstraints <- list(list(RHSindex = 1, constraint = rep(0, 2)))
     
     numSets <- indexSets$numSets
     indexRules <- list()
     for(iSet in seq_len(numSets)) {
         LHSindicesBool <- indexSets$LHSindex2setID == iSet
         RHSindicesBool <- indexSets$RHSindex2setID == iSet
+        numLHSbool <- sum(LHSindicesBool)
         thisLHSindexExprs <- structure(
             LHSindexExprs[LHSindicesBool],
-            names = paste0("t", seq_len(sum(LHSindicesBool)))
+            names = if(numLHSbool)
+                        paste0("t", seq_len(sum(LHSindicesBool)))
+                    else character(0)
         )
         numRHSbool <- sum(RHSindicesBool)
         thisRHSindexExprs <- structure(
             RHSindexExprs[RHSindicesBool],
             names = if(numRHSbool)
                         paste0("f", seq_len(numRHSbool))
-                    else
-                        character(0)
+                    else character(0)
         )
         indexVarNamesInThisSet <- indexSets$indexVarNameSets[[iSet]]
-        thisContext <-
-            modelContextClass$new(
-                context$singleContexts[indexVarNamesInThisSet]
-            )
+        if(length(context$singleContexts)) {
+            thisContext <-
+                modelContextClass$new(
+                                      context$singleContexts[indexVarNamesInThisSet]
+                                  )
+        } else thisContext <- modelContextClass$new()
         ## We try making each rule in order.
         ## It one fails, we will throw it away and try to make the next.
-        thisIndexRule <- indexRuleClass_all$new(
+        thisIndexRule <- indexRuleClass_constant$new(
             toIndexExprList = thisLHSindexExprs,
             fromIndexExprList = thisRHSindexExprs,
             context = thisContext,
             constants = constantsEnv)
+        if(is.null(thisIndexRule$setupResults)) {
+            thisIndexRule <- indexRuleClass_all$new(
+            toIndexExprList = thisLHSindexExprs,
+            fromIndexExprList = thisRHSindexExprs,
+            context = thisContext,
+            constants = constantsEnv)
+        }
         if(is.null(thisIndexRule$setupResults)) {
             thisIndexRule <- indexRuleClass_block$new(
             toIndexExprList = thisLHSindexExprs,
