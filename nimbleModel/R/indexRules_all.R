@@ -14,7 +14,8 @@ indexRuleClass_all <- R6Class(
                               constants = list()
                               ) {
             ## Rule only applicable if no RHS indexing.
-            if(length(fromIndexExprList) || !length(toIndexExprList)) {
+            if(length(fromIndexExprList) || !length(toIndexExprList) ||
+               !length(context$singleContexts)) {
                 return()
             } else 
                 setupResults <<-

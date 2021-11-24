@@ -37,8 +37,10 @@ graphRuleClass <- R6Class(
 makeSeparableIndexSets <- function(LHS,
                                    RHS,
                                    context) {
-    indexVarNames <- structure(context$indexVarNames,
-                               names = context$indexVarNames)
+    if(length(context$singleContexts)) {
+        indexVarNames <- structure(context$indexVarNames,
+                                   names = context$indexVarNames)
+    } else indexVarNames <- character(0)
     numIndexVars <- length(indexVarNames)
 
     ## need to check this is working ok for no LHS index case
@@ -73,11 +75,11 @@ makeSeparableIndexSets <- function(LHS,
     LHSindex2setID <- integer(length = LHSnDim)
     RHSindex2setID <- integer(length = RHSnDim)
     indexVarNameSets <- list()
-    currentSetID <- 1
+    currentSetID <- 0
     remainingIndexVarNames <- indexVarNames
 
-    allDone <- FALSE
-    while(!allDone) {
+    while(length(remainingIndexVarNames)) {
+        currentSetID <- currentSetID + 1
         done <- FALSE
         currentIndexVarNames <- remainingIndexVarNames[1]
         while(!done) {
@@ -115,10 +117,6 @@ makeSeparableIndexSets <- function(LHS,
         RHSindex2setID[RHSboolUsesCurrentIndexVars] <- currentSetID
         remainingIndexVarNames <- setdiff(remainingIndexVarNames,
                                           currentIndexVarNames)
-        if(length(remainingIndexVarNames)==0)
-            allDone <- TRUE
-        else
-            currentSetID <- currentSetID + 1
     }
 
     list(LHSindex2setID = LHSindex2setID,
@@ -208,32 +206,21 @@ makeGraphIndexRules <- function(LHS,
                     else character(0)
         )
         indexVarNamesInThisSet <- indexSets$indexVarNameSets[[iSet]]
-        if(length(context$singleContexts)) {
-            thisContext <-
-                modelContextClass$new(
-                                      context$singleContexts[indexVarNamesInThisSet]
-                                  )
-        } else thisContext <- modelContextClass$new()
+        thisContext <-
+            modelContextClass$new(context$singleContexts[indexVarNamesInThisSet])
         ## We try making each rule in order.
         ## It one fails, we will throw it away and try to make the next.
-        thisIndexRule <- indexRuleClass_constant$new(
+        thisIndexRule <- indexRuleClass_all$new(
             toIndexExprList = thisLHSindexExprs,
             fromIndexExprList = thisRHSindexExprs,
             context = thisContext,
             constants = constantsEnv)
-        if(is.null(thisIndexRule$setupResults)) {
-            thisIndexRule <- indexRuleClass_all$new(
-            toIndexExprList = thisLHSindexExprs,
-            fromIndexExprList = thisRHSindexExprs,
-            context = thisContext,
-            constants = constantsEnv)
-        }
         if(is.null(thisIndexRule$setupResults)) {
             thisIndexRule <- indexRuleClass_block$new(
-            toIndexExprList = thisLHSindexExprs,
-            fromIndexExprList = thisRHSindexExprs,
-            context = thisContext,
-            constants = constantsEnv)
+                toIndexExprList = thisLHSindexExprs,
+                fromIndexExprList = thisRHSindexExprs,
+                context = thisContext,
+                constants = constantsEnv)
         }
         if(is.null(thisIndexRule$setupResults)) {
             thisIndexRule <- indexRuleClass_arbitrary$new(
@@ -243,6 +230,19 @@ makeGraphIndexRules <- function(LHS,
                 constants = constantsEnv)
         }
         indexRules[[iSet]] <- thisIndexRule
+    }
+    ## Make constant rules for all LHS constants.
+    iSet <- length(indexRules) + 1
+    for(constantSet in which(indexSets$LHSindex2setID == 0)) {
+        thisLHSindexExprs <- structure(
+            LHSindexExprs[constantSet], names = 't1')        
+        thisIndexRule <- indexRuleClass_constant$new(
+            toIndexExprList = thisLHSindexExprs,
+            fromIndexExprList = character(0),
+            context = modelContextClass$new(),
+            constants = constantsEnv)
+        indexRules[[iSet]] <- thisIndexRule
+        iSet <- iSet +1
     }
     list(indexSets = indexSets,
          indexRules = indexRules,
@@ -459,7 +459,21 @@ applyGraphIndexRules <- function(fromVarRange,
         finalIndexRanges <- c(finalIndexRanges, ansIndexRanges[missedSets])
         finalIndexOrders <- c(finalIndexOrders, ansIndexOrders[missedSets])
     }
-    
+
+    ## Add in constant rules (constant LHS index and (of course) no RHS index)
+    iSet <- numSets + 1
+    constantSets <- which(indexSets$LHSindex2setID == 0)
+    if(length(constantSets)) {
+        for(constantSet in constantSets) {
+            thisLHSresult <- indexRules[[iSet]]$apply(NULL)
+            ansIndexRanges[[iSet]] <- thisLHSresult
+            iSet <- iSet + 1
+        }
+        ansIndexOrders <- list(constantSets)
+        finalIndexRanges <- c(finalIndexRanges, ansIndexRanges)
+        finalIndexOrders <- c(finalIndexOrders, ansIndexOrders)
+    }
+
     ## Put final results in natural order in case they are not already.
     finalIndexOrderStarts <- unlist(lapply(finalIndexOrders, `[`, 1))
     orderFinalIndexOrderStarts <- order(finalIndexOrderStarts)

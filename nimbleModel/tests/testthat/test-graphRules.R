@@ -117,6 +117,10 @@ test_that("makeSeparableIndexSets works", {
 ## need to consider arbitrary indexes in the various cases above, e.g., y[i] <- x[k[i]]
 ## also y[k[i]] <- x[i] or y[k[i]] <- x[j[i]]
 
+## multiple mapping cases
+## y[i] <- x[i, i+1]
+## y[i, i] <- x[i]
+
 irEmpty <- nimbleModel:::indexRange_empty()
 vrEmpty <- varRangeClass$new(list(irEmpty))
 
@@ -451,12 +455,38 @@ test_that("graphRules works for 1D all rule", {
 
 test_that("graphRules works for 1D constant rule", {
 
+    singleContext1 <-
+        modelSingleContext(forCode = quote(for(i in 1:10){}))
+    context_i <- modelContextClass$new(list(singleContext1))
+
     context_0 <- modelContextClass$new()
+
+    rule <- makeGraphIndexRules(LHS = quote(y[2]),
+                                RHS = quote(x[2]),
+                                context = context_0)
+
+    expect_equal(
+        applyGraphIndexRules(
+            varRangeClass$new(list(indexRange(quote(2)))), rule),
+        varRangeClass$new(list(indexRange(quote(2)))))
+
+    expect_equal(
+        applyGraphIndexRules(
+            varRangeClass$new(list(indexRange(quote(3)))), rule),
+        vrEmpty)
+
+## HERE
 
     rule <- makeGraphIndexRules(LHS = quote(y[2:3]),
                                 RHS = quote(x[2]),
                                 context = context_0)
-## HERE - trying to figure out what toIndexExprList should be in this case
+
+    rule <- makeGraphIndexRules(LHS = quote(y[2,3]),
+                                RHS = quote(x[2]),
+                                context = context_0)
+    rule <- makeGraphIndexRules(LHS = quote(y[2,3,i]),
+                                RHS = quote(x[2]),
+                                context = context_i)
 
     ## only 1 set here - why?
     ## I think I need to rework makeSeparableIndexSets to handle constants

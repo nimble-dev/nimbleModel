@@ -9,12 +9,15 @@ indexRuleClass_block <- R6Class(
                               context,
                               constants = list()
                               ) {
-            setupResults <<-
-                indexRule_block_setup(toIndexExprList,
-                                      fromIndexExprList,
-                                      context,
-                                      constants
-                                      )
+            if(!length(context$singleContexts)) {
+                return()
+            } else 
+                setupResults <<-
+                    indexRule_block_setup(toIndexExprList,
+                                          fromIndexExprList,
+                                          context,
+                                          constants
+                                          )
         },
         apply_one = function(fromIndices) {
             indexRule_block_apply_single(
