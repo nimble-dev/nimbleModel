@@ -242,7 +242,17 @@ makeGraphIndexRules <- function(LHS,
             context = modelContextClass$new(),
             constants = constantsEnv)
         indexRules[[iSet]] <- thisIndexRule
-        iSet <- iSet +1
+        iSet <- iSet + 1
+    }
+    ## Make constant rule for case of no LHS indexing. for all LHS constants.
+    if(!length(indexSets$LHSindex2setID)) {
+        thisLHSindexExprs <- structure(list(0), names = 't1')
+        thisIndexRule <- indexRuleClass_constant$new(
+            toIndexExprList = thisLHSindexExprs,
+            fromIndexExprList = character(0),
+            context = modelContextClass$new(),
+            constants = constantsEnv)
+        indexRules[[iSet]] <- thisIndexRule
     }
     list(indexSets = indexSets,
          indexRules = indexRules,
@@ -461,17 +471,26 @@ applyGraphIndexRules <- function(fromVarRange,
     }
 
     ## Add in constant rules (constant LHS index and (of course) no RHS index)
-    iSet <- numSets + 1
+    iSet <- 1
     constantSets <- which(indexSets$LHSindex2setID == 0)
     if(length(constantSets)) {
+        constantIndexRanges <- list()
         for(constantSet in constantSets) {
-            thisLHSresult <- indexRules[[iSet]]$apply(NULL)
-            ansIndexRanges[[iSet]] <- thisLHSresult
+            thisLHSresult <- indexRules[[iSet + numSets]]$apply(NULL)
+            constantIndexRanges[[iSet]] <- thisLHSresult
             iSet <- iSet + 1
         }
-        ansIndexOrders <- list(constantSets)
-        finalIndexRanges <- c(finalIndexRanges, ansIndexRanges)
-        finalIndexOrders <- c(finalIndexOrders, ansIndexOrders)
+        constantIndexOrders <- as.list(constantSets)
+        finalIndexRanges <- c(finalIndexRanges, constantIndexRanges)
+        finalIndexOrders <- c(finalIndexOrders, constantIndexOrders)
+    }
+    ## Constant rule for case of no LHS indexing.
+    if(!length(indexSets$LHSindex2setID)) {
+        thisLHSresult <- indexRules[[iSet]]$apply(NULL)
+        constantIndexRanges <- list(thisLHSresult)
+        constantIndexOrders <- as.list(1)
+        finalIndexRanges <- c(finalIndexRanges, constantIndexRanges)
+        finalIndexOrders <- c(finalIndexOrders, constantIndexOrders)
     }
 
     ## Put final results in natural order in case they are not already.
