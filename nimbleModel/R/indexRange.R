@@ -221,8 +221,11 @@ indexRangeList2matrix <- function(indexRangeList) {
 
 collapse_indexRangeMatrices <- function(indexRangeMatrices) {
     expandedMatrices <- lapply(indexRangeMatrices,
-                               expandIndexRangeMatrices)    
-    indexRange_matrix(
+                               expandIndexRangeMatrices)
+    ## empty <- which(sapply(expandedMatrices, is.null))
+    ## for(i in seq_along(empty))
+    ##    expandedMatrices[[i]] <- indexRange_matrixList(matrix(0))
+    result <- indexRange_matrix(
         do.call("rbind",
                 do.call("mapply", c(list(as.name("matrix_expand_grid")),
                                     expandedMatrices,
@@ -232,6 +235,13 @@ collapse_indexRangeMatrices <- function(indexRangeMatrices) {
                         )
                 )
     )
+    ## Remove invalid rows; this can only be done after collapsing or else the
+    ## constituent matrixLists will have different lengths (e.g., if we removed the zeros earlier).
+    empty <- apply(result[[1]], 1, min) 
+    result[[1]] <- result[[1]][empty > 0, , drop = FALSE]
+    if(!length(result[[1]]))
+        result <- indexRange_empty()
+    return(result)
 }
 
 getRangeType <- function(IRL) {

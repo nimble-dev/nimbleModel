@@ -74,9 +74,11 @@ indexRule_block_apply_matrix <- function(fromIndices,
     valid <-
         fromIndices >= setupResults$from_min &
         fromIndices <= setupResults$from_max
-    if(sum(valid) == 0)
-        return(indexRange_empty())
-    toIndices <- fromIndices[valid] + setupResults$offset
+    ## if(sum(valid) == 0)
+    ##    return(indexRange_empty())
+    ## toIndices <- fromIndices[valid] + setupResults$offset
+    toIndices <- fromIndices + setupResults$offset
+    toIndices[!valid] <- 0
     if(collapse)
         indexRange_matrix(as.matrix(toIndices))
     else  
