@@ -57,8 +57,11 @@ indexRuleClass_block <- R6Class(
 
 indexRule_block_apply_single <- function(fromIndices,
                                          setupResults,
-                                         make.matrix = TRUE,
+                                         make.matrix = FALSE,
                                          ...) {
+    ## Note: Perry had `make.matrix=TRUE`; not sure why we want this arg or why default would be TRUE
+    ## If we have it be TRUE, it's hard for us to generate such an indexRange as indexRange(matrix(4)) produces
+    ## a matrix indexRange rather than a scalar indexRange with a matrix value in it.
     if(fromIndices < setupResults$from_min |
        fromIndices > setupResults$from_max)
         return(indexRange_empty())
@@ -74,11 +77,8 @@ indexRule_block_apply_matrix <- function(fromIndices,
     valid <-
         fromIndices >= setupResults$from_min &
         fromIndices <= setupResults$from_max
-    ## if(sum(valid) == 0)
-    ##    return(indexRange_empty())
-    ## toIndices <- fromIndices[valid] + setupResults$offset
     toIndices <- fromIndices + setupResults$offset
-    toIndices[!valid] <- 0
+    toIndices[!valid] <- NA
     if(collapse)
         indexRange_matrix(as.matrix(toIndices))
     else  

@@ -310,10 +310,6 @@ checkNonSeparableConstraint <- function(indexRange, rangeID_2_indexID, constrain
         return(FALSE) else return(TRUE)
 }
 
-## should I remove the matCol stuff from checkOneConstraint and just not handle matrix cases there
-## unless the matrix is 1d? probably...
-## in that case can remove some of the logic in checkOneConstraint about list vs scalar vs matrix as always 1D
-
 checkConstraints <- function(fromVarRange, constraints) {
     for(i in seq_along(constraints)) {
         irIndex <- which(sapply(fromVarRange$rangeID_2_indexID, function(x)
@@ -483,10 +479,15 @@ applyGraphIndexRules <- function(fromVarRange,
     iAns <- 1
     for(iRange in seq_len(numIndexRanges)) {
         if(length(rangeID_2_setIDs[[iRange]]) > 1) {
-            indexRangeExpandedMatrices <-
-                ansIndexRanges[ rangeID_2_setIDs[[iRange]] ]
-            finalIndexRanges[[iAns]] <-
-                collapse_indexRangeMatrices(indexRangeExpandedMatrices)
+            if(any(sapply(ansIndexRanges[ rangeID_2_setIDs[[iRange]] ],
+                          function(x) identical(attr(x, 'rangeType'), 'empty')))) {
+                finalIndexRanges[[iAns]] <- indexRange_empty()
+            } else {
+                indexRangeExpandedMatrices <-
+                    ansIndexRanges[ rangeID_2_setIDs[[iRange]] ]
+                finalIndexRanges[[iAns]] <-
+                    collapse_indexRangeMatrices(indexRangeExpandedMatrices)
+            }
             finalIndexOrders[[iAns]] <-
                 do.call('c',
                         ansIndexOrders[ rangeID_2_setIDs[[iRange]] ] )
@@ -515,6 +516,16 @@ applyGraphIndexRules <- function(fromVarRange,
             iAns <- iAns + 1
         } 
     }
+    ## Remove invalid rows from matrix indexRanges and set to empty if no rows left
+    ## This can only be done after collapsing or else the constituent matrixLists will have different lengths (e.g., if we removed the NAs earlier).
+    for(iRange in seq_along(finalIndexRanges)) 
+        if(identical(attr(finalIndexRanges[[iRange]], 'rangeType'), 'matrix')) {
+            NArows <- apply(finalIndexRanges[[iRange]][[1]], 1,
+                            function(x) any(is.na(x)))
+            if(all(NArows)) {
+                finalIndexRanges[[iRange]] <- indexRange_empty()
+            } else finalIndexRanges[[iRange]][[1]] <- finalIndexRanges[[iRange]][[1]][!NArows, , drop = FALSE]
+        }
 
     ## Add in rules that have no RHS index (not present, blank, or constant)
     missedSets <- which(!seq_along(ansIndexRanges) %in% unlist(rangeID_2_setIDs))

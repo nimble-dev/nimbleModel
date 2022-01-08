@@ -235,12 +235,6 @@ collapse_indexRangeMatrices <- function(indexRangeMatrices) {
                         )
                 )
     )
-    ## Remove invalid rows; this can only be done after collapsing or else the
-    ## constituent matrixLists will have different lengths (e.g., if we removed the zeros earlier).
-    empty <- apply(result[[1]], 1, min) 
-    result[[1]] <- result[[1]][empty > 0, , drop = FALSE]
-    if(!length(result[[1]]))
-        result <- indexRange_empty()
     return(result)
 }
 
