@@ -59,6 +59,7 @@ varRangeClass <- R6Class(
             ## We will need some way to initialize more complex
             ## cases returned from graph queries.
             ##
+            ## It seems that we can initialize using indexOrders arg to varRangeClass$new()  // CJP 
             if(is(indexInfo, "indexRange"))
                 stop("varRange must be initialized from a list of indexRanges not a single indexRange.")
             if(is.character(indexInfo))
@@ -95,8 +96,9 @@ varRangeClass <- R6Class(
             if(is.list(indexInfo)) {
                 name <<- name
                 setIndexRanges(indexInfo, indexOrders)
-                ## SET RANGEID_2_INDEXID
             }
+            rangeID <- rep(seq_along(rangeID_2_indexID), times = sapply(rangeID_2_indexID, length))
+            indexID_2_rangeID <<- rangeID[order(unlist(rangeID_2_indexID))]
         },
         getSingleIndexRange = function(index, ...) {
             ## Iterate over indexRanges rather than indices

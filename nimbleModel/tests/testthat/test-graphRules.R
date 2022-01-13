@@ -2513,12 +2513,39 @@ applyGraphIndexRules(
                               indexRange(matrix(c(2,3,1,2), nrow = 2)))), rules)
 
 
-## this doesn't get ordering right 
-rules <- makeGraphIndexRules(LHS = quote(y[i,k,j]),
-                                 RHS = quote(x[i, j,k]),
-                                 context = context_ijk)
-applyGraphIndexRules(
+## DONE
+
+test_that("graphRules works for non-contiguous indexes in an indexRange", {
+    ## Case of y[i,j,k] where i,k are in an indexRange together
+    singleContext1 <-
+        modelSingleContext(forCode = quote(for(i in 1:3){}))
+    
+    singleContext2 <-
+        modelSingleContext(forCode = quote(for(j in 1:2){}))
+    
+    singleContext3 <-
+        modelSingleContext(forCode = quote(for(k in 1:3){}))
+    
+    
+    context_i <- modelContextClass$new(list(singleContext1))
+    
+    context_ij <- modelContextClass$new(list(singleContext1,
+                                             singleContext2))
+    
+    context_ijk <- modelContextClass$new(list(singleContext1,
+                                              singleContext2,
+                                              singleContext3))
+
+    rules <- makeGraphIndexRules(LHS = quote(y[i,k,j]),
+                                 RHS = quote(x[i,j,k]),
+                             context = context_ijk)
+    expect_equal(
+        applyGraphIndexRules(
             varRangeClass$new(list(
                               indexRange(matrix(c(1,2,1,2), nrow = 2)),
-                              indexRange(matrix(c(1,3),ncol = 1)))), rules)
+                              indexRange(matrix(c(1,3),ncol = 1)))), rules),
+        varRangeClass$new(list(indexRange(matrix(c(1,2,1,2), nrow = 2)),
+                               indexRange(matrix(c(1,3), ncol = 1))),
+                          indexOrders = list(c(1,3), 2)))
+)
 
