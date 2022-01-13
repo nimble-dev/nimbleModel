@@ -185,6 +185,11 @@ makeGraphIndexRules <- function(LHS,
         RHSconstraints <- makeConstraints(RHSindexExprs, RHSindicesBool)
     if(!length(RHSindexExprs))  # placeholder for now for 'x' case (no indexing)
         RHSconstraints <- list(list(RHSindex = 1, constraint = rep(0, 2)))
+
+    RHSnumIndexes <- length(RHS) - 2
+    if(RHSnumIndexes == -1)
+        RHSnumIndexes <- 1
+    if(RHSnumIndexes < 1) stop("Unable to determine number of indexes in ", RHS)
     
     numSets <- indexSets$numSets
     indexRules <- list()
@@ -256,7 +261,8 @@ makeGraphIndexRules <- function(LHS,
     }
     list(indexSets = indexSets,
          indexRules = indexRules,
-         RHSconstraints = RHSconstraints)
+         RHSconstraints = RHSconstraints,
+         RHSnumIndexes = RHSnumIndexes)
 }
 
 ## if indexRanges were R6 classes with inheritance, we could move the
@@ -311,24 +317,26 @@ checkNonSeparableConstraint <- function(indexRange, rangeID_2_indexID, constrain
 }
 
 checkConstraints <- function(fromVarRange, constraints) {
-    for(i in seq_along(constraints)) {
-        irIndex <- which(sapply(fromVarRange$rangeID_2_indexID, function(x)
-            constraints[[i]]$RHSindex %in% x))
-        if(!(attr(fromVarRange$indexRanges[[irIndex]], 'rangeType') == 'matrix' &&
-             ncol(fromVarRange$indexRanges[[irIndex]][[1]]) > 1))  ## multi-column matrices handled non-separably below
-            if(!checkOneConstraint(
-                    fromVarRange$indexRanges[[irIndex]], constraints[[i]]$constraint)
-               )
+    if(length(constraints)) {
+        for(i in seq_along(constraints)) {
+            irIndex <- which(sapply(fromVarRange$rangeID_2_indexID, function(x)
+                constraints[[i]]$RHSindex %in% x))
+            if(!(attr(fromVarRange$indexRanges[[irIndex]], 'rangeType') == 'matrix' &&
+                 ncol(fromVarRange$indexRanges[[irIndex]][[1]]) > 1))  ## multi-column matrices handled non-separably below
+                if(!checkOneConstraint(
+                        fromVarRange$indexRanges[[irIndex]], constraints[[i]]$constraint)
+                   )
+                    return(FALSE)
+        }
+        ## add non-separability check for matrix cases
+        matIRs <- which(sapply(fromVarRange$indexRanges, function(x)
+            identical(attr(x, 'rangeType'), 'matrix') &&
+            ncol(x[[1]]) > 1))
+        for(idx in matIRs) 
+            if(!checkNonSeparableConstraint(fromVarRange$indexRanges[[idx]],
+                                            fromVarRange$rangeID_2_indexID[[idx]], constraints))
                 return(FALSE)
     }
-    ## add non-separability check for matrix cases
-    matIRs <- which(sapply(fromVarRange$indexRanges, function(x)
-        identical(attr(x, 'rangeType'), 'matrix') &&
-        ncol(x[[1]]) > 1))
-    for(idx in matIRs) 
-        if(!checkNonSeparableConstraint(fromVarRange$indexRanges[[idx]],
-                                         fromVarRange$rangeID_2_indexID[[idx]], constraints))
-            return(FALSE)
     return(TRUE)
 }
 
@@ -340,10 +348,18 @@ checkConstraints <- function(fromVarRange, constraints) {
 ## as a new varRange.
 applyGraphIndexRules <- function(fromVarRange,
                                  rules) {
+
+    if(!is(fromVarRange, 'varRangeClass'))
+        stop("applyGraphIndexRules: 'fromVarRange' needs to be a varRange object.")
     ## Some of the steps below will reveal things that
     ## could be cached and re-used.
     indexSets <- rules$indexSets
     indexRules <- rules$indexRules
+
+    ## Check valid number of input indexes
+    numRHSindexes <- length(unlist(fromVarRange$rangeID_2_indexID))
+    if(numRHSindexes != rules$RHSnumIndexes)
+        stop("applyGraphIndexRules: incorrect number of input indexes.")
     
     ## Check valid RHS
     ## use RHSconstraints to check that RHS is valid for x, x[i,2], x[i,3:5], x[i,] cases
@@ -440,6 +456,7 @@ applyGraphIndexRules <- function(fromVarRange,
     ## which setIDs are part of an input rangeID
     rangeID_2_setIDs <- lapply(seq_len(numIndexRanges),
                                function(x) integer())
+
     for(iSet in seq_len(numSets)) {
         thisRHSindices <- setID_2_RHSindices[[iSet]]
         ##fromVarRange$rangeID_2_indexID

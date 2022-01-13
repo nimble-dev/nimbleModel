@@ -50,22 +50,51 @@ indexRule_all_setup <- function(toIndexExprList,
     if(is.list(constants))
         constants <- list2env(constants)
 
-    ##  only allow a single index slot 
-    if(length(toIndexExprList) != 1)
-        return(NULL)
-
-    toIndexExpr <- toIndexExprList[[1]]
-
-    ## May need to generalize which indexVarName is used:
-    indexVarName <- context$indexVarNames[1]
-    ## May need to fail cleanly if RHS is like y[k[i]] or other complication.
-    toSignAndOffset <- getSignAndOffset(toIndexExpr,
-                                        indexVarName,
-                                        constants)
-    indexRangeExpr <- context$singleContexts[[1]]$indexRangeExpr
-    index_range <- 
-        c(eval(indexRangeExpr[[2]], envir = constants),
-          eval(indexRangeExpr[[3]], envir = constants))
-
-    list(all = indexRange_block(as.list(toSignAndOffset$offset + index_range)))
+    ## Try to handle single index, simple increment case expeditiously.
+    if(length(toIndexExprList) == 1) {
+        toIndexExpr <- toIndexExprList[[1]]
+        
+        ## May need to generalize which indexVarName is used:
+        indexVarName <- context$indexVarNames[1]
+        ## May need to fail cleanly if RHS is like x[k[i]] or other complication.
+        
+        toSignAndOffset <- try(getSignAndOffset(toIndexExpr,
+                                            indexVarName,
+                                            constants),
+                               silent = TRUE)
+        if(!inherits(toSignAndOffset, 'try-error')) {
+            indexRangeExpr <- context$singleContexts[[1]]$indexRangeExpr
+            index_range <- 
+                c(eval(indexRangeExpr[[2]], envir = constants),
+                  eval(indexRangeExpr[[3]], envir = constants))
+            
+            return(list(all = indexRange_block(as.list(toSignAndOffset$offset + index_range))))
+        }
+    }
+    ## Otherwise, do unrolling and handle like arbitrary case, but without 'from' information
+    if(exists('paciorek')) browser()
+    toIndexNames <- lapply(names(toIndexExprList),
+                           as.name)
+    ## Run the for loops in an environment
+    ## where all the results are created.
+    unrolledIndicesEnv <-
+        expandContextAndReplacements(
+            allReplacements = toIndexExprList,
+            allReplacementNameExpr = toIndexNames,
+            context = context,
+            constantsEnv = constants
+        )
+    unrolledResults <-
+        lapply(names(toIndexExprList),
+               function(x) unrolledIndicesEnv[[x]])
+    unrolledSize <- unrolledIndicesEnv$outputSize
+    
+    if(length(unrolledResults) > 1) {
+        allIndices <- do.call("cbind",
+                              unrolledResults)
+    } else allIndices <- matrix(unrolledResults[[1]], nrow = unrolledSize)
+    
+    return(list(all = indexRange(allIndices)))
 }
+
+

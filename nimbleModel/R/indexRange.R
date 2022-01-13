@@ -214,9 +214,14 @@ matrix_expand_grid <- function(...) {
 }
 
 indexRangeList2matrix <- function(indexRangeList) {
-    do.call("matrix_expand_grid",
+    ## For use in applyGraphRules for getMatrixIndexRange output to be consistent with output of
+    ## getSingleIndexRange and for output to be consistent with indexRange2matrix,
+    ## I think we want output to be an indexRange_matrix, not a matrix // CP
+    indexRange_matrix(
+        do.call("matrix_expand_grid",
             lapply(indexRangeList,
                    function(x) indexRange2matrix(x)[[1]]))
+    )
 }
 
 collapse_indexRangeMatrices <- function(indexRangeMatrices) {

@@ -59,6 +59,8 @@ varRangeClass <- R6Class(
             ## We will need some way to initialize more complex
             ## cases returned from graph queries.
             ##
+            if(is(indexInfo, "indexRange"))
+                stop("varRange must be initialized from a list of indexRanges not a single indexRange.")
             if(is.character(indexInfo))
                 indexInfo <- parse(text = indexInfo,
                                    keep.source = FALSE)[[1]]
@@ -187,7 +189,7 @@ varRange_getIndexRangeMatrix <- function(varRange,
     iResult <- 1
     usedRanges <- integer()
     while(!done) {
-        boolIndex <- indices %in% varRange$rangeID_2_indexID[[iRange]]
+        boolIndex <- varRange$rangeID_2_indexID[[iRange]] %in% indices
         if(any(boolIndex)) {
             innerIndices <- which(boolIndex)
             indexRangeResults[[iResult]] <-
@@ -205,7 +207,7 @@ varRange_getIndexRangeMatrix <- function(varRange,
         result
     else
         list(result = result,
-             userRanges = usedRanges)
+             usedRanges = usedRanges)
 }
 
 ## extract multiple columns of a varRange, keeping
