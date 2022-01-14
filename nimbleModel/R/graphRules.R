@@ -34,6 +34,7 @@ graphRuleClass <- R6Class(
 ##
 ## TO-DO: recognize non-independence of index-ranges.
 ## That is *not* handled at the moment.
+## 2022-01-14: not clear what non-independence is not handled. // CP
 makeSeparableIndexSets <- function(LHS,
                                    RHS,
                                    context) {
@@ -417,6 +418,7 @@ applyGraphIndexRules <- function(fromVarRange,
                            1
             timesRepList[[i]] <- c(thisTimes, thisRep)
         }
+        browser()
     }
     ## Determine which RHSindices will be used for each rule
     ## and set up index crossing and aligning needs.
@@ -437,7 +439,7 @@ applyGraphIndexRules <- function(fromVarRange,
                 length(unique(thisRangeIDs)) > 1
             }
         if(thisIndicesNeedCrossing)
-            stop('Some indices need crossing: not implemented yet.')
+            warning('Some indices need crossing: not fully implemented yet; proceeding anyway.')
     }
 
     inputIndexRanges <- fromVarRange$indexRanges

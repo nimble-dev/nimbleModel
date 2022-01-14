@@ -152,6 +152,11 @@ test_that("graphRuleClass works", {
 
 ## 1:n[i] type cases?
 
+## test some cases where have scalar + multirow matrix input indexRanges
+## or multiple matrix input indexRanges with different numbers of rows
+## should do crossing since we correctly cross multiple block indexRanges (I think, but check that too)
+## key thing is to check with arbitrary indexRules
+
 ## Test parent cases (should we just test all cases above in reverse?)
 ## Carefully consider cases where where have LHS indexes not appearing on RHS
 ## since this pattern of having every input index produce same output index (many to one)
@@ -2511,6 +2516,60 @@ rules <- makeGraphIndexRules(LHS = quote(y[j,i]),
 applyGraphIndexRules(
             varRangeClass$new(list(
                               indexRange(matrix(c(2,3,1,2), nrow = 2)))), rules)
+
+
+   singleContext1 <-
+        modelSingleContext(forCode = quote(for(i in 1:3){}))
+    
+     singleContext2 <-
+        modelSingleContext(forCode = quote(for(j in 1:2){}))
+    
+    context_ij <- modelContextClass$new(list(singleContext1,
+                                             singleContext2))
+
+rules <- makeGraphIndexRules(LHS = quote(y[j+3*i]),
+                                 RHS = quote(x[i, j]),
+                                 context = context_ij)
+applyGraphIndexRules(
+            varRangeClass$new(list(
+                              indexRange(quote(1:2)),
+                              indexRange(quote(1:2)))), rules)
+
+rules <- makeGraphIndexRules(LHS = quote(y[j,i+1]),
+                                 RHS = quote(x[i, j]),
+                                 context = context_ij)
+applyGraphIndexRules(
+            varRangeClass$new(list(
+                              indexRange(quote(1:2)),
+                              indexRange(quote(1:2)))), rules)
+
+## very complicated multi-crossing case
+   singleContext1 <-
+        modelSingleContext(forCode = quote(for(l in 1:10){}))
+    
+     singleContext2 <-
+        modelSingleContext(forCode = quote(for(i in 1:10){}))
+   singleContext3 <-
+        modelSingleContext(forCode = quote(for(j in 1:10){}))
+    
+     singleContext4 <-
+        modelSingleContext(forCode = quote(for(k in 1:10){}))
+   singleContext5 <-
+        modelSingleContext(forCode = quote(for(m in 1:10){}))
+    
+   
+    context_lijkm <- modelContextClass$new(list(singleContext1,
+                                             singleContext2, singleContext3, singleContext4, singleContext5))
+
+rules <- makeGraphIndexRules(LHS = quote(y[i+3*k, l, i+1, j+3*m]),
+                                 RHS = quote(x[l,i,j,k,m]),
+                             context = context_lijkm)
+applyGraphIndexRules(
+    varRangeClass$new(list(
+                      indexRange(matrix(c(1,3,2,4), nrow = 2)),
+                      indexRange(matrix(c(3,5,1,7,4,9), nrow = 3)),
+                      indexRange(matrix(c(9,11), nrow = 2)))), rules)
+
 
 
 ## DONE
