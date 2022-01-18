@@ -65,7 +65,7 @@ indexRuleClass_arbitrary <- R6Class(
                 ##apply_varRange(from, ...)
                 stop('an indexRule should be applied to an indexRange')
             else
-                apply_indexRange(from)
+                apply_indexRange(from, ...)
         }
     )
 )
@@ -314,6 +314,7 @@ indexRule_arbitrary_setup <- function(toIndexExprList,
 
 indexRule_arbitrary_apply_single <- function(fromIndices,
                                              setupResults) {
+    warning("indexRule_arbitrary_apply_single: needs further development work.")
     with(setupResults, {
         from_flat <- from2indicesFunctions$rawIndex2flatIndex(fromIndices)
         iRows <- unlist(from_flat2iRow[from_flat])
@@ -332,21 +333,29 @@ indexRule_arbitrary_apply_matrix <- function(fromIndices,
                                              collapse = TRUE) {
     with(setupResults, {
         ## from_flat is the flat index of each row of "from" indices
-        from_flat <-
-            unlist(
-                from2indicesFunctions$rawIndex2flatIndex_multi(fromIndices)
-            )
+        from_flat <- from2indicesFunctions$rawIndex2flatIndex_multi(fromIndices)
+        ## deal with invalid fromIndices - need information retained for later collapsing with other columns
+        invalid <- sapply(from_flat, function(x) length(x) == 0)
+        from_flat[invalid] <- NA
+        from_flat <- unlist(from_flat)
+        
         ## iRowsList has the declaration iRows for each from_flat
         iRowsList <- from_flat2iRow[from_flat]
 ### unique???
-        ## toIndicesList has the matrix of "to" indices for each from_flat 
+        ## toIndicesList has the matrix of "to" indices for each from_flat
+        ## need NAs in places where input matches no output to be able to
+        ## collapse via collapse_indexRangeMatrices
+        NAs <- matrix(rep(as.numeric(NA), length(iRow2toIndices[[1]])), nrow = 1)
         toIndicesList <<- lapply(iRowsList,
-                                 function(x)
-                                     do.call('rbind',
-                                             iRow2toIndices[x])
-                                 )
+                                 function(x) {
+                                     tmp <- do.call('rbind',
+                                                    iRow2toIndices[x])
+                                     if(is.null(tmp)) return(NAs) else return(tmp)
+                                 })
     })
     if(collapse) {
+        ## How should we be handling inputs that don't return an output?
+        warning("In collapse=TRUE stanza of 'indexRule_arbitrary_apply_matrix; need to check this code for NULL/NA values.")
         if(length(toIndicesList) > 0)
             toIndicesList <-
                 toIndicesList[!unlist(lapply(toIndicesList, is.null))]

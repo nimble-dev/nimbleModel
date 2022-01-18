@@ -196,7 +196,7 @@ expandIndexRangeMatrices <- function(inputIndexRange) {
 
 matrix_expand_grid <- function(...) {
     matrixList <- list(...)
-    indexVectors <- lapply(matrixList,
+    indexVectors <- lapply(matrixList, 
                            function(x) seq_len(nrow(x))
                            )
     indexGrid <- as.list(do.call("expand.grid",

@@ -313,11 +313,11 @@ checkNonSeparableConstraint <- function(indexRange, rangeID_2_indexID, constrain
                 }
             }
     }
-    if(all(invalid))
-        return(FALSE) else return(TRUE)
+    if(any(invalid)) return(!invalid) else return(TRUE)
 }
 
 checkConstraints <- function(fromVarRange, constraints) {
+    someInvalid <- FALSE
     if(length(constraints)) {
         for(i in seq_along(constraints)) {
             irIndex <- which(sapply(fromVarRange$rangeID_2_indexID, function(x)
@@ -333,12 +333,17 @@ checkConstraints <- function(fromVarRange, constraints) {
         matIRs <- which(sapply(fromVarRange$indexRanges, function(x)
             identical(attr(x, 'rangeType'), 'matrix') &&
             ncol(x[[1]]) > 1))
-        for(idx in matIRs) 
-            if(!checkNonSeparableConstraint(fromVarRange$indexRanges[[idx]],
-                                            fromVarRange$rangeID_2_indexID[[idx]], constraints))
-                return(FALSE)
+        valid <- list(); length(valid) <- length(fromVarRange$indexRanges)
+        for(idx in matIRs) {
+            result <- checkNonSeparableConstraint(fromVarRange$indexRanges[[idx]],
+                                            fromVarRange$rangeID_2_indexID[[idx]], constraints)
+            if(length(result)) {
+                valid[[idx]] <- result
+                someInvalid <- TRUE
+            }
+        }
     }
-    return(TRUE)
+    if(someInvalid) return(valid) else return(TRUE)
 }
 
 ## fromVarRange will have indexRanges that may be
@@ -364,13 +369,15 @@ applyGraphIndexRules <- function(fromVarRange,
     
     ## Check valid RHS
     ## use RHSconstraints to check that RHS is valid for x, x[i,2], x[i,3:5], x[i,] cases
-    ## If not, currently return as many empty indexRanges as sets. 
-    if(!checkConstraints(fromVarRange, rules$RHSconstraints))
+    ## May return a list indicating the valid rows for each input indexRange
+    ## If not, currently return as many empty indexRanges as sets.
+    validRows <- checkConstraints(fromVarRange, rules$RHSconstraints)
+    if(!is.list(validRows) && !validRows) 
         ## Check that numSets is correct for complicated cases.
         return(varRangeClass$new(
-            lapply(seq_along(indexSets$LHSindex2setID), function(i) indexRange_empty())
-        ))
-
+                                 lapply(seq_along(indexSets$LHSindex2setID), function(i) indexRange_empty())
+                             ))
+    
     ## First handle cases like indexRules_any
     if(is.null(indexSets)) {
             
@@ -418,11 +425,12 @@ applyGraphIndexRules <- function(fromVarRange,
                            1
             timesRepList[[i]] <- c(thisTimes, thisRep)
         }
-        browser()
     }
+
     ## Determine which RHSindices will be used for each rule
     ## and set up index crossing and aligning needs.
     setID_2_RHSindices <- vector('list', length = numSets)
+    complicatedCrossing <- FALSE
     ## each set corresponds to one rule
     for(iSet in seq_len(numSets)) {
         # which "from" indices are in this indexSet?
@@ -430,6 +438,12 @@ applyGraphIndexRules <- function(fromVarRange,
         ## extract the relevant indices from fromVarRange
         thisRHSindices <- which(RHSindicesBool)
         setID_2_RHSindices[[iSet]] <- thisRHSindices
+
+        ## Not clear how this would be used; crossing works (using
+        ## fromVarRange$getIndexRangeMatrix) for cases where
+        ## the RHS indexRanges don't cause additional indices unused in a rule
+        ## to be tied together with the indices that are used.
+        ## I.e., // CP
         thisIndicesNeedCrossing <-
             if(length(thisRHSindices) == 1)
                 FALSE
@@ -440,16 +454,30 @@ applyGraphIndexRules <- function(fromVarRange,
             }
         if(thisIndicesNeedCrossing)
             warning('Some indices need crossing: not fully implemented yet; proceeding anyway.')
+
+        ## Discover cases where a rule uses multiple input indexRanges and 
+        ## at least one indexRange also covers other indices unused in the rule.
+        ## We need those tied to together to avoid incorrect crossing.
+        ## For simplicity if this happens at all, we do full crossing of all input indexes to
+        ## implicitly produce a single indexRange.
+        ## NOTE: extract this out as a function so it can be tested via unit testing?
+        usedRanges <- sapply(fromVarRange$rangeID_2_indexID, function(x) any(thisRHSindices %in% x))
+        if(length(unique(fromVarRange$indexID_2_rangeID[thisRHSindices])) > 1) 
+            if(!identical(thisRHSindices, sort(unique(unlist(fromVarRange$rangeID_2_indexID[usedRanges])))))
+                complicatedCrossing <- TRUE
     }
+
+    if(complicatedCrossing)
+        warning("Detected unused indices in an indexRange used in an indexRule, so fully crossing all inputs.")
 
     inputIndexRanges <- fromVarRange$indexRanges
     numIndexRanges <- length(inputIndexRanges) ## reset in case something changes
-   ## indexID_2_rangeID <- fromVarRange$indexID_2_rangeID
-   ## rangeID_2_indexID <- fromVarRange$rangeID_2_indexID
+    ## indexID_2_rangeID <- fromVarRange$indexID_2_rangeID
+    ## rangeID_2_indexID <- fromVarRange$rangeID_2_indexID
     ## modify by expansion if needed,
     ## until application of rules is nested within inputIndexRanges
     ## can test equivalence of new indexRules by full expansion
-
+    
     ## At this point we assume the columns needed come from only a single
     ## indexRange.
     ## Need to track which rules apply to which input indexRange
@@ -459,19 +487,36 @@ applyGraphIndexRules <- function(fromVarRange,
     rangeID_2_setIDs <- lapply(seq_len(numIndexRanges),
                                function(x) integer())
 
+    ## For complicated crossing we first set up the fully-crossed inputs.
+    if(complicatedCrossing) {
+        
+        fromIndicesInfoFullyCrossed <-
+            fromVarRange$getIndexRangeMatrix(seq_len(numRHSindexes),
+                                             details = TRUE)
+        if(!identical(attr(fromIndicesInfoFullyCrossed$result, 'rangeType'), 'matrix'))
+            stop("applyGraphIndexRules: expecting a matrix indexRange.")
+    }
+
     for(iSet in seq_len(numSets)) {
         thisRHSindices <- setID_2_RHSindices[[iSet]]
         ##fromVarRange$rangeID_2_indexID
-
+        
         if(length(thisRHSindices)) {
-            fromIndicesInfo <-
-                if(length(thisRHSindices)==1)
-                    fromVarRange$getSingleIndexRange(thisRHSindices,
-                                                     details = TRUE)
-                else
-                    fromVarRange$getIndexRangeMatrix(thisRHSindices,
-                                                     details = TRUE)
-            fromIndices <- fromIndicesInfo$result
+            if(!complicatedCrossing) {
+                fromIndicesInfo <-
+                    if(length(thisRHSindices)==1)
+                        fromVarRange$getSingleIndexRange(thisRHSindices,
+                                                         details = TRUE)
+                    else
+                        fromVarRange$getIndexRangeMatrix(thisRHSindices,
+                                                         details = TRUE)
+                fromIndices <- fromIndicesInfo$result
+            } else {
+                ## Extract relevant RHS columns from fully-crossed inputs.
+                fromIndicesInfo <- fromIndicesInfoFullyCrossed
+                fromIndicesInfo$result[[1]] <- fromIndicesInfo$result[[1]][ , thisRHSindices, drop = FALSE]
+                fromIndices <- fromIndicesInfo$result
+            }
             ## used ranges is a vector of rangeIDs from RHS from which
             ## fromIndicesInfo were extracted
             usedRanges <- fromIndicesInfo$usedRanges
@@ -480,7 +525,7 @@ applyGraphIndexRules <- function(fromVarRange,
         } else {  ## no indexing or constant indexing
             fromIndices <- NULL
         }
-            
+        
         thisLHSresult <-
             indexRules[[iSet]]$apply(fromIndices,
                                      collapse = FALSE
@@ -491,10 +536,18 @@ applyGraphIndexRules <- function(fromVarRange,
         ansIndexOrders[[iSet]] <-
             which(indexSets$LHSindex2setID == iSet)
     }
+
     ## Compose results: aggregate results from multiple rules
     ## applied to one input.
     finalIndexRanges <- list()
     finalIndexOrders <- list()
+
+    ## Treat as a single input indexRange, so that collapse across results of all rules.
+    if(complicatedCrossing) {  
+        numIndexRanges <- 1
+        rangeID_2_setIDs <- list(sort(unique(unlist(rangeID_2_setIDs))))
+    }
+    
     iAns <- 1
     for(iRange in seq_len(numIndexRanges)) {
         if(length(rangeID_2_setIDs[[iRange]]) > 1) {
@@ -502,6 +555,8 @@ applyGraphIndexRules <- function(fromVarRange,
                           function(x) identical(attr(x, 'rangeType'), 'empty')))) {
                 finalIndexRanges[[iAns]] <- indexRange_empty()
             } else {
+                ## NOTE: Insert a check that number of input rows are all the same?
+                ## Deal with NULL entries - need to turn into NA or 0?
                 indexRangeExpandedMatrices <-
                     ansIndexRanges[ rangeID_2_setIDs[[iRange]] ]
                 finalIndexRanges[[iAns]] <-
@@ -526,16 +581,23 @@ applyGraphIndexRules <- function(fromVarRange,
             if(identical(
                 attr(finalIndexRanges[[iAns]], 'rangeType'),
                 'matrixList'
-               ))
+            ))
                 finalIndexRanges[[iAns]] <-
                     indexRange2matrix(finalIndexRanges[[iAns]])
-                    
+            
             finalIndexOrders[[iAns]] <-
                 ansIndexOrders[[ rangeID_2_setIDs[[iRange]] ]]
             iAns <- iAns + 1
-        } 
-    }
-    ## Remove invalid rows from matrix indexRanges and set to empty if no rows left
+        }
+        ## Remove invalid rows from matrix indexRanges flagged by checkConstraints.
+        if(is.list(validRows) && length(validRows[[iRange]])) {
+            if(!identical(attr(finalIndexRanges[[iAns-1]], 'rangeType'), 'matrix'))
+                stop("Expecting validRows to only be relevant for a matrix indexRange.")
+            finalIndexRanges[[iAns-1]][[1]] <- finalIndexRanges[[iAns-1]][[1]][validRows[[iRange]], , drop = FALSE]
+        }
+    }    
+        
+    ## Remove invalid rows from matrix indexRanges based on presence of NAs and set to empty if no rows left
     ## This can only be done after collapsing or else the constituent matrixLists will have different lengths (e.g., if we removed the NAs earlier).
     for(iRange in seq_along(finalIndexRanges)) 
         if(identical(attr(finalIndexRanges[[iRange]], 'rangeType'), 'matrix')) {
@@ -585,9 +647,12 @@ applyGraphIndexRules <- function(fromVarRange,
         finalIndexOrders <- finalIndexOrders[orderFinalIndexOrderStarts]
     }
 
+    ## Remove duplicate columns (from cases where two indexRanges go to same output index)
+    repeats <- duplicated(finalIndexOrders)
+    
     varRangeClass$new(
-        indexInfo = finalIndexRanges,
-        indexOrders = finalIndexOrders
+        indexInfo = finalIndexRanges[!repeats],
+        indexOrders = finalIndexOrders[!repeats]
     )
 ##    lhsIndices
 }
