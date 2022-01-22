@@ -136,6 +136,8 @@ test_that("graphRuleClass works", {
 ## (done) [{arbitrary, arbitrary}] y[i,j] <- x[k[i,j]]
 ## (done) [arbitrary (LHS)] y[k[i]]] <- x[i]
 
+## look through Perry tests in test-indexRule_arbitrary
+
 ## multiple mapping cases
 ## (done) [all] y[i,i] <- x[2], y[i+j,i] <- x[2], y[i+j] <- x[2]
 
@@ -147,8 +149,6 @@ test_that("graphRuleClass works", {
 ## should we check y[k[i]] <- x[j[i]]?
 
 ## This is not allowed in current nimble: y[i] <- sum(x[c(1,3,5)])
-
-## 1:n[i] type cases?
 
 ## currently we leave duplicate rows in result; is that what we want?
 
@@ -2477,11 +2477,9 @@ test_that("graphRules works for 2D single set sequence cases", {
                               indexRange(quote(2:3)))), rules),
         varRangeClass$new(list(indexRange(matrix(c(2,3,2,3), ncol = 2))))
     )
+})
 
 
-
-
-## HERE
 
 ## 2D single set arbitrary; yes need this case
     ## y[k(i,j)] <- x[i,j]
@@ -2586,7 +2584,211 @@ varRangeClass$new(list(indexRange(matrix(c(23,25,14,16,29,31,1,3,1,3,1,3,4,4,6,6
 )
 
 
+
+## ragged case with some inputs invalid
+   singleContext1 <-
+        modelSingleContext(forCode = quote(for(i in 1:5){}))
+    
+     ## alternative way to specific a single context
+    singleContext2ni <-
+        modelSingleContext(indexVarExpr = quote(j),
+                           indexRangeExpr = quote(1:n[i]),
+                           )
+    
+   singleContext3 <-
+        modelSingleContext(indexVarExpr = quote(k),
+                           indexRangeExpr = quote(1:10),
+                           )
+
+   context_i <- modelContextClass$new(list(singleContext1))
+    
+     context_ijnik<- modelContextClass$new(list(singleContext1,
+                                              singleContext2ni, singleContext3))
+
+     n <- c(2,3,5,2,4)
+
+   rules <- makeGraphIndexRules(LHS = quote(y[i,j,k]),
+                             RHS = quote(x[i,j,k]),
+                             context = context_ijnik,
+                             constants = list(n = n))
+
+   rules <- makeGraphIndexRules(LHS = quote(y[j+i, j]),
+                             RHS = quote(x[i,j]),
+                             context = context_ijni,
+                             constants = list(n = n))
+## try out different orderings
+ 
+
+   rules <- makeGraphIndexRules(LHS = quote(y[i+j, j+k]),
+                             RHS = quote(x[i,j]),
+                             context = context_ijk,
+                             constants = list(n = n))
+
+   rules <- makeGraphIndexRules(LHS = quote(y[j+i, j]),
+                             RHS = quote(x[i,j]),
+                             context = context_ijni,
+                             constants = list(n = n))
+
+####################33
+   
+   ## incorrect
+    applyGraphIndexRules(
+        varRangeClass$new(list(
+                          indexRange(quote(1:5)),
+                          indexRange(quote(1:5)))), rules)
+
+    ## gives seq crossed with a matrix; doesn't make sense
+    applyGraphIndexRules(
+        varRangeClass$new(list(
+                          indexRange(quote(1:2)),
+                          indexRange(quote(1:2)))), rules)
+     
+    ##
+    applyGraphIndexRules(
+        varRangeClass$new(list(
+                          indexRange(quote(1)),
+                          indexRange(quote(2)))), rules)
+
+    applyGraphIndexRules(
+        varRangeClass$new(list(
+                          indexRange(quote(1)),
+                          indexRange(quote(6)))), rules)
+
+    ## R error
+    applyGraphIndexRules(
+        varRangeClass$new(list(
+                          indexRange(quote(1)),
+                          indexRange(quote(6)))), rules)
+
+    applyGraphIndexRules(
+        varRangeClass$new(list(
+                          indexRange(matrix(c(1,2),ncol=1)),
+                          indexRange(matrix(c(2,6),ncol=1)))), rules)
+
+    ## this is the only one that actually works
+    applyGraphIndexRules(
+        varRangeClass$new(list(
+                          indexRange(matrix(c(1,2,2,4), ncol = 2)))), rules)
+    ## but there are two rules - why does the 4 cause an NA?
+    ## I think setup results are messed up
+
+ setupRules <- indexRule_arbitrary_setup(
+        toIndexExprList = list(
+            t1 = quote(i),
+            t2 = quote(j)),
+        fromIndexExprList = list(
+            f1 = quote(i),
+            f2 = quote(j)),
+        context = context_ijni,
+        constants = list2env(list(n = n))
+    )
+    
+
 ## DONE
+
+test_that("graphRules correctly handles ragged indexing", {
+   singleContext1 <-
+        modelSingleContext(forCode = quote(for(i in 1:3){}))
+    
+   singleContext2ni <-
+       modelSingleContext(forCode = quote(for(j in 1:n[i]){}))                          
+
+   singleContext3 <-
+       modelSingleContext(forCode = quote(for(k in 1:3){}))                          
+   singleContext3ni <-
+       modelSingleContext(forCode = quote(for(k in 1:mi[i]){}))                          
+   singleContext3nj <-
+       modelSingleContext(forCode = quote(for(k in 1:mj[j]){}))                          
+   singleContext3nij <-
+       modelSingleContext(forCode = quote(for(k in 1:mij[i,j]){}))                          
+   
+   context_ijnik<- modelContextClass$new(list(singleContext1,
+                                              singleContext2ni,
+                                              singleContext3))
+   context_ijnikni<- modelContextClass$new(list(singleContext1,
+                                              singleContext2ni,
+                                              singleContext3ni))
+   context_ijniknj<- modelContextClass$new(list(singleContext1,
+                                              singleContext2ni,
+                                              singleContext3nj))
+   context_ijniknij<- modelContextClass$new(list(singleContext1,
+                                              singleContext2ni,
+                                              singleContext3nij))
+
+   n <- c(1,3,2)
+   mi <- c(2,1,3)
+   mj <- c(3,2,1)
+   mij <- matrix(c(1,3,2,3,1,3,2,2,1), ncol = 3)
+
+   rules <- makeGraphIndexRules(LHS = quote(y[k,j,i]),
+                             RHS = quote(x[k,j,i]),
+                             context = context_ijnik,
+                             constants = list(n = n))
+   expect_identical(sapply(rules$indexRules, function(ir) class(ir)[1]),
+                    c('indexRuleClass_arbitrary', 'indexRuleClass_block'))
+   expect_identical(rules$indexSets$LHSindex2setID, c(2, 1, 1))
+
+   expect_equal(
+       applyGraphIndexRules(
+           varRangeClass$new(list(
+                             indexRange(quote(1:2)),
+                             indexRange(quote(1:2)),
+                             indexRange(quote(1:2)))), rules),
+       varRangeClass$new(list(indexRange(quote(1:2)),
+                              indexRange(matrix(c(1,1,2,1,2,2), nrow = 3))))
+   )
+
+   rules <- makeGraphIndexRules(LHS = quote(y[k,j,i]),
+                             RHS = quote(x[k,j,i]),
+                             context = context_ijnikni,
+                             constants = list(n = n, mi = mi))
+   expect_identical(sapply(rules$indexRules, function(ir) class(ir)[1]),
+                    'indexRuleClass_arbitrary')
+   expect_identical(rules$indexSets$LHSindex2setID, rep(1,3))
+   
+   expect_equal(
+       applyGraphIndexRules(
+           varRangeClass$new(list(
+                             indexRange(quote(1:2)),
+                             indexRange(quote(1:2)),
+                             indexRange(quote(1:2)))), rules),
+       varRangeClass$new(list(indexRange(matrix(c(1,2,1,1,1,1,1,2,1,1,2,2), nrow = 4))))
+   )
+
+   rules <- makeGraphIndexRules(LHS = quote(y[k,j,i]),
+                             RHS = quote(x[k,j,i]),
+                             context = context_ijniknj,
+                             constants = list(n = n, mj = mj))
+   expect_identical(sapply(rules$indexRules, function(ir) class(ir)[1]),
+                    'indexRuleClass_arbitrary')
+   expect_identical(rules$indexSets$LHSindex2setID, rep(1,3))
+   
+   expect_equal(
+       applyGraphIndexRules(
+           varRangeClass$new(list(
+                             indexRange(quote(2:3)),
+                             indexRange(quote(1:3)),
+                             indexRange(quote(2:3)))), rules),
+       varRangeClass$new(list(indexRange(matrix(c(2,3,2,2,3,2,1,1,2,1,1,2,2,2,2,3,3,3), ncol = 3))))
+   )
+
+   rules <- makeGraphIndexRules(LHS = quote(y[k,j,i]),
+                             RHS = quote(x[k,j,i]),
+                             context = context_ijniknij,
+                             constants = list(n = n, mij = mij))
+   expect_identical(sapply(rules$indexRules, function(ir) class(ir)[1]),
+                    'indexRuleClass_arbitrary')
+   expect_identical(rules$indexSets$LHSindex2setID, rep(1,3))
+
+   expect_equal(
+       applyGraphIndexRules(
+           varRangeClass$new(list(
+                             indexRange(quote(2:3)),
+                             indexRange(quote(1:3)),
+                             indexRange(quote(1:2)))), rules),
+       varRangeClass$new(list(indexRange(matrix(c(2,3,2,1,1,3,2,2,2), ncol = 3))))
+   )
+})
 
 test_that("graphRules works for non-contiguous indexes in an indexRange", {
     ## Case of y[i,j,k] where i,k are in an indexRange together

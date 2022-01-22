@@ -60,7 +60,14 @@ makeSeparableIndexSets <- function(LHS,
         RHSindexExprs <- as.list(RHS[-c(1,2)])
         RHSnDim <- length(RHSindexExprs)
     }
-    
+
+    ## Keep track of which index var definitions use another index (e.g. j in 1:n[i])
+    contextExprsVars <- lapply(seq_along(context$singleContexts),
+                               function(idx) all.vars(context$singleContexts[[idx]]$indexRangeExpr))
+        
+    varUsedinContextExprs <- lapply(indexVarNames, function(nm) {
+        indexVarNames[sapply(contextExprsVars, function(usedVars) nm %in% usedVars)] })
+        
     make_BoolIndexVarList <-
         function(indexExpr)
             structure(
@@ -100,9 +107,13 @@ makeSeparableIndexSets <- function(LHS,
                 RHSboolIndexVarList[RHSboolUsesCurrentIndexVars],
                 function(x) indexVarNames[x])
                 ))
+
+            ## Add in vars where the current index is used in their context expression.
+            contextAdditionalIndexVars <- unlist(varUsedinContextExprs[currentIndexVarNames])
             
             allAdditionalIndexVarNames <- setdiff(unique(c(LHSadditionalIndexVars,
-                                                           RHSadditionalIndexVars)),
+                                                           RHSadditionalIndexVars,
+                                                           contextAdditionalIndexVars)),
                                                   currentIndexVarNames)
             if(!length(allAdditionalIndexVarNames)) {
                 done <- TRUE
@@ -111,6 +122,10 @@ makeSeparableIndexSets <- function(LHS,
                                           allAdditionalIndexVarNames)
             }                                         
         }
+
+        ## added ragged indexing check here: for(i in 1:m) for(j in 1:n[i])
+        ## should cause any indexes using i or j to be in the same set
+        
         ## recording them this way sorts them:
         indexVarNameSets[[currentSetID]] <- indexVarNames[currentIndexVarNames]
         indexVar2setID[currentIndexVarNames] <- currentSetID
