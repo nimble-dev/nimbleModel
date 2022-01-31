@@ -62,9 +62,12 @@ indexRange <- function(expr) {
                           class = "indexRange",
                           rangeType = "matrix")
             } else {
-                structure(list(expr),
-                          class = "indexRange",
-                          rangeType = "scalar")
+                if(length(expr)) {
+                    structure(list(expr),
+                              class = "indexRange",
+                              rangeType = "scalar")
+                } else
+                    indexRange_none()
             }
         }
     }
@@ -82,6 +85,14 @@ indexRange_empty <- function() {
     class = "indexRange",
     rangeType = "empty")
 }
+
+## No indexing on a variable, e.g., 'y'.
+indexRange_none <- function() {
+    structure(list(numeric(0)),
+    class = "indexRange",
+    rangeType = "none")
+}
+
 
 indexRange_scalar <- function(rangeList) {
     structure(if(is.list(rangeList))
@@ -129,6 +140,7 @@ indexRange_numCols <- function(inputIndexRange) {
            scalar = 1,
            blank = 1,
            empty = 0,
+           none = 0,
            stop("In inputRange_numCols: invalid type of inputIndexRange.")
           )
 }
@@ -141,6 +153,7 @@ indexRange_numRows <- function(inputIndexRange,
            block = inputIndexRange[[1]][[2]] - inputIndexRange[[1]][[1]] + 1,
            scalar = 1,
            blank = NA,
+           none = 0,
            stop("In inputRange_numRows: invalid type of inputIndexRange.")
            )
 }

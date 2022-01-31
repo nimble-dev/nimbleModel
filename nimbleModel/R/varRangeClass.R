@@ -120,19 +120,23 @@ varRangeClass <- R6Class(
             ##     indexRanges,
             ##     indexRange2expr
             ## )
-            if(!is.null(indexOrders))
-                self$rangeID_2_indexID <- indexOrders
-            else {
-                nextID <- 1
-                self$rangeID_2_indexID <-
-                    lapply(indexRanges,
-                           function(x) {
-                               numCols <- indexRange_numCols(x)
-                               if(!numCols) numCols <- 1  # empty IR - this handling might need to be modified
-                               ans <- nextID-1 + (1:numCols)
-                               nextID <<- nextID + numCols
-                               as.integer(ans)
-                           })
+            if(identical(attr(indexRanges[[1]], "rangeType"), "none")) {
+                    self$rangeID_2_indexID <- integer(0)
+            } else {
+                if(!is.null(indexOrders))
+                    self$rangeID_2_indexID <- indexOrders
+                else {
+                    nextID <- 1
+                    self$rangeID_2_indexID <-
+                        lapply(indexRanges,
+                               function(x) {
+                                   numCols <- indexRange_numCols(x)
+                                   if(!numCols) numCols <- 1  # empty IR - this handling might need to be modified
+                                   ans <- nextID-1 + (1:numCols)
+                                   nextID <<- nextID + numCols
+                                   as.integer(ans)
+                               })
+                }
             }
             self
         }
