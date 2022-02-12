@@ -82,7 +82,7 @@ For further index notation, define:
 In words:
 
 - Lowercase plain indicates a single scalar index.
-- Lowercase bold indicates a block for a single index.
+- Lowercase bold indicates a sequence for a single index.
 - Capital plain indicates a full set of scalar indices.  
 - Capital bold indicates a (possible) block of indices.
 

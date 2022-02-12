@@ -30,7 +30,7 @@ indexRange <- function(expr) {
             ## index expr is a:b
             structure(list(as.list(expr[-1])),
                       class = "indexRange",
-                      rangeType = "block")
+                      rangeType = "sequence")
         else
             ## index expr must be something like c(2, 4, 6)
             ## or matrix(...)
@@ -103,15 +103,15 @@ indexRange_scalar <- function(rangeList) {
               rangeType = "scalar")
 }
 
-indexRange_block <- function(rangeList) {
+indexRange_sequence <- function(rangeList) {
     ## Need to check if rangeList is a list or nested list
     if(!is.list(rangeList))
-        stop("rangeList must be a list for rangeType block")
+        stop("rangeList must be a list for rangeType sequence")
     if(!is.list(rangeList[[1]]))
         rangeList <- list(rangeList)
     structure(rangeList,
               class = "indexRange",
-              rangeType = "block")
+              rangeType = "sequence")
 }
 
 indexRange_matrix <- function(rangeList) {
@@ -136,7 +136,7 @@ indexRange_numCols <- function(inputIndexRange) {
    switch(attr(inputIndexRange, 'rangeType'),
            matrix = ncol(inputIndexRange[[1]])
           ,
-           block = 1,
+           sequence = 1,
            scalar = 1,
            blank = 1,
            empty = 0,
@@ -150,7 +150,7 @@ indexRange_numRows <- function(inputIndexRange,
     switch(attr(inputIndexRange, 'rangeType'),
            matrix = nrow(inputIndexRange[[1]])
           ,
-           block = inputIndexRange[[1]][[2]] - inputIndexRange[[1]][[1]] + 1,
+           sequence = inputIndexRange[[1]][[2]] - inputIndexRange[[1]][[1]] + 1,
            scalar = 1,
            blank = NA,
            none = 0,
@@ -169,7 +169,7 @@ indexRange_getCols <- function(inputIndexRange,
                        list(inputIndexRange[[1]][, indices, drop = FALSE])
                    )
           ,
-           block = inputIndexRange,
+           sequence = inputIndexRange,
            scalar = inputIndexRange,
            blank = inputIndexRange,
            stop("In inputRange_getCols: invalid type of inputIndexRange.")
@@ -179,7 +179,7 @@ indexRange_getCols <- function(inputIndexRange,
 indexRange2matrix <- function(inputIndexRange) {
     switch(attr(inputIndexRange, 'rangeType'),
            matrix = inputIndexRange,
-           block = indexRange_matrix(
+           sequence = indexRange_matrix(
                list(matrix(seq.int(inputIndexRange[[1]][[1]],
                                    inputIndexRange[[1]][[2]])))
            ),
@@ -201,7 +201,7 @@ expandIndexRangeMatrices <- function(inputIndexRange) {
     switch(attr(inputIndexRange, 'rangeType'),
            matrix = stop('expandIndexRangeMatrices on a matrix indexRange not expected'),
            matrixList = inputIndexRange,
-           block = lapply(seq.int(inputIndexRange[[1]][[1]],
+           sequence = lapply(seq.int(inputIndexRange[[1]][[1]],
                                   inputIndexRange[[1]][[2]]),
                           matrix)
            )
@@ -260,8 +260,8 @@ getRangeType <- function(IRL) {
     attr(IRL, 'rangeType')
 }
 
-indexRange_isBlock <- function(IRL) {
-     attr(indexRange, 'rangeType') == "block"
+indexRange_isSequence <- function(IRL) {
+     attr(indexRange, 'rangeType') == "sequence"
 }
 
 indexRange_isBlank <- function(IRL) {
@@ -283,7 +283,7 @@ indexRange_isScalar <- function(IRL) {
 indexRange2expr <- function(IRL) {
     ## length(IRL) > 2 should be impossible
     switch(getRangeType(IRL),
-           block = substitute(A:B,
+           sequence = substitute(A:B,
                               list(A = IRL[[1]][[1]],
                                    B = IRL[[1]][[2]])),
            matrix = IRL[[1]],

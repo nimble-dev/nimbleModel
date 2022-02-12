@@ -25,8 +25,6 @@ knitr::opts_chunk$set(echo = TRUE)
 
 Todos (completely incomplete):
 
-- graphRules need to be augmented to deal with scalar and block constants and with missing values.
-
 - generate downstreamRules, upstreamRules, and originalIndexRules in modelDef processing
 
 - add varRange of LHS for each declaration

@@ -68,7 +68,7 @@ indexRule_all_setup <- function(toIndexExprList,
                 c(eval(indexRangeExpr[[2]], envir = constants),
                   eval(indexRangeExpr[[3]], envir = constants))
             
-            return(list(all = indexRange_block(as.list(toSignAndOffset$offset + index_range))))
+            return(list(all = indexRange_sequence(as.list(toSignAndOffset$offset + index_range))))
         }
     }
     ## Otherwise, do unrolling and handle like arbitrary case, but without 'from' information

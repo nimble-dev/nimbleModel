@@ -317,12 +317,12 @@ checkOneConstraintOld <- function(indexRange, constraint) {
         warning("Not yet checking input to blank index case.")
         return(TRUE)
     }
-    if(!attr(indexRange, 'rangeType') %in% c('scalar', 'block', 'matrix', 'none')) {
-        warning("Not yet checking input in case of non-{scalar, block, matrix, none} indexRanges.")
+    if(!attr(indexRange, 'rangeType') %in% c('scalar', 'sequence', 'matrix', 'none')) {
+        warning("Not yet checking input in case of non-{scalar, sequence, matrix, none} indexRanges.")
         return(TRUE)
     }
     rg <- indexRange[[1]]
-    if(is.list(rg))   # from a block range
+    if(is.list(rg))   # from a sequence range
         rg <- unlist(rg)
     if(is.matrix(rg) && ncol(rg) > 1)
         stop("checkOneConstraint: cannot handle multi-column matrix indexRanges.")
@@ -395,12 +395,12 @@ checkOneConstraint <- function(indexRange, constraint, col = 1) {
         warning("Not yet checking input to blank index case.")
         return(TRUE)
     }
-    if(!attr(indexRange, 'rangeType') %in% c('scalar', 'block', 'matrix', 'none')) {
-        warning("Not yet checking input in case of non-{scalar, block, matrix, none} indexRanges.")
+    if(!attr(indexRange, 'rangeType') %in% c('scalar', 'sequence', 'matrix', 'none')) {
+        warning("Not yet checking input in case of non-{scalar, sequence, matrix, none} indexRanges.")
         return(TRUE)
     }
     rg <- indexRange[[1]]
-    if(is.list(rg))   # from a block range
+    if(is.list(rg))   # from a sequence range
         rg <- unlist(rg)
     if(is.matrix(rg)) {
         return(rg[ , col] >= constraint[1] & rg[ , col] <= constraint[2])
@@ -433,7 +433,7 @@ checkConstraints <- function(fromVarRange, constraints) {
 }
 
 ## fromVarRange will have indexRanges that may be
-## blocks, matrices, blanks, or scalars.
+## sequences, matrices, blanks, or scalars.
 ##
 ## We need to extract the relevant components of fromVarRange
 ## for each rule, apply the rules, and compose the result

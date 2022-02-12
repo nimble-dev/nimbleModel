@@ -1137,7 +1137,7 @@ test_that("graphRules works for getParents by checking 1-to-many case", {
 
 ## test some cases where have scalar + multirow matrix input indexRanges
 ## or multiple matrix input indexRanges with different numbers of rows
-## should do crossing since we correctly cross multiple block indexRanges (I think, but check that too)
+## should do crossing since we correctly cross multiple sequence indexRanges (I think, but check that too)
 ## key thing is to check with arbitrary indexRules
 
 ## Test parent cases (should we just test all cases above in reverse?)
@@ -1156,9 +1156,6 @@ test_that("graphRules works for getParents by checking 1-to-many case", {
 
 ## try matrix ranges that cover non-adjacent indices or reversed indices - what is possible?
 
-## clarify terminology of block and sequence; use sequence for indexRange and block for indexRule?
-
-
 
 test_that("graphRules works for 1D sequence rule", {
     ## y[i] from x[i], etc.
@@ -1175,7 +1172,7 @@ test_that("graphRules works for 1D sequence rule", {
 
     ## Are some of these not needed given testing in test-indexRule_block.R?
     
-    ## block indexRange
+    ## sequence indexRange
     expect_equal(
         applyGraphIndexRules(
             varRangeClass$new(list(
@@ -1401,7 +1398,7 @@ test_that("graphRules works for 1D all rule", {
             vrEmpty)
     )
 
-    ## alternative inputs: block, matrix
+    ## alternative inputs: sequence, matrix
     expect_equal(
         applyGraphIndexRules(
             varRangeClass$new(list(
@@ -1452,7 +1449,7 @@ test_that("graphRules works for 1D all rule", {
                               indexRange(quote(3)))), rules),
         vrEmpty)
 
-    ## alternative inputs: block, matrix
+    ## alternative inputs: sequence, matrix
     expect_equal(
         applyGraphIndexRules(
             varRangeClass$new(list(
@@ -1487,7 +1484,7 @@ test_that("graphRules works for 1D all rule", {
                               indexRange(quote(2)))), rules),
         varRangeClass$new(list(indexRange(quote(2:11)))))
 
-    ## alternative inputs: block, matrix
+    ## alternative inputs: sequence, matrix
     expect_equal(
         applyGraphIndexRules(
             varRangeClass$new(list(
@@ -1559,7 +1556,7 @@ test_that("graphRules works for 1D all rule", {
             rules),
         vrEmpty)
 
-    ## alternative inputs: block, 2 1D matrix, 1 2D matrix
+    ## alternative inputs: sequence, 2 1D matrix, 1 2D matrix
     expect_equal(
         applyGraphIndexRules(
             varRangeClass$new(list(
@@ -1670,7 +1667,7 @@ test_that("graphRules works for 1D all rule", {
         vrEmpty)
     )
 
-    ## not checking block, matrix inputs; presumably redundant with previous tests
+    ## not checking sequence, matrix inputs; presumably redundant with previous tests
 
     rules <- makeGraphIndexRules(LHS = quote(y[i+1]),
                                  RHS = quote(x),
@@ -2566,7 +2563,7 @@ test_that("graphRules works for 2D with seq+seq", {
                indexRange(quote(3:5))))
     )
 
-    ## from 2 indexRange blocks that run over ranges
+    ## from 2 indexRange sequences that run over ranges
     expect_equal(
         applyGraphIndexRules(
             varRangeClass$new(list(
@@ -2577,7 +2574,7 @@ test_that("graphRules works for 2D with seq+seq", {
                indexRange(quote(3:10))))
     )
 
-    ## from 2 indexRange blocks with one that yields empty result
+    ## from 2 indexRange sequences with one that yields empty result
     ## This gives mixed result with one indexRange empty and one not.
     ## I think that makes sense where there is a direct from->to mapping,
     ## but later code will need to determine that this result is an empty
@@ -2592,7 +2589,7 @@ test_that("graphRules works for 2D with seq+seq", {
                           irEmpty))
     )
 
-    ## from 1 arbitrary and 1 block indexRanges
+    ## from 1 arbitrary and 1 sequence indexRanges
     expect_equal(
         applyGraphIndexRules(
             varRangeClass$new(list(
@@ -2604,7 +2601,7 @@ test_that("graphRules works for 2D with seq+seq", {
             ))
     )
 
-    ## from 1 arbitrary and 1 block indexRanges
+    ## from 1 arbitrary and 1 sequence indexRanges
     expect_equal(applyGraphIndexRules(
             varRangeClass$new(list(
                     indexRange(quote(4:6)),
@@ -2889,7 +2886,7 @@ test_that("graphRules works for 1D arbitrary rule", {
                                  context = context_i,
                                  constants = list(k = k))
 
-    ## Apply rule to a block indexRange
+    ## Apply rule to a sequence indexRange
     expect_equal(
         applyGraphIndexRules(
             varRangeClass$new(list(
@@ -2898,7 +2895,7 @@ test_that("graphRules works for 1D arbitrary rule", {
                           indexRange(matrix(bruteForceNestedIndexing(k, 3:6)))))
     )
 
-    ## Apply rule to a block indexRange with multiples
+    ## Apply rule to a sequence indexRange with multiples
     expect_equal(
         applyGraphIndexRules(
             varRangeClass$new(list(
@@ -2934,7 +2931,7 @@ test_that("graphRules works for 1D arbitrary rule", {
        vrEmpty
     )
     
-    ## Apply to a block with not all valid inputs
+    ## Apply to a sequence with not all valid inputs
     expect_equal(
        applyGraphIndexRules(
            varRangeClass$new(list(
@@ -2969,7 +2966,7 @@ test_that("graphRules works for 2D arbitrary+seq rule", {
                                  context = context_ij,
                                  constants = list(k = k))
 
-    ## Apply rule to a block indexRange
+    ## Apply rule to a sequence indexRange
     expect_equal(
         applyGraphIndexRules(
             varRangeClass$new(list(
@@ -3024,7 +3021,7 @@ test_that("graphRules works for 2D arbitrary+arbitrary rule", {
                                  context = context_ij,
                                  constants = list(k1 = k1, k2 = k2))
 
-    ## Apply rule to a block indexRange
+    ## Apply rule to a sequence indexRange
     expect_equal(
         applyGraphIndexRules(
             varRangeClass$new(list(
@@ -3077,7 +3074,7 @@ test_that("graphRules works for 1 2D arbitrary rule", {
                                  context = context_ij,
                                  constants = list(k = k))
 
-    ## Apply rule to a block indexRange
+    ## Apply rule to a sequence indexRange
     expect_equal(
         applyGraphIndexRules(
             varRangeClass$new(list(
@@ -3107,7 +3104,7 @@ test_that("graphRules works for 1D arbitrary rule where LHS is arbitrary", {
                                  context = context_i,
                                  constants = list(k = k))
 
-    ## Apply rule to a block indexRange
+    ## Apply rule to a sequence indexRange
     expect_equal(
         applyGraphIndexRules(
             varRangeClass$new(list(
@@ -3134,7 +3131,7 @@ test_that("graphRules works for 1D arbitrary rule where LHS is arbitrary", {
     )
 
     
-    ## Apply to a block with not all valid inputs
+    ## Apply to a sequence with not all valid inputs
     expect_equal(
        applyGraphIndexRules(
            varRangeClass$new(list(

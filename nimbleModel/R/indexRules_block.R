@@ -85,7 +85,7 @@ indexRule_block_apply_matrix <- function(fromIndices,
         indexRange_matrixList(lapply(toIndices, as.matrix))
 }
 
-indexRule_block_apply_block <- function(fromIR,
+indexRule_block_apply_sequence <- function(fromIR,
                                         setupResults,
                                         collapse = TRUE,
                                         ...) {
@@ -108,7 +108,7 @@ indexRule_block_apply_block <- function(fromIR,
                   end + setupResults$offset
     
     toIR <-
-        indexRange_block(
+        indexRange_sequence(
             list(startAns, endAns)
         )
     toIR
@@ -128,7 +128,7 @@ indexRule_block_apply <- function(fromIR,
                                             collapse = collapse,
                                             ...
                                             ),
-           block = indexRule_block_apply_block(fromIR,
+           sequence = indexRule_block_apply_sequence(fromIR,
                                                setupResults,
                                                collapse = collapse,
                                                ...),
