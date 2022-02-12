@@ -168,13 +168,15 @@ makeConstraints <- function(RHSindexExprs, constrainedBool) {
         if(constrainedBool[idx]) {
             cnt <- cnt + 1
             constraints[[cnt]] <- list(RHSindex = idx)
-            expr <- RHSindexExprs[[idx]]
-            if(is.numeric(expr)) {
-                constraints[[cnt]]$constraint <- rep(expr, 2)
-            } else if(is.call(expr) && expr[[1]] == ":") {
-                constraints[[cnt]]$constraint <- c(expr[[2]], expr[[3]])
-            } else {  # various other cases: x[] or x[i], x[i+j] RHS index only (getParents case)
-                constraints[[cnt]]$constraint <- character(0)
+            if(is.name(RHSindexExprs[[idx]]) && RHSindexExprs[[idx]] == "") {
+                constraints[[cnt]]$constraint <- c(1, Inf)  ## x[] case, hopefully will fill in bounds based on var dimensions later.
+            } else {
+                expr <- RHSindexExprs[[idx]]
+                if(is.numeric(expr)) {
+                    constraints[[cnt]]$constraint <- rep(expr, 2)
+                } else if(is.call(expr) && expr[[1]] == ":") {
+                    constraints[[cnt]]$constraint <- c(expr[[2]], expr[[3]])
+                } else stop("Unexpected RHS expression passed to makeConstraints.")            
             }
         }
     }
@@ -210,8 +212,9 @@ makeGraphIndexRules <- function(LHS,
     RHSindicesBool <- indexSets$RHSindex2setID == 0
     if(any(RHSindicesBool)) 
         constraints <- makeConstraints(RHSindexExprs, RHSindicesBool)
-    if(!length(RHSindexExprs))  # placeholder for now for 'x' case (no indexing)
-        constraints <- list(list(RHSindex = numeric(0), constraint = rep(0, 2)))
+
+    ## if(!length(RHSindexExprs))  # placeholder for now for 'x' case (no indexing)
+    ##    constraints <- list(list(RHSindex = numeric(0), constraint = rep(0, 2)))
 
     numRHSindices <- length(RHS) - 2
     if(numRHSindices == -1)
@@ -309,7 +312,7 @@ makeGraphIndexRules <- function(LHS,
 
 ## if indexRanges were R6 classes with inheritance, we could move the
 ## checking into methods of the indexRange classes.
-checkOneConstraint <- function(indexRange, constraint) {
+checkOneConstraintOld <- function(indexRange, constraint) {
     if(!length(constraint)) {
         warning("Not yet checking input to blank index case.")
         return(TRUE)
@@ -359,20 +362,19 @@ checkNonSeparableConstraint <- function(indexRange, rangeID_2_indexID, constrain
     return(!invalid)
 }
 
-checkConstraints <- function(fromVarRange, constraints) {
+checkConstraintsOld <- function(fromVarRange, constraints) {
     valid <- list(); length(valid) <- length(fromVarRange$indexRanges)    
     if(length(constraints)) {
         for(i in seq_along(constraints)) {
             irIndex <- sapply(fromVarRange$rangeID_2_indexID, function(x)
                 constraints[[i]]$RHSindex %in% x)
             if(!length(irIndex)) {
-                browser()
-                return(checkOneConstraint(fromVarRange$indexRanges[[1]], constraints[[i]]$constraint))
+                return(checkOneConstraintOld(fromVarRange$indexRanges[[1]], constraints[[i]]$constraint))
             } else {
                 irIndex <- which(irIndex)
                 if(!(attr(fromVarRange$indexRanges[[irIndex]], 'rangeType') == 'matrix' &&
                      ncol(fromVarRange$indexRanges[[irIndex]][[1]]) > 1))  ## multi-column matrices handled non-separably below
-                    valid[[irIndex]] <- checkOneConstraint(fromVarRange$indexRanges[[irIndex]], constraints[[i]]$constraint)
+                    valid[[irIndex]] <- checkOneConstraintOld(fromVarRange$indexRanges[[irIndex]], constraints[[i]]$constraint)
             }
         }
         ## add non-separability check for matrix cases
@@ -385,6 +387,48 @@ checkConstraints <- function(fromVarRange, constraints) {
             valid[[idx]] <- checkNonSeparableConstraint(fromVarRange$indexRanges[[idx]],
                                             fromVarRange$rangeID_2_indexID[[idx]], constraints)
     }
+    return(valid)
+}
+
+checkOneConstraint <- function(indexRange, constraint, col = 1) {
+    if(!length(constraint)) {
+        warning("Not yet checking input to blank index case.")
+        return(TRUE)
+    }
+    if(!attr(indexRange, 'rangeType') %in% c('scalar', 'block', 'matrix', 'none')) {
+        warning("Not yet checking input in case of non-{scalar, block, matrix, none} indexRanges.")
+        return(TRUE)
+    }
+    rg <- indexRange[[1]]
+    if(is.list(rg))   # from a block range
+        rg <- unlist(rg)
+    if(is.matrix(rg)) {
+        return(rg[ , col] >= constraint[1] & rg[ , col] <= constraint[2])
+    }
+    if(constraint[1] == 0)  # no RHS indices
+        if(!length(rg)) return(TRUE) else return(FALSE)
+    if(constraint[2] < min(rg) || constraint[1] > max(rg))
+        return(FALSE) else return(TRUE)
+}
+
+checkConstraints <- function(fromVarRange, constraints) {
+    valid <- list(); length(valid) <- length(fromVarRange$indexRanges)    
+    if(length(constraints)) 
+        for(i in seq_along(constraints)) {
+            irIndex <- which(sapply(fromVarRange$rangeID_2_indexID, function(x)
+                constraints[[i]]$RHSindex %in% x))
+            if(!length(irIndex))  ## y[2] <- x case?
+                stop("No relevant indexRanges for the constraint.")
+            if(length(irIndex) > 1)
+                stop("Multiple indexRanges for the constraint should not be possible.")
+            ## col only actually used if a matrix indexRange with multiple columns.
+            col <- which(fromVarRange$rangeID_2_indexID[[irIndex]] == constraints[[i]]$RHSindex)
+            ## Combine results from multiple constraints applied to a single indexRange.
+            result <- checkOneConstraint(fromVarRange$indexRanges[[irIndex]], constraints[[i]]$constraint, col)
+            if(is.null(valid[[irIndex]])) {
+                valid[[irIndex]] <- result
+            } else valid[[irIndex]] <- valid[[irIndex]] & result
+        }
     return(valid)
 }
 

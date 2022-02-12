@@ -153,7 +153,7 @@ test_that("graphRuleClass works", {
     ## rule$apply(varRangeClass$new(list(indexRange(3), indexRange(4))))
 })
 
-test_that("error trap incorrect number of input indexes", {
+test_that("error trap incorrect number of input indices", {
     ## y[i] from x[i], etc.
 
     singleContext1 <-
@@ -172,13 +172,13 @@ test_that("error trap incorrect number of input indexes", {
             varRangeClass$new(list(
                               indexRange(3),
                               indexRange(4))), rules),
-        "incorrect number of input indexes"
+        "incorrect number of input indices"
     )
 
     expect_error(
         applyGraphIndexRules(
             vrNone, rules),
-        "incorrect number of input indexes"
+        "incorrect number of input indices"
     )
 
     ## incorrect length of input matrix indexRange
@@ -186,7 +186,7 @@ test_that("error trap incorrect number of input indexes", {
         applyGraphIndexRules(
             varRangeClass$new(list(
                               indexRange(matrix(c(3,4), nrow = 1)))), rules),
-        "incorrect number of input indexes"
+        "incorrect number of input indices"
     )
 
     rules <- makeGraphIndexRules(LHS = quote(y[i]),
@@ -197,7 +197,7 @@ test_that("error trap incorrect number of input indexes", {
         applyGraphIndexRules(
             varRangeClass$new(list(
                               indexRange(3))), rules), 
-        "incorrect number of input indexes"
+        "incorrect number of input indices"
     )
 
     rules <- makeGraphIndexRules(LHS = quote(y[i]),
@@ -207,7 +207,7 @@ test_that("error trap incorrect number of input indexes", {
     expect_error(
         applyGraphIndexRules(
             varRangeClass$new(list(indexRange(2))), rules),
-        "incorrect number of input indexes"
+        "incorrect number of input indices"
     )
 
 })
@@ -493,7 +493,7 @@ test_that("graphRules works for reordered columns", {
                                               singleContext2,
                                               singleContext3))
 
-    rules <- makeGraphIndexRules(LHS = quote(y[i, j, k]),
+    rules <- makeGraphIndexRules(LHS = quote(y[j, i, k]),
                                 RHS = quote(x[k, i, j]),
                                 context = context_ijk)
 
@@ -504,9 +504,9 @@ test_that("graphRules works for reordered columns", {
                               indexRange(quote(2:3)),
                               indexRange(quote(1:4)))), rules),
         varRangeClass$new(list(
-               indexRange(quote(2:3)),
-               indexRange(quote(1:4)),
-               indexRange(quote(1:2))))
+                          indexRange(quote(1:4)),
+                          indexRange(quote(2:3)),
+                          indexRange(quote(1:2))))
     )
 
     expect_equal(
@@ -516,7 +516,7 @@ test_that("graphRules works for reordered columns", {
                               indexRange(quote(1:4)))), rules),
         varRangeClass$new(list(
                indexRange(quote(1:4)),
-               indexRange(matrix(c(1,2,2,3), nrow = 2))))
+               indexRange(matrix(c(2,3,1,2), nrow = 2))))
     )
 
     rules <- makeGraphIndexRules(LHS = quote(y[k, i, j]),
@@ -578,6 +578,7 @@ test_that("graphRules correctly handles ragged indexing", {
    context_ijniknij<- modelContextClass$new(list(singleContext1,
                                               singleContext2ni,
                                               singleContext3nij))
+   
 
    n <- c(1,3,2)
    mi <- c(2,1,3)
@@ -667,10 +668,9 @@ test_that("graphRules correctly handles ragged indexing", {
                                   indexRange(matrix(c(3,2,2,3,3,4), ncol = 2)))), rules),
        varRangeClass$new(list(indexRange(matrix(c(3,2,2), ncol = 1))))
    )
-
 })
 
-test_that("graphRules works for non-contiguous indexes in an indexRange", {
+test_that("graphRules works for non-contiguous indices in an indexRange", {
     ## Case of y[i,j,k] where i,k are in an indexRange together
     singleContext1 <-
         modelSingleContext(forCode = quote(for(i in 1:3){}))
@@ -702,15 +702,11 @@ test_that("graphRules works for non-contiguous indexes in an indexRange", {
         varRangeClass$new(list(indexRange(matrix(c(1,2,1,2), nrow = 2)),
                                indexRange(matrix(c(1,3), ncol = 1))),
                           indexOrders = list(c(1,3), 2)))
-)
+})
 
 test_that("graphRules works for getParents by checking 1-to-many case", {
     ## use y[i] -> x[2] to emphasize getParents use case; y[i] is "RHS"
     ## TRY TO CLEAN UP/MAKE CONSISTENT HOW FIXEDCONSTRAINTS AND INDEXCONSTRAINTS HANDLED
-
-    ## nested indexing with 2 any rules w/ and w/o 2-col matrix iRange
-    ## nested indexing with 1 any rule w/ and w/o 2-col matrix iRange
-    ## move to nested indexing section?
 
     ## should some of these tests be moved to test-indexRules_any.R ?
     ## perhaps any that don't involve weird crossing
@@ -1145,7 +1141,7 @@ test_that("graphRules works for getParents by checking 1-to-many case", {
 ## key thing is to check with arbitrary indexRules
 
 ## Test parent cases (should we just test all cases above in reverse?)
-## Carefully consider cases where where have LHS indexes not appearing on RHS
+## Carefully consider cases where where have LHS indices not appearing on RHS
 ## since this pattern of having every input index produce same output index (many to one)
 ## doesn't occur for determining children.
 ## y[i] -> x, x[2], x[2:3], x[], x[2,3], x[2,]
@@ -1158,7 +1154,7 @@ test_that("graphRules works for getParents by checking 1-to-many case", {
 ## move tests that concentrate on validity of RHS constraints to separate testthat?
 ## currently the 2d matrix validity check is in the 1-d seq testing for 2d RHS constants case
 
-## try matrix ranges that cover non-adjacent indexes or reversed indexes - what is possible?
+## try matrix ranges that cover non-adjacent indices or reversed indices - what is possible?
 
 ## clarify terminology of block and sequence; use sequence for indexRange and block for indexRule?
 
@@ -1684,7 +1680,7 @@ test_that("graphRules works for 1D all rule", {
     ## We have NULL as part of constraint if blank indexing, so use of NULL here doesn't work.
     expect_equal(
         applyGraphIndexRules(
-            varRangeClass$new(list(indexRange(0))), rules),
+            vrNone, rules),
         varRangeClass$new(list(indexRange(quote(2:11)))))
 
     expect_equal(
@@ -1891,13 +1887,9 @@ test_that("graphRules works for 1D constant rule", {
 
     expect_equal(
         applyGraphIndexRules(
-            varRangeClass$new(list(indexRange(0))), rules),
+            vrNone, rules),
         varRangeClass$new(list(indexRange(quote(2)))))
 
-    expect_equal(
-        applyGraphIndexRules(
-            varRangeClass$new(list(indexRange(quote(2)))), rules),
-        vrEmpty)
 })
 
 test_that("graphRules works for 1D constant rule, LHS no indexing", {
@@ -1955,8 +1947,9 @@ test_that("graphRules works for 1D constant rule, LHS no indexing", {
 
     expect_equal(
         applyGraphIndexRules(
-            varRangeClass$new(list(indexRange(0))), rules),
-        varRangeClass$new(list(indexRange(quote(0)))))
+            vrNone, rules),
+        vrNone
+    )
 })
 
 test_that("graphRules works for 2D all rule", {
@@ -1977,8 +1970,7 @@ test_that("graphRules works for 2D all rule", {
 
     expect_equal(
         applyGraphIndexRules(
-            varRangeClass$new(list(
-                              indexRange(quote(0)))), rules),
+            vrNone, rules),
         varRangeClass$new(list(indexRange(quote(2:11)),
                                indexRange(quote(1:5))))
     )
@@ -2157,8 +2149,7 @@ test_that("graphRules works for 2D all+constant rule", {
 
     expect_equal(
         applyGraphIndexRules(
-            varRangeClass$new(list(
-                              indexRange(quote(0)))), rules),
+            vrNone, rules),
         varRangeClass$new(list(indexRange(quote(1:10)),
                                indexRange(quote(2))))
     )
@@ -2268,8 +2259,7 @@ test_that("graphRules works for 2D constant rule", {
 
     expect_equal(
         applyGraphIndexRules(
-            varRangeClass$new(list(
-                              indexRange(quote(0)))), rules),
+            vrNone, rules),
         varRangeClass$new(list(indexRange(quote(2)),
                                indexRange(quote(3))))
     )
@@ -2280,8 +2270,7 @@ test_that("graphRules works for 2D constant rule", {
 
     expect_equal(
         applyGraphIndexRules(
-            varRangeClass$new(list(
-                              indexRange(quote(0)))), rules),
+            vrNone, rules),
         varRangeClass$new(list(indexRange(quote(2:3)),
                                indexRange(quote(3))))
     )
@@ -3199,8 +3188,7 @@ test_that("graphRules works for 2D single set all cases", {
 
     expect_equal(
         applyGraphIndexRules(
-            varRangeClass$new(list(
-                              indexRange(quote(0)))), rules),
+            vrNone, rules),
         varRangeClass$new(list(indexRange(cbind(2:11, 1:10))))
     )
 
