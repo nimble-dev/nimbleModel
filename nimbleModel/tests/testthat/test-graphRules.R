@@ -3315,7 +3315,7 @@ test_that("graphRules works for 2D single set sequence cases", {
             varRangeClass$new(list(
                               indexRange(quote(2:3)),
                               indexRange(matrix(1:2, ncol = 1)))), rules),
-        varRangeClass$new(list(indexRange(matrix(c(7, 10, 8 11), ncol = 1))))
+        varRangeClass$new(list(indexRange(matrix(c(7, 10, 8, 11), ncol = 1))))
     )
 
     ## some invalid entries
