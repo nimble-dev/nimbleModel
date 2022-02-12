@@ -72,7 +72,6 @@ indexRule_all_setup <- function(toIndexExprList,
         }
     }
     ## Otherwise, do unrolling and handle like arbitrary case, but without 'from' information
-    if(exists('paciorek')) browser()
     toIndexNames <- lapply(names(toIndexExprList),
                            as.name)
     ## Run the for loops in an environment

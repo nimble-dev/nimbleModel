@@ -93,7 +93,7 @@ nimAllEqual <- function(value) {
 }
 
 
-## Note that it's tricky to deal with missing indexes when these are elements of ...
+## Note that it's tricky to deal with missing indices when these are elements of ...
 ## can explicitly do missing(..1) but not sure how to do that programmatically
 ## with missing elements, using list(...) fails. Therefore code here manipulates
 ## the argument list as code.
@@ -102,17 +102,17 @@ nimAllEqual <- function(value) {
 `[.varStoreClass` = function(self, ..., expand = FALSE) {
     if(self$allEqual) {
         args <- match.call(expand.dots = TRUE)[-1]
-        indexes <- as.list(args[names(args) == ""])  # unnamed arguments are indexes from ...
-        indexes[indexes == ""] <- sapply(self$dim, insertSequence)[indexes == ""] # insert 1:n for missing indexes
+        indices <- as.list(args[names(args) == ""])  # unnamed arguments are indices from ...
+        indices[indices == ""] <- sapply(self$dim, insertSequence)[indices == ""] # insert 1:n for missing indices
         ## FIXME: deparse(match.call()) prints out as function call not as user-friendly [ operator
-        if(length(indexes) > 1 && length(indexes) != length(self$dim))
+        if(length(indices) > 1 && length(indices) != length(self$dim))
             stop("Error in ", deparse(match.call()), ": incorrect number of dimensions")
-        if(any(sapply(indexes, getMaxIndex) > self$dim))
+        if(any(sapply(indices, getMaxIndex) > self$dim))
             stop("Error in ", deparse(match.call()), ": subscript out of bounds")
         if(!expand) {
             return(self$value)
         } else {
-            dim <- sapply(indexes, getLength) # determine dimension of requested subset
+            dim <- sapply(indices, getLength) # determine dimension of requested subset
             return(expandValues(self$value, dim))
         }
     } else {  # in simple case of fully-expanded structure, just use base R
@@ -127,11 +127,11 @@ nimAllEqual <- function(value) {
         stop("varStoreClass: input type is not the same as the stored type.")
 
     args <- match.call(expand.dots = TRUE)[-1]
-    indexes <- as.list(args[names(args) == ""])  # unnamed arguments are indexes from ...
-    indexes[indexes == ""] <- sapply(self$dim, insertSequence)[indexes == ""] # insert 1:n for missing indexes
-    if(length(indexes) > 1 && length(indexes) != length(self$dim))
+    indices <- as.list(args[names(args) == ""])  # unnamed arguments are indices from ...
+    indices[indices == ""] <- sapply(self$dim, insertSequence)[indices == ""] # insert 1:n for missing indices
+    if(length(indices) > 1 && length(indices) != length(self$dim))
        stop("Error in ", deparse(match.call()), ": incorrect number of dimensions")
-    if(any(sapply(indexes, getMaxIndex) > self$dim))
+    if(any(sapply(indices, getMaxIndex) > self$dim))
         stop("Error in ", deparse(match.call()), ": subscript out of bounds")
 
     if(!(self$allEqual && value[1] == self$value && length(unique(c(value))) == 1)) {

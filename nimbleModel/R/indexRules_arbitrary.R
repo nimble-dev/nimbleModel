@@ -1,7 +1,3 @@
-## TODO:
-## 2021-11-13: have result of apply be indexRange_matrix not matrix;
-## also make use of indexRange_empty, and modify tests accordingly
-
 indexRuleClass_arbitrary <- R6Class(
     classname = "indexRuleClass_arbitrary",
     inherit = indexRuleClass,
@@ -13,6 +9,11 @@ indexRuleClass_arbitrary <- R6Class(
                               context,
                               constants = list()
                               ) {
+            ## Rule not applicable if no LHS indexing
+            ## This case would arise if looking for parents in case such as
+            ## y[i] <- x[2] (i.e., y[2] <- x[i] when creating a parent rule)
+            if(!length(toIndexExprList))
+                return()
             setupResults <<-
                 indexRule_arbitrary_setup(toIndexExprList,
                                               fromIndexExprList,
