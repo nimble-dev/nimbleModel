@@ -1082,6 +1082,8 @@ test_that("graphRules works for getParents by checking 1-to-many case", {
 })
 
 
+## 2022-02-14: add test for y<- x[] that have [1,Inf) as RHS constraint.
+
 
 ## Test various child cases:
 
