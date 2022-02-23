@@ -16,6 +16,18 @@ bruteForceNestedIndexing <- function(indexVector, indexQuery) {
     ans
 }
 
+## 2022-02-19:
+## go thru notes in middle of this file
+## add comments in code and do some cleanup
+##   use bruteForceNestedIndexing when can
+## try to set up single set of contexts; perhaps with some longer and shorter ones
+## test where context is i=3:7 type thing
+## try to remove old Perry crossing code - see if I can figure out situatios it would be used in and that I have handled those situations
+## move basic tests into indexRule test files
+## then merge into master branch, and add originalIndexRules to code and tests
+
+## This is not allowed in current nimble: y[i] <- sum(x[c(1,3,5)])
+
 irEmpty <- nimbleModel:::indexRange_empty()
 vrEmpty <- varRangeClass$new(list(irEmpty))
 vrEmpty_mat2 <- varRangeClass$new(list(irEmpty), list(1:2))
@@ -475,6 +487,11 @@ test_that("graphRules works for fixed RHS indices", {
         varRangeClass$new(list(indexRange(quote(2:3))))
     )
 
+    rules <- makeGraphIndexRules(LHS = quote(y[i+1]),
+                                 RHS = quote(x[]),
+                                 context = context_i)
+    expect_identical(rules$constraints[[1]]$constraint, c(1, Inf))
+
 })
 
 
@@ -706,7 +723,6 @@ test_that("graphRules works for non-contiguous indices in an indexRange", {
 
 test_that("graphRules works for getParents by checking 1-to-many case", {
     ## use y[i] -> x[2] to emphasize getParents use case; y[i] is "RHS"
-    ## TRY TO CLEAN UP/MAKE CONSISTENT HOW FIXEDCONSTRAINTS AND INDEXCONSTRAINTS HANDLED
 
     ## should some of these tests be moved to test-indexRules_any.R ?
     ## perhaps any that don't involve weird crossing
@@ -1081,10 +1097,6 @@ test_that("graphRules works for getParents by checking 1-to-many case", {
     
 })
 
-
-## 2022-02-14: add test for y<- x[] that have [1,Inf) as RHS constraint.
-
-
 ## Test various child cases:
 
 ## (done) [seq] y[i] <- x[i], x[i,2], x[i,2:3], x[i,]
@@ -1117,8 +1129,6 @@ test_that("graphRules works for getParents by checking 1-to-many case", {
 
 ## should we check y[k[i]] <- x[j[i]]?
 
-## This is not allowed in current nimble: y[i] <- sum(x[c(1,3,5)])
-
 ## currently we leave duplicate rows in result; is that what we want?
 
 ## need taxonomy for complicated indexing behavior?
@@ -1141,22 +1151,6 @@ test_that("graphRules works for getParents by checking 1-to-many case", {
 ## or multiple matrix input indexRanges with different numbers of rows
 ## should do crossing since we correctly cross multiple sequence indexRanges (I think, but check that too)
 ## key thing is to check with arbitrary indexRules
-
-## Test parent cases (should we just test all cases above in reverse?)
-## Carefully consider cases where where have LHS indices not appearing on RHS
-## since this pattern of having every input index produce same output index (many to one)
-## doesn't occur for determining children.
-## y[i] -> x, x[2], x[2:3], x[], x[2,3], x[2,]
-## That case may be sufficient or we may also need:
-## y[2,i] -> x[i], x[i,2], x[i,2:3], x[i,], x[i,2,3]
-## y[2,i] <- x, x[2], x[2:3], x[2,4], x[,2], x[,2], x[i,2,3]
-## y[i,j] -> x, x[2], x[2:3], x[2,4], x[,2], x[,2], x[2,3,4]
-## y[j,i] -> x[i], x[i,2], x[i,2:3], x[i,], x[i,2,4]
-
-## move tests that concentrate on validity of RHS constraints to separate testthat?
-## currently the 2d matrix validity check is in the 1-d seq testing for 2d RHS constants case
-
-## try matrix ranges that cover non-adjacent indices or reversed indices - what is possible?
 
 
 test_that("graphRules works for 1D sequence rule", {

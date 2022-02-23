@@ -219,7 +219,12 @@ indexRule_block_setup_internal <- function(toIndexExprList,
 ## Look only for i +/- offset.
 ## I think we can use some old code to
 ## partially evaluate more complicated expressions.
-## And/or we can try using Ryacas
+## And/or we can try using Ryacas // PdV
+## Not clear what more complicated expressions we
+## could handle - presumably offset +/ i,
+## stuff like 3*i could possibly handle to avoid
+## full unrolling, but result can't be handled
+## except as a matrix indexRange anyway // CJP
 getSignAndOffset <- function(indexExpr,
                              indexVarName,
                              constantsEnv = new.env()) {
