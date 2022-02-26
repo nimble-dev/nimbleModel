@@ -14,15 +14,13 @@ test_that("indexRule_block works",
 
     ## Direct use of the methods
 
-    ## Application to a scalar produces a matrix.
-    ## Is this what we want?
     expect_equal(indexRule_block_apply_single(13,
                                               setupResults),
-                 matrix(11))
+                 indexRange(11))
     
     expect_identical(indexRule_block_apply(indexRange(13),
                                        setupResults),
-                     indexRange(matrix(11)))
+                     indexRange(11))
     
     
     expect_identical(
@@ -32,9 +30,22 @@ test_that("indexRule_block works",
     )
 
     expect_identical(
+        indexRule_block_apply(indexRange(matrix(4)),
+                              setupResults),
+        indexRange(matrix(2))
+    )
+
+    expect_identical(
         indexRule_block_apply(indexRange(matrix(c(4,6,8), nrow = 3)),
                               setupResults),
         indexRange(matrix(c(2,4,6), nrow = 3))
+    )
+
+    ## with duplicates
+    expect_identical(
+        indexRule_block_apply(indexRange(matrix(c(4,4,8), nrow = 3)),
+                              setupResults),
+        indexRange(matrix(c(2,2,6), nrow = 3))
     )
 
     expect_identical(
@@ -51,21 +62,38 @@ test_that("indexRule_block works",
     )
 
     expect_identical(
+        indexRule_block_apply(indexRange(quote(2:5)),
+                              setupResults),
+        indexRange(quote(2:3))
+    )
+
+    ## Not sure if we want this to simplify to a scalar.
+    expect_identical(
+        indexRule_block_apply(indexRange(quote(2:4)),
+                              setupResults),
+        indexRange(quote(2:2))
+    )
+
+    expect_identical(
         indexRule_block_apply(indexRange(quote(15:16)),
                               setupResults),
         irEmpty
     )
-    
+
+    ## These produce NAs. They need to be kept at this stage
+    ## so that if have multiple rules applied to a multi-column
+    ## indexRange matrix, we can piece the results of the rules
+    ## together element by element.
     expect_identical(
         indexRule_block_apply(indexRange(matrix(c(10,12,14), nrow = 3)),
                               setupResults),
-        indexRange(matrix(c(8,10), nrow = 2))
+        indexRange(matrix(c(8,10, NA), nrow = 3))
     )
 
     expect_identical(
         indexRule_block_apply(indexRange(matrix(c(14,16,18), nrow = 3)),
                               setupResults),
-        irEmpty
+        indexRange(matrix(rep(as.numeric(NA), 3), nrow = 3))
     )
 
     ## use of API
@@ -75,6 +103,20 @@ test_that("indexRule_block works",
         indexRange(quote(2:3)))
 
 
-}
-)
+    ## offset context indexing
+    singleContext1 <-
+        modelSingleContext(forCode = quote(for(i in 3:5){}))
+    
+    context_i <- modelContextClass$new(list(singleContext1))
+    setupResults <- indexRule_block_setup(list(quote(i + 1)),
+                                          list(quote(i + 3)),
+                                          context_i)
+
+    expect_identical(
+        indexRule_block_apply(indexRange(quote(7:10)),
+                                    setupResults),
+        indexRange(quote(5:6))
+    )
+
+})
 

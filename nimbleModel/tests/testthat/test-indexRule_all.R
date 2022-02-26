@@ -9,13 +9,12 @@ test_that("indexRule_all works",
 
 
     rule <- nimbleModel:::indexRuleClass_all$new(list(quote(i + 1)),
-                                       list(),  # perhaps this would generally be NULL?
+                                       list(),  
                                        context_i)
     expected_result <- indexRange(quote(2:11))
     expect_equal(rule$setupResults,
                  list(all = expected_result))
 
-    ## Should non-empty RHS produce NULL or an "empty" rule?
     rule_alt <- nimbleModel:::indexRuleClass_all$new(list(quote(i + 1)),
                                                      list(2),
                                                      context_i)
@@ -30,5 +29,14 @@ test_that("indexRule_all works",
         rule$apply(indexRange(quote(4:5))),
         expected_result
     )
+
+    rule <- nimbleModel:::indexRuleClass_all$new(list(t1 = quote(3*i)),
+                                       list(),  
+                                       context_i)
+    expected_result <- indexRange(matrix(seq(3, 30, by = 3), ncol = 1))
+    expect_equal(rule$setupResults,
+                 list(all = expected_result))
+
+
 }
 

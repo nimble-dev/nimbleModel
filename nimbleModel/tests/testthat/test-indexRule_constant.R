@@ -3,13 +3,12 @@ context("indexRule_constant")
 test_that("indexRule_constant works",
 {    
     rule <- nimbleModel:::indexRuleClass_constant$new(list(2),
-                                       list(),  # perhaps this would generally be NULL?
+                                       list(),  
                                        list())
     expected_result <- indexRange(quote(2))
     expect_equal(rule$setupResults,
                  list(constant = expected_result))
 
-    ## Should non-empty RHS produce NULL or an "empty" rule?
     rule_alt <- nimbleModel:::indexRuleClass_all$new(list(2),
                                                      list(3),
                                                      list())
@@ -27,7 +26,7 @@ test_that("indexRule_constant works",
 
     ## Block constant
     rule <- nimbleModel:::indexRuleClass_constant$new(list(quote(2:3)),
-                                       list(),  # perhaps this would generally be NULL?
+                                       list(), 
                                        list())
 
     expected_result <- indexRange(quote(2:3))
@@ -38,5 +37,7 @@ test_that("indexRule_constant works",
         rule$apply(NULL),
         expected_result
     )
+
+    
 }
 
