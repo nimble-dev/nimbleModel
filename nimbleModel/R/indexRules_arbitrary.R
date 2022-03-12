@@ -55,11 +55,10 @@ indexRuleClass_arbitrary <- R6Class(
                     setupResults,
                     collapse = collapse
                 )
-            toIndices <- if(collapse)
-                             indexRange_matrix(toIndices)
-                         else
-                             indexRange_matrixList(toIndices)
-            toIndices
+            if(!length(toIndices))
+                return(indexRange_empty())
+            if(collapse)
+                return(indexRange_matrix(toIndices)) else return(indexRange_matrixList(toIndices))
         },
         apply = function(from, ...) {
             if(inherits(from, 'varRangeClass'))
@@ -282,7 +281,6 @@ indexRule_arbitrary_setup <- function(toIndexExprList,
 
         allIndices <- do.call("cbind",
                               toUnrolledResults)
-        
         iRow2toIndices <- split(allIndices,
                                 1:unrolledSize) ## makes it a list
     } else {
@@ -299,7 +297,7 @@ indexRule_arbitrary_setup <- function(toIndexExprList,
         iRow2toIndices <- split(allIndices,
                                 iRows)
     }
-
+    
     names(iRow2toIndices) <- NULL
     
     list(from2indicesFunctions = from2indicesFunctions,
@@ -320,7 +318,9 @@ indexRule_arbitrary_apply_single <- function(fromIndices,
         from_flat <- from2indicesFunctions$rawIndex2flatIndex(fromIndices)
         iRows <- unlist(from_flat2iRow[from_flat])
 ### unique???
-        toIndices <<- do.call("rbind", iRow2toIndices[iRows])
+        result <- as.matrix(do.call("rbind", iRow2toIndices[iRows]))
+        dimnames(result) <- NULL
+        toIndices <<- result
     })
     if(is.null(toIndices))
         matrix(data = numeric(),
@@ -337,7 +337,8 @@ indexRule_arbitrary_apply_matrix <- function(fromIndices,
         from_flat <- from2indicesFunctions$rawIndex2flatIndex_multi(fromIndices)
         ## deal with invalid fromIndices - need information retained for later collapsing with other columns
         invalid <- sapply(from_flat, function(x) length(x) == 0)
-        from_flat[invalid] <- NA
+        if(length(invalid))
+            from_flat[invalid] <- NA
         from_flat <- unlist(from_flat)
         
         ## iRowsList has the declaration iRows for each from_flat
@@ -351,7 +352,8 @@ indexRule_arbitrary_apply_matrix <- function(fromIndices,
                                  function(x) {
                                      tmp <- do.call('rbind',
                                                     iRow2toIndices[x])
-                                     if(is.null(tmp)) return(NAs) else return(tmp)
+                                     dimnames(tmp) <- NULL
+                                     if(is.null(tmp)) return(NAs) else return(as.matrix(tmp))
                                  })
     })
     if(collapse) {
@@ -361,11 +363,12 @@ indexRule_arbitrary_apply_matrix <- function(fromIndices,
             toIndicesList <-
                 toIndicesList[!unlist(lapply(toIndicesList, is.null))]
         if(length(toIndicesList) == 0)
-            matrix(data = numeric(),
-                   nrow = 0, ncol = length(setupResults$toInfo))
-        else
-            as.matrix(do.call('rbind', toIndicesList))
+            return(matrix(data = numeric(),
+                   nrow = 0, ncol = length(setupResults$toInfo)))
+        else {
+            result <- as.matrix(do.call('rbind', toIndicesList))
+            return(result)
+        }
     }
-    else
-        toIndicesList
+    else return(toIndicesList)
 }
