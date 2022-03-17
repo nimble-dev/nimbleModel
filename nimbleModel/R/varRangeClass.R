@@ -66,7 +66,7 @@ varRangeClass <- R6Class(
                 indexInfo <- parse(text = indexInfo,
                                    keep.source = FALSE)[[1]]
             ## input is an expression
-            if(is.call(indexInfo) | is.name(indexInfo)) {
+            if(is.call(indexInfo) || is.name(indexInfo)) {
                 if(length(indexInfo)==1) {
                     ## The expression is just a name
                     nameFromExpr <- as.character(indexInfo)

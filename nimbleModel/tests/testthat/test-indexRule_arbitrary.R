@@ -166,6 +166,12 @@ test_that("arbitraryIndexRuleClass", {
     )
 
     expect_equal(
+        indexRule_arbitrary_apply_single(c(5, 99),
+                                         setupResults),
+        matrix(numeric(), 0, 2)
+    )
+
+    expect_equal(
         indexRule_arbitrary_apply_matrix(matrix(c(5, 3, 6, 3),
                                                 byrow = TRUE,
                                                 nrow = 2),
@@ -174,8 +180,8 @@ test_that("arbitraryIndexRuleClass", {
                byrow = TRUE,
                nrow = 2)
     )
-
-   expect_equal(
+    
+    expect_equal(
         indexRule_arbitrary_apply_matrix(matrix(c(5, 3, 6, 3),
                                                 byrow = TRUE,
                                                 nrow = 2),
@@ -243,7 +249,20 @@ test_that("arbitraryIndexRuleClass", {
         nimbleModel:::indexRange_empty()
     )
 
-
+    ## RHS single index a function of multiple contexts
+    setupResults <- indexRule_arbitrary_setup(
+        toIndexExprList = list(
+            t1 = quote(i),
+            t2 = quote(j)),
+        fromIndexExprList = list(
+            f1 = quote(i+j)),
+        context = context_ij)
+    
+    expect_equal(
+        indexRule_arbitrary_apply_single(c(3),
+                                         setupResults),
+        matrix(c(1,2,2,1), nrow = 2)
+    )
     
     ## Non-scalar RHS test
     ## for(i in 1:10) 
@@ -270,6 +289,13 @@ test_that("arbitraryIndexRuleClass", {
                  matrix(c(3, 3, 3, 4, 3, 5, 3, 4, 3, 5),
                         byrow = TRUE, ncol = 2))
 
+    expect_equal(indexRule_arbitrary_apply_matrix(matrix(c(4, 5, 4, 99),
+                                                  byrow = TRUE, nrow = 2),
+                                                setupResults),
+                 matrix(c(3, 3, 3, 4, 3, 5, NA, NA),
+                        byrow = TRUE, ncol = 2))
+
+    
     ## Non-scalar on LHS
     ## for(i in 1:10)
     ##  y[i, 2:n[i] ] <- foo(x[i+1])
@@ -319,7 +345,6 @@ test_that("arbitraryIndexRuleClass", {
                  matrix(c(8, 2, NA, NA), nrow = 2, byrow = TRUE)
     )
 
-    ## HERE
     test_arbitraryIndexRule(quote(y[i]),
                             quote(x[i]),
                             context_i)
@@ -478,156 +503,9 @@ test_that("arbitraryIndexRuleClass", {
                             context_ij,
                             constants = list(n = raggedRowLengths))
 
-    ## FAILING
     test_arbitraryIndexRule(quote(y[3*i]),
                             quote(x[i+1]),
-                            context_ij)
+                            context_i)
 
-    ## FAILING
-    setupResults <- indexRule_arbitrary_setup(list(quote(3*i)),
-                                          list(quote(i + 1)),
-                                          context_i)
-    expect_identical(
-        indexRule_arbitrary_apply(indexRange(matrix(c(2,4,5), ncol = 1)), setupResults),
-        indexRange(matrix(c(3,9,12), ncol = 1))
-    )
-    
 })
 
-## incorporate all of these into tests above
-
-## this works:
-    rules <- makeGraphIndexRules(LHS = quote(y[3*i]),
-                                 RHS = quote(x[i+1]),
-                                 context = context_i)
-
-    expect_equal(
-        applyGraphIndexRules(
-            varRangeClass$new(list(
-                              indexRange(quote(3:6)))),
-            rules),
-        varRangeClass$new(list(indexRange(matrix(seq(6, 15, by = 3), ncol = 1))))
-    )
-
-
-   k <- c(1, 10, 2, 6, 1, 8, 2, 7, 5, 9) ## Note 1 and 2 are repeated
-    rules <- makeGraphIndexRules(LHS = quote(y[i]),
-                                 RHS = quote(x[ k[i] ]),
-                                 context = context_i,
-                                 constants = list(k = k))
-
-    ## Apply rule to a sequence indexRange
-    expect_equal(
-        applyGraphIndexRules(
-            varRangeClass$new(list(
-                              indexRange(quote(3:6)))), rules), ## 3 and 4 yield nothing
-        varRangeClass$new(list(
-                          indexRange(matrix(bruteForceNestedIndexing(k, 3:6)))))
-    )
-
-    ## Apply rule to a sequence indexRange with multiples
-    expect_equal(
-        applyGraphIndexRules(
-            varRangeClass$new(list(
-                              indexRange(quote(1:6)))), rules), ## 1 and 2 yield multiples, 3 and 4 yield nothing
-        varRangeClass$new(list(
-                          indexRange(matrix(bruteForceNestedIndexing(k, 1:6)))))
-    )
-
-    
-    ## Apply rule to a matrix indexRange
-    expect_equal(
-       applyGraphIndexRules(
-           varRangeClass$new(list(
-                    indexRange(matrix(c(2, 4, 6, 1, 11), ncol = 1)))), rules),
-       varRangeClass$new(list(
-               indexRange(matrix(bruteForceNestedIndexing(k, c(2, 4, 6, 1))))))
-    )
-
-    ## Apply rule1 to a matrix indexRange with only 1 row
-    expect_equal(
-       applyGraphIndexRules(
-           varRangeClass$new(list(
-                    indexRange(matrix(c(7), nrow = 1)))), rules),
-       varRangeClass$new(list(
-               indexRange(matrix(bruteForceNestedIndexing(k, 7)))))
-    )
-
-    ## Apply rule to a matrix with an empty result
-    expect_equal(
-       applyGraphIndexRules(
-           varRangeClass$new(list(
-                    indexRange(matrix(c(4), nrow = 1)))), rules),
-       vrEmpty
-    )
-    
-    ## Apply to a sequence with not all valid inputs
-    expect_equal(
-       applyGraphIndexRules(
-           varRangeClass$new(list(
-                    indexRange(quote(8:13)))), rules),
-       varRangeClass$new(list(
-               indexRange(matrix(bruteForceNestedIndexing(k, 8:13)))))
-    )
-
-    ## With no valid inputs
-    expect_equal(
-       applyGraphIndexRules(
-           varRangeClass$new(list(
-                    indexRange(quote(12:15)))), rules),
-       vrEmpty
-    )
-
-
-    k <- c(10:2, 11)
-    rules <- makeGraphIndexRules(LHS = quote(y[ k[i] ]),
-                                 RHS = quote(x[i]),
-                                 context = context_i,
-                                 constants = list(k = k))
-
-    ## Apply rule to a sequence indexRange
-    expect_equal(
-        applyGraphIndexRules(
-            varRangeClass$new(list(
-                              indexRange(quote(8:10)))), rules), ## 3 and 4 yield nothing
-        varRangeClass$new(list(
-                          indexRange(matrix(c(3,2,11), ncol = 1))))
-    )
-
-    ## Apply rule to a matrix indexRange
-    expect_equal(
-       applyGraphIndexRules(
-           varRangeClass$new(list(
-                    indexRange(matrix(c(2, 4, 6, 1), ncol = 1)))), rules),
-       varRangeClass$new(list(
-               indexRange(matrix(c(9, 7, 5, 10), ncol = 1))))
-    )
-
-## FAILING
-    ## Apply rule to a matrix with an empty result
-    expect_equal(
-       applyGraphIndexRules(
-           varRangeClass$new(list(
-                    indexRange(matrix(c(11), nrow = 1)))), rules),
-       vrEmpty
-    )
-
-    
-    ## Apply to a sequence with not all valid inputs
-    expect_equal(
-       applyGraphIndexRules(
-           varRangeClass$new(list(
-                    indexRange(quote(8:13)))), rules),
-       varRangeClass$new(list(
-                          indexRange(matrix(c(3,2,11), ncol = 1))))
-    )
-
-## FAILING
-    ## With no valid inputs
-    expect_equal(
-       applyGraphIndexRules(
-           varRangeClass$new(list(
-                    indexRange(quote(12:15)))), rules),
-       vrEmpty
-    )
-    

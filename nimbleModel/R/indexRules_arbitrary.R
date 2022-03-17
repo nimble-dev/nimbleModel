@@ -313,14 +313,19 @@ indexRule_arbitrary_setup <- function(toIndexExprList,
 
 indexRule_arbitrary_apply_single <- function(fromIndices,
                                              setupResults) {
-    warning("indexRule_arbitrary_apply_single: needs further development work.")
     with(setupResults, {
+        toIndices <<- NULL
         from_flat <- from2indicesFunctions$rawIndex2flatIndex(fromIndices)
-        iRows <- unlist(from_flat2iRow[from_flat])
+        if(length(from_flat)) {
+            iRows <- unlist(from_flat2iRow[from_flat])
 ### unique???
-        result <- as.matrix(do.call("rbind", iRow2toIndices[iRows]))
-        dimnames(result) <- NULL
-        toIndices <<- result
+            if(length(iRows)) {
+                result <- as.matrix(do.call("rbind", iRow2toIndices[iRows]))
+                dimnames(result) <- NULL
+                toIndices <<- result
+
+            }
+        }
     })
     if(is.null(toIndices))
         matrix(data = numeric(),
@@ -352,9 +357,13 @@ indexRule_arbitrary_apply_matrix <- function(fromIndices,
                                  function(x) {
                                      tmp <- do.call('rbind',
                                                     iRow2toIndices[x])
-                                     dimnames(tmp) <- NULL
-                                     if(is.null(tmp)) return(NAs) else return(as.matrix(tmp))
-                                 })
+                                     if(is.null(tmp)) {
+                                         return(NAs)
+                                     } else {
+                                         tmp <- as.matrix(tmp)
+                                         dimnames(tmp) <- NULL
+                                         return(tmp)
+                                     }})
     })
     if(collapse) {
         ## How should we be handling inputs that don't return an output?
