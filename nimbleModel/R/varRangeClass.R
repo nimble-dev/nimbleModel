@@ -143,6 +143,10 @@ varRangeClass <- R6Class(
     )
 )
 
+## Make this a varRangeClass method?
+isEmpty <- function(varRange) 
+    any(sapply(varRange$indexRanges, function(x) identical(attr(x, 'rangeType'), 'empty')))
+
 invertIndexList <- function(indexList) {
     browser()
     inputLengths <- lapply(indexList, length)
