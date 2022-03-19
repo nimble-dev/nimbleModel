@@ -39,8 +39,8 @@ modelDeclClass <- R6Class(
                                  truncated,
                                  boundExprs)
         },
-        process = function() {
-            genSymbolicParentNodes()
+        process = function(constantsNamesList, nimFunNames) {
+            genSymbolicParentNodes(constantsNamesList, nimFunNames)
             makeDownstreamRules()
         },
         genSymbolicParentNodes = function(constantsNamesList,
@@ -64,7 +64,7 @@ modelDeclClass <- R6Class(
             downstreamRules <- vector('list',
                                       length(symbolicParentNodes))
             for(i in seq_along(symbolicParentNodes)) {
-                downstreamRules[[i]] <-
+                downstreamRules[[i]] <<-
                     graphRuleClass$new(targetNodeExpr,
                                        symbolicParentNodes[[i]],
                                        context)

@@ -4,6 +4,7 @@ modelDefClass <- R6Class(
     public = list(
         modelCode = NULL,
         contexts = list(),
+        constantsNamesList = list(),
         declInfo = list(),
         downstreamRules = NULL,
         upstreamRules = NULL,
@@ -16,8 +17,11 @@ modelDefClass <- R6Class(
                                   modelCode)
         },
         processDecls = function() {
+            ## placeholder so we don't need to invoke all our distribution stuff
+            nimFunNames <- list(as.name('dnorm'), as.name('dunif'))
+            ## placeholder until we add in constants processing
             for(i in seq_along(declInfo)) {
-                declInfo[[i]]$process()
+                declInfo[[i]]$process(constantsNamesList, nimFunNames)
             }
         },
         initializeContexts = function() {
