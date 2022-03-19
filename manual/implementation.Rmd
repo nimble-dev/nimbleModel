@@ -49,7 +49,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
     - An individual `calcRule` is produced from the elements in a declaration that are tied in terms of their sort order.
     - When passed another `varRange` it returns a `calcRange` (or nothing if there is no overlap between the input `varRange` and the `varRange` of the rule) that can be used for calculation.
-    - Uses (contains?) `originalIndexRule`s to relate back to original index values in the declaration context.
+    - Contains `originalIndexRule`s to relate back to original index values in the declaration context.
        - Indexing is based on indexes of the variable, not the original index values, e.g., `y[i+1] ~ dnorm(x[i], 1)` with `i=1:5` has the `varRange` of `y[2:6]`. 
     - Contains the sort ID for the `varRange`
 
@@ -70,8 +70,9 @@ knitr::opts_chunk$set(echo = TRUE)
 
     - E.g., `y[i, 1:3] for i in 1:500` or `y[i, j] for i in 1:5, j in 1:20`
     - Not equivalent to a `varRange` as `y[i, 1:3] for i in 1:500` is a `nodeRange` while `y[1:500, 1:3]` is a `varRange`
-    - Perhaps contains a `varRange` in case that is needed rather than the node-level info.
-    - Perhaps printed representation is `y[(1:500), 1:3]` and `y[(1:5),(1:20)]` for cases above where (..) represents the range.
+       - Contains the internalRange (e.g., `1:3`) and the nodeRange (e.g, `1:500`); probably want a different name for the embedded 'nodeRange'
+    - Currently contains a `getVarRange` method that converts to the equivalent varRange.
+    - Perhaps printed representation is `y[1:500, (1:3)]`, where (..) represents the 'internal' block.
 
 - A `copyRule` manages the determination of copying for a variable
 
@@ -80,7 +81,7 @@ knitr::opts_chunk$set(echo = TRUE)
     - Output is a `varRange`.
     - Perhaps all it needs to do is check for out of bounds and expand missing indexes?
 
-- A `variableStore` manages array-like information for variables
+- A `variableStore` manages array-like information for variables (see below for alternative idea of using `varTypeRule`s)
 
     - Stores information such as sort ID, isData, node types
     - Could be integer, logical, or character-valued
@@ -89,6 +90,20 @@ knitr::opts_chunk$set(echo = TRUE)
        - Could have sets of blocks, with remaining values a "discontinuous block" if all the same.
     - Ultimately may want to handle simple sequential values (e.g., row-major or column-major in a matrix) as this could be useful for sort ID values in state-space/time-series contexts.
     - Should we have `variableStore`s that map back to `calcRule`s and `nodeRule`s? This might avoid need to store something like node type if all node types for a given `nodeRule` are the same. Also avoids need for variable-level sort ID unless there is an ordering with a given `calcRule` (since could just look up sort ID of the `calcRule`).
+
+- (Tentative) A `varTypeRule`s manages information about node types such as end, RHS, latent, top, stochastic, deterministic, etc.
+    - Given a `varRange`, a `varTypeRule` for, say, `top` nodes returns a `varRange` (or perhaps equivalent `nodeRange`) containing the subset of variable elements that are `top`. Similarly for other types.
+    - This avoids having to store information in `variableStore`s and can use all of our tools for working with `indexRange`s and `varRange`s.
+    - How do we determine nodeTypes? Possible sketch:
+       - Set up `RHS`, `top`, and `end` `varTypeRule`s based on, respectively, RHS, LHS and LHS of a declaration in first pass. (i.e., everything on LHS starts out as both `top` and `end`).
+       - In second pass:
+             - split `end` rules such that any part appearing in a RHS is assigned 'latent' and what remains is `end`.
+             - split out `top` rules such that any part that is dependency of `top` or `latent` is excluded.
+             - may not need to split `RHS` as `includeRHSonly` determination can be done via passing through a `RHS` varTypeRule, albeit giving some redundant information.
+       - Need to be able to do processing of indexRanges that splits them into two ranges - what is included and what is excluded.
+             - Inclusion should retain sequence indexRanges, but exclusion will in some cases need to create matrix indexRanges, probably via unrolling.
+
+- `varTopRules`, `varEndRules`, `varStochRules`, etc. manage the set of `varTypeRules`s for a given type and variable.
 
 - There will be multiple `nodeFunction`s for a given declaration, allowing for various types of vectorized calculations.
 

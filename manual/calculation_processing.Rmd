@@ -13,6 +13,8 @@ Model preprocessing:
 
 - Each declaration will have multiple calculate functions, potentially allowing for various types of vectorized calculations (pure nimble vectorization, Eigen vectorization, looping over sets, looping over blocks)
 
+- Question: how deal with explosion of cases, such as y[i,j,k] ~ dnorm(0,1), where each index could be scalar, sequence, set, and not known when generating calculate functions.
+
 Roughly the order of operations when calculate is invoked is
 
 - User asks for calculation on a set of `varRange`s, either by specifying them directly or asking for dependencies and thereby inducing `graphRule` processing
