@@ -59,11 +59,14 @@ varRangeClass <- R6Class(
             ## We will need some way to initialize more complex
             ## cases returned from graph queries.
             ##
+            ## It seems that we can initialize using indexOrders arg to varRangeClass$new()  // CJP 
+            if(is(indexInfo, "indexRange"))
+                stop("varRange must be initialized from a list of indexRanges not a single indexRange.")
             if(is.character(indexInfo))
                 indexInfo <- parse(text = indexInfo,
                                    keep.source = FALSE)[[1]]
             ## input is an expression
-            if(is.call(indexInfo) | is.name(indexInfo)) {
+            if(is.call(indexInfo) || is.name(indexInfo)) {
                 if(length(indexInfo)==1) {
                     ## The expression is just a name
                     nameFromExpr <- as.character(indexInfo)
@@ -93,8 +96,9 @@ varRangeClass <- R6Class(
             if(is.list(indexInfo)) {
                 name <<- name
                 setIndexRanges(indexInfo, indexOrders)
-                ## SET RANGEID_2_INDEXID
             }
+            rangeID <- rep(seq_along(rangeID_2_indexID), times = sapply(rangeID_2_indexID, length))
+            indexID_2_rangeID <<- rangeID[order(unlist(rangeID_2_indexID))]
         },
         getSingleIndexRange = function(index, ...) {
             ## Iterate over indexRanges rather than indices
@@ -116,19 +120,23 @@ varRangeClass <- R6Class(
             ##     indexRanges,
             ##     indexRange2expr
             ## )
-            if(!is.null(indexOrders))
-                self$rangeID_2_indexID <- indexOrders
-            else {
-                nextID <- 1
-                self$rangeID_2_indexID <-
-                    lapply(indexRanges,
-                           function(x) {
-                               numCols <- indexRange_numCols(x)
-                               ans <- nextID-1 + (1:numCols)
-                               nextID <<- nextID + numCols
-                               ans
-                           }
-                           )
+            if(identical(attr(indexRanges[[1]], "rangeType"), "none")) {
+                    self$rangeID_2_indexID <- integer(0)
+            } else {
+                if(!is.null(indexOrders))
+                    self$rangeID_2_indexID <- indexOrders
+                else {
+                    nextID <- 1
+                    self$rangeID_2_indexID <-
+                        lapply(indexRanges,
+                               function(x) {
+                                   numCols <- indexRange_numCols(x)
+                                   if(!numCols) numCols <- 1  # empty IR - this handling might need to be modified
+                                   ans <- nextID-1 + (1:numCols)
+                                   nextID <<- nextID + numCols
+                                   as.integer(ans)
+                               })
+                }
             }
             self
         }
@@ -187,7 +195,7 @@ varRange_getIndexRangeMatrix <- function(varRange,
     iResult <- 1
     usedRanges <- integer()
     while(!done) {
-        boolIndex <- indices %in% varRange$rangeID_2_indexID[[iRange]]
+        boolIndex <- varRange$rangeID_2_indexID[[iRange]] %in% indices
         if(any(boolIndex)) {
             innerIndices <- which(boolIndex)
             indexRangeResults[[iResult]] <-
@@ -205,7 +213,7 @@ varRange_getIndexRangeMatrix <- function(varRange,
         result
     else
         list(result = result,
-             userRanges = usedRanges)
+             usedRanges = usedRanges)
 }
 
 ## extract multiple columns of a varRange, keeping

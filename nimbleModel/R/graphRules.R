@@ -34,16 +34,40 @@ graphRuleClass <- R6Class(
 ##
 ## TO-DO: recognize non-independence of index-ranges.
 ## That is *not* handled at the moment.
+## 2022-01-14: not clear what non-independence is not handled. // CP
 makeSeparableIndexSets <- function(LHS,
                                    RHS,
                                    context) {
-    indexVarNames <- structure(context$indexVarNames,
-                               names = context$indexVarNames)
+    if(length(context$singleContexts)) {
+        indexVarNames <- structure(context$indexVarNames,
+                                   names = context$indexVarNames)
+    } else indexVarNames <- character(0)
     numIndexVars <- length(indexVarNames)
-    LHSindexExprs <- as.list(LHS[-c(1,2)])
-    LHSnDim <- length(LHSindexExprs)
-    RHSindexExprs <- as.list(RHS[-c(1,2)])
-    RHSnDim <- length(RHSindexExprs)
+
+    ## need to check this is working ok for no LHS index case
+    if(length(LHS) < 3) {  # no LHS indexing
+        LHSindexExprs <- NULL
+        LHSnDim <- 0
+    } else {
+        LHSindexExprs <- as.list(LHS[-c(1,2)])
+        LHSnDim <- length(LHSindexExprs)
+    }
+    
+    if(length(RHS) < 3) {  # no RHS indexing
+        RHSindexExprs <- NULL
+        RHSnDim <- 0
+    } else {
+        RHSindexExprs <- as.list(RHS[-c(1,2)])
+        RHSnDim <- length(RHSindexExprs)
+    }
+
+    ## Keep track of which index var definitions use another index (e.g. j in 1:n[i])
+    contextExprsVars <- lapply(seq_along(context$singleContexts),
+                               function(idx) all.vars(context$singleContexts[[idx]]$indexRangeExpr))
+        
+    varUsedinContextExprs <- lapply(indexVarNames, function(nm) {
+        indexVarNames[sapply(contextExprsVars, function(usedVars) nm %in% usedVars)] })
+        
     make_BoolIndexVarList <-
         function(indexExpr)
             structure(
@@ -59,11 +83,12 @@ makeSeparableIndexSets <- function(LHS,
     LHSindex2setID <- integer(length = LHSnDim)
     RHSindex2setID <- integer(length = RHSnDim)
     indexVarNameSets <- list()
-    currentSetID <- 1
+    currentSetID <- 0
     remainingIndexVarNames <- indexVarNames
-
-    allDone <- FALSE
-    while(!allDone) {
+    RHSonly <- NULL
+    
+    while(length(remainingIndexVarNames)) {
+        currentSetID <- currentSetID + 1
         done <- FALSE
         currentIndexVarNames <- remainingIndexVarNames[1]
         while(!done) {
@@ -83,17 +108,32 @@ makeSeparableIndexSets <- function(LHS,
                 RHSboolIndexVarList[RHSboolUsesCurrentIndexVars],
                 function(x) indexVarNames[x])
                 ))
+
+            ## Add in vars where the current index is used in their context expression.
+            ## This should cause any indices using i or j to be in the same set,
+            ## which deals with ragged indexing such as for(i in 1:m) for(j in 1:n[i])
+
+            contextAdditionalIndexVars <- unlist(varUsedinContextExprs[currentIndexVarNames])
             
             allAdditionalIndexVarNames <- setdiff(unique(c(LHSadditionalIndexVars,
-                                                           RHSadditionalIndexVars)),
+                                                           RHSadditionalIndexVars,
+                                                           contextAdditionalIndexVars)),
                                                   currentIndexVarNames)
-            if(length(allAdditionalIndexVarNames)==0) {
+            if(!length(allAdditionalIndexVarNames)) {
                 done <- TRUE
             } else {
                 currentIndexVarNames <- c(currentIndexVarNames,
                                           allAdditionalIndexVarNames)
-            }                                         
+            }
+
+            ## Case of index on RHS and not LHS (from getParents cases):
+            ## record that this rule is a RHSonly constraint rule.
+            if(done && !sum(unlist(
+                lapply(LHSboolIndexVarList,
+                       function(x) any(x[currentIndexVarNames]))))) 
+                RHSonly[currentSetID] <- TRUE
         }
+        
         ## recording them this way sorts them:
         indexVarNameSets[[currentSetID]] <- indexVarNames[currentIndexVarNames]
         indexVar2setID[currentIndexVarNames] <- currentSetID
@@ -101,18 +141,46 @@ makeSeparableIndexSets <- function(LHS,
         RHSindex2setID[RHSboolUsesCurrentIndexVars] <- currentSetID
         remainingIndexVarNames <- setdiff(remainingIndexVarNames,
                                           currentIndexVarNames)
-        if(length(remainingIndexVarNames)==0)
-            allDone <- TRUE
-        else
-            currentSetID <- currentSetID + 1
+    }
+
+    if(is.null(RHSonly)) {
+        RHSonly <- rep(FALSE, currentSetID)
+    } else {
+        tmp <- rep(FALSE, currentSetID)
+        tmp[which(RHSonly)] <- TRUE
+        RHSonly <- tmp
     }
 
     list(LHSindex2setID = LHSindex2setID,
          RHSindex2setID = RHSindex2setID,
          indexVar2setID = indexVar2setID,
          numSets = currentSetID,
-         indexVarNameSets = indexVarNameSets
+         indexVarNameSets = indexVarNameSets,
+         RHSonly = RHSonly
          )
+}
+
+
+makeConstraints <- function(RHSindexExprs, constrainedBool) {
+    constraints <- list()
+    cnt <- 0
+    for(idx in seq_along(RHSindexExprs)) {
+        if(constrainedBool[idx]) {
+            cnt <- cnt + 1
+            constraints[[cnt]] <- list(RHSindex = idx)
+            if(is.name(RHSindexExprs[[idx]]) && RHSindexExprs[[idx]] == "") {
+                constraints[[cnt]]$constraint <- c(1, Inf)  ## x[] case, hopefully will fill in bounds based on var dimensions later.
+            } else {
+                expr <- RHSindexExprs[[idx]]
+                if(is.numeric(expr)) {
+                    constraints[[cnt]]$constraint <- rep(expr, 2)
+                } else if(is.call(expr) && expr[[1]] == ":") {
+                    constraints[[cnt]]$constraint <- c(expr[[2]], expr[[3]])
+                } else stop("Unexpected RHS expression passed to makeConstraints.")            
+            }
+        }
+    }
+    return(constraints)
 }
 
 ## The following functions may be used from class methods in the future.
@@ -125,79 +193,273 @@ makeGraphIndexRules <- function(LHS,
                         constants
                     else
                         list2env(constants)
-
-    ## Assume there is LHS indexing
-    LHSindexExprs <- as.list(LHS[-c(1,2)])
         
     indexSets <-
         makeSeparableIndexSets(LHS, RHS, context)
 
-    ## Now assume there is RHS indexing.
-    RHSindexExprs <- as.list(RHS[-c(1,2)])
-     
+    if(length(LHS) >= 3 && LHS[[1]] == '[') {
+        LHSindexExprs <- as.list(LHS[-c(1,2)])
+    } else if(length(LHS) == 1) LHSindexExprs <- list() else
+        stop("makeGraphIndexRules: 'LHS' should be an index expression or variable name")
+
+    if(length(RHS) >= 3 && RHS[[1]] == '[') {
+        RHSindexExprs <- as.list(RHS[-c(1,2)])
+    } else if(length(RHS) == 1) RHSindexExprs <- list() else
+        stop("makeGraphIndexRules: 'RHS' should be an index expression or variable name")
+
+    ## Constraints from RHS fixed index values
+    constraints <- list()
+    RHSindicesBool <- indexSets$RHSindex2setID == 0
+    if(any(RHSindicesBool)) 
+        constraints <- makeConstraints(RHSindexExprs, RHSindicesBool)
+
+    ## if(!length(RHSindexExprs))  # placeholder for now for 'x' case (no indexing)
+    ##    constraints <- list(list(RHSindex = numeric(0), constraint = rep(0, 2)))
+
+    numRHSindices <- length(RHS) - 2
+    if(numRHSindices == -1)
+        numRHSindices <- 0
+    if(numRHSindices < 0) stop("Unable to determine number of indices in ", RHS)
+    
     numSets <- indexSets$numSets
     indexRules <- list()
+
     for(iSet in seq_len(numSets)) {
         LHSindicesBool <- indexSets$LHSindex2setID == iSet
         RHSindicesBool <- indexSets$RHSindex2setID == iSet
+        numLHSbool <- sum(LHSindicesBool)
         thisLHSindexExprs <- structure(
             LHSindexExprs[LHSindicesBool],
-            names = paste0("t", seq_len(sum(LHSindicesBool)))
+            names = if(numLHSbool)
+                        paste0("t", seq_len(sum(LHSindicesBool)))
+                    else character(0)
         )
         numRHSbool <- sum(RHSindicesBool)
         thisRHSindexExprs <- structure(
             RHSindexExprs[RHSindicesBool],
             names = if(numRHSbool)
                         paste0("f", seq_len(numRHSbool))
-                    else
-                        character(0)
+                    else character(0)
         )
         indexVarNamesInThisSet <- indexSets$indexVarNameSets[[iSet]]
         thisContext <-
-            modelContextClass$new(
-                context$singleContexts[indexVarNamesInThisSet]
-            )
+            modelContextClass$new(context$singleContexts[indexVarNamesInThisSet])
+
         ## We try making each rule in order.
-        ## It one fails, we will throw it away and try to make the next.
+        ## It one fails, we will throw it away and try to make the next.            
         thisIndexRule <- indexRuleClass_all$new(
-            toIndexExprList = thisLHSindexExprs,
-            fromIndexExprList = thisRHSindexExprs,
-            context = thisContext,
-            constants = constantsEnv)
-        if(is.null(thisIndexRule$setupRules)) {
+                                                toIndexExprList = thisLHSindexExprs,
+                                                fromIndexExprList = thisRHSindexExprs,
+                                                context = thisContext,
+                                                constants = constantsEnv)
+        if(is.null(thisIndexRule$setupResults)) {  ## y[i] -> x[2] getParents case
+            thisIndexRule <- indexRuleClass_any$new(
+                                                    toIndexExprList = thisLHSindexExprs,
+                                                    fromIndexExprList = thisRHSindexExprs,
+                                                    context = thisContext,
+                                                    constants = constantsEnv)
+        }
+        if(is.null(thisIndexRule$setupResults)) {
             thisIndexRule <- indexRuleClass_block$new(
-            toIndexExprList = thisLHSindexExprs,
-            fromIndexExprList = thisRHSindexExprs,
-            context = thisContext,
-            constants = constantsEnv)
+                                                      toIndexExprList = thisLHSindexExprs,
+                                                      fromIndexExprList = thisRHSindexExprs,
+                                                      context = thisContext,
+                                                      constants = constantsEnv)
         }
         if(is.null(thisIndexRule$setupResults)) {
             thisIndexRule <- indexRuleClass_arbitrary$new(
-                toIndexExprList = thisLHSindexExprs,
-                fromIndexExprList = thisRHSindexExprs,
-                context = thisContext,
-                constants = constantsEnv)
+                                                          toIndexExprList = thisLHSindexExprs,
+                                                          fromIndexExprList = thisRHSindexExprs,
+                                                          context = thisContext,
+                                                          constants = constantsEnv)
         }
         indexRules[[iSet]] <- thisIndexRule
     }
+    ## Make constant rules for all LHS constants.
+    iSet <- length(indexRules) + 1
+    for(constantSet in which(indexSets$LHSindex2setID == 0)) {
+        thisLHSindexExprs <- structure(
+            LHSindexExprs[constantSet], names = 't1')        
+        thisIndexRule <- indexRuleClass_constant$new(
+            toIndexExprList = thisLHSindexExprs,
+            fromIndexExprList = character(0),
+            context = modelContextClass$new(),
+            constants = constantsEnv)
+        indexRules[[iSet]] <- thisIndexRule
+        iSet <- iSet + 1
+    }
+    ## Make constant rule for case of no LHS indexing. for all LHS constants.
+    if(!length(indexSets$LHSindex2setID)) {
+        ## thisLHSindexExprs <- structure(list(0), names = 't1')
+        thisIndexRule <- indexRuleClass_constant$new(
+            toIndexExprList = character(0),
+            fromIndexExprList = character(0),
+            context = modelContextClass$new(),
+            constants = constantsEnv)
+        indexRules[[iSet]] <- thisIndexRule
+    }
     list(indexSets = indexSets,
-         indexRules = indexRules)
+         indexRules = indexRules,
+         constraints = constraints,
+         numRHSindices = numRHSindices
+         )
+}
+
+
+## Handle constraints by running over indexRanges rather than over constraints
+## and collapse matrix cases across columns when multiple columns in an indexRange
+## use recycling to handle T & (T,F) type situations.
+
+## if indexRanges were R6 classes with inheritance, we could move the
+## checking into methods of the indexRange classes.
+checkOneConstraintOld <- function(indexRange, constraint) {
+    if(!length(constraint)) {
+        warning("Not yet checking input to blank index case.")
+        return(TRUE)
+    }
+    if(!attr(indexRange, 'rangeType') %in% c('scalar', 'sequence', 'matrix', 'none')) {
+        warning("Not yet checking input in case of non-{scalar, sequence, matrix, none} indexRanges.")
+        return(TRUE)
+    }
+    rg <- indexRange[[1]]
+    if(is.list(rg))   # from a sequence range
+        rg <- unlist(rg)
+    if(is.matrix(rg) && ncol(rg) > 1)
+        stop("checkOneConstraint: cannot handle multi-column matrix indexRanges.")
+    if(constraint[1] == 0)  # no RHS indices
+        if(!length(rg)) return(TRUE) else return(FALSE)
+    if(constraint[2] < min(rg) || constraint[1] > max(rg))
+        return(FALSE) else return(TRUE)
+}
+
+checkNonSeparableConstraint <- function(indexRange, rangeID_2_indexID, constraints) {
+    ## Get the (column) elements of the matrix indexRange that need to be checked
+    constraintsIndex <- sapply(constraints, `[[`, 'RHSindex')
+    matched <- match(rangeID_2_indexID, constraintsIndex)
+    names(matched) <- seq_along(matched)
+    matchedConstraints <- matched[!is.na(matched)]
+    matchedRangeID <- as.numeric(names(matchedConstraints))  # which column of the matrix matches the given constraint
+    if(length(matchedConstraints)) {
+        constraint <- constraints[[matchedConstraints[1]]]$constraint
+        if(!length(constraint)) {
+            warning("Not yet checking input to blank index case.")
+            constraint <- c(-Inf, Inf)  # need something so invalid can be created
+        } 
+        irCol <- indexRange[[1]][ , matchedRangeID[1]]
+        invalid <- constraint[2] < irCol | constraint[1] > irCol
+        if(length(matchedConstraints) > 1)
+            for(i in 2:length(matchedConstraints)) {
+                constraint <- constraints[[matchedConstraints[i]]]$constraint
+                if(!length(constraint)) {
+                    warning("Not yet checking input to blank index case.")
+                } else {
+                    irCol <- indexRange[[1]][ , matchedRangeID[i]]
+                    invalid <- invalid |
+                        constraint[2] < irCol | constraint[1] > irCol
+                }
+            }
+    }
+    return(!invalid)
+}
+
+checkConstraintsOld <- function(fromVarRange, constraints) {
+    valid <- list(); length(valid) <- length(fromVarRange$indexRanges)    
+    if(length(constraints)) {
+        for(i in seq_along(constraints)) {
+            irIndex <- sapply(fromVarRange$rangeID_2_indexID, function(x)
+                constraints[[i]]$RHSindex %in% x)
+            if(!length(irIndex)) {
+                return(checkOneConstraintOld(fromVarRange$indexRanges[[1]], constraints[[i]]$constraint))
+            } else {
+                irIndex <- which(irIndex)
+                if(!(attr(fromVarRange$indexRanges[[irIndex]], 'rangeType') == 'matrix' &&
+                     ncol(fromVarRange$indexRanges[[irIndex]][[1]]) > 1))  ## multi-column matrices handled non-separably below
+                    valid[[irIndex]] <- checkOneConstraintOld(fromVarRange$indexRanges[[irIndex]], constraints[[i]]$constraint)
+            }
+        }
+        ## add non-separability check for matrix cases
+        ## should this be handled more similarly to 
+        matIRs <- which(sapply(fromVarRange$indexRanges, function(x)
+            identical(attr(x, 'rangeType'), 'matrix') &&
+            ncol(x[[1]]) > 1))
+
+        for(idx in matIRs) 
+            valid[[idx]] <- checkNonSeparableConstraint(fromVarRange$indexRanges[[idx]],
+                                            fromVarRange$rangeID_2_indexID[[idx]], constraints)
+    }
+    return(valid)
+}
+
+checkOneConstraint <- function(indexRange, constraint, col = 1) {
+    if(!length(constraint)) {
+        warning("Not yet checking input to blank index case.")
+        return(TRUE)
+    }
+    if(!attr(indexRange, 'rangeType') %in% c('scalar', 'sequence', 'matrix', 'none')) {
+        warning("Not yet checking input in case of non-{scalar, sequence, matrix, none} indexRanges.")
+        return(TRUE)
+    }
+    rg <- indexRange[[1]]
+    if(is.list(rg))   # from a sequence range
+        rg <- unlist(rg)
+    if(is.matrix(rg)) {
+        return(rg[ , col] >= constraint[1] & rg[ , col] <= constraint[2])
+    }
+    if(constraint[1] == 0)  # no RHS indices
+        if(!length(rg)) return(TRUE) else return(FALSE)
+    if(constraint[2] < min(rg) || constraint[1] > max(rg))
+        return(FALSE) else return(TRUE)
+}
+
+checkConstraints <- function(fromVarRange, constraints) {
+    valid <- list(); length(valid) <- length(fromVarRange$indexRanges)    
+    if(length(constraints)) 
+        for(i in seq_along(constraints)) {
+            irIndex <- which(sapply(fromVarRange$rangeID_2_indexID, function(x)
+                constraints[[i]]$RHSindex %in% x))
+            if(!length(irIndex))  ## y[2] <- x case?
+                stop("No relevant indexRanges for the constraint.")
+            if(length(irIndex) > 1)
+                stop("Multiple indexRanges for the constraint should not be possible.")
+            ## col only actually used if a matrix indexRange with multiple columns.
+            col <- which(fromVarRange$rangeID_2_indexID[[irIndex]] == constraints[[i]]$RHSindex)
+            ## Combine results from multiple constraints applied to a single indexRange.
+            result <- checkOneConstraint(fromVarRange$indexRanges[[irIndex]], constraints[[i]]$constraint, col)
+            if(is.null(valid[[irIndex]])) {
+                valid[[irIndex]] <- result
+            } else valid[[irIndex]] <- valid[[irIndex]] & result
+        }
+    return(valid)
 }
 
 ## fromVarRange will have indexRanges that may be
-## blocks, matrices, blanks, or scalars.
+## sequences, matrices, blanks, or scalars.
 ##
 ## We need to extract the relevant components of fromVarRange
 ## for each rule, apply the rules, and compose the result
 ## as a new varRange.
 applyGraphIndexRules <- function(fromVarRange,
                                  rules) {
+
+    if(!is(fromVarRange, 'varRangeClass'))
+        stop("applyGraphIndexRules: 'fromVarRange' needs to be a varRange object.")
     ## Some of the steps below will reveal things that
     ## could be cached and re-used.
     indexSets <- rules$indexSets
     indexRules <- rules$indexRules
+    numSets <- indexSets$numSets
 
+    constantSets <- which(indexSets$LHSindex2setID == 0)
+    numSetsResult <- sum(!indexSets$RHSonly) + length(constantSets)
+    numSetsResult <- max(1, numSetsResult)  ## e.g., y <- x[2] case
+    
+    ## Check valid number of input indices
+    numRHSindices <- length(unlist(fromVarRange$rangeID_2_indexID))
+    if(numRHSindices != rules$numRHSindices)
+        stop("applyGraphIndexRules: incorrect number of input indices.")
+        
     ## First handle cases like indexRules_any
+    ## I think this is defunct - not sure what it was intended to handle, perhaps constant rules? // CJP 2022-02-05
     if(is.null(indexSets)) {
         answer <- indexRules$apply(fromVarRange)
         return(
@@ -208,7 +470,6 @@ applyGraphIndexRules <- function(fromVarRange,
         )
     }
     
-    numSets <- indexSets$numSets
     ## Currently this will handle one set of fromIndices,
     ## not multiples.
     ## ncol needs to come from dim of LHS
@@ -244,16 +505,25 @@ applyGraphIndexRules <- function(fromVarRange,
             timesRepList[[i]] <- c(thisTimes, thisRep)
         }
     }
+
     ## Determine which RHSindices will be used for each rule
     ## and set up index crossing and aligning needs.
     setID_2_RHSindices <- vector('list', length = numSets)
+    complicatedCrossing <- FALSE
     ## each set corresponds to one rule
     for(iSet in seq_len(numSets)) {
         # which "from" indices are in this indexSet?
         RHSindicesBool <- indexSets$RHSindex2setID == iSet
         ## extract the relevant indices from fromVarRange
         thisRHSindices <- which(RHSindicesBool)
+
         setID_2_RHSindices[[iSet]] <- thisRHSindices
+            
+        ## Not clear how this would be used; crossing works (using
+        ## fromVarRange$getIndexRangeMatrix) for cases where
+        ## the RHS indexRanges don't cause additional indices unused in a rule
+        ## to be tied together with the indices that are used.
+        ## I.e., // CP
         thisIndicesNeedCrossing <-
             if(length(thisRHSindices) == 1)
                 FALSE
@@ -263,17 +533,31 @@ applyGraphIndexRules <- function(fromVarRange,
                 length(unique(thisRangeIDs)) > 1
             }
         if(thisIndicesNeedCrossing)
-            stop('Some indices need crossing: not implemented yet.')
+            warning('Some indices need crossing: not fully implemented yet; proceeding anyway.')
+
+        ## Discover cases where a rule uses multiple input indexRanges and 
+        ## at least one indexRange also covers other indices unused in the rule.
+        ## We need those tied to together to avoid incorrect crossing.
+        ## For simplicity if this happens at all, we do full crossing of all input indices to
+        ## implicitly produce a single indexRange.
+        ## NOTE: extract this out as a function so it can be tested via unit testing?
+        usedRanges <- sapply(fromVarRange$rangeID_2_indexID, function(x) any(thisRHSindices %in% x))
+        if(length(unique(fromVarRange$indexID_2_rangeID[thisRHSindices])) > 1) 
+            if(!identical(thisRHSindices, sort(unique(unlist(fromVarRange$rangeID_2_indexID[usedRanges])))))
+                complicatedCrossing <- TRUE
     }
+
+    if(complicatedCrossing)
+        warning("Detected unused indices in an indexRange used in an indexRule, so fully crossing all inputs.")
 
     inputIndexRanges <- fromVarRange$indexRanges
     numIndexRanges <- length(inputIndexRanges) ## reset in case something changes
-   ## indexID_2_rangeID <- fromVarRange$indexID_2_rangeID
-   ## rangeID_2_indexID <- fromVarRange$rangeID_2_indexID
+    ## indexID_2_rangeID <- fromVarRange$indexID_2_rangeID
+    ## rangeID_2_indexID <- fromVarRange$rangeID_2_indexID
     ## modify by expansion if needed,
     ## until application of rules is nested within inputIndexRanges
     ## can test equivalence of new indexRules by full expansion
-
+    
     ## At this point we assume the columns needed come from only a single
     ## indexRange.
     ## Need to track which rules apply to which input indexRange
@@ -282,69 +566,193 @@ applyGraphIndexRules <- function(fromVarRange,
     ## which setIDs are part of an input rangeID
     rangeID_2_setIDs <- lapply(seq_len(numIndexRanges),
                                function(x) integer())
+
+    ## For complicated crossing we first set up the fully-crossed inputs.
+    if(complicatedCrossing) {
+        
+        fromIndicesInfoFullyCrossed <-
+            fromVarRange$getIndexRangeMatrix(seq_len(numRHSindices),
+                                             details = TRUE)
+        if(!identical(attr(fromIndicesInfoFullyCrossed$result, 'rangeType'), 'matrix'))
+            stop("applyGraphIndexRules: expecting a matrix indexRange.")
+        RHSconstraints <- checkConstraints(varRangeClass$new(list(fromIndicesInfoFullyCrossed$result)), rules$constraints)
+    } else {
+        ## Check valid RHS
+        ## Returns a list indicating the valid rows for each input indexRange (for matrices)
+        ## or boolean for non-matrix indexRange.
+        RHSconstraints <- checkConstraints(fromVarRange, rules$constraints)
+    }
+
+    setIdx <- 1
     for(iSet in seq_len(numSets)) {
         thisRHSindices <- setID_2_RHSindices[[iSet]]
         ##fromVarRange$rangeID_2_indexID
-        fromIndicesInfo <-
-            if(length(thisRHSindices)==1)
-                fromVarRange$getSingleIndexRange(thisRHSindices,
-                                                 details = TRUE)
-            else
-                fromVarRange$getIndexRangeMatrix(thisRHSindices,
-                                                 details = TRUE)
-        fromIndices <- fromIndicesInfo$result
-        ## used ranges is a vector of rangeIDs from RHS from which
-        ## fromIndicesInfo were extracted
-        usedRanges <- fromIndicesInfo$usedRanges
-        for(ur in usedRanges)
-            rangeID_2_setIDs[[ur]] <- append(rangeID_2_setIDs[[ur]], iSet)
+        
+        if(length(thisRHSindices)) {
+            if(!complicatedCrossing) {
+                fromIndicesInfo <-
+                    if(length(thisRHSindices) == 1)
+                        fromVarRange$getSingleIndexRange(thisRHSindices,
+                                                         details = TRUE)
+                    else
+                        fromVarRange$getIndexRangeMatrix(thisRHSindices,
+                                                         details = TRUE)
+                fromIndices <- fromIndicesInfo$result
+            } else {
+                ## Extract relevant RHS columns from fully-crossed inputs.
+                fromIndicesInfo <- fromIndicesInfoFullyCrossed
+                fromIndicesInfo$result[[1]] <- fromIndicesInfo$result[[1]][ , thisRHSindices, drop = FALSE]
+                fromIndices <- fromIndicesInfo$result
+            }
+            ## used ranges is a vector of rangeIDs from RHS from which
+            ## fromIndicesInfo were extracted
+            usedRanges <- fromIndicesInfo$usedRanges
+            for(ur in usedRanges)
+                rangeID_2_setIDs[[ur]] <- append(rangeID_2_setIDs[[ur]], iSet)
+        } else {  ## no indexing or constant indexing
+            fromIndices <- NULL
+        }
+
         thisLHSresult <-
             indexRules[[iSet]]$apply(fromIndices,
                                      collapse = FALSE
                                      )
-        ## There may be a need to pull apart thisLHSvarRange
-        ## into subsets of its indexRanges
-        ansIndexRanges[[iSet]] <- thisLHSresult
-        ansIndexOrders[[iSet]] <-
-            which(indexSets$LHSindex2setID == iSet)
+
+        ## Result could be a regular indexRange or info about a RHS only constraint check
+        if(indexSets$RHSonly[iSet]) {
+            iRange <- fromVarRange$indexID_2_rangeID[which(indexSets$RHSindex2setID == iSet)]
+            ## Can have multiple input indexRanges when have nested indexing, in which case, just duplicate them.
+            for(idx in iRange)  
+            ## & is needed in cases where have two RHSindex constraints that use the same indexRange.
+                if(!is.null(RHSconstraints[[idx]]))
+                    RHSconstraints[[idx]] <- RHSconstraints[[idx]] & thisLHSresult
+                else RHSconstraints[[idx]] <- thisLHSresult
+        } else {
+            ## There may be a need to pull apart thisLHSvarRange
+            ## into subsets of its indexRanges
+            ansIndexRanges[[setIdx]] <- thisLHSresult
+            ansIndexOrders[[setIdx]] <-
+                which(indexSets$LHSindex2setID == iSet)
+            setIdx <- setIdx + 1
+        }
     }
-    ## Compose results: aggregate results from multiple rules
-    ## applied to one input.
+
+    ## Invalid if indexRange has no valid rows based on constraints.
+    invalid <- sapply(seq_along(RHSconstraints), function(i)
+        !is.null(RHSconstraints[[i]]) && !any(RHSconstraints[[i]]))
+    if(any(invalid)) 
+        return(varRangeClass$new(lapply(seq_len(numSetsResult), function(i) indexRange_empty())))
+
+    ## Compose results: aggregate results from multiple rules applied to one input.
+    
     finalIndexRanges <- list()
     finalIndexOrders <- list()
+
+    ## Treat as a single input indexRange, so that collapse across results of all rules.
+    if(complicatedCrossing) {  
+        numIndexRanges <- 1
+        rangeID_2_setIDs <- list(sort(unique(unlist(rangeID_2_setIDs))))
+    }
+
     iAns <- 1
     for(iRange in seq_len(numIndexRanges)) {
-        if(length(rangeID_2_setIDs[[iRange]]) > 1) {
-            indexRangeExpandedMatrices <-
-                ansIndexRanges[ rangeID_2_setIDs[[iRange]] ]
-            finalIndexRanges[[iAns]] <-
-                collapse_indexRangeMatrices(indexRangeExpandedMatrices)
-            finalIndexOrders[[iAns]] <-
-                do.call('c',
-                        ansIndexOrders[ rangeID_2_setIDs[[iRange]] ] )
-            sortedIndexOrders <- order(finalIndexOrders[[iAns]])
-            if(!identical(sortedIndexOrders, seq_along(sortedIndexOrders))) {
+        sets <- rangeID_2_setIDs[[iRange]]
+        sets <- sets[!indexSets$RHSonly[sets]]
+        if(length(sets)) {
+            if(length(sets) > 1) {
+                if(any(sapply(ansIndexRanges[ sets ],
+                              function(x) identical(attr(x, 'rangeType'), 'empty')))) {
+                    finalIndexRanges[[iAns]] <- indexRange_empty()
+                } else {
+                    if(length(
+                    indexRangeExpandedMatrices <-
+                        ansIndexRanges[ sets ]
+                    finalIndexRanges[[iAns]] <-
+                        collapse_indexRangeMatrices(indexRangeExpandedMatrices)
+                }
                 finalIndexOrders[[iAns]] <-
-                    finalIndexOrders[[iAns]][sortedIndexOrders]
+                    do.call('c',
+                            ansIndexOrders[ sets ] )
+                sortedIndexOrders <- order(finalIndexOrders[[iAns]])
+                if(!identical(sortedIndexOrders, seq_along(sortedIndexOrders))) {
+                    finalIndexOrders[[iAns]] <-
+                        finalIndexOrders[[iAns]][sortedIndexOrders]
+                    if(!identical(attr(finalIndexRanges[[iAns]], 'rangeType'), 'empty'))
+                        finalIndexRanges[[iAns]] <-
+                            indexRange_matrix(
+                                finalIndexRanges[[iAns]][[1]][, sortedIndexOrders, drop = FALSE])
+                }
+            } else {
                 finalIndexRanges[[iAns]] <-
-                    indexRange_matrix(
-                        finalIndexRanges[[iAns]][[1]][, sortedIndexOrders, drop = FALSE])
+                    ansIndexRanges[[ sets ]]
+                if(identical(
+                    attr(finalIndexRanges[[iAns]], 'rangeType'),
+                    'matrixList'
+                ))
+                    finalIndexRanges[[iAns]] <-
+                        indexRange2matrix(finalIndexRanges[[iAns]])
+                
+                finalIndexOrders[[iAns]] <-
+                    ansIndexOrders[[ sets ]]
             }
-        } else {
-            finalIndexRanges[iAns] <-
-                ansIndexRanges[ rangeID_2_setIDs[[iRange]] ]
-            if(identical(
-                attr(finalIndexRanges[[iAns]], 'rangeType'),
-                'matrixList'
-               ))
-                finalIndexRanges[[iAns]] <-
-                    indexRange2matrix(finalIndexRanges[[iAns]])
-                    
-            finalIndexOrders[iAns] <-
-                ansIndexOrders[ rangeID_2_setIDs[[iRange]] ]
+            
+            ## Remove invalid rows from matrix indexRanges flagged by constraint checking, only
+            ## when indexRange is involved in the rule.
+            ## Only need to check cases where have a logical vector as RHSconstraint as scalar
+            ## logical already checked.
+            if(length(RHSconstraints[[iRange]]) > 1) {
+                if(!identical(attr(finalIndexRanges[[iAns]], 'rangeType'), 'matrix'))
+                    stop("Expecting RHSconstraints to only be relevant for a matrix indexRange.")
+                if(length(RHSconstraints[[iRange]]) != nrow(finalIndexRanges[[iAns]][[1]]))
+                    stop("Expecting RHSconstraints to have as many logicals as row of the indexRange.")
+                finalIndexRanges[[iAns]][[1]] <-
+                    finalIndexRanges[[iAns]][[1]][RHSconstraints[[iRange]], , drop = FALSE]
+            }
+
+            iAns <- iAns + 1
         }
-        ## Sometimes this shouldn't increment...?
-        iAns <- iAns + 1
+    }    
+        
+    ## Remove invalid rows from matrix indexRanges based on presence of NAs and set to empty if no rows left
+    ## This can only be done after collapsing or else the constituent matrixLists will have different lengths
+    ## (e.g., if we removed the NAs earlier).
+    for(iRange in seq_along(finalIndexRanges)) 
+        if(identical(attr(finalIndexRanges[[iRange]], 'rangeType'), 'matrix')) {
+            NArows <- apply(finalIndexRanges[[iRange]][[1]], 1,
+                            function(x) any(is.na(x)))
+            if(all(NArows)) {
+                finalIndexRanges[[iRange]] <- indexRange_empty()
+            } else finalIndexRanges[[iRange]][[1]] <- finalIndexRanges[[iRange]][[1]][!NArows, , drop = FALSE]
+        }
+
+    ## Add in rules that have no RHS index (not present, blank, or constant)
+    missedSets <- which(!seq_along(ansIndexRanges) %in% unlist(rangeID_2_setIDs))
+    if(length(missedSets)) {
+        finalIndexRanges <- c(finalIndexRanges, ansIndexRanges[missedSets])
+        finalIndexOrders <- c(finalIndexOrders, ansIndexOrders[missedSets])
+    }
+
+    ## Add in constant rules (constant LHS index and (of course) no RHS index)
+    iSet <- 1
+    if(length(constantSets)) {
+        constantIndexRanges <- list()
+        for(constantSet in constantSets) {
+            thisLHSresult <- indexRules[[iSet + numSets]]$apply(NULL)
+            constantIndexRanges[[iSet]] <- thisLHSresult
+            iSet <- iSet + 1
+        }
+        constantIndexOrders <- as.list(constantSets)
+        finalIndexRanges <- c(finalIndexRanges, constantIndexRanges)
+        finalIndexOrders <- c(finalIndexOrders, constantIndexOrders)
+    }
+    ## Constant rule for case of no LHS indexing.
+    if(!length(indexSets$LHSindex2setID)) {
+        iSet <- which(sapply(indexRules, function(ir) 'indexRuleClass_constant' %in% class(ir)))
+        thisLHSresult <- indexRules[[iSet]]$apply(NULL)
+        constantIndexRanges <- list(thisLHSresult)
+        constantIndexOrders <- as.list(1)
+        finalIndexRanges <- c(finalIndexRanges, constantIndexRanges)
+        finalIndexOrders <- c(finalIndexOrders, constantIndexOrders)
     }
 
     ## Put final results in natural order in case they are not already.
@@ -356,9 +764,12 @@ applyGraphIndexRules <- function(fromVarRange,
         finalIndexOrders <- finalIndexOrders[orderFinalIndexOrderStarts]
     }
 
+    ## Remove duplicate columns (from cases where two indexRanges go to same output index)
+    repeats <- duplicated(finalIndexOrders)
+    
     varRangeClass$new(
-        indexInfo = finalIndexRanges,
-        indexOrders = finalIndexOrders
+        indexInfo = finalIndexRanges[!repeats],
+        indexOrders = finalIndexOrders[!repeats]
     )
 ##    lhsIndices
 }

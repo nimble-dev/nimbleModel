@@ -9,14 +9,17 @@ indexRuleClass_block <- R6Class(
                               context,
                               constants = list()
                               ) {
-            setupResults <<-
-                indexRule_block_setup(toIndexExprList,
-                                      fromIndexExprList,
-                                      context,
-                                      constants
-                                      )
+            if(!length(context$singleContexts)) {
+                return()
+            } else 
+                setupResults <<-
+                    indexRule_block_setup(toIndexExprList,
+                                          fromIndexExprList,
+                                          context,
+                                          constants
+                                          )
         },
-        applyOne = function(fromIndices) {
+        apply_one = function(fromIndices) {
             indexRule_block_apply_single(
                 fromIndices,
                 setupResults
@@ -54,14 +57,17 @@ indexRuleClass_block <- R6Class(
 
 indexRule_block_apply_single <- function(fromIndices,
                                          setupResults,
-                                         make.matrix = TRUE,
+                                         make.matrix = FALSE,
                                          ...) {
+    ## Note: Perry had `make.matrix=TRUE`; not sure why we want this arg or why default would be TRUE
+    ## If we have it be TRUE, it's hard for us to generate such an indexRange as indexRange(matrix(4)) produces
+    ## a matrix indexRange rather than a scalar indexRange with a matrix value in it.
     if(fromIndices < setupResults$from_min |
        fromIndices > setupResults$from_max)
-        return(matrix(data = numeric(), nrow = 0, ncol = 1))
+        return(indexRange_empty())
     toIndices <- fromIndices + setupResults$offset
-    if(make.matrix) as.matrix(toIndices)
-    else toIndices
+    if(make.matrix) toIndices <- as.matrix(toIndices)
+    return(indexRange_scalar(toIndices))
 }
 
 indexRule_block_apply_matrix <- function(fromIndices,
@@ -71,16 +77,15 @@ indexRule_block_apply_matrix <- function(fromIndices,
     valid <-
         fromIndices >= setupResults$from_min &
         fromIndices <= setupResults$from_max
-    if(sum(valid) == 0)
-        return(matrix(data = numeric(), nrow = 0, ncol = 1))
-    toIndices <- fromIndices[valid] + setupResults$offset
+    toIndices <- fromIndices + setupResults$offset
+    toIndices[!valid] <- NA
     if(collapse)
-        as.matrix(toIndices)
-    else
-        lapply(toIndices, as.matrix)
+        indexRange_matrix(as.matrix(toIndices))
+    else  
+        indexRange_matrixList(lapply(toIndices, as.matrix))
 }
 
-indexRule_block_apply_block <- function(fromIR,
+indexRule_block_apply_sequence <- function(fromIR,
                                         setupResults,
                                         collapse = TRUE,
                                         ...) {
@@ -90,8 +95,7 @@ indexRule_block_apply_block <- function(fromIR,
     if(start > end |
        start > setupResults$from_max |
        end < setupResults$from_min)
-        return(indexRange_matrix(
-            matrix(data = numeric(), nrow = 0, ncol = 1)))
+        return(indexRange_empty())
 
     startAns <- if(start < setupResults$from_min)
                     setupResults$from_min + setupResults$offset
@@ -104,7 +108,7 @@ indexRule_block_apply_block <- function(fromIR,
                   end + setupResults$offset
     
     toIR <-
-        indexRange_block(
+        indexRange_sequence(
             list(startAns, endAns)
         )
     toIR
@@ -119,27 +123,19 @@ indexRule_block_apply <- function(fromIR,
     ## which often a class hierarchy would manage.
     ## In this case it makes sense to do via switch().
     switch(attr(fromIR, "rangeType"),
-           scalar = indexRange_scalar(
-               indexRule_block_apply_single(fromIR[[1]],
+           scalar = indexRule_block_apply_single(fromIR[[1]],
                                             setupResults,
                                             collapse = collapse,
                                             ...
-                                            )
-           ),
-           block = indexRule_block_apply_block(fromIR,
+                                            ),
+           sequence = indexRule_block_apply_sequence(fromIR,
                                                setupResults,
                                                collapse = collapse,
                                                ...),
-           matrix = {
-               result <- indexRule_block_apply_matrix(fromIR[[1]],
+           matrix = indexRule_block_apply_matrix(fromIR[[1]],
                                                       setupResults,
                                                       collapse = collapse,
                                                       ...)
-               if(collapse)
-                   indexRange_matrix(result)
-               else
-                   indexRange_matrixList(result)
-           }
            )
 }
 
@@ -170,7 +166,7 @@ indexRule_block_setup_internal <- function(toIndexExprList,
         constants <- list2env(constants)
 
     ##  only allow a single index slot 
-    if(length(toIndexExprList) != 1 | length(fromIndexExprList) != 1)
+    if(length(toIndexExprList) != 1 || length(fromIndexExprList) != 1)
         return(NULL)
 
     if(length(context$singleContexts) != 1)
@@ -223,7 +219,12 @@ indexRule_block_setup_internal <- function(toIndexExprList,
 ## Look only for i +/- offset.
 ## I think we can use some old code to
 ## partially evaluate more complicated expressions.
-## And/or we can try using Ryacas
+## And/or we can try using Ryacas // PdV
+## Not clear what more complicated expressions we
+## could handle - presumably offset +/ i,
+## stuff like 3*i could possibly handle to avoid
+## full unrolling, but result can't be handled
+## except as a matrix indexRange anyway // CJP
 getSignAndOffset <- function(indexExpr,
                              indexVarName,
                              constantsEnv = new.env()) {

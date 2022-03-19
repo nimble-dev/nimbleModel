@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 - An `indexRange` manages the index content of one dimension of one variable.
 
     - This is implemented as a list, with attributes for `class` and `rangeType`
-    - `rangeType`s include block (`1:10`), vector (arbitrary), scalar, and blank.
+    - `rangeType`s include sequence (`1:10`), vector (arbitrary), scalar, and blank.
 
 - An `indexRule` manages the determination of LHS indices from RHS indices for one or more `indexRange`s.  (Sometimes multiple index dimensions needs to be solved jointly.)
 

@@ -1,4 +1,3 @@
-
 indexRuleClass_arbitrary <- R6Class(
     classname = "indexRuleClass_arbitrary",
     inherit = indexRuleClass,
@@ -10,6 +9,11 @@ indexRuleClass_arbitrary <- R6Class(
                               context,
                               constants = list()
                               ) {
+            ## Rule not applicable if no LHS indexing
+            ## This case would arise if looking for parents in case such as
+            ## y[i] <- x[2] (i.e., y[2] <- x[i] when creating a parent rule)
+            if(!length(toIndexExprList))
+                return()
             setupResults <<-
                 indexRule_arbitrary_setup(toIndexExprList,
                                               fromIndexExprList,
@@ -51,18 +55,17 @@ indexRuleClass_arbitrary <- R6Class(
                     setupResults,
                     collapse = collapse
                 )
-            toIndices <- if(collapse)
-                             indexRange_matrix(toIndices)
-                         else
-                             indexRange_matrixList(toIndices)
-            toIndices
+            if(!length(toIndices))
+                return(indexRange_empty())
+            if(collapse)
+                return(indexRange_matrix(toIndices)) else return(indexRange_matrixList(toIndices))
         },
         apply = function(from, ...) {
             if(inherits(from, 'varRangeClass'))
                 ##apply_varRange(from, ...)
                 stop('an indexRule should be applied to an indexRange')
             else
-                apply_indexRange(from)
+                apply_indexRange(from, ...)
         }
     )
 )
@@ -278,7 +281,6 @@ indexRule_arbitrary_setup <- function(toIndexExprList,
 
         allIndices <- do.call("cbind",
                               toUnrolledResults)
-        
         iRow2toIndices <- split(allIndices,
                                 1:unrolledSize) ## makes it a list
     } else {
@@ -295,7 +297,7 @@ indexRule_arbitrary_setup <- function(toIndexExprList,
         iRow2toIndices <- split(allIndices,
                                 iRows)
     }
-
+    
     names(iRow2toIndices) <- NULL
     
     list(from2indicesFunctions = from2indicesFunctions,
@@ -312,10 +314,18 @@ indexRule_arbitrary_setup <- function(toIndexExprList,
 indexRule_arbitrary_apply_single <- function(fromIndices,
                                              setupResults) {
     with(setupResults, {
+        toIndices <<- NULL
         from_flat <- from2indicesFunctions$rawIndex2flatIndex(fromIndices)
-        iRows <- unlist(from_flat2iRow[from_flat])
+        if(length(from_flat)) {
+            iRows <- unlist(from_flat2iRow[from_flat])
 ### unique???
-        toIndices <<- do.call("rbind", iRow2toIndices[iRows])
+            if(length(iRows)) {
+                result <- as.matrix(do.call("rbind", iRow2toIndices[iRows]))
+                dimnames(result) <- NULL
+                toIndices <<- result
+
+            }
+        }
     })
     if(is.null(toIndices))
         matrix(data = numeric(),
@@ -329,30 +339,48 @@ indexRule_arbitrary_apply_matrix <- function(fromIndices,
                                              collapse = TRUE) {
     with(setupResults, {
         ## from_flat is the flat index of each row of "from" indices
-        from_flat <-
-            unlist(
-                from2indicesFunctions$rawIndex2flatIndex_multi(fromIndices)
-            )
+        from_flat <- from2indicesFunctions$rawIndex2flatIndex_multi(fromIndices)
+        ## deal with invalid fromIndices - need information retained for later collapsing with other columns
+        invalid <- sapply(from_flat, function(x) length(x) == 0)
+        if(length(invalid))
+            from_flat[invalid] <- NA
+        from_flat <- unlist(from_flat)
+        
         ## iRowsList has the declaration iRows for each from_flat
         iRowsList <- from_flat2iRow[from_flat]
 ### unique???
-        ## toIndicesList has the matrix of "to" indices for each from_flat 
+        ## toIndicesList has the matrix of "to" indices for each from_flat
+        ## need NAs in places where input matches no output to be able to
+        ## collapse via collapse_indexRangeMatrices
+        NAs <- matrix(rep(as.numeric(NA), length(iRow2toIndices[[1]])), nrow = 1)
         toIndicesList <<- lapply(iRowsList,
-                                 function(x)
-                                     do.call('rbind',
-                                             iRow2toIndices[x])
-                                 )
+                                 function(x) {
+                                     tmp <- do.call('rbind',
+                                                    iRow2toIndices[x])
+                                     if(is.null(tmp)) {
+                                         return(NAs)
+                                     } else {
+                                         tmp <- as.matrix(tmp)
+                                         dimnames(tmp) <- NULL
+                                         return(tmp)
+                                     }})
     })
     if(collapse) {
+        ## Not currently used in graphRules processing, as we need to maintain correspondence
+        ## with rows of input indexRange (via toIndicesList) in order to cross results of multiple rules
+        ## applied to a multi-column input indexRange.
+        
+        ## Do we want to strip out NA cases and duplicates?
         if(length(toIndicesList) > 0)
             toIndicesList <-
                 toIndicesList[!unlist(lapply(toIndicesList, is.null))]
         if(length(toIndicesList) == 0)
-            matrix(data = numeric(),
-                   nrow = 0, ncol = length(setupResults$toInfo))
-        else
-            as.matrix(do.call('rbind', toIndicesList))
+            return(matrix(data = numeric(),
+                   nrow = 0, ncol = length(setupResults$toInfo)))
+        else {
+            result <- as.matrix(do.call('rbind', toIndicesList))
+            return(result)
+        }
     }
-    else
-        toIndicesList
+    else return(toIndicesList)
 }
