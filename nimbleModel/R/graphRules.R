@@ -664,8 +664,7 @@ applyGraphIndexRules <- function(fromVarRange,
                               function(x) identical(attr(x, 'rangeType'), 'empty')))) {
                     finalIndexRanges[[iAns]] <- indexRange_empty()
                 } else {
-                    ## NOTE: Insert a check that number of input rows are all the same?
-                    ## Deal with NULL entries - need to turn into NA or 0?
+                    if(length(
                     indexRangeExpandedMatrices <-
                         ansIndexRanges[ sets ]
                     finalIndexRanges[[iAns]] <-

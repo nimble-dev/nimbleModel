@@ -366,8 +366,11 @@ indexRule_arbitrary_apply_matrix <- function(fromIndices,
                                      }})
     })
     if(collapse) {
-        ## How should we be handling inputs that don't return an output?
-        warning("In collapse=TRUE stanza of 'indexRule_arbitrary_apply_matrix; need to check this code for NULL/NA values.")
+        ## Not currently used in graphRules processing, as we need to maintain correspondence
+        ## with rows of input indexRange (via toIndicesList) in order to cross results of multiple rules
+        ## applied to a multi-column input indexRange.
+        
+        ## Do we want to strip out NA cases and duplicates?
         if(length(toIndicesList) > 0)
             toIndicesList <-
                 toIndicesList[!unlist(lapply(toIndicesList, is.null))]

@@ -243,6 +243,8 @@ collapse_indexRangeMatrices <- function(indexRangeMatrices) {
     ## empty <- which(sapply(expandedMatrices, is.null))
     ## for(i in seq_along(empty))
     ##    expandedMatrices[[i]] <- indexRange_matrixList(matrix(0))
+    if(length(unique(sapply(indexRangeMatrices, length))) > 1)
+        warning("collapse_indexRangeMatrices: Inconsistent number of entries in components of indexRangeMatrices.")
     result <- indexRange_matrix(
         do.call("rbind",
                 do.call("mapply", c(list(as.name("matrix_expand_grid")),

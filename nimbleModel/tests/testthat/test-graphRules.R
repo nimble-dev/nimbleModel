@@ -18,14 +18,12 @@ bruteForceNestedIndexing <- function(indexVector, indexQuery) {
 
 ## 2022-02-19:
 ## add comments in code and do some cleanup
-##   use bruteForceNestedIndexing when can
-## case of y[i] <- x[3, 1:n[i]]??
-## single arbitrary rule (in indexRules_arbitrary)
-## indexRule_arbitrary_apply_single: needs further development work (and check other warnings in indexRule_arbitrary).
 ## try to remove old Perry crossing code - see if I can figure out situatios it would be used in and that I have handled those situations
 ## then merge into master branch, and add originalIndexRules to code and tests
+## merge crossIndices into extendIndexRanges?
 
 ## This is not allowed in current nimble: y[i] <- sum(x[c(1,3,5)])
+
 
 irEmpty <- nimbleModel:::indexRange_empty()
 vrEmpty <- varRangeClass$new(list(irEmpty))
@@ -396,7 +394,7 @@ test_that("graphRules works for single index cases, wrapping indexRules", {
                           indexRange(matrix(idx[3:7]))))
     )
 
-}
+})
 
 test_that("graphRules works for various basic multiple index cases", {
 
@@ -612,8 +610,6 @@ test_that("graphRules works for arbitrary rules of multiple contexts entangled w
                                  RHS = quote(x[i,j]),
                                  context = context_ijk)
 
-   
-   ## incorrect
     expect_equal(
         applyGraphIndexRules(
             varRangeClass$new(list(
@@ -623,7 +619,6 @@ test_that("graphRules works for arbitrary rules of multiple contexts entangled w
                indexRange(matrix(c(4,3,4,4,4,5,5,3,5,4,5,5,6,5,6,6,6,7,7,5,7,6,7,7), byrow = TRUE, ncol = 2))))
     )
 
-    ## HERE
     expect_equal(
         applyGraphIndexRules(
             varRangeClass$new(list(
@@ -658,13 +653,11 @@ test_that("graphRules works for arbitrary rules of multiple contexts entangled w
                              indexRange(matrix(c(1,3,1,2), nrow = 2)))), rules),
        varRangeClass$new(list(indexRange(matrix(c(7,10,8,11,1,1,2,2,1,1,3,3), ncol = 3)))))
    
-   
    expect_equal(
        applyGraphIndexRules(
            varRangeClass$new(list(
                              indexRange(matrix(c(2,3,1,2,1,3), nrow = 2)))), rules),
-       varRangeClass$new(list(indexRange(matrix(c(7,1,1,12,3,1), byrow = TRUE, ncol = 3)))))
-   
+       varRangeClass$new(list(indexRange(matrix(c(7,1,1,12,3,2), byrow = TRUE, ncol = 3)))))
    
    expect_equal(
        applyGraphIndexRules(
@@ -675,9 +668,8 @@ test_that("graphRules works for arbitrary rules of multiple contexts entangled w
        varRangeClass$new(list(indexRange(matrix(c(7,10,9,12,1,1,3,3), ncol = 2)),
                               indexRange(matrix(c(1,2), ncol = 1)))))
 
-   
-    
 })
+
 
 test_that("graphRules works for arbitrary rule with ragged blocks combined with another rule", {
 
@@ -779,11 +771,12 @@ test_that("graphRules works for two rules that use a single indexRange matrix", 
     expect_equal(
         applyGraphIndexRules(
             varRangeClass$new(list(indexRange(matrix(c(11,3,4,5), ncol = 2)))), rules),
-        vrEmpty
+        vrEmpty_mat2
     )
 
     idx1 <- c(1, 10, 2, 6, 1, 8, 2, 7, 5, 9) ## Note 2 is repeated and 3,4 absent
-    idx2 <- c(1, 10, 2, 1) 
+    idx2 <- c(1, 1, 2, 1) 
+
     rules <- makeGraphIndexRules(LHS = quote(y[i, j]),
                                  RHS = quote(x[ idx1[i] , idx2[j]]),
                                  context = context_ij,
@@ -792,7 +785,7 @@ test_that("graphRules works for two rules that use a single indexRange matrix", 
     expect_equal(
         applyGraphIndexRules(
             varRangeClass$new(list(indexRange(matrix(c(5,5,5,3,3,3,2,2,2,1,4,2,1,4,2,1,4,2), ncol = 2)))), rules), 
-        varRangeClass$new(list(indexRange(matrix(c(9,9,9,3,7,3,7,3,7,1,4,3,1,1,4,4,3,3), ncol = 2))))
+        varRangeClass$new(list(indexRange(matrix(c(9,9,9,9,3,7,3,7,3,7,3,7,1,2,4,3,1,1,2,2,4,4,3,3), ncol = 2))))
     )
 
     rules <- makeGraphIndexRules(LHS = quote(y[i, j]),
@@ -932,7 +925,7 @@ test_that("graphRules works for fixed RHS indices", {
     expect_error(  ## Not yet checking input variable bounds in blank index case
         expect_equal(
             applyGraphIndexRules(
-                varRangeClass$new(list(indexRange(matrix(c(20,55), ncol = 1)))), rules)
+                varRangeClass$new(list(indexRange(matrix(c(20,55), ncol = 1)))), rules),
             vrEmpty)
     )
 
