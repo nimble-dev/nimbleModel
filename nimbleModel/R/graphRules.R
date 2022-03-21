@@ -664,7 +664,6 @@ applyGraphIndexRules <- function(fromVarRange,
                               function(x) identical(attr(x, 'rangeType'), 'empty')))) {
                     finalIndexRanges[[iAns]] <- indexRange_empty()
                 } else {
-                    if(length(
                     indexRangeExpandedMatrices <-
                         ansIndexRanges[ sets ]
                     finalIndexRanges[[iAns]] <-

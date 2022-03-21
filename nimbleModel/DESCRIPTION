@@ -11,21 +11,26 @@ Encoding: UTF-8
 LazyData: true
 Collate:
     aaa.R
+    calcRange.R
+    calcRules.R
     contextClass.R
     distributions_inputList.R
     distributions_processInputList.R
     indexRange.R
     indexRules.R
     indexRules_all.R
+    indexRules_any.R
     indexRules_arbitrary.R
     indexRules_block.R
     indexRules_constant.R
-    indexRules_any.R
     getSymbolicParentNodes.R
     graphRules.R
     modelDecl.R
     modelDef.R
-    options.R
+    nodeRangeClass.R
+    nodeRules.R
+    options.R       
+    origIndexRules.R
     processModelCode.R
     varRangeClass.R
     varRules.R

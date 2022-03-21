@@ -30,6 +30,7 @@ originalIndexRuleClass <- R6Class(
 
 ## some tests
 
+if(FALSE) {
     singleContext1 <-
         modelSingleContext(forCode = quote(for(i in 1:10){}))
     
@@ -113,3 +114,4 @@ rules <- originalIndexRuleClass$new(LHS = quote(y[j, i+1]),
         varRangeClass$new(list(
                           indexRange(matrix(c(1,2,2,1,1,2), ncol = 2))))
     )
+}

@@ -43,6 +43,8 @@ calcRuleClass <- R6Class(
 
 ## build nodefun on the fly when provided a varRange; check if it already exists; pass the fun into the range?
 
+
+if(FALSE) {
 isEmpty <- function(varRange) 
     any(sapply(varRange$indexRanges, function(x) identical(attr(x, 'rangeType'), 'empty')))
 
@@ -69,3 +71,4 @@ expect_equal(calcRange, NULL)
 calcRange <- calcRule$apply(varRangeClass$new(list(nimbleModel:::indexRange_none())))
 expect_equal(calcRange$indexingRange,
                  varRangeClass$new(list(indexRange(quote(1:10)))))
+}
