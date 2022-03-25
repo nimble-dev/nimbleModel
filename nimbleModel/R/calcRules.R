@@ -9,13 +9,28 @@ calcRuleClass <- R6Class(
         context = NULL,
         canonicalRange = NULL,
         sortID = NULL,
+        ID = NULL,  # create as we do fracturing for use in creating edge information
+        originalNodeRule = NULL,  # multiple calcRules can share a nodeRule and its density function
+        originalIndexRule = NULL, # probably inherited from originalNodeRule
+        ## might contain top,end,latent,etc.
 
-        ## not entirely clear what primary input is -- declaration?
+        ## Not entirely clear what primary input is -- declaration?
+        ## 2022-03-25: Actually, based on thinking about node types and graph processing
+        ## I think the calcRule will be created from a nodeRule or fractured nodeRule
 
+        ## perhaps like this:
+        ## initialize = function(nodeRule) {
+        ## originalIndexRule <<- nodeRule$originalIndexRule
+        ## nodeRangeRules <<- nodeRule$nodeRangeRules
+        ## internalRangeRules <<- nodeRule$internalRangeRules
+        ## etc.
+        ## canonicalRange should be in terms of nodes not var, I think
+
+        ## This code below needs to operate at the node level since calculation is done by indexing
+        ## over nodes.
         initialize = function(LHS, decl, context, constants = list()) {
             if(length(LHS) > 1)
                 varName <<- LHS[[2]] else varName <<- LHS
-            originalIndexRule <<- originalIndexRuleClass$new(LHS, context, constants)
             ## full range, for use with calculate applied to full var
             canonicalRule <- makeGraphIndexRules(LHS, LHS, context, constants)
             canonicalRange <<- applyGraphIndexRules(
@@ -37,6 +52,11 @@ calcRuleClass <- R6Class(
             result <- calcRangeClass$new(varName, indexingRange, context, decl, sortID)
             ## if empty, return NULL
             return(result)
+        }
+
+        get = function(varRange = NULL, type) {
+            ## type is 'end', 'latent', etc.
+            ## returns the embedded nodeRange (or subset of it if provided a varRange) that corresponds to 'type'
         }
     )
 )

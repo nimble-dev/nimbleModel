@@ -16,18 +16,11 @@ bruteForceNestedIndexing <- function(indexVector, indexQuery) {
     ans
 }
 
-## 2022-02-19:
-## add comments in code and do some cleanup
-## try to remove old Perry crossing code - see if I can figure out situatios it would be used in and that I have handled those situations
-## then merge into master branch, and add originalIndexRules to code and tests
-## merge crossIndices into extendIndexRanges?
-
 ## This is not allowed in current nimble: y[i] <- sum(x[c(1,3,5)])
-
 
 irEmpty <- nimbleModel:::indexRange_empty()
 vrEmpty <- varRangeClass$new(list(irEmpty))
-vrEmpty_mat2 <- varRangeClass$new(list(irEmpty), list(1:2))
+vrEmpty_mat2 <- varRangeClass$new(list(irEmpty), list(1:2))  ## single indexRange, two indices
 vrEmpty2 <- varRangeClass$new(list(irEmpty, irEmpty))
 irNone <- nimbleModel:::indexRange_none()
 vrNone <- varRangeClass$new(list(irNone))
@@ -147,7 +140,7 @@ test_that("makeSeparableIndexSets works", {
                                             context_ijk)$indexVarNameSets,
                      list(c(i = "i"), c(j = "j"), c(k = "k")))
 
-    ## Tied together by nested indexing.
+    ## Tied together by ragged indexing.
     expect_identical(makeSeparableIndexSets(quote(y[j, i]),
                                             quote(x[i, j]),
                                             context_ijni)$indexVarNameSets,
@@ -178,11 +171,10 @@ test_that("makeSeparableIndexSets works", {
 
 })
 
-## This is not fully set up because graphRuleClass not fully set up.
 test_that("graphRuleClass works", {
-    rule <- graphRuleClass$new(LHS = quote(y[i, j]),
-                               RHS = quote(x[i, j]),
-                               context = context_ij)
+    rule <- graphRuleClass$new(LHS = quote(y[i]),
+                               RHS = quote(x[i+1]),
+                               context = context_i)
 
     expect_error(
         rule$apply(indexRange(c(2, 4))),
@@ -192,13 +184,14 @@ test_that("graphRuleClass works", {
         rule$apply(varRangeClass$new(indexRange(matrix(c(2, 4), nrow = 1)))),
         "list of indexRanges"
     )
-    ## rule$apply(varRangeClass$new(list(indexRange(matrix(c(2, 4), nrow = 1)))))
-    ## rule$apply(varRangeClass$new(list(indexRange(3), indexRange(4))))
+
+    expect_equal(
+        rule$apply(varRangeClass$new(list(indexRange(quote(2:3))))),
+        varRangeClass$new(list(indexRange(quote(1:2))))
+    )
 })
 
 test_that("error trap incorrect number of input indices", {
-    ## y[i] from x[i], etc.
-
     ## Single simple sequence rule
     rules <- makeGraphIndexRules(LHS = quote(y[i]),
                                  RHS = quote(x[i]),
@@ -248,16 +241,6 @@ test_that("error trap incorrect number of input indices", {
         "incorrect number of input indices"
     )
 
-    rules <- makeGraphIndexRules(LHS = quote(y[i]),
-                                RHS = quote(x[i]),
-                                context = context_i)
-
-    expect_error(
-        applyGraphIndexRules(
-            vrNone, rules), 
-        "incorrect number of input indices"
-    )
-    
 })
 
 test_that("error trap incorrect indexing", {
@@ -300,6 +283,11 @@ test_that("graphRules works for basic cases lacking LHS indexing", {
         vrNone
     )
 
+    expect_equal(
+        applyGraphIndexRules(
+            varRangeClass$new(list(indexRange(3))), rules),
+        vrEmpty
+    )
 })
 
 test_that("graphRules works for single index cases, wrapping indexRules", {

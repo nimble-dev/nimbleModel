@@ -16,12 +16,11 @@ nodeRuleClass <- R6Class(
         nodeRangeRules = NULL,       # a varRange
         internalRangeRules = NULL,  # a varRange
         index2setID = NULL, # positions for node and element indexing
+        originalIndexRule = NULL,
         numNodeRules = NULL,
         numInternalRules = NULL,
-        nodeType = NULL,        # 'latent', 'top', etc. (probably not included since type may be mixed?)
-        calcRule = NULL,  ## useful?
-        nodeFunType = NULL,  ## useful?
         stoch = NULL,  ## need more input info to determine this
+        nodeFun = NULL, ## density calculation information - perhaps just original code
 
         initialize = function(LHS, context, constants) {  # y[i, 2:3]
             ## Note: this is awkward to go into the data structures and modify them
@@ -29,6 +28,8 @@ nodeRuleClass <- R6Class(
             ## the internal indexing of the elements of a node.
             if(length(LHS) > 1)
                 varName <<- LHS[[2]] else varName <<- LHS   ## not clear everything will go through if no indexing
+            originalIndexRule <<- originalIndexRuleClass$new(LHS, context, constants)
+            
             fullRules <- makeGraphIndexRules(LHS, LHS, context)
             index2setID <<- fullRules$indexSets$LHSindex2setID
             isConstant <- sapply(fullRules$indexRules, is, "indexRuleClass_constant")
@@ -57,6 +58,12 @@ nodeRuleClass <- R6Class(
             } else internalRange <- varRangeClass$new(list(nimbleModel:::indexRange_empty()))
             result <- nodeRangeClass$new(varName, nodeRange, internalRange, index2setID)
             return(result)
+        },
+
+        fracture = function(varRange) {
+            ## e.g. fracture y[3:8] with y[7] -> y[3:6], y[7], y[8]
+            ## y[3:8] is canonicalRange for the rule
+
         }
         ## perhaps have a method that just returns back the full nodeRange associated with the nodeRule, i.e.,
         ## for(i in 1:3) for(j in 1:2) y[j,i,2:4] would return y[(1:2),(1:3),2:4]
