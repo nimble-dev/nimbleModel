@@ -94,6 +94,21 @@ context_ijniknij_short <- modelContextClass$new(list(singleContext1_short,
 
 test_that("makeSeparableIndexSets works", {
     
+    expect_identical(makeSeparableIndexSets(quote(y[i]),
+                                            quote(x),
+                                            context_i)$indexVarNameSets,
+                     list(c(i = "i")))
+
+    expect_identical(makeSeparableIndexSets(quote(y),
+                                            quote(x[i]),
+                                            context_i)$indexVarNameSets,
+                     list(c(i = "i")))
+
+    expect_identical(makeSeparableIndexSets(quote(y),
+                                            quote(x),
+                                            context_0)$indexVarNameSets,
+                     list())
+
     expect_identical(makeSeparableIndexSets(quote(y[j, i + j]),
                                             quote(x[i, j]),
                                             context_ij)$indexVarNameSets,
@@ -167,7 +182,6 @@ test_that("makeSeparableIndexSets works", {
                                             quote(y[i+j,j+k]),
                                             context_ijk)$indexVarNameSets,
                      list(c(i = "i", j = "j", k = "k")))
-
 
 })
 
@@ -243,23 +257,24 @@ test_that("error trap incorrect number of input indices", {
 
 })
 
-test_that("error trap incorrect indexing", {
-
+test_that("handle incorrect indexing", {
+    ## Do we want to throw an error?
     rules <- makeGraphIndexRules(LHS = quote(y[i]),
                                 RHS = quote(x[i]),
                                 context = context_i)
 
-    expect_error(
+    expect_equal(
         applyGraphIndexRules(
             varRangeClass$new(list(indexRange(-3))), rules),
         vrEmpty
     )
 
-    expect_error(
+    expect_equal(
         applyGraphIndexRules(
             varRangeClass$new(list(indexRange(0))), rules),
         vrEmpty
     )
+
 })
 
 test_that("graphRules works for basic cases lacking LHS indexing", {
@@ -1264,7 +1279,8 @@ test_that("graphRules correctly handles ragged indexing", {
    ## This invokes complicated crossing case
    rules <- makeGraphIndexRules(LHS = quote(x[j]),
                                  RHS = quote(y[i,j,3]),
-                                context = context_ijni_short)
+                                context = context_ijni_short,
+                                constants = list(n = n))
    expect_identical(length(rules$indexRules), 1L)
    expect_true(is(rules$indexRules[[1]], "indexRuleClass_arbitrary"))
 
@@ -1595,7 +1611,8 @@ test_that("graphRules works for getParents by checking 1-to-many case", {
 
    rules <- makeGraphIndexRules(LHS = quote(x[2]),
                                  RHS = quote(y[i,j]),
-                                context = context_ijni_short)
+                                context = context_ijni_short,
+                                constants = list(n = n))
 
    expect_equal(
        applyGraphIndexRules(
@@ -1642,7 +1659,18 @@ test_that("graphRules works for getParents by checking 1-to-many case", {
                                 context = context_ij)
    expect_identical(length(rules$indexRules), 1L)
    expect_true(is(rules$indexRules[[1]], "indexRuleClass_arbitrary"))
-    
+
+
+   rules <- makeGraphIndexRules(LHS = quote(x),
+                                RHS = quote(y[i+j,j]),
+                                context = context_ij)
+   expect_equal(
+       applyGraphIndexRules(
+           varRangeClass$new(list(
+                             indexRange(matrix(c(1,1,1,1),2)))), rules),
+       vrEmpty
+   )
+
 })
 
 test_that("Single index variable used multiple times", {

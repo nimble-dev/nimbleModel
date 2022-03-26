@@ -5,7 +5,6 @@ calcRuleClass <- R6Class(
     portable = FALSE,
     public = list(
         varName = NULL,
-        originalIndexRule = NULL,
         context = NULL,
         canonicalRange = NULL,
         sortID = NULL,
@@ -52,7 +51,7 @@ calcRuleClass <- R6Class(
             result <- calcRangeClass$new(varName, indexingRange, context, decl, sortID)
             ## if empty, return NULL
             return(result)
-        }
+        },
 
         get = function(varRange = NULL, type) {
             ## type is 'end', 'latent', etc.

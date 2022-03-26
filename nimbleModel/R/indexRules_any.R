@@ -74,6 +74,7 @@ indexRule_any_apply_matrix <- function(fromIndices,
                                        ...) {
     if(setupResults$useArbitrary) {
         from_flat <- setupResults$from2indicesFunctions$rawIndex2flatIndex_multi(fromIndices)
+        if(!length(from_flat)) return(rep(FALSE, nrow(fromIndices)))
         return(sapply(from_flat, function(x) length(x) && !is.null(setupResults$from_flat2iRow[x][[1]])))
     } else {
         warning("Treating matrix indexRange as arbitrary case even if only a single column.")
