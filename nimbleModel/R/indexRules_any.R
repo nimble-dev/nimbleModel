@@ -77,7 +77,9 @@ indexRule_any_apply_matrix <- function(fromIndices,
         if(!length(from_flat)) return(rep(FALSE, nrow(fromIndices)))
         return(sapply(from_flat, function(x) length(x) && !is.null(setupResults$from_flat2iRow[x][[1]])))
     } else {
-        warning("Treating matrix indexRange as arbitrary case even if only a single column.")
+        ## Need to return vector of logicals because we don't know if
+        ## result is being combined with results from other columns
+        ## of a multi-column input matrix indexRange.
         valid <-
             fromIndices >= setupResults$from_min &
             fromIndices <= setupResults$from_max
