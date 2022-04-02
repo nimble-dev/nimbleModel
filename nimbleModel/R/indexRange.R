@@ -52,7 +52,10 @@ indexRange <- function(expr) {
         ## representing a vector of index vectors.
     } else {
         ## input expr is a single name, number, or blank
-        if(isBlank(expr))
+        
+        ## Not clear we need blank indexRange type
+        ## Not currently used internally and when would a user provide it in querying model structure?
+        if(isBlank(expr))   
             structure(list(expr),
                       class = "indexRange",
                       rangeType = "blank")
@@ -79,7 +82,6 @@ indexRange <- function(expr) {
 ##
 
 ## "Nothing" type returned when result of applying a rule is empty.
-## Could also just define as NULL.
 indexRange_empty <- function() {
     structure(list(numeric(0)),
     class = "indexRange",
