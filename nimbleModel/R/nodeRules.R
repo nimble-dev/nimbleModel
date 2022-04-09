@@ -28,6 +28,7 @@ nodeRuleClass <- R6Class(
             ## the internal indexing of the elements of a node.
             if(length(LHS) > 1)
                 varName <<- LHS[[2]] else varName <<- LHS   ## not clear everything will go through if no indexing
+            
             originalIndexRule <<- originalIndexRuleClass$new(LHS, context, constants)
             
             fullRules <- makeGraphIndexRules(LHS, LHS, context)
@@ -146,4 +147,29 @@ nodeRange$expandNames()
 
 nodeRange$getVarRange()
 
+ 
+     code <- nimbleCode({
+        for(i in 1:3)
+            y[i,1:3] <- mu[i,1:3]
+        mu[2,2] ~ dnorm(0,1)
+    })
+    code <- nimbleCode({
+        for(i in 1:3)
+            y[i,1:3] <- mu[i,1:3]
+        mu[2,1:3] ~ dmnorm(z[1:3],pr[1:3,1:3])
+    })
+     code <- nimbleCode({
+         for(i in 1:3)
+             for(j in 1:3)
+                 y[i,j] <- mu[i,j]
+         mu[2,2]~dnorm(0,1)
+    })
+    
+    
+   singleContext <-
+    modelSingleContext(indexVarExpr = quote(i),
+                       indexRangeExpr = quote(c(3,5,7)),
+                       )
+ 
+    
 }

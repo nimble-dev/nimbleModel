@@ -144,8 +144,14 @@ varRangeClass <- R6Class(
 )
 
 ## Make this a varRangeClass method?
-isEmpty <- function(varRange) 
+varRange_isEmpty <- function(varRange) 
     any(sapply(varRange$indexRanges, function(x) identical(attr(x, 'rangeType'), 'empty')))
+
+varRange_isEqual <- function(vr1, vr2) {
+    identical(vr1$indexID_2_rangeID, vr2$indexID_2_rangeID) &&
+        identical(vr1$rangeID_2_indexID, vr2$rangeID_2_indexID) &&
+        identical(vr1$indexRanges, vr2$indexRanges)
+}
 
 invertIndexList <- function(indexList) {
     browser()

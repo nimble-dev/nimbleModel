@@ -73,27 +73,42 @@ indexRuleClass_arbitrary <- R6Class(
 indexRule_arbitrary_setup <- function(toIndexExprList,
                                       fromIndexExprList,
                                       context,
-                                      constants = list()
+                                      constants = list(),
+                                      matrix = NULL
                                       ) {
     if(is.list(constants))
         constants <- list2env(constants)
-    allReplacements <- c(toIndexExprList,
-                         fromIndexExprList)
-    toIndexNames <- lapply(names(toIndexExprList),
-                           as.name)
-    fromIndexNames <- lapply(names(fromIndexExprList),
-                             as.name)
-    allIndexNames <- c(toIndexNames, fromIndexNames)
 
-    ## Run the for loops in an environment
-    ## where all the results are created.
-    unrolledIndicesEnv <-
-        expandContextAndReplacements(
-            allReplacements = allReplacements,
-            allReplacementNameExpr = allIndexNames,
-            context = context,
-            constantsEnv = constants
-        )
+    if(is.null(matrix)) {
+        allReplacements <- c(toIndexExprList,
+                             fromIndexExprList)
+        toIndexNames <- lapply(names(toIndexExprList),
+                               as.name)
+        fromIndexNames <- lapply(names(fromIndexExprList),
+                                 as.name)
+        allIndexNames <- c(toIndexNames, fromIndexNames)
+        
+        ## Run the for loops in an environment
+        ## where all the results are created.
+        unrolledIndicesEnv <-
+            expandContextAndReplacements(
+                allReplacements = allReplacements,
+                allReplacementNameExpr = allIndexNames,
+                context = context,
+                constantsEnv = constants
+            )
+    } else {  # for situation with extracting RHSonly where have an unrolled matrix of valid indices
+        unrolledIndicesEnv <- new.env()
+        unrolledIndicesEnv$outputSize = nrow(matrix)
+        numIndices <- ncol(matrix)
+        for(idx in seq_len(numIndices)) 
+            unrolledIndicesEnv[[paste0("f", idx)]] <- unrolledIndicesEnv[[paste0("t", idx)]] <-
+                unrolledIndicesEnv[[paste0("j", idx)]] <- matrix[ , idx]
+        fromIndexExprList <- toIndexExprList <- as.list(parse(text = paste0("j", seq_len(numIndices))))
+        names(fromIndexExprList) <- paste0("f", seq_len(numIndices))
+        names(toIndexExprList) <- paste0("t", seq_len(numIndices))
+        
+    }
 
     ## Extract the results from the environment.
     toUnrolledResults <-

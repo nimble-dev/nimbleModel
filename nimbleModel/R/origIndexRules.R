@@ -11,7 +11,8 @@ originalIndexRuleClass <- R6Class(
             graphRule <<-
                 makeGraphIndexRules(dummyLHS,
                                     LHS,
-                                    context)
+                                    context,
+                                    constants)
         },
         apply = function(fromVarRange) {
             applyGraphIndexRules(
