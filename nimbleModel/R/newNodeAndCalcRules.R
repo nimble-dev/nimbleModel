@@ -24,9 +24,12 @@ nodeRuleClass <- R6Class(
         sortID = numeric(),
         stoch = logical(),
         numIndices = numeric(),
-        originalRule = NULL, # pointer to canonical nodeRule from declaration (possibly `self`
+        originalRule = NULL, # pointer to canonical nodeRule from declaration (possibly `self`)
         externalRules = NULL, # indexing for the nodes
         internalRules = NULL, # indexing for components, if multivariate nodes
+        numExternalRules = numeric(0),
+        numInternalRules = numeric(0),
+        index2setID = NULL,
         originalIndexRules = NULL, # determines original indexing (based on context); set equal to originalRule$originalIndexRule if not canonical nodeRule
         stochParent = FALSE,
         stochDep = FALSE,
@@ -43,8 +46,6 @@ nodeRuleClass <- R6Class(
 
         calculate = NULL,  ## generic function for calculation
 
-        ## do we want canonicalRange (either at var or node level)?
-
         initialize = function(expr, isLHS, ID, stoch, context = modelContextClass$new(), constants = list()) {
             ## Set up rules that operate on the indexing of the nodes and on
             ## the internal indexing of the elements of a node.
@@ -58,14 +59,18 @@ nodeRuleClass <- R6Class(
             originalIndexRules <<- originalIndexRuleClass$new(expr, context, constants)
 
             ## Note: this is awkward to go into the data structures and modify them
+
+            ## TODO: modify allRules to be a graphRule
             allRules <- makeGraphIndexRules(expr, expr, context)
             index2setID <<- allRules$indexSets$LHSindex2setID
             isConstant <- sapply(allRules$indexRules, is, "indexRuleClass_constant")
-            num_indices <<- length(allRules$indexSets$LHSindex2setID)
+            numIndices <<- length(allRules$indexSets$LHSindex2setID)
 
-            canonicalRange <<- applyGraphIndexRules(
-                varRangeClass$new(lapply(seq_len(num_indices),
-                                         function(i) indexRange(quote(1:Inf)))), allRules)
+            fullRange <<- allRules$getFullRange()
+            
+            #fullRange <<- applyGraphIndexRules(
+            #    varRangeClass$new(lapply(seq_len(numIndices),
+            #                             function(i) indexRange(quote(1:Inf)))), allRules)
 
             if(RHSonly && any(isConstant)) {  # convert constant rules to block rules, as notion of a multivariate RHS is not useful
                 wh <- which(isConstant)
@@ -102,13 +107,13 @@ nodeRuleClass <- R6Class(
 
         apply = function(varRange = NULL) {
             if(is.null(varRange))   ## user wants full range for the variable
-                varRange <- canonicalRange
+                varRange <- fullRange
             if(numExternalRules) {
                 externalRange <- applyGraphIndexRules(varRange, externalRules)
-            } else externalRange <- varRangeClass$new(list(nimbleModel:::indexRange_empty()))
+            } else externalRange <- NULL # varRangeClass$new(list(nimbleModel:::indexRange_empty()))
             if(numInternalRules) {
                 internalRange <- applyGraphIndexRules(varRange, internalRules)
-            } else internalRange <- varRangeClass$new(list(nimbleModel:::indexRange_empty()))
+            } else internalRange <- NULL # varRangeClass$new(list(nimbleModel:::indexRange_empty()))
             result <- nodeRangeClass$new(varName, externalRange, internalRange, index2setID, self)
             return(result)
         },
@@ -161,6 +166,7 @@ nodeRangeClass <- R6Class(
         internalRange = NULL,  # a varRange
         rule = NULL,
         originalIndexRange = NULL,
+        index2setID = NULL,
         indexID_2_rangeID = NULL,    
         rangeID_2_indexID = NULL,
 
@@ -169,11 +175,11 @@ nodeRangeClass <- R6Class(
                               internalRange,
                               index2setID,
                               rule) {
-
             varName <<- varName
             externalRange <<- externalRange
             internalRange <<- internalRange
             rule <<- rule  ## pointer to governing rule
+            index2setID <<- index2setID
 
             originalIndexRange <<- rule$originalIndexRules$apply(self$getVarRange())
 
@@ -251,19 +257,16 @@ nodeRangeClass <- R6Class(
 )
 
 
-## exclude()
-
-## Takes a RHS rule (created from original RHS of an expression) and
-## intersects it with a LHS rule.
+## Takes a RHS rule (created from original RHS of an expression) and intersects it with a LHS rule.
 ## Result can be:
 ##  no intersection: RHS passed through
 ##  RHS is fully in LHS: NULL
 ##  partly intersects: fracture and return one or more fractured RHS rules
 
 exclude <- function(RHSrule, LHSrule) {
-    LHSrange <- LHSrule$canonicalRange
-    RHSrange <- RHSrule$canonicalRange
-    intersection <- RHSrule$apply(LHSrange)
+    LHSrange <- LHSrule$fullRange
+    RHSrange <- RHSrule$fullRange
+    intersection <- RHSrule$apply(LHSrange)$getVarRange()
     if(varRange_isEmpty(intersection))
         return(list(RHSrule))
     if(varRange_isEqual(RHSrange, intersection)) 
@@ -273,7 +276,7 @@ exclude <- function(RHSrule, LHSrule) {
     identicalRanges <- sapply(seq_along(RHSrange$indexRanges), function(idx)
         identical(RHSrange$indexRanges[[idx]], intersection$indexRanges[[idx]]))
     
-    clean <- RHSrule$num_indices == 1 || sum(identicalRanges) == RHSrule$num_indices-1
+    clean <- RHSrule$numIndices == 1 || sum(identicalRanges) == RHSrule$numIndices-1
 
     if(clean) {  ## split, shrink, or remove from focal index, and combine with other indices
         idx <- which(!identicalRanges)
@@ -283,53 +286,48 @@ exclude <- function(RHSrule, LHSrule) {
         typeRHS <- attr(RHS, "rangeType")
         typeInt <- attr(int, "rangeType")
 
-        ## make temp copy:
-        ## RHSir <- RHSrange[[idx]]
         if(typeRHS == "arbitrary" || typeInt == "arbitrary") {
             valsRHS <- switch(typeRHS,
-                              arbitrary = RHS[[1]]
-                              scalar = RHS[[1]]
+                              arbitrary = RHS[[1]],
+                              scalar = RHS[[1]],
                               seq = RHS[[1]][1]:RHS[[1]][2]
                               )
             valsInt <- switch(typeInt,
-                              arbitrary = int[[1]]
-                              scalar = int[[1]]
+                              arbitrary = int[[1]],
+                              scalar = int[[1]],
                               seq = int[[1]][1]:int[[1]][2]
                               )
             valsRHS <- valsRHS[!valsRHS %in% valsInt]
-            RHS <- indexRange(matrix(valsRHS))
-            RHSrule$indexRules[[idx]] <- nimbleModel:::indexRule_arbitrary_setup(NULL, NULL, NULL,
+            ## RHS <- indexRange(matrix(valsRHS))
+            RHSrule$externalRules$indexRules[[idx]] <- nimbleModel:::indexRule_arbitrary_setup(NULL, NULL, NULL,
                                    matrix = matrix(valsRHS))
         } else {  # seq+seq or seq+scalar
             if(typeInt == "scalar")
                 int <- indexRange(substitute(A:A, list(A = int[[1]])))
             ## now process two seqs
-            if(typeRHS == "scalar") stop("Not expecting RHS to be a scalar")
+            if(typeRHS == "scalar") stop("Not expecting RHS to be a scalar")  ## scalar RHS either fully intersected or not intersected
 
-            ## check if using ref semantics
-            if(int[[1]][1] == RHS[[1]][1] || int[[1]][2] == RHS[[1]][2]) {
-                if(int[[1]][1] == RHS[[1]][1]) 
-                    RHS[[1]][1] <- int[[1]][2]+1 else RHS[[1]][2] <- int[[1]][1]-1
-                RHSrange$indexRanges[[idx]] <- RHS
-                RHSrule$indexRules[[idx]] <- 7  ## HERE - need code to create block rule from seq range
+            if(int[[1]][1] == RHS[[1]][[1]] || int[[1]][[2]] == RHS[[1]][[2]]) {
+                if(int[[1]][[1]] == RHS[[1]][[1]]) 
+                    RHS[[1]][[1]] <- int[[1]][[2]]+1 else RHS[[1]][[2]] <- int[[1]][[1]]-1
+                RHSrule$externalRules$indexRules[[idx]]$modify_extent(RHS[[1]])
+                return(list(RHSrule))
             } else {
-                RHSrule2 <- RHSrule$clone()
+                RHSrule2 <- RHSrule$clone(deep = TRUE)
+                ## Awkward - somehow the externalRules$indexRules are still shallow copies, perhaps because we have R6 within list within R6?
+                RHSrule2$externalRules$indexRules <- lapply(RHSrule2$externalRules$indexRules, function(x) x$clone(deep = TRUE))
+
                 RHS2 <- RHS
-                RHS[[1]][2] <- int[[1]][1]-1
-                RHS2[[1]][1] <- int[[1]][2]+1
-                RHSrule$indexRules[[idx]] <- nimbleModel:::indexRule_block_setup(RHS[[1]])  ## HERE - need code to create block rule from seq range
-                RHSrule2$indexRules[[idx]] <- nimbleModel:::indexRule_block_setup(RHS2[[1]])  ## HERE - need code to create block rule from seq range
-               
+                RHS[[1]][[2]] <- int[[1]][[1]]-1
+                RHS2[[1]][[1]] <- int[[1]][[2]]+1
+                RHSrule$externalRules$indexRules[[idx]]$modify_extent(RHS[[1]])
+                RHSrule2$externalRules$indexRules[[idx]]$modify_extent(RHS2[[1]])
+                return(list(RHSrule, RHSrule2))
             }
         }
-        
-        ## how create indexRule from range?
-        ## insert indexRule into RHSrule
-        return(list(RHSrule, RHSrule2))
-        ## create rule(s) based on modified index and remaining indices
     } else {  ## unroll, exclude, create new arbitrary RHSrule by creating a complicated context
-        unrolledRHS <- RHSrange$getIndexRangeMatrix(seq_len(num_indices))
-        unrolledIntersection <- intersection$getIndexRangeMatrix(seq_len(num_indices))
+        unrolledRHS <- RHSrange$getIndexRangeMatrix(seq_len(numIndices))
+        unrolledIntersection <- intersection$getIndexRangeMatrix(seq_len(numIndices))
 
         unrolledRHS <- indexRange(matrix(c(1,2,3,1,2,4,3,4,7,1,4,6), ncol = 3, byrow =TRUE))
         unrolledIntersection <- indexRange(matrix(c(1,2,3,3,4,7), ncol = 3, byrow =TRUE))
@@ -342,14 +340,140 @@ exclude <- function(RHSrule, LHSrule) {
         ## from_flatMax and length(from_flat2iRow) will be size of (hyper)cube
         ## encompassing all the remaining elements
         ## TODO: remove 'nimbleModel:::'
-        rules <- nimbleModel:::indexRule_arbitrary_setup(NULL, NULL, NULL,
+        RHSrule$externalRules <- nimbleModel:::indexRule_arbitrary_setup(NULL, NULL, NULL,
                                    matrix = unrolledRHS[[1]][remaining, ])
-        return(list(rules))
+        return(list(RHSrule))
      }
 }
 
+## need tests for:
+## setting up LHS node rules
+## setting up RHS rules
+## applying rules to get nodeRanges
+## using exclude()
+
 if(F) {
 
+    library(nimbleModel)
+    singleContext1 <-
+        modelSingleContext(forCode = quote(for(i in 2:8){}))
+    
+    singleContext2 <-
+        modelSingleContext(forCode = quote(for(j in 1:4){}))
+    
+    context_0 <- modelContextClass$new()
+    context_i <- modelContextClass$new(list(singleContext1))
+    
+    context_ij <- modelContextClass$new(list(singleContext1,
+                                             singleContext2))
+
+    ## scalar/seq overlap at end
+    RHS <- quote(mu[i+1])
+    RHSrule <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_i)
+    LHS <- quote(mu[3])
+    LHSrule <- nodeRuleClass$new(LHS, TRUE, 1, FALSE, context_0)
+    
+    result <- exclude(RHSrule, LHSrule)[[1]]
+
+    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 3:8){}))))
+    expected <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_tmp)
+    expect_identical(result$externalRules$indexRules[[1]]$setupResults,
+                    expected$externalRules$indexRules[[1]]$setupResults)
+    ## what to compare?
+
+    ## scalar/seq overlap no overlap
+    RHS <- quote(mu[i+1])
+    RHSrule <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_i)
+    LHS <- quote(mu[33])
+    LHSrule <- nodeRuleClass$new(LHS, TRUE, 1, FALSE, context_0)
+
+    result <- exclude(RHSrule, LHSrule)
+    expect_identical(result[[1]], RHSrule)
+    
+    ## scalar/seq overlap in middle
+    RHS <- quote(mu[i+1])
+    RHSrule <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_i)
+    LHS <- quote(mu[4])
+    LHSrule <- nodeRuleClass$new(LHS, TRUE, 1, FALSE, context_0)
+
+    result <- exclude(RHSrule, LHSrule)
+
+    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 2:2){}))))
+    expected <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_tmp)
+    expect_identical(result[[1]]$externalRules$indexRules[[1]]$setupResults,
+                    expected$externalRules$indexRules[[1]]$setupResults)
+    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 4:8){}))))
+    expected <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_tmp)
+    expect_identical(result[[2]]$externalRules$indexRules[[1]]$setupResults,
+                    expected$externalRules$indexRules[[1]]$setupResults)
+
+
+    ## seq/seq partial overlap
+    RHS <- quote(mu[i+1])
+    RHSrule <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_i)
+    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:5){}))))
+    LHS <- quote(mu[i])
+    LHSrule <- nodeRuleClass$new(LHS, TRUE, 1, FALSE, context_tmp)
+
+    result <- exclude(RHSrule, LHSrule)
+
+    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 5:8){}))))
+    expected <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_tmp)
+    expect_identical(result[[1]]$externalRules$indexRules[[1]]$setupResults,
+                    expected$externalRules$indexRules[[1]]$setupResults)
+
+
+    ## seq/seq full overlap
+    RHS <- quote(mu[i+1])
+    RHSrule <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_i)
+    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:9){}))))
+    LHS <- quote(mu[i])
+    LHSrule <- nodeRuleClass$new(LHS, TRUE, 1, FALSE, context_tmp)
+
+    result <- exclude(RHSrule, LHSrule)
+    expect_identical(result, NULL)
+
+## how deal with this to address next issue?
+k1=c(4,7,1)
+k2=c(99,1,3)
+                             constants = list(k1=k1,k2=k2)
+    RHS <- quote(mu[k1[i],j,k2[i]])
+    RHSrule <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_ij_short)
+## need getMax for each indexRule type
+    
+    ## matrix in LHS - failing when create LHS rule because can't get fullRange with 1:inf
+    RHS <- quote(mu[i+1])
+    RHSrule <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_i)
+    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:3){}))))
+    LHS <- quote(mu[idx[i]])
+    idx <- c(400,7,8)
+    LHSrule <- nodeRuleClass$new(LHS, TRUE, 1, FALSE, context_tmp, constants = list(idx = idx))
+
+    result <- exclude(RHSrule, LHSrule)
+
+    ## matrix in RHS
+    
+    ## check 2-d case
+    ## y[i, 1:3] <- mu[i+1, 1:3]
+    RHS <- quote(mu[i+1,1:3])
+    RHSrule <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_i)
+    ## mu[3, 1:3]  # also do mu[4,1:3] to fracture, mu[i,1:3] for i in 3:4 and do mu[c(3,5),1:3] via k[i]?
+    LHS <- quote(mu[1, 1:3])
+    LHSrule <- nodeRuleClass$new(LHS, TRUE, 1, FALSE, context_0)
+    
+    debug(exclude)
+    exclude(RHSrule, LHSrule)
+
+    ## test mu[i,j] going from 2 seq rules to a single matrix rule if intersect in awkward way
+
+    ## various other cases such as mu[i, 1:3] with awkward intersection
+    
+    
+    
+    
+}
+
+if(F) {
 singleContext1 <-
     modelSingleContext(forCode = quote(for(idx in 1:2){}))
 singleContext2 <-
@@ -376,15 +500,6 @@ context <- modelContextClass$new(list(singleContext2,singleContext3,singleContex
                                 constants = list(idx1=idx1,idx2=idx2,idx3=idx3))
 
 
-
-a <- matrix(T,3,3)
-a[2,2] <- F
-apply(a, 1, function(x) which(x))
-
-a <- matrix(T,3,3)
-a[2,2] <- F
-a[1,] <- F
-apply(a, 1, function(x) which(x))
 }
 
 ## fracture()
@@ -419,5 +534,13 @@ if(FALSE) {
    nodeRule <- nodeRuleClass$new(LHS, TRUE, 1, FALSE, context_ij)
    ## This works nicely - originalIndexRange is i=2:4,j=1:2
    nodeRule$apply(varRangeClass$new(list(indexRange(quote(1:2)), indexRange(quote(3:5)), indexRange(6))))
+
+   singleContext1 <-
+       modelSingleContext(forCode = quote(for(i in 2:5){}))
+   context_i <- modelContextClass$new(list(singleContext1))
+
+   RHS <- quote(mu[i+1])
+   nodeRule <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_i)
    
-}
+ }
+ 

@@ -56,9 +56,9 @@ modelContextClass <-
             ## a list of BUGSsingleContextClass objects
             singleContexts = list(),
             ## a list of index variable expressions
-            indexVarExprs = 'ANY',
+            indexVarExprs = list(),
             ## vector of index variable names (character)
-            indexVarNames = 'ANY',
+            indexVarNames = character(),
             ## For some reason, previously, setup was not always
             ## done at initialize. That flexibility is preserved for now.
             initialize = function(...) {

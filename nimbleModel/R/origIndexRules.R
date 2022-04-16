@@ -6,8 +6,10 @@ originalIndexRuleClass <- R6Class(
         initialize = function(LHS,
                               context,
                               constants = list()) {
-            dummyLHS <- parse(text = paste0("w[",
-                          paste(context$indexVarNames, collapse = ","), "]"))[[1]]
+            if(length(context$indexVarNames)) {
+                dummyLHS <- parse(text = paste0("w[",
+                                                paste(context$indexVarNames, collapse = ","), "]"))[[1]]
+                } else dummyLHS <- quote(w)
             graphRule <<-
                 makeGraphIndexRules(dummyLHS,
                                     LHS,

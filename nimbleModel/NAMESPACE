@@ -11,6 +11,8 @@ export(modelDeclClass)
 export(indexRuleClass_arbitrary)
 export(varRangeClass)
 export(varStoreClass)
+export(nodeRuleClass)
+export(nodeRangeClass)
 
 ## functions and other objects
 export(applyGraphIndexRules)
@@ -42,6 +44,8 @@ export(makeSeparableIndexSets)
 export(modelSingleContext)
 
 export(numIndices)
+
+export(exclude)
 
 export(varRange2char)
 export(varRange2expr)

@@ -51,6 +51,10 @@ indexRuleClass_block <- R6Class(
                 stop('an index rule should be applied to an indexRange')
             else
                 apply_indexRange(from, ...)
+        },
+        modify_extent = function(newFrom) {
+            setupResults$from_min <<- newFrom[[1]]
+            setupResults$from_max <<- newFrom[[2]]
         }
     )
 )

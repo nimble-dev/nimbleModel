@@ -107,7 +107,6 @@ indexRule_arbitrary_setup <- function(toIndexExprList,
         fromIndexExprList <- toIndexExprList <- as.list(parse(text = paste0("j", seq_len(numIndices))))
         names(fromIndexExprList) <- paste0("f", seq_len(numIndices))
         names(toIndexExprList) <- paste0("t", seq_len(numIndices))
-        
     }
 
     ## Extract the results from the environment.

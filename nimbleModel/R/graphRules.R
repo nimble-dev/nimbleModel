@@ -7,22 +7,48 @@ graphRuleClass <- R6Class(
     portable = FALSE,
     public = list(
         indexRules = NULL,
+        indexSets = NULL,
+        constraints = NULL,
+        numRHSindices = NULL,
         initialize = function(LHS,
                               RHS,
-                              context) {
-            indexRules <<-
+                              context,
+                              constants) {
+            ## This is a hack for the moment, as makeGraphIndexRules
+            ## needs to be a method, not a stand-alone function.
+            output <- 
                 makeGraphIndexRules(LHS,
                                     RHS,
-                                    context)
+                                    context,
+                                    constants)
+            indexRules <<- output$indexRules
+            indexSets <<- output$indexSets
+            constraints <<- output$constraints
+            numRHSindices <<- output$numRHSindices
         },
         apply = function(fromVarRange) {
             applyGraphIndexRules(
                 fromVarRange,
                 indexRules
             )
+        },
+        
+        getFullRange = function() {
+            extent <- lapply(indexRules, getMax)
+            maxes <- indexSets$LHSindex2setID
+            for(i in seq_len(max(maxes)))
+                maxes[indexSets$LHSindex2setID == i] <- extent[[i]]
+            return(
+                applyGraphIndexRules(
+                    varRangeClass$new(lapply(seq_len(numIndices),
+                                             function(i) indexRange(
+                                                             substitute(1:MAX, list(MAX = maxes[i]))))),
+                    indexRules)
         }
+            
     )
 )
+
 
 ## This file has code for managing the set of rules for a variable.
 ##
@@ -357,6 +383,9 @@ checkOneConstraint <- function(indexRange, constraint, col = 1) {
 ## and compose the result as a new varRange.
 applyGraphIndexRules <- function(fromVarRange,
                                  rules) {
+
+    if(varRange_isEmpty(fromVarRange))
+        return(fromVarRange)
 
     if(!is(fromVarRange, 'varRangeClass'))
         stop("applyGraphIndexRules: 'fromVarRange' needs to be a varRange object.")
