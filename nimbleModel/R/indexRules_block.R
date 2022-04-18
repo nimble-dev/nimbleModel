@@ -52,9 +52,14 @@ indexRuleClass_block <- R6Class(
             else
                 apply_indexRange(from, ...)
         },
+        
         modify_extent = function(newFrom) {
             setupResults$from_min <<- newFrom[[1]]
             setupResults$from_max <<- newFrom[[2]]
+        },
+
+        get_max = function() {
+            return(setupResults$from_max + setupResults$offset)
         }
     )
 )
@@ -238,6 +243,8 @@ getSignAndOffset <- function(indexExpr,
     if(is.name(indexExpr)) {
         indexNameInExpr <- as.character(indexExpr)
     } else {
+        if(!is.name(indexExpr[[2]]))  ## e.g., block[i]+2
+            return(NULL)
         indexNameInExpr <- as.character(indexExpr[[2]])
         offsetExpr <- indexExpr
         offsetExpr[[2]] <- 0

@@ -32,9 +32,10 @@ graphRuleClass <- R6Class(
                 indexRules
             )
         },
-        
+
+        ## TODO: need to come back to this
         getFullRange = function() {
-            extent <- lapply(indexRules, getMax)
+            extent <- lapply(indexRules, get_max)
             maxes <- indexSets$LHSindex2setID
             for(i in seq_len(max(maxes)))
                 maxes[indexSets$LHSindex2setID == i] <- extent[[i]]
@@ -43,7 +44,7 @@ graphRuleClass <- R6Class(
                     varRangeClass$new(lapply(seq_len(numIndices),
                                              function(i) indexRange(
                                                              substitute(1:MAX, list(MAX = maxes[i]))))),
-                    indexRules)
+                    indexRules))
         }
             
     )

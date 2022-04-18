@@ -61,16 +61,23 @@ nodeRuleClass <- R6Class(
             ## Note: this is awkward to go into the data structures and modify them
 
             ## TODO: modify allRules to be a graphRule
-            allRules <- makeGraphIndexRules(expr, expr, context)
+            allRules <- makeGraphIndexRules(expr, expr, context, constants)
             index2setID <<- allRules$indexSets$LHSindex2setID
             isConstant <- sapply(allRules$indexRules, is, "indexRuleClass_constant")
             numIndices <<- length(allRules$indexSets$LHSindex2setID)
 
-            fullRange <<- allRules$getFullRange()
-            
-            #fullRange <<- applyGraphIndexRules(
-            #    varRangeClass$new(lapply(seq_len(numIndices),
-            #                             function(i) indexRange(quote(1:Inf)))), allRules)
+            ## TODO: replace with call to allRules$getFullRange?
+            extent <- lapply(seq_along(allRules$indexRules), function(idx)
+                allRules$indexRules[[idx]]$get_max())
+            maxes <- allRules$indexSets$LHSindex2setID
+            for(i in seq_len(max(maxes)))
+                maxes[allRules$indexSets$LHSindex2setID == i] <- extent[[i]]
+
+            fullRange <<- applyGraphIndexRules(
+                    varRangeClass$new(lapply(seq_len(numIndices),
+                                             function(i) indexRange(
+                                                             substitute(1:MAX, list(MAX = maxes[i]))))),
+               allRules)
 
             if(RHSonly && any(isConstant)) {  # convert constant rules to block rules, as notion of a multivariate RHS is not useful
                 wh <- which(isConstant)
@@ -286,16 +293,18 @@ exclude <- function(RHSrule, LHSrule) {
         typeRHS <- attr(RHS, "rangeType")
         typeInt <- attr(int, "rangeType")
 
-        if(typeRHS == "arbitrary" || typeInt == "arbitrary") {
+        if(typeRHS == "matrix" || typeInt == "matrix") {
             valsRHS <- switch(typeRHS,
-                              arbitrary = RHS[[1]],
+                              matrix = RHS[[1]],
                               scalar = RHS[[1]],
-                              seq = RHS[[1]][1]:RHS[[1]][2]
+                              sequence = RHS[[1]][1]:RHS[[1]][2],
+                              stop("typeRHS not found")
                               )
             valsInt <- switch(typeInt,
-                              arbitrary = int[[1]],
+                              matrix = int[[1]],
                               scalar = int[[1]],
-                              seq = int[[1]][1]:int[[1]][2]
+                              sequence = int[[1]][1]:int[[1]][2],
+                              stop("typeInt not found")
                               )
             valsRHS <- valsRHS[!valsRHS %in% valsInt]
             ## RHS <- indexRange(matrix(valsRHS))
@@ -433,20 +442,15 @@ if(F) {
     result <- exclude(RHSrule, LHSrule)
     expect_identical(result, NULL)
 
-## how deal with this to address next issue?
-k1=c(4,7,1)
-k2=c(99,1,3)
-                             constants = list(k1=k1,k2=k2)
-    RHS <- quote(mu[k1[i],j,k2[i]])
-    RHSrule <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_ij_short)
-## need getMax for each indexRule type
     
-    ## matrix in LHS - failing when create LHS rule because can't get fullRange with 1:inf
+    ## matrix in LHS
+
+    ## need to finish this - this is failing
     RHS <- quote(mu[i+1])
     RHSrule <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_i)
     context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:3){}))))
     LHS <- quote(mu[idx[i]])
-    idx <- c(400,7,8)
+    idx <- c(2,5,4)
     LHSrule <- nodeRuleClass$new(LHS, TRUE, 1, FALSE, context_tmp, constants = list(idx = idx))
 
     result <- exclude(RHSrule, LHSrule)
@@ -472,6 +476,84 @@ k2=c(99,1,3)
     
     
 }
+
+if(F) {
+
+
+   singleContext1 <-
+        modelSingleContext(forCode = quote(for(i in 2:4){}))
+    
+    context_0 <- modelContextClass$new()
+    context_i <- modelContextClass$new(list(singleContext1))
+   rules <- makeGraphIndexRules(LHS = quote(y[i+2]),
+                                 RHS = quote(x[i+5]),
+                                 context = context_i)
+
+       
+    context_0 <- modelContextClass$new()
+    context_i <- modelContextClass$new(list(singleContext1))
+       k1=c(4,7,1)
+    k2=c(99,1,3)
+ 
+   rules <- makeGraphIndexRules(LHS = quote(y[k1[i]]),
+                                 RHS = quote(x[k2[i]]),
+                                context = context_i, constants = list(k1=k1,k2=k2))
+    
+
+    
+   singleContext1 <-
+        modelSingleContext(forCode = quote(for(i in 1:3){}))
+    
+    context_0 <- modelContextClass$new()
+    context_i <- modelContextClass$new(list(singleContext1))
+
+    
+   k1=c(4,1,7)
+k2=c(99,1,3)
+                             constants = list(k1=k1,k2=k2)
+    LHS <- quote(mu[k1[i]+2])
+    LHSrule <- nodeRuleClass$new(LHS, TRUE, 1, FALSE, context_i,constants=list(k1=k1))
+
+## fails
+       rules <- makeGraphIndexRules(LHS = quote(y[k1[i]+2]),
+                                 RHS = quote(x[i]),
+                                 context = context_i, constants =list(k1=k1))
+
+      shuffle <- as.integer(c(5, 4, 1)) # , 9, 10, 8, 6, 2, 7, 3))
+    makeGraphIndexRules(quote(y[shuffle[i] + 3]),
+                            quote(x[i]),
+                            context_i,
+                            constants = list(shuffle = shuffle))
+
+
+      makeGraphIndexRules(quote(y[i*3]),
+                            quote(x[i]),
+                            context_i,
+                            constants = list(shuffle = shuffle))
+
+
+    LHS <- quote(mu[j,k,i])
+    LHSrule <- nodeRuleClass$new(LHS, TRUE, 1, FALSE, context_ijnik,constants=list(k1=k1))
+
+    
+LHSrule$apply(varRangeClass$new(list(indexRange(quote(1:100)))))
+## try mu[k1[i]+2] - doesn't seem to work - compare to shuffle[i]+2 in test-indexRules_arbitrayr
+
+
+    n <- c(1,7,2)
+   LHS <- quote(mu[k,j,i])
+    LHSrule = nodeRuleClass$new(LHS, TRUE, 1, FALSE, context_ijnik_short,constants=list(n=n))
+    
+    n <- c(1,7,2)
+   LHS <- quote(mu[k,j,i])
+    LHSrule = nodeRuleClass$new(LHS, TRUE, 1, FALSE, context_ijk,constants=list(n=n))
+
+    rules <- makeGraphIndexRules(LHS = quote(y[k,j,i]),
+                             RHS = quote(x[k,j,i]),
+                             context = context_ijnik_short,
+                             constants = list(n = n))
+
+    }
 
 if(F) {
 singleContext1 <-

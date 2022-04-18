@@ -69,7 +69,7 @@ test_arbitraryIndexRule <- function(LHS,
                        list(LHS = LHS,
                             RHS = RHS))
         codeInForLoop <-
-            contextClass_embedCodeInForLoop(
+            nimbleModel:::contextClass_embedCodeInForLoop(
                 context$singleContexts,
                 innerLoopCode)
 

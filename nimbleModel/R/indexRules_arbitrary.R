@@ -66,6 +66,11 @@ indexRuleClass_arbitrary <- R6Class(
                 stop('an indexRule should be applied to an indexRange')
             else
                 apply_indexRange(from, ...)
+        },
+
+        get_max = function() {
+            sapply(seq_along(setupResults$iRow2toIndices[[1]]),
+                   function(idx) max(sapply(setupResults$iRow2toIndices, '[', idx)))
         }
     )
 )
