@@ -115,12 +115,15 @@ indexRule_block_apply_sequence <- function(fromIR,
                   setupResults$from_max + setupResults$offset
               else
                   end + setupResults$offset
+
+    if(startAns == endAns) {
+        return(indexRange_scalar(startAns))
+    }
     
-    toIR <-
+    return(
         indexRange_sequence(
             list(startAns, endAns)
-        )
-    toIR
+        ))
 }
 
 indexRule_block_apply <- function(fromIR,

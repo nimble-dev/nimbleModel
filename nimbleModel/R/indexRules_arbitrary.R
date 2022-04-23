@@ -7,19 +7,20 @@ indexRuleClass_arbitrary <- R6Class(
         initialize = function(toIndexExprList,
                               fromIndexExprList,
                               context,
-                              constants = list()
+                              constants = list(),
+                              matrix = NULL
                               ) {
             ## Rule not applicable if no LHS indexing
             ## This case would arise if looking for parents in case such as
             ## y[i] <- x[2] (i.e., y[2] <- x[i] when creating a parent rule)
-            if(!length(toIndexExprList))
+            if(!length(toIndexExprList) && is.null(matrix))
                 return()
             setupResults <<-
                 indexRule_arbitrary_setup(toIndexExprList,
-                                              fromIndexExprList,
-                                              context,
-                                              constants
-                                              )
+                                          fromIndexExprList,
+                                          context,
+                                          constants,
+                                          matrix)
         },
         applyOne = function(fromIndices) {
             indexRule_arbitrary_apply_single(

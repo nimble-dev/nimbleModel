@@ -35,7 +35,11 @@ indexRuleClass_constant <- R6Class(
         },
 
         get_max = function() {
-            return(setupResults$constant)
+            return(switch(attr(setupResults$constant, 'rangeType'),
+                   matrix = apply(setupResults$constant[[1]], 2, max),
+                   sequence = setupResults$constant[[1]][[2]],
+                   scalar = setupResults$constant[[1]],
+                   stop("unexpected indexRange type")))
         }
     )
 )
