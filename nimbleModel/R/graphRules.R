@@ -208,6 +208,17 @@ makeConstraints <- function(RHSindexExprs, constrainedBool) {
     return(constraints)
 }
 
+checkForVars <- function(LHS, RHS, context, constants) {
+    varsInExpr <- NULL
+    if(length(RHS) > 1)
+        varsInExpr <- c(varsInExpr, all.vars(RHS[2:length(RHS)]))
+    if(length(LHS) > 1)
+        varsInExpr <- c(varsInExpr, all.vars(LHS[2:length(LHS)]))
+    wh <- which(!varsInExpr %in% c(names(constants), context$indexVarNames))
+    if(length(wh))
+        stop("Index or constant ", paste(unique(varsInExpr[wh]), collapse = ','), " not found as loop index or in constants.")
+}
+
 ## The following functions may be used from class methods in the future.
 ## For now they are standalone for development and debugging.
 makeGraphIndexRules <- function(LHS,
@@ -218,7 +229,9 @@ makeGraphIndexRules <- function(LHS,
                         constants
                     else
                         list2env(constants)
-        
+
+    checkForVars(LHS, RHS, context, constants)
+    
     indexSets <-
         makeSeparableIndexSets(LHS, RHS, context)
 

@@ -86,6 +86,10 @@ indexRule_all_setup <- function(toIndexExprList,
     unrolledResults <-
         lapply(names(toIndexExprList),
                function(x) unrolledIndicesEnv[[x]])
+
+    if(any(is.na(unlist(unrolledResults))))
+        stop("Missing values found in setting up indexRule: are constants the correct size?")
+    
     unrolledSize <- unrolledIndicesEnv$outputSize
     
     if(length(unrolledResults) > 1) {

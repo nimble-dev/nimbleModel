@@ -206,6 +206,9 @@ indexRule_any_setup_arbitrary_internal <- function(fromIndexExprList,
     fromUnrolledResults <-
         lapply(names(fromIndexExprList),
                function(x) unrolledIndicesEnv[[x]])
+    if(any(is.na(unlist(fromUnrolledResults))))
+       stop("Missing values found in setting up indexRule: are constants the correct size?")
+    
     unrolledSize <- unrolledIndicesEnv$outputSize
 
     ## Helper function to determine if results are scalar or not

@@ -53,11 +53,6 @@ indexRuleClass_block <- R6Class(
                 apply_indexRange(from, ...)
         },
         
-        modify_extent = function(newFrom) {
-            setupResults$from_min <<- newFrom[[1]]
-            setupResults$from_max <<- newFrom[[2]]
-        },
-
         get_max = function() {
             return(setupResults$from_max + setupResults$offset)
         }

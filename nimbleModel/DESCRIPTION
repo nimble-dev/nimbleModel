@@ -27,7 +27,6 @@ Collate:
     graphRules.R
     modelDecl.R
     modelDef.R
-    nodeRange.R
     nodeRules.R
     options.R       
     origIndexRules.R
@@ -35,6 +34,6 @@ Collate:
     varRange.R
     varRules.R
     varStore.R
-    newNodeAndCalcRules.R
+
     
     

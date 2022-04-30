@@ -7,8 +7,7 @@ indexRuleClass_arbitrary <- R6Class(
         initialize = function(toIndexExprList,
                               fromIndexExprList,
                               context,
-                              constants = list(),
-                              matrix = NULL
+                              constants = list()
                               ) {
             ## Rule not applicable if no LHS indexing
             ## This case would arise if looking for parents in case such as
@@ -19,8 +18,7 @@ indexRuleClass_arbitrary <- R6Class(
                 indexRule_arbitrary_setup(toIndexExprList,
                                           fromIndexExprList,
                                           context,
-                                          constants,
-                                          matrix)
+                                          constants)
         },
         applyOne = function(fromIndices) {
             indexRule_arbitrary_apply_single(
@@ -79,49 +77,42 @@ indexRuleClass_arbitrary <- R6Class(
 indexRule_arbitrary_setup <- function(toIndexExprList,
                                       fromIndexExprList,
                                       context,
-                                      constants = list(),
-                                      matrix = NULL
+                                      constants = list()
                                       ) {
     if(is.list(constants))
         constants <- list2env(constants)
 
-    if(is.null(matrix)) {
-        allReplacements <- c(toIndexExprList,
-                             fromIndexExprList)
-        toIndexNames <- lapply(names(toIndexExprList),
-                               as.name)
-        fromIndexNames <- lapply(names(fromIndexExprList),
-                                 as.name)
-        allIndexNames <- c(toIndexNames, fromIndexNames)
-        
-        ## Run the for loops in an environment
-        ## where all the results are created.
-        unrolledIndicesEnv <-
-            expandContextAndReplacements(
-                allReplacements = allReplacements,
-                allReplacementNameExpr = allIndexNames,
-                context = context,
-                constantsEnv = constants
-            )
-    } else {  # for situation with extracting RHSonly where have an unrolled matrix of valid indices
-        unrolledIndicesEnv <- new.env()
-        unrolledIndicesEnv$outputSize = nrow(matrix)
-        numIndices <- ncol(matrix)
-        for(idx in seq_len(numIndices)) 
-            unrolledIndicesEnv[[paste0("f", idx)]] <- unrolledIndicesEnv[[paste0("t", idx)]] <-
-                unrolledIndicesEnv[[paste0("j", idx)]] <- matrix[ , idx]
-        fromIndexExprList <- toIndexExprList <- as.list(parse(text = paste0("j", seq_len(numIndices))))
-        names(fromIndexExprList) <- paste0("f", seq_len(numIndices))
-        names(toIndexExprList) <- paste0("t", seq_len(numIndices))
-    }
+    allReplacements <- c(toIndexExprList,
+                         fromIndexExprList)
+    toIndexNames <- lapply(names(toIndexExprList),
+                           as.name)
+    fromIndexNames <- lapply(names(fromIndexExprList),
+                             as.name)
+    allIndexNames <- c(toIndexNames, fromIndexNames)
+    
+    ## Run the for loops in an environment
+    ## where all the results are created.
+    unrolledIndicesEnv <-
+        expandContextAndReplacements(
+            allReplacements = allReplacements,
+            allReplacementNameExpr = allIndexNames,
+            context = context,
+            constantsEnv = constants
+        )
 
     ## Extract the results from the environment.
     toUnrolledResults <-
         lapply(names(toIndexExprList),
                function(x) unrolledIndicesEnv[[x]])
+    if(any(is.na(unlist(toUnrolledResults))))
+        stop("Missing values found in setting up arbitrary indexRule: are constants the correct size?")
+    
     fromUnrolledResults <-
         lapply(names(fromIndexExprList),
                function(x) unrolledIndicesEnv[[x]])
+    if(any(is.na(unlist(fromUnrolledResults))))
+        stop("Missing values found in setting up arbitrary indexRule: are constants the correct size?")
+
     unrolledSize <- unrolledIndicesEnv$outputSize
 
     ## Helper function to determine if results are scalar or not
