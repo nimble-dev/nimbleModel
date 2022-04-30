@@ -32,8 +32,10 @@ nodeRuleClass <- R6Class(
         numInternalRules = numeric(0),
         index2setID = NULL,
         originalIndexRules = NULL, # determines original indexing (based on context); set equal to originalRule$originalIndexRule if not canonical nodeRule
+        ## These are used in `exclude`.
         context = NULL,
         expr = NULL,
+        constants = NULL,
         
         stochParent = FALSE,
         stochDep = FALSE,
@@ -71,7 +73,7 @@ nodeRuleClass <- R6Class(
                        for(idx in which(scalarConstants)) {
                            cnt <- cnt + 1
                            newSingleContexts[[cnt]] <- modelSingleContext(
-                               indexVarExpr = parse(text=paste0(".i", cnt))[[1]],
+                               indexVarExpr = parse(text=paste0(".block", cnt))[[1]],
                                indexRangeExpr = substitute(A:A, list(A = expr[[idx+2]])))
                            expr[[idx+2]] <- newSingleContexts[[cnt]]$indexVarExpr
                        }
@@ -80,7 +82,7 @@ nodeRuleClass <- R6Class(
                        for(idx in which(blockConstants)) {
                            cnt <- cnt + 1
                            newSingleContexts[[cnt]] <- modelSingleContext(
-                               indexVarExpr = parse(text=paste0(".i", cnt))[[1]],
+                               indexVarExpr = parse(text=paste0(".block", cnt))[[1]],
                                indexRangeExpr = expr[[idx+2]])
                            expr[[idx+2]] <- newSingleContexts[[cnt]]$indexVarExpr
                        }
@@ -91,6 +93,8 @@ nodeRuleClass <- R6Class(
 
             context <<- context
             expr <<- expr
+            constants <<- constants
+            
             originalIndexRules <<- originalIndexRuleClass$new(expr, context, constants)
 
             ## Note: this is awkward to go into the data structures and modify them
@@ -189,16 +193,16 @@ nodeRuleClass <- R6Class(
         getFullRange = function() {
             extent <- lapply(seq_along(allRules$indexRules), function(idx)
                 allRules$indexRules[[idx]]$get_max())
-            maxes <- index2setID 
+            maxes <- rep(0, length(index2setID))
             cnt <- 1
             cntConstant <- 0
-            constants <- which(maxes == 0)
+            constants <- which(index2setID == 0)
             for(i in seq_along(extent)) {
                 if(is(allRules$indexRules[[i]], "indexRuleClass_constant")) {
                     cntConstant <- cntConstant + 1
                     maxes[constants[cntConstant]] <- extent[[i]]
                 } else {
-                    maxes[maxes == i-cntConstant] <- extent[[i]] 
+                    maxes[index2setID == i] <- extent[[i]] 
                 }
 
             }
@@ -244,9 +248,7 @@ nodeRangeClass <- R6Class(
             internalRange <<- internalRange
             rule <<- rule  ## pointer to governing rule
             index2setID <<- index2setID
-
-            originalIndexRange <<- rule$originalIndexRules$apply(self$getVarRange())
-
+browser()
             ## These apply to the combination of the externalRange and internalRange;
             ## internalRules indexRanges are considered to be last.
             indexID_2_rangeID <<- index2setID
@@ -255,6 +257,8 @@ nodeRangeClass <- R6Class(
                 length(externalRange$indexRanges)
             rangeID_2_indexID <<- lapply(seq_len(max(indexID_2_rangeID)),
                                          function(x) which(indexID_2_rangeID == x))
+
+            originalIndexRange <<- rule$originalIndexRules$apply(self$getVarRange())
 
         },
 
@@ -327,6 +331,9 @@ nodeRangeClass <- R6Class(
 ##  RHS is fully in LHS: NULL
 ##  partly intersects: fracture and return one or more fractured RHS rules
 
+## This cannot be a method of nodeRangeClass because result can be to remove the RHSrule if have complete overlap,
+## or split the rule into two rules.
+
 exclude <- function(RHSrule, LHSrule) {
     LHSrange <- LHSrule$getFullRange()
     RHSrange <- RHSrule$getFullRange()
@@ -337,25 +344,24 @@ exclude <- function(RHSrule, LHSrule) {
         return(NULL)
     ## otherwise need to fracture the RHSrule
     ## if intersect, need new IDs?
-    identicalRanges <- sapply(seq_along(RHSrange$indexRanges), function(idx)
-        identical(RHSrange$indexRanges[[idx]], intersection$indexRanges[[idx]]))
+    identicalIndices <- sapply(seq_along(RHSrange$indexID_2_rangeID), function(idx)
+        isTRUE(all.equal(RHSrange$indexRanges[[RHSrange$indexID_2_rangeID[idx]]],
+                  intersection$indexRanges[[intersection$indexID_2_rangeID[[idx]]]])))
 
-    nonIdenticalRanges <- which(!identicalRanges)
-    identicalRanges <- which(identicalRanges)
+    nonIdenticalIndices <- which(!identicalIndices)
     
-    clean <- RHSrule$numIndices == 1 ||
-        (length(identicalRanges) == length(RHSrange$indexRanges) - 1 &&
-         (!identical(attr(RHSrange$indexRanges[[nonIdenticalRanges]][[1]], "rangeType"), "matrix") ||
-          ncol(RHSrange$indexRanges[[nonIdenticalRanges]][[1]]) == 1))
-
-    if(clean) {  ## split, shrink, or remove from focal index, and combine with other indices
-        RHS <- RHSrange$indexRanges[[nonIdenticalRanges]]
-        int <- intersection$indexRanges[[nonIdenticalRanges]]
+    expr <- RHSrule$expr
+    singleContexts <- RHSrule$context$singleContexts
+    
+    if(RHSrule$numIndices == 1 || length(nonIdenticalIndices) == 1) {
+        ## split, shrink, or remove from focal index, and combine with other indices
+        RHS <- RHSrange$indexRanges[[RHSrange$indexID_2_rangeID[nonIdenticalIndices]]]
+        int <- intersection$indexRanges[[intersection$indexID_2_rangeID[nonIdenticalIndices]]]
         typeRHS <- attr(RHS, "rangeType")
         typeInt <- attr(int, "rangeType")
 
-        ## TODO: check this is ok
-        nonIdenticalIndex <- which(RHSrule$index2setID == nonIdenticalRanges)
+        focalContext <- sapply(names(singleContexts), function(nm)
+            nm %in% all.vars(expr[[2+nonIdenticalIndices]]))
         
         if(typeRHS == "matrix" || typeInt == "matrix") {
             valsRHS <- switch(typeRHS,
@@ -373,14 +379,12 @@ exclude <- function(RHSrule, LHSrule) {
             valsRHS <- valsRHS[!valsRHS %in% valsInt]
 
             ## Modify RHSrule expr and context to insert vector of relevent values.
-            focalContext <- sapply(names(RHSrule$singleContexts), function(nm)
-                nm %in% all.vars(expr[[2+nonIdenticalIndex]]))
-            newSingleContexts <- RHSrule$singleContexts[!focalContext]
+            newSingleContexts <- singleContexts[!focalContext]
             newSingleContexts[[length(newSingleContexts)+1]] <- modelSingleContext(
-                               indexVarExpr = quote(.i),
+                               indexVarExpr = quote(.newidx),
                 indexRangeExpr = substitute(1:L, list(L = length(valsRHS))))
-            expr <- RHSrule$expr
-            expr[[nonIdenticalIndex+2]] <- quote(.idx[.i])
+
+            expr[[nonIdenticalIndices+2]] <- quote(.idx[.newidx])
          
             resultRule <- nodeRuleClass$new(expr, FALSE, 1, FALSE, context = modelContextClass$new(newSingleContexts),
                                             constants = list(.idx = valsRHS)) 
@@ -391,38 +395,36 @@ exclude <- function(RHSrule, LHSrule) {
             ## now process two seqs
             if(typeRHS == "scalar") stop("Not expecting RHS to be a scalar")  ## scalar RHS either fully intersected or not intersected
 
+
+            
             if(int[[1]][1] == RHS[[1]][[1]] || int[[1]][[2]] == RHS[[1]][[2]]) {
                 if(int[[1]][[1]] == RHS[[1]][[1]]) 
                     RHS[[1]][[1]] <- int[[1]][[2]]+1 else RHS[[1]][[2]] <- int[[1]][[1]]-1
-                RHSrule$externalRules$indexRules[[nonIdenticalRanges]]$modify_extent(RHS[[1]])
+                RHSrule$externalRules$indexRules[[RHSrule$index2setID[[nonIdenticalIndices]]]]$modify_extent(RHS[[1]])
                 return(list(RHSrule))
             } else {
                 ## Modify RHSrule expr and context to create two new rules.
-                focalContext <- sapply(names(RHSrule$singleContexts), function(nm)
-                    nm %in% all.vars(expr[[2+nonIdenticalIndex]]))
-                newSingleContexts1 <- RHSrule$singleContexts[!focalContext]
-                newSingleContexts2 <- RHSrule$singleContexts[!focalContext]
+                newSingleContexts1 <- singleContexts[!focalContext]
+                newSingleContexts2 <- singleContexts[!focalContext]
 
+                expr1 <- expr2 <- expr
                 newSingleContexts1[[length(newSingleContexts1)+1]] <- modelSingleContext(
-                    indexVarExpr = quote(.i1),
+                    indexVarExpr = quote(.newidx),
                     indexRangeExpr = substitute(A:B, list(A = RHS[[1]][[1]], B = int[[1]][[1]]-1)))
-                expr1[[nonIdenticalIndex+2]] <- newSingleContexts1[[length(newSingleContexts1)+1]]$indexVarExpr
+                expr1[[nonIdenticalIndices+2]] <- newSingleContexts1[[length(newSingleContexts1)]]$indexVarExpr
 
                 newSingleContexts2[[length(newSingleContexts2)+1]] <- modelSingleContext(
-                    indexVarExpr = quote(.i2),
+                    indexVarExpr = quote(.newidx),
                     indexRangeExpr = substitute(A:B, list(A = int[[1]][[2]]+1, B = RHS[[1]][[2]])))
-                expr2[[nonIdenticalIndex+2]] <- newSingleContexts2[[length(newSingleContexts2)+1]]$indexVarExpr
+                expr2[[nonIdenticalIndices+2]] <- newSingleContexts2[[length(newSingleContexts2)]]$indexVarExpr
                
                 resultRule1 <- nodeRuleClass$new(expr1, FALSE, 1, FALSE, context = modelContextClass$new(newSingleContexts1))
                 resultRule2 <- nodeRuleClass$new(expr2, FALSE, 1, FALSE, context = modelContextClass$new(newSingleContexts2))
                 return(list(resultRule1, resultRule2))
             }
         }
-    } else { ## multiple non-identical indexRanges or one multivariate non-identical indexRange
+    } else { ## not simple setting of a single non-identical scalar index that needs to be considered
         ## unroll, exclude, create new arbitrary RHSrule by creating a complicated context, crossed with any indices that are identical
-        browser()
-        nonIdenticalIndices <- which(RHSrule$index2setID == nonIdenticalRanges)
-
         unrolledRHS <- RHSrange$getIndexRangeMatrix(nonIdenticalIndices)
         unrolledIntersection <- intersection$getIndexRangeMatrix(nonIdenticalIndices)
 
@@ -432,19 +434,17 @@ exclude <- function(RHSrule, LHSrule) {
         remaining <- which(!rhsAsChar %in% intAsChar)
         mat <- unrolledRHS[[1]][remaining, ]
 
-                                                                                 
-        focalContext <- sapply(names(RHSrule$singleContexts), function(nm)
-            nm %in% all.vars(expr[2+nonIdenticalIndices]])
+        focalContext <- sapply(names(singleContexts), function(nm)
+            nm %in% unlist(lapply(2+nonIdenticalIndices, function(x) all.vars(expr[[x]]))))
         if(sum(!focalContext)) {
-            newSingleContexts <- RHSrule$singleContexts[!focalContext]
+            newSingleContexts <- singleContexts[!focalContext]
         } else newSingleContexts <- list()
 
         newSingleContexts[[length(newSingleContexts) + 1]] <- modelSingleContext(
-                               indexVarExpr = quote(.i),
+                               indexVarExpr = quote(.newidx),
             indexRangeExpr = substitute(1:L, list(L = nrow(mat))))
 
-        expr <- RHSrule$expr
-        nms <- paste0(".idx", seq_along(ncol(mat)), "[.i]")
+        nms <- paste0(".idx", seq_len(ncol(mat)), "[.newidx]")
         for(i in seq_along(nonIdenticalIndices)) 
             expr[[nonIdenticalIndices[i]+2]] <- parse(text = nms[i])[[1]]
         constants <- lapply(seq_len(ncol(mat)), function(i) mat[,i])
@@ -473,6 +473,7 @@ if(FALSE) {
     
     context_0 <- modelContextClass$new()
     context_i <- modelContextClass$new(list(singleContext1))
+    context_j <- modelContextClass$new(list(singleContext2))
     
     context_ij <- modelContextClass$new(list(singleContext1,
                                              singleContext2))
@@ -489,7 +490,6 @@ if(FALSE) {
     expected <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_tmp)
     expect_identical(result$externalRules$indexRules[[1]]$setupResults,
                     expected$externalRules$indexRules[[1]]$setupResults)
-    ## what to compare?
 
     ## scalar/seq overlap no overlap
     RHS <- quote(mu[i+1])
@@ -499,7 +499,7 @@ if(FALSE) {
 
     result <- exclude(RHSrule, LHSrule)
     expect_identical(result[[1]], RHSrule)
-    
+
     ## scalar/seq overlap in middle
     RHS <- quote(mu[i+1])
     RHSrule <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_i)
@@ -578,7 +578,7 @@ if(FALSE) {
     expect_equal(result[[1]]$externalRules$indexRules[[1]]$setupResults,
                      expected$externalRules$indexRules[[1]]$setupResults)
 
-    ## two-d arbitrary case
+    ## two-d arbitrary case, extracting block elements from RHS matrix
     RHS <- quote(mu[idx1[i],idx2[i]])
     idx1 <- c(1,3,5,11,4,11,12,13)
     idx2 <- c(1,2,13,2,1,5,6,7)
@@ -595,7 +595,24 @@ if(FALSE) {
     expect_equal(result[[1]]$externalRules$indexRules[[1]]$setupResults,
                      expected$externalRules$indexRules[[1]]$setupResults)
     
-    
+
+    ## two-d arbitrary case, extracting matrix elements from RHS block
+    RHS <- quote(mu[i,j])
+    RHSrule <- nodeRuleClass$new(RHS, TRUE, 1, FALSE, context_ij)
+    LHS <- quote(mu[idx1[i],idx2[i]])
+    idx1 <- c(1,3,5,11,4,11,12,13)
+    idx2 <- c(1,2,13,2,1,5,6,7)
+    LHSrule <- nodeRuleClass$new(LHS, FALSE, 1, FALSE, context_i, constants = list(idx1 = idx1, idx2 = idx2))
+
+    result <- exclude(RHSrule, LHSrule)
+
+    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:26){}))))
+    idx1 <- c(2,3,5,6,7,8,2,4:8,rep(2:8, 2))
+    idx2 <- c(rep(1,6),rep(2,6),rep(3,7), rep(4,7))
+    expected <- nodeRuleClass$new(LHS, FALSE, 1, FALSE, context_tmp, constants = list(idx1 = idx1,idx2=idx2))
+    expect_equal(result[[1]]$externalRules$indexRules[[1]]$setupResults,
+                     expected$externalRules$indexRules[[1]]$setupResults)
+
     ## basic mv node case with constant
     RHS <- quote(mu[i,1:3])
     RHSrule <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_i)
@@ -607,17 +624,18 @@ if(FALSE) {
     context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 2:4){}))))
     expected <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_tmp)
     expect_identical(result[[1]]$externalRules$indexRules[[1]]$setupResults,
-                     expected$externalRules$indexRules[[1]]$setupResults)
-    expect_identical(result[[1]]$externalRules$indexRules[[2]]$setupResults,
                      RHSrule$externalRules$indexRules[[2]]$setupResults)
+    expect_identical(result[[1]]$externalRules$indexRules[[2]]$setupResults,
+                     expected$externalRules$indexRules[[1]]$setupResults)
     
     context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 6:8){}))))
     expected <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_tmp)
     expect_identical(result[[2]]$externalRules$indexRules[[1]]$setupResults,
-                    expected$externalRules$indexRules[[1]]$setupResults)
+                    RHSrule$externalRules$indexRules[[2]]$setupResults)
     expect_identical(result[[2]]$externalRules$indexRules[[2]]$setupResults,
-                     RHSrule$externalRules$indexRules[[2]]$setupResults)
+                     expected$externalRules$indexRules[[1]]$setupResults)
 
+    ## basic mv node case, all excluded
     RHS <- quote(mu[5,1:3])
     RHSrule <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_0)
     LHS <- quote(mu[i, 1:3])
@@ -638,17 +656,43 @@ if(FALSE) {
     context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 2:4){}))))
     expected <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_tmp)
     expect_identical(result[[1]]$externalRules$indexRules[[1]]$setupResults,
-                     expected$externalRules$indexRules[[1]]$setupResults)
-    expect_identical(result[[1]]$externalRules$indexRules[[2]]$setupResults,
                      RHSrule$externalRules$indexRules[[2]]$setupResults)
+    expect_identical(result[[1]]$externalRules$indexRules[[2]]$setupResults,
+                     expected$externalRules$indexRules[[1]]$setupResults)
     
     context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 7:8){}))))
     expected <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_tmp)
     expect_identical(result[[2]]$externalRules$indexRules[[1]]$setupResults,
-                    expected$externalRules$indexRules[[1]]$setupResults)
+                    RHSrule$externalRules$indexRules[[2]]$setupResults)
     expect_identical(result[[2]]$externalRules$indexRules[[2]]$setupResults,
-                     RHSrule$externalRules$indexRules[[2]]$setupResults)
+                     expected$externalRules$indexRules[[1]]$setupResults)
 
+    ## basic mv node case with shared matrix index
+    RHS <- quote(mu[i,idx[j]])
+    idx <- c(4,7,1,2)
+    RHSrule <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_ij, constants = list(idx = idx))
+    LHS <- quote(mu[5, idx[j]])
+    LHSrule <- nodeRuleClass$new(LHS, TRUE, 1, FALSE, context_j, constants = list(idx = idx))
+    
+    result <- exclude(RHSrule, LHSrule)
+
+    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 2:4){})),
+                                              modelSingleContext(forCode = quote(for(j in 1:4){}))))
+    expected <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_tmp)
+    expect_equal(result[[1]]$externalRules$indexRules[[1]]$setupResults,
+                     RHSrule$externalRules$indexRules[[2]]$setupResults)
+    expect_identical(result[[1]]$externalRules$indexRules[[2]]$setupResults,
+                     expected$externalRules$indexRules[[1]]$setupResults)
+    
+    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 6:8){})),
+                                              modelSingleContext(forCode = quote(for(j in 1:4){}))))
+    expected <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_tmp)
+    expect_equal(result[[2]]$externalRules$indexRules[[1]]$setupResults,
+                    RHSrule$externalRules$indexRules[[2]]$setupResults)
+    expect_identical(result[[2]]$externalRules$indexRules[[2]]$setupResults,
+                     expected$externalRules$indexRules[[1]]$setupResults)
+
+    
     ## Awkward intersections
 
     ## Partial overlap in some rows; for now this is simply unrolled.
@@ -685,7 +729,7 @@ if(FALSE) {
                      expected$externalRules$indexRules[[1]]$setupResults)
 
 
-    ## LHS fully overlaps RHS block constant; this is handled nicely.
+    ## LHS fully overlaps RHS block constant in additional dimension; this is handled nicely.
     RHS <- quote(mu[i,1:3])
     RHSrule <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_i)
     context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 7:9){}))))
@@ -700,21 +744,15 @@ if(FALSE) {
     expect_identical(result[[1]]$externalRules$indexRules[[2]]$setupResults,
                      RHSrule$externalRules$indexRules[[2]]$setupResults)
 
-    ## HERE
-    ## 1) check simple cases above with new framework, including mu[i,k(j)] where i is shared
-    ## 2) check 'simple' case with mu[i, (2,4), j] where (2,4) is single mv non-identical range
-    ## 3) case where single shared index and 2 simple non-shared
-    ## 4) case whre single shared and complicated non-shared, including mv indexRange
-    ## 5) these cases:
-    
-    ## 3-d case - not working
-    RHS <- quote(mu[i,1:3, 1:2])
+    ## basic 3-d case - two identical indices
+    RHS <- quote(mu[1:3, i, 1:2])
     RHSrule <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_i)
     context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 7:9){}))))
-    LHS <- quote(mu[i, 1:3, 1:2])
+    LHS <- quote(mu[1:3, i, 1:2])
     LHSrule <- nodeRuleClass$new(LHS, TRUE, 1, FALSE, context_tmp)
  
     result <- exclude(RHSrule, LHSrule)
+    
     context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 2:6){}))))
     expected <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_tmp)
     expect_identical(result[[1]]$externalRules$indexRules[[1]]$setupResults,
@@ -723,26 +761,72 @@ if(FALSE) {
                      RHSrule$externalRules$indexRules[[2]]$setupResults)
     expect_identical(result[[1]]$externalRules$indexRules[[3]]$setupResults,
                      RHSrule$externalRules$indexRules[[3]]$setupResults)
+    expect_identical(result[[1]]$index2setID, c(2,1,3))
+
+    ## 3-d case with partial overlap in some rows but with additional identical index (j)
+    RHS <- quote(mu[i, j, 1:3])
+    RHSrule <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_ij)
+    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 7:9){})),
+                                              modelSingleContext(forCode = quote(for(j in 1:4){}))))
+                                              
+    LHS <- quote(mu[i, j, 1:2])
+    LHSrule <- nodeRuleClass$new(LHS, TRUE, 1, FALSE, context_tmp)
+    
+    result <- exclude(RHSrule, LHSrule)
+
+    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:17){})),
+                                              modelSingleContext(forCode = quote(for(j in 1:4){}))))
+    idx1 <- c(2:6,2:6,2:8)
+    idx2 <- c(rep(1,5), rep(2,5), rep(3, 7))
+    RHS <- quote(mu[idx1[i], j, idx2[i]])
+    expected <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_tmp, constants = list(idx1 = idx1,idx2=idx2))
+    expect_equal(result[[1]]$externalRules$indexRules[[2]]$setupResults,
+                     expected$externalRules$indexRules[[1]]$setupResults)
+    expect_equal(result[[1]]$externalRules$indexRules[[1]]$setupResults,
+                     RHSrule$externalRules$indexRules[[2]]$setupResults)
+
+    ## 3-d case with multi-column shared matrix indexRange
+    idx1 <- c(4,7,1,2)
+    idx2 <- c(1,9,3,2)
+    
+    RHS <- quote(mu[idx1[j], i, idx2[j]])
+    RHSrule <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_ij, constants = list(idx1 = idx1, idx2 = idx2))
+                                              
+    LHS <- quote(mu[idx1[j], 2, idx2[j]])
+    LHSrule <- nodeRuleClass$new(LHS, TRUE, 1, FALSE, context_j, constants = list(idx1 = idx1, idx2 = idx2))
+    
+
+    ## is warning about crossing correct?
+    result <- exclude(RHSrule, LHSrule)
+
+    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 3:8){})),
+                                              modelSingleContext(forCode = quote(for(j in 1:4){}))))
+    expected <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_tmp, constants = list(idx1 = idx1,idx2=idx2))
+    expect_equal(result[[1]]$externalRules$indexRules[[2]]$setupResults,
+                     RHSrule$externalRules$indexRules[[2]]$setupResults)
+    expect_equal(result[[1]]$externalRules$indexRules[[1]]$setupResults,
+                     expected$externalRules$indexRules[[1]]$setupResults)
 
     
-    ## 3-d case - 3 blocks? 
-    ## 3-d awkward case, with one index matching
-    RHS <- quote(mu[i,1:3, 1:2])
-    RHSrule <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_i)
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 7:9){}))))
-    LHS <- quote(mu[i, 1:2, 1:2])
-    LHSrule <- nodeRuleClass$new(LHS, TRUE, 1, FALSE, context_tmp)
- 
+    ## HERE
+    ## 3-d case with multi-column unshared matrix indexRange
+    RHS <- quote(mu[idx1[j], i, idx2[j]])
+    RHSrule <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_ij, constants )
+                                              
+    idx1 <- c(4,7,2,2)
+    idx2 <- c(1,10,3,2)
+    LHS <- quote(mu[idx3[j], i, idx4[j]])
+    LHSrule <- nodeRuleClass$new(LHS, TRUE, 1, FALSE, context_ij)
+    
     result <- exclude(RHSrule, LHSrule)
 
-    ## should be unrolled
-    RHS <- quote(mu[i,1:3, 1:3])
-    RHSrule <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_i)
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 7:9){}))))
-    LHS <- quote(mu[i, 1:2, 1:2])
-    LHSrule <- nodeRuleClass$new(LHS, TRUE, 1, FALSE, context_tmp)
- 
-    result <- exclude(RHSrule, LHSrule)
+    ## HERE
+    ## two blocks none shared
+    ## shared multi-col indexrange matrix  mu[(i,j),k]
+    ## unshared multi-col indexrange_matrx mu[i,j,k] where (i,k) are in an indexrange
+    ## 4) case whre one or more shared and complicated non-shared, including mv indexRange (mostly deal with in mu[i,j], mu[idx1[i],idx2[i]] case?
+    ## 5) these cases:
+    
 
     ## is this ok?
     idx <- c(4,7,1,3)
@@ -762,7 +846,16 @@ if(FALSE) {
 
     ## TODO: presumably take out ability to pass matrix to indexRule_arbitrary
 
+    ## TODO: presumably remove modify_extent
+    ## TODO: error trap if length of constant is not correct; check if this happens with regular graph rules too
 
+    RHS <- quote(mu[i,idx[j]])
+    idx <- c(4,7,1)
+    RHSrule <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_ij, constants = list(idx = idx))
+
+    ## TODO: error trap missing constants
+    RHS <- quote(mu[idx[i]])
+    RHSrule <- nodeRuleClass$new(RHS, FALSE, 1, FALSE, context_i)
 }
 
 if(FALSE) {
@@ -782,17 +875,29 @@ if(FALSE) {
     expect_equal(LHSrule$getFullRange(),
                  varRangeClass$new(list(indexRange(quote(4:5)), indexRange(quote(2:8)), indexRange(quote(1:3)))))
     
-    LHS <- quote(mu[4:5, i, j,1:3])
-    LHSrule <- nodeRuleClass$new(LHS, TRUE, 1, FALSE, context_ij)
+    expr <- quote(mu[4:5, j, i, 3])
+    LHSrule <- nodeRuleClass$new(expr, TRUE, 1, FALSE, context_ij)
     expect_equal(LHSrule$getFullRange(),
-                 varRangeClass$new(list(indexRange(quote(4:5)), indexRange(quote(2:8)),
-                                        indexRange(quote(1:4)), indexRange(quote(1:3)))))
+                 varRangeClass$new(list(indexRange(quote(4:5)), indexRange(quote(1:4)),
+                                        indexRange(quote(2:8)), indexRange(quote(3)))))
+    RHSrule <- nodeRuleClass$new(expr, FALSE, 1, FALSE, context_ij)
+    expect_equal(LHSrule$getFullRange(),
+                 varRangeClass$new(list(indexRange(quote(4:5)), indexRange(quote(1:4)),
+                                        indexRange(quote(2:8)), indexRange(quote(3)))))
 
     LHS <- quote(mu[4:5, i, i, 3])
     LHSrule <- nodeRuleClass$new(LHS, TRUE, 1, FALSE, context_i)
     expect_equal(LHSrule$getFullRange(),
                  varRangeClass$new(list(indexRange(quote(4:5)), indexRange(matrix(rep(2:8, 2), ncol = 2)), indexRange(3))))
     
+    expr <- quote(mu[j, 1:3, i, 2])
+    RHSrule <- nodeRuleClass$new(expr, FALSE, 1, FALSE, context_ij)
+    LHSrule <- nodeRuleClass$new(expr, TRUE, 1, FALSE, context_ij)
+
+    expect_equal(RHSrule$getFullRange(),
+                 varRangeClass$new(list(indexRange(quote(1:4)), indexRange(quote(1:3)),
+                                        indexRange(quote(2:8)), indexRange(2))))
+
 }
 
 ## Remaining disorganized code for doing haphazard checking while developing nodeRules/ranges. 

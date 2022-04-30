@@ -214,7 +214,7 @@ expandContextAndReplacements <- function(allReplacements, allReplacementNameExpr
     
     ## when done, we will have created a new environment and want to remove the constants from it
     namesToRemoveAtEnd <- ls(constantsEnv)
-    constantsEnvCopy <- list2env(as.list(constantsEnv))
+    constantsEnvCopy <- list2env(as.list(constantsEnv, all.names = TRUE))
     ## some replacements like min(j:100) should no longer be needed but are still there
 
     ## If this all works, useContext can be removed
