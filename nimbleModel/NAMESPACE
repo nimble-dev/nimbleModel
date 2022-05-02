@@ -46,6 +46,7 @@ export(modelSingleContext)
 export(numIndices)
 
 export(exclude)
+export(fracture)
 
 export(varRange2char)
 export(varRange2expr)
