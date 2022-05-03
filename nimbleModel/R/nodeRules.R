@@ -104,12 +104,6 @@ nodeRuleClass <- R6Class(
             allRules$constraints <- list()
             index2setID <<- allRules$indexSets$LHSindex2setID
             isConstant <- sapply(allRules$indexRules, is, "indexRuleClass_constant")
-##            isBlockConstant <- sapply(allRules$indexRules, is, "indexRuleClass_constant") &
-##                sapply(allRules$indexRules, function(rule) identical(attr(rule$setupResults[[1]], 'rangeType'), 'sequence'))
-##            isScalarConstant <- sapply(allRules$indexRules, is, "indexRuleClass_constant") &
-##                sapply(allRules$indexRules, function(rule) identical(attr(rule$setupResults[[1]], 'rangeType'), 'scalar'))
-##            blockConstantIndices <- rep(FALSE, numIndices)
-##            blockConstantIndices[allRules$indexSets$LHSindex2setID == 0]  <- isBlockConstant[isBlockConstant | isScalarConstant]
             
             numIndices <<- length(allRules$indexSets$LHSindex2setID)
 
@@ -359,6 +353,7 @@ fracture <- function(LHSrule, fracturingRange) {
     singleContexts <- LHSrule$context$singleContexts
 
     if(LHSrule$numIndices == 1 || length(nonIdenticalFullIndices) == 1) {
+        ## Handle simple cases where need only fracture one index
         LHS <- LHSrange$externalRange$indexRanges[[LHSrange$externalRange$indexID_2_rangeID[nonIdenticalExternalIndices]]]
         frac <- fracturingRange$externalRange$indexRanges[[fracturingRange$externalRange$indexID_2_rangeID[nonIdenticalExternalIndices]]]
         typeLHS <- attr(LHS, "rangeType")
@@ -366,7 +361,8 @@ fracture <- function(LHSrule, fracturingRange) {
 
         focalContext <- sapply(names(singleContexts), function(nm)
             nm %in% all.vars(expr[[2+nonIdenticalFullIndices]]))
-        
+
+        ## If matrix involved, need to be dealt with so as to create an arbitrary rule.
         if(typeLHS == "matrix" || typeFrac == "matrix") {
             valsLHS <- switch(typeLHS,
                               matrix = LHS[[1]],
@@ -405,13 +401,12 @@ fracture <- function(LHSrule, fracturingRange) {
             
             return(list(resultRule, fracturingRule))
         } else {  # seq+seq or seq+scalar
-            if(typeFrac == "scalar")
+            if(typeFrac == "scalar")   # process as a sequence
                 frac <- indexRange(substitute(A:A, list(A = frac[[1]])))
-            ## now process two seqs
             if(typeLHS == "scalar") stop("Not expecting LHS to be a scalar")  ## scalar LHS either fully intersected or not intersected
           
             if(frac[[1]][1] == LHS[[1]][[1]] || frac[[1]][[2]] == LHS[[1]][[2]]) {
-                ## Shrink existing index block
+                ## Shrink existing sequence
                 if(frac[[1]][[1]] == LHS[[1]][[1]]) 
                     LHS[[1]][[1]] <- frac[[1]][[2]]+1 else LHS[[1]][[2]] <- frac[[1]][[1]]-1
 
@@ -435,7 +430,7 @@ fracture <- function(LHSrule, fracturingRange) {
                 
                 return(list(resultRule, fracturingRule))
             } else {
-                ## Modify LHSrule expr and context to create two new rules.
+                ## Split an existing sequence 
                 newSingleContexts1 <- singleContexts[!focalContext]
                 newSingleContexts2 <- singleContexts[!focalContext]
                 newSingleContexts3 <- singleContexts[!focalContext]
@@ -464,7 +459,7 @@ fracture <- function(LHSrule, fracturingRange) {
                 return(list(resultRule1, resultRule2, fracturingRule))
             }
         }
-    } else {     ## unroll, exclude, create new arbitrary LHSrule by creating a complicated context, crossed with any indices that are identical
+    } else {     ## unroll, exclude, create new arbitrary rule based on all non-identical indices
         unrolledLHS <- LHSrange$externalRange$getIndexRangeMatrix(nonIdenticalExternalIndices)
         unrolledFrac <- fracturingRange$externalRange$getIndexRangeMatrix(nonIdenticalExternalIndices)
 
@@ -512,7 +507,8 @@ fracture <- function(LHSrule, fracturingRange) {
 }
 
 
-if(FALSE) {  # initial testing of fracture()
+if(FALSE) {  
+    ## Hopefully comprehensive testing of exclude(); move into test-nodeRules.R or test-fracture.R
     library(nimbleModel)
     library(testthat)
    singleContext1 <-
