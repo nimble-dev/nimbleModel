@@ -13,6 +13,10 @@ export(varRangeClass)
 export(varStoreClass)
 export(nodeRuleClass)
 export(nodeRangeClass)
+export(calcRuleClass)
+export(calcRangeClass)
+export(originalIndexRuleClass)
+
 
 ## functions and other objects
 export(applyGraphIndexRules)

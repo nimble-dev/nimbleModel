@@ -260,6 +260,16 @@ collapse_indexRangeMatrices <- function(indexRangeMatrices) {
     return(result)
 }
 
+## placeholder proof of concept for use with generic calculate() to extract element from indexRange
+indexRange_getItem <- function(inputIndexRange, item) {
+   switch(attr(inputIndexRange, 'rangeType'),
+           matrix = inputIndexRange[[1]][item, ],
+           sequence = inputIndexRange[[1]] + item - 1,
+           stop("In inputRange_getItem: invalid type of inputIndexRange.")
+           )
+
+}
+
 getRangeType <- function(IRL) {
     attr(IRL, 'rangeType')
 }

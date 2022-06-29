@@ -10,8 +10,9 @@ calcRuleClass <- R6Class(
         sortID = NULL,
         ID = NULL,  # create as we do fracturing for use in creating edge information
         originalNodeRule = NULL,  # multiple calcRules can share a nodeRule and its density function
-        originalIndexRule = NULL, # probably inherited from originalNodeRule
-        ## might contain top,end,latent,etc.
+        originalIndexRules = NULL, # probably inherited from originalNodeRules
+
+        calcFun = NULL,
 
         ## Not entirely clear what primary input is -- declaration?
         ## 2022-03-25: Actually, based on thinking about node types and graph processing
@@ -19,7 +20,7 @@ calcRuleClass <- R6Class(
 
         ## perhaps like this:
         ## initialize = function(nodeRule) {
-        ## originalIndexRule <<- nodeRule$originalIndexRule
+        ## originalIndexRules <<- nodeRule$originalIndexRules
         ## nodeRangeRules <<- nodeRule$nodeRangeRules
         ## internalRangeRules <<- nodeRule$internalRangeRules
         ## etc.
@@ -30,25 +31,27 @@ calcRuleClass <- R6Class(
         initialize = function(LHS, decl, context, constants = list()) {
             if(length(LHS) > 1)
                 varName <<- LHS[[2]] else varName <<- LHS
+
+            originalIndexRules <<- originalIndexRuleClass$new(LHS, context, constants)
             ## full range, for use with calculate applied to full var
             canonicalRule <- makeGraphIndexRules(LHS, LHS, context, constants)
             canonicalRange <<- applyGraphIndexRules(
                 varRangeClass$new(lapply(seq_along(canonicalRule$indexSets$LHSindex2setID),
                     function(i) indexRange(quote(1:Inf)))), canonicalRule)
             context <<- context
-            decl <<- decl 
+            decl <<- decl
+            calcFun <<- genCalcFun(decl, context)
         },
 
         apply = function(varRange) {
-            browser()
             ## make sure we check validity of internal range values e.g., y[i, 3:6] that 3:6 is valid
             ## do we need internalRange as with nodeRules?
             if(length(varRange$indexRanges) == 1 && identical(attr(varRange$indexRanges[[1]], 'rangeType'), "none"))
                 varRange <- canonicalRange
-            indexingRange <- originalIndexRule$apply(varRange)
+            indexingRange <- originalIndexRules$apply(varRange)
             if(isEmpty(indexingRange))
                 return(NULL)
-            result <- calcRangeClass$new(varName, indexingRange, context, decl, sortID)
+            result <- calcRangeClass$new(varName, indexingRange, calcFun, sortID)
             ## if empty, return NULL
             return(result)
         },
@@ -56,12 +59,22 @@ calcRuleClass <- R6Class(
         get = function(varRange = NULL, type) {
             ## type is 'end', 'latent', etc.
             ## returns the embedded nodeRange (or subset of it if provided a varRange) that corresponds to 'type'
+        },
+
+        genCalcFun = function(decl, context) {
+            ## using context$indexVarNames, substitute "idx[1]", "idx[2]", etc.
+            ## then generate a function with the decl code in it.
+            ## e.g.
+            ## function(idx) {
+            ##   logProb_y[idx[2]+1, idx[1]] <- dnorm(mu[idx[2]], 1)
+            ## }
+            ## will need to deal with the various complexities we currently deal with - alt params, truncation, etc.
         }
     )
 )
 
 ## build nodefun on the fly when provided a varRange; check if it already exists; pass the fun into the range?
-
+## actually I think it can all be pre-generated
 
 if(FALSE) {
 isEmpty <- function(varRange) 
