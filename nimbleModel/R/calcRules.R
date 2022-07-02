@@ -1,57 +1,64 @@
-## Note: still unclear on when nodeFuns will be generated and where stored.
+## Note: still unclear if calcRules operate on varRanges or nodeRanges (or both)
+## to produce calcRanges
 
 calcRuleClass <- R6Class(
     classname = "calcRuleClass",
     portable = FALSE,
+    inherit = nodeRuleClass,
     public = list(
-        varName = NULL,
-        context = NULL,
         canonicalRange = NULL,
-        sortID = NULL,
-        ID = NULL,  # create as we do fracturing for use in creating edge information
-        originalNodeRule = NULL,  # multiple calcRules can share a nodeRule and its density function
-        originalIndexRules = NULL, # probably inherited from originalNodeRules
+        declRule = NULL,  # multiple calcRules can share a declRule and its density function
 
-        calcFun = NULL,
+        stochParent = FALSE,
+        stochDep = FALSE,
+        touchedDown = FALSE,
+        touchedUp = FALSE,
+        parents = numeric(),
+        children = numeric(),
 
-        ## Not entirely clear what primary input is -- declaration?
-        ## 2022-03-25: Actually, based on thinking about node types and graph processing
-        ## I think the calcRule will be created from a nodeRule or fractured nodeRule
+        top = FALSE,
+        end = FALSE,
+        ## latent is !top & !end
 
-        ## perhaps like this:
-        ## initialize = function(nodeRule) {
-        ## originalIndexRules <<- nodeRule$originalIndexRules
-        ## nodeRangeRules <<- nodeRule$nodeRangeRules
-        ## internalRangeRules <<- nodeRule$internalRangeRules
-        ## etc.
-        ## canonicalRange should be in terms of nodes not var, I think
+        ## should canonicalRange should be in terms of nodes not var?
 
+        ## could calcRule just use declRule internal indexing?
+        
         ## This code below needs to operate at the node level since calculation is done by indexing
         ## over nodes.
-        initialize = function(LHS, decl, context, constants = list()) {
-            if(length(LHS) > 1)
-                varName <<- LHS[[2]] else varName <<- LHS
+        ## Actually, indexing is done over original indexes for calculation, so need to think more about this.
+        initialize = function(declRule = NULL, expr = NULL, ID, context, constants = list()) {
+            ## If LHS is NULL, just use declRule internalRange
 
-            originalIndexRules <<- originalIndexRuleClass$new(LHS, context, constants)
+            ## This wastes some calculation by redoing the internal/external rule stuff
+            ## even though at least the internal stuff already done in the declRule
+            if(is.null(expr)) expr <<- declRule$expr
+            super$initialize(expr, ID, context = context, constants = constants)
+
             ## full range, for use with calculate applied to full var
-            canonicalRule <- makeGraphIndexRules(LHS, LHS, context, constants)
+
+            ## canonicalRule <- makeGraphIndexRules(expr, expr, context, constants)
             canonicalRange <<- applyGraphIndexRules(
-                varRangeClass$new(lapply(seq_along(canonicalRule$indexSets$LHSindex2setID),
-                    function(i) indexRange(quote(1:Inf)))), canonicalRule)
+                varRangeClass$new(lapply(seq_along(allRules$indexSets$LHSindex2setID),
+                    function(i) indexRange(quote(1:Inf)))), allRules)
             context <<- context
-            decl <<- decl
-            calcFun <<- genCalcFun(decl, context)  # actually, this should probably be in the nodeRule from which the calcRule is created
+            declRule <<- declRule
+
         },
 
-        apply = function(varRange) {
+        ## nodeRuleClass$apply generates a nodeRange
+        
+        ## Generate calcRange
+        generate_calcRange = function(varRange) {
             ## make sure we check validity of internal range values e.g., y[i, 3:6] that 3:6 is valid
             ## do we need internalRange as with nodeRules?
+            ## Can we generate a calcRange from a nodeRange or only a varRange?
             if(length(varRange$indexRanges) == 1 && identical(attr(varRange$indexRanges[[1]], 'rangeType'), "none"))
                 varRange <- canonicalRange
-            indexingRange <- originalIndexRules$apply(varRange)
+            indexingRange <- declRule$originalIndexRules$apply(varRange)
             if(isEmpty(indexingRange))
                 return(NULL)
-            result <- calcRangeClass$new(varName, indexingRange, calcFun, sortID)
+            result <- calcRangeClass$new(varName, indexingRange, declRule$calcFun, sortID)
             ## if empty, return NULL
             return(result)
         },
@@ -60,15 +67,36 @@ calcRuleClass <- R6Class(
             ## type is 'end', 'latent', etc.
             ## returns the embedded nodeRange (or subset of it if provided a varRange) that corresponds to 'type'
         },
+        
+        is_type = function(type) {
+            switch(type,
+                end = return(end),
+                top = return(top),
+                latent = return(!end && !top),
+                stop("Invalid type ", type)
+            )
+        },
 
-        genCalcFun = function(decl, context) {
-            ## using context$indexVarNames, substitute "idx[1]", "idx[2]", etc.
-            ## then generate a function with the decl code in it.
-            ## e.g.
-            ## function(idx) {
-            ##   logProb_y[idx[2]+1, idx[1]] <- dnorm(mu[idx[2]], 1)
-            ## }
-            ## will need to deal with the various complexities we currently deal with - alt params, truncation, etc.
+        set = function(type) {
+            switch(type,
+                end = end <<- TRUE,
+                top = top <<- TRUE,
+                stochParent = stochParent <<- TRUE,
+                stop("Invalid type ", type)
+            )            
+        },
+
+        unset = function(type) {
+            switch(type,
+                end = end <<- FALSE,
+                top = top <<- FALSE,
+                stochParent = stochParent <<- FALSE,
+                stop("Invalid type ", type)
+            )
+        },
+
+        get_sortID = function() {
+            return(declRule$sortID)
         }
     )
 )

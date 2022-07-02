@@ -7,14 +7,7 @@ calcRangeClass <- R6Class(
         sortID = NULL,
         initialize = function(varName, indexingRange, calcFun, sortID) {
             varName <<- varName
-            ## But, could have calcRange for y[1:3] and y[2:5]; so don't need
-            ## separate nodeFuns? is the actual indexing internal to the nodeFun
-            ## or passed in?
             indexingRange <<- indexingRange
-            
-            ## check type of indexingRange to see if need to generate?
-            ## probably generate nodeFun as part of the rule
-            ## nodeFun <<- genNodeFun(varName, indexingRange, context, decl)
             calcFun <<- calcFun  ## note that calcFun itself is not vectorized
             sortID <<- sortID
         },
@@ -26,7 +19,7 @@ calcRangeClass <- R6Class(
         ## Will need to figure out how this is going to get compiled.
         ## Will there be a permanent C++ version?
         ## How will indexingRange be compiled?
-        ## This is a sketch...
+        ## This is a sketch and hasn't been debugged...
         calculate = function() {
             numRanges <- length(indexingRange$indexRanges)
             index <- numeric(length(indexingRange$indexID_2_rangeID))  ## vector to hold the original index values
