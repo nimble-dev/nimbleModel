@@ -40,7 +40,7 @@ calcRuleClass <- R6Class(
                     function(i) indexRange(quote(1:Inf)))), canonicalRule)
             context <<- context
             decl <<- decl
-            calcFun <<- genCalcFun(decl, context)
+            calcFun <<- genCalcFun(decl, context)  # actually, this should probably be in the nodeRule from which the calcRule is created
         },
 
         apply = function(varRange) {

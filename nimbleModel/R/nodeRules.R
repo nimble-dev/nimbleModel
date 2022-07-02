@@ -757,13 +757,13 @@ if(FALSE) {
    
 }
 
-## Takes a LHS rule (created from original LHS of an expression) and intersects it with a LHS rule.
+## Takes a RHS rule (created from original RHS of an expression) and intersects it with a LHS rule.
 ## Result can be:
 ##  - no intersection: RHS passed through
 ##  - RHS is fully in LHS: NULL
 ##  - partly intersects: fracture and return one or more fractured RHS rules
 
-## This cannot be a method of nodeRangeClass because result can be to remove the RHSrule if have complete overlap,
+## This cannot be a method of nodeRuleClass because result can be to remove the RHSrule if have complete overlap,
 ## or split the rule into two rules.
 
 exclude <- function(RHSrule, LHSrule) {
@@ -810,7 +810,7 @@ exclude <- function(RHSrule, LHSrule) {
                               )
             valsRHS <- valsRHS[!valsRHS %in% valsInt]
 
-            ## Modify RHSrule expr and context to insert vector of relevent values.
+            ## Modify RHSrule expr and context to insert vector of relevant values.
             newSingleContexts <- singleContexts[!focalContext]
             newSingleContexts[[length(newSingleContexts)+1]] <- modelSingleContext(
                                indexVarExpr = quote(.newidx),
