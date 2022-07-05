@@ -453,7 +453,7 @@ fracture <- function(LHSrule, fracturingRange) {
                
                 resultRule1 <- nodeRuleClass$new(expr1, TRUE, LHSrule$ID, LHSrule$stoch, context = modelContextClass$new(newSingleContexts1))
                 resultRule2 <- nodeRuleClass$new(expr2, TRUE, LHSrule$ID, LHSrule$stoch, context = modelContextClass$new(newSingleContexts2))
-                fracturingRule <- nodeRuleClass$new(expr2, TRUE, LHSrule$ID, LHSrule$stoch, context = modelContextClass$new(newSingleContexts3))
+                fracturingRule <- nodeRuleClass$new(expr3, TRUE, LHSrule$ID, LHSrule$stoch, context = modelContextClass$new(newSingleContexts3))
                 fracturingRule$set('stochParent')
                 
                 return(list(resultRule1, resultRule2, fracturingRule))
