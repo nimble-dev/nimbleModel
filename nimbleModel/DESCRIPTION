@@ -12,7 +12,6 @@ LazyData: true
 Collate:
     aaa.R
     calcRange.R
-    calcRules.R
     context.R
     distributions_inputList.R
     distributions_processInputList.R
@@ -31,6 +30,7 @@ Collate:
     options.R       
     origIndexRules.R
     processModelCode.R
+    rhsRules.R
     varRange.R
     varRules.R
     varStore.R

@@ -27,10 +27,10 @@ Todos (completely incomplete):
 
 - generate downstreamRules, upstreamRules, and originalIndexRules in modelDef processing
 
-- add varRange of LHS for each declaration
+- add varRange of LHS for each declaration (done //CJP)
 
 - topological sorting to produce sortID for each variable
 
 - develop calcRule code and use for calcRules for each variable
 
-- develop code to produce calcRanges given a varRange and a calcRule
+- develop code to produce calcRanges given a varRange and a calcRule (done //CJP)
