@@ -195,14 +195,17 @@ calcRuleClass <- R6Class(
 
         ## nodeRuleClass$apply generates a nodeRange
         
-        ## Generate calcRange
-        generate_calcRange = function(varRange) {
-            ## make sure we check validity of internal range values e.g., y[i, 3:6] that 3:6 is valid
-            ## do we need internalRange as with nodeRules?
-            ## Can we generate a calcRange from a nodeRange or only a varRange?
-            if(length(varRange$indexRanges) == 1 && identical(attr(varRange$indexRanges[[1]], 'rangeType'), "none"))
-                varRange <- canonicalRange
-            indexingRange <- declRule$originalIndexRules$apply(varRange)
+        ## Generate calcRange given either a varRange or a nodeRange
+        generate_calcRange = function(inputRange) {
+            ## Get legitimate nodeRange
+            if(!is(inputRange, 'nodeRangeClass')) {
+                if(length(inputRange$indexRanges) == 1 && identical(attr(inputRange$indexRanges[[1]], 'rangeType'), "none"))
+                    inputRange <- canonicalRange
+
+                nodeRange <- calcRule$apply(inputRange)
+            } else nodeRange <- inputRange
+            
+            indexingRange <- declRule$originalIndexRules$apply(nodeRange$getVarRange())
             if(isEmpty(indexingRange))
                 return(NULL)
             result <- calcRangeClass$new(varName, indexingRange, declRule$calcFun, sortID)
@@ -480,7 +483,7 @@ fracture <- function(LHSrule, fracturingRange) {
                                             constants = list(.idx = valsFrac))
             fracturingRule$set('stochParent')
             
-            return(list(resultRule, fracturingRule))
+            return(list(fracturingRule, resultRule))
         } else {  # seq+seq or seq+scalar
             if(typeFrac == "scalar")   # process as a sequence
                 frac <- indexRange(substitute(A:A, list(A = frac[[1]])))
@@ -509,7 +512,7 @@ fracture <- function(LHSrule, fracturingRange) {
                 fracturingRule <- calcRuleClass$new(LHSrule$declRule, expr, context = modelContextClass$new(newSingleContexts2))
                 fracturingRule$set('stochParent')
                 
-                return(list(resultRule, fracturingRule))
+                return(list(fracturingRule, resultRule))
             } else {
                 ## Split an existing sequence 
                 newSingleContexts1 <- singleContexts[!focalContext]
@@ -537,7 +540,7 @@ fracture <- function(LHSrule, fracturingRange) {
                 fracturingRule <- calcRuleClass$new(LHSrule$declRule, expr3, context = modelContextClass$new(newSingleContexts3))
                 fracturingRule$set('stochParent')
                 
-                return(list(resultRule1, resultRule2, fracturingRule))
+                return(list(fracturingRule, resultRule1, resultRule2))
             }
         }
     } else {     ## unroll, exclude, create new arbitrary rule based on all non-identical indices
@@ -583,7 +586,7 @@ fracture <- function(LHSrule, fracturingRange) {
                                         constants = constants2)
         fracturingRule$set('stochParent')
 
-        return(list(resultRule, fracturingRule))
+        return(list(fracturingRule, resultRule))
     }
 }
 

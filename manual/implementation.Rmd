@@ -55,7 +55,7 @@ knitr::opts_chunk$set(echo = TRUE)
     - Includes parent/child links.
     - Associated with types such as 'end','top', etc. since those will relate directly to sort ID. (Noting that `theta[i] ~ dnorm(theta0[i], 1)` are not necessarily all latent or all top nodes, as it depends on how `theta0[i]` are declared; this would involve splitting an original `calcRule` when graph processing is done.)
     - This avoids having to store information in `variableStore`s and can use all of our tools for working with `indexRange`s and `varRange`s.
-    - When passed another `varRange` it returns a `calcRange` (or nothing if there is no overlap between the input `varRange` and the `varRange` of the rule) that can be used for calculation.
+    - When passed a `varRange` (or a `nodeRange`) it returns a `calcRange` (or nothing if there is no overlap between the input `varRange` and the `varRange` of the rule) that can be used for calculation.
     - Uses `originalIndexRule`s from its `declRule` to relate back to original index values in the declaration context.
        - Indexing is based on indexes of the variable, not the original index values, e.g., `y[i+1] ~ dnorm(x[i], 1)` with `i=1:5` has the `varRange` of `y[2:6]`. 
     - Contains the sort ID for the `varRange`.
@@ -69,7 +69,7 @@ knitr::opts_chunk$set(echo = TRUE)
     - sort ID presumably determined by recursion based on walking the final set of `calcRules` (which will have parent/child information) either top-down or bottom-up (perhaps bottom-up so that all data nodes are set to be tied, given data nodes generally more numerous than parameter nodes, but maybe not if thinking about nodeRanges that group many current 'nodes'.
 
 - A `varCalcRules` manages the set of `calcRule`s for a given variable.
-- `varTopRules`, `varEndRules`, `varStochRules`, etc. manage the set of `calcRules`s for a given type and variable.
+    - `varTopRules`, `varEndRules`, `varStochRules`, etc. manage the set of `calcRules`s for a given type and variable.
 
 - A `nodeRule` manages a single set of nodes from a declaration that are equivalent in some sense. Given a `varRange`, it produces a `nodeRange` (or nothing if no overlap). 
 
