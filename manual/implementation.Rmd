@@ -35,6 +35,7 @@ knitr::opts_chunk$set(echo = TRUE)
 - A `graphRule` manages the set of `indexRule`s needed to determine all LHS indices from all RHS indices for one set of edges created one of the RHS variables and the LHS variable of a single declaration.
 
     - Inputs and outputs to a `graphRule` are `varRange`s.
+    - Probably retain stoch vs. det indication via pointer to relevant declRule to help with dependency queries.
     
 - A `varRules` manages the set of `graphRule`s for the same variable (RHS).
 
@@ -96,6 +97,8 @@ knitr::opts_chunk$set(echo = TRUE)
        - Contains the internalRange (e.g., `1:3`) and the nodeRange (e.g, `1:500`); probably want a different name for the embedded 'nodeRange'
     - Currently contains a `getVarRange` method that converts to the equivalent varRange.
     - Perhaps printed representation is `y[1:500, (1:3)]`, where (..) represents the 'internal' block.
+    - Perhaps should be re-implemented as inheriting from a `varRange` as various API calls should work with either `varRange` or `nodeRange` input (e.g., `getDependencies`, `getNodes`).
+      - `internalRange` and `externalRange` currently would need to be `varRange`s (and have redundant info to the `indexRanges`), but perhaps some way to rewor so they are subsets of `indexRanges`.
 
 - A `copyRule` manages the determination of copying for a variable
 

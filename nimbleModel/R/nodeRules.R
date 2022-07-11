@@ -68,10 +68,13 @@ nodeRuleClass <- R6Class(
 
         },
         
-        ## Generate nodeRange from a varRange
-        apply = function(varRange = NULL) {
-            if(is.null(varRange))   ## user wants full range for the variable
+        ## Generate nodeRange from a varRange (or another nodeRange)
+        apply = function(inputRange = NULL) {
+            if(is.null(inputRange)) {   ## user wants full range for the variable
                 varRange <- getFullRange()
+            } else {
+                if(is(inputRange, 'nodeRangeClass'))
+                    varRange <- inputRange$getVarRange() else varRange <- inputRange
             if(numExternalRules) {
                 externalRange <- applyGraphIndexRules(varRange, externalRules)
             } else externalRange <- NULL # varRangeClass$new(list(nimbleModel:::indexRange_empty()))
@@ -293,7 +296,11 @@ expect_equal(calcRange$indexingRange,
 ## example: y[i, 1:5] ~ dmnorm() has:
 ## externalRange: first index, over selected nodes
 ## internalRange: 1:5
+## e.g., could represent as y[1:3, (1:5)] where () indicates internal grouping
 
+## Convert to subclass of varRangeClass
+## need to figure out exactly how indexRanges, internalIndexRanges and externalIndexRanges would be handled/created,
+## ideally without redundancy.
 nodeRangeClass <- R6Class(
     classname = "nodeRangeClass",
     portable = FALSE,
@@ -301,7 +308,7 @@ nodeRangeClass <- R6Class(
         varName = NULL,
         externalRange = NULL,  # a varRange
         internalRange = NULL,  # a varRange
-        declRrule = NULL,
+        declRule = NULL,
         index2setID = NULL,
         indexID_2_rangeID = NULL,    
         rangeID_2_indexID = NULL,
@@ -343,6 +350,7 @@ nodeRangeClass <- R6Class(
         expandNames = function() {
             ## Expand externalRange into full matrix (crossed if necessary), keeping full internal
             ## indexing for each individual node.
+            ## TODO: Could we instead rely on `varRange2expr`, after extracting the varRange?
             nc <- length(index2setID)  # might be, e.g., 0 1 0 2 3 or 0 1 0 2 1
             str <- paste0(varName, "[")
 
