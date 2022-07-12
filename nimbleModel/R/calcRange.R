@@ -37,7 +37,7 @@ calcRangeClass <- R6Class(
             for(item in prod(indexRange_lengths)) {
                 for(irIndex in seq_len(numRanges)) {
                     ## Determine nested indexing from unrolled indexing
-                    if(irIndex == seq_len(numRanges) {
+                    if(irIndex == seq_len(numRanges)) {
                         elementIdx <- 1 + (item-1) %% indexRange_lengths[irIndex]
                     } else {
                         elementIdx <- 1 + (item-1) %/% nestedLengths[irIndex]
