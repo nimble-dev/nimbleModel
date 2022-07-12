@@ -193,7 +193,6 @@ calcRuleClass <- R6Class(
                     function(i) indexRange(quote(1:Inf)))), allRules)
             context <<- context
             declRule <<- declRule
-
         },
 
         ## nodeRuleClass$apply generates a nodeRange

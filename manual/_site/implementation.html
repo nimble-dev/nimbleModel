@@ -1,78 +1,68 @@
 <!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
 
 <head>
 
 <meta charset="utf-8" />
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
 
 
 <title>implementation</title>
 
-<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<script src="site_libs/header-attrs-2.14/header-attrs.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="site_libs/bootstrap-3.3.5/css/cerulean.min.css" rel="stylesheet" />
 <script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
 <script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
 <script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
 <script src="site_libs/jqueryui-1.11.4/jquery-ui.min.js"></script>
 <link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
 <script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
 <script src="site_libs/navigation-1.1/tabsets.js"></script>
-<link href="site_libs/highlightjs-1.1/default.css" rel="stylesheet" />
-<script src="site_libs/highlightjs-1.1/highlight.js"></script>
+<link href="site_libs/highlightjs-9.12.0/default.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
 
 <style type="text/css">code{white-space: pre;}</style>
-<style type="text/css">
-  pre:not([class]) {
-    background-color: white;
-  }
-</style>
 <script type="text/javascript">
-if (window.hljs && document.readyState && document.readyState === "complete") {
-   window.setTimeout(function() {
-      hljs.initHighlighting();
-   }, 0);
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
 }
 </script>
 
 
 
-<style type="text/css">
-h1 {
-  font-size: 34px;
-}
-h1.title {
-  font-size: 38px;
-}
-h2 {
-  font-size: 30px;
-}
-h3 {
-  font-size: 24px;
-}
-h4 {
-  font-size: 18px;
-}
-h5 {
-  font-size: 16px;
-}
-h6 {
-  font-size: 12px;
-}
-.table th:not([align]) {
-  text-align: left;
-}
-</style>
 
 
-</head>
 
-<body>
+
+
 
 <style type = "text/css">
 .main-container {
@@ -80,58 +70,71 @@ h6 {
   margin-left: auto;
   margin-right: auto;
 }
-code {
-  color: inherit;
-  background-color: rgba(0, 0, 0, 0.04);
-}
 img {
   max-width:100%;
-  height: auto;
 }
 .tabbed-pane {
   padding-top: 12px;
 }
+.html-widget {
+  margin-bottom: 20px;
+}
 button.code-folding-btn:focus {
   outline: none;
+}
+summary {
+  display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
+}
+pre code {
+  padding: 0;
 }
 </style>
 
 
 <style type="text/css">
-/* padding for bootstrap navbar */
-body {
-  padding-top: 51px;
-  padding-bottom: 40px;
+.dropdown-submenu {
+  position: relative;
 }
-/* offset scroll position for anchor links (for fixed navbar)  */
-.section h1 {
-  padding-top: 56px;
-  margin-top: -56px;
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
 }
-
-.section h2 {
-  padding-top: 56px;
-  margin-top: -56px;
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
 }
-.section h3 {
-  padding-top: 56px;
-  margin-top: -56px;
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
 }
-.section h4 {
-  padding-top: 56px;
-  margin-top: -56px;
+.dropdown-submenu:hover>a:after {
+  border-left-color: #adb5bd;
 }
-.section h5 {
-  padding-top: 56px;
-  margin-top: -56px;
+.dropdown-submenu.pull-left {
+  float: none;
 }
-.section h6 {
-  padding-top: 56px;
-  margin-top: -56px;
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
 }
 </style>
 
-<script>
+<script type="text/javascript">
 // manage active state of menu based on current page
 $(document).ready(function () {
   // active menu anchor
@@ -142,54 +145,85 @@ $(document).ready(function () {
   var menuAnchor = $('a[href="' + href + '"]');
 
   // mark it active
-  menuAnchor.parent().addClass('active');
+  menuAnchor.tab('show');
 
   // if it's got a parent navbar menu mark it active as well
   menuAnchor.closest('li.dropdown').addClass('active');
+
+  // Navbar adjustments
+  var navHeight = $(".navbar").first().height() + 15;
+  var style = document.createElement('style');
+  var pt = "padding-top: " + navHeight + "px; ";
+  var mt = "margin-top: -" + navHeight + "px; ";
+  var css = "";
+  // offset scroll position for anchor links (for fixed navbar)
+  for (var i = 1; i <= 6; i++) {
+    css += ".section h" + i + "{ " + pt + mt + "}\n";
+  }
+  style.innerHTML = "body {" + pt + "padding-bottom: 40px; }\n" + css;
+  document.head.appendChild(style);
 });
 </script>
-
-
-<div class="container-fluid main-container">
 
 <!-- tabsets -->
-<script>
-$(document).ready(function () {
-  window.buildTabsets("TOC");
-});
-</script>
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "&#xe258;";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
 
 <!-- code folding -->
 
 
-
-
-<script>
-$(document).ready(function ()  {
-
-    // move toc-ignore selectors from section div to header
-    $('div.section.toc-ignore')
-        .removeClass('toc-ignore')
-        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
-
-    // establish options
-    var options = {
-      selectors: "h1,h2,h3",
-      theme: "bootstrap3",
-      context: '.toc-content',
-      hashGenerator: function (text) {
-        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_').toLowerCase();
-      },
-      ignoreSelector: ".toc-ignore",
-      scrollTo: 0
-    };
-    options.showAndHide = false;
-    options.smoothScroll = true;
-
-    // tocify
-    var toc = $("#TOC").tocify(options).data("toc-tocify");
-});
-</script>
 
 <style type="text/css">
 
@@ -203,6 +237,12 @@ $(document).ready(function ()  {
 }
 }
 
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
 
 .toc-content {
   padding-left: 30px;
@@ -238,8 +278,6 @@ div.tocify {
 
 .tocify-subheader .tocify-item {
   font-size: 0.90em;
-  padding-left: 25px;
-  text-indent: 0;
 }
 
 .tocify .list-group-item {
@@ -255,8 +293,18 @@ div.tocify {
 
 </style>
 
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
 <!-- setup 3col/9col grid for toc_float and main content  -->
-<div class="row-fluid">
+<div class="row">
 <div class="col-xs-12 col-sm-4 col-md-3">
 <div id="TOC" class="tocify">
 </div>
@@ -270,7 +318,7 @@ div.tocify {
 <div class="navbar navbar-default  navbar-fixed-top" role="navigation">
   <div class="container">
     <div class="navbar-header">
-      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-target="#navbar" data-bs-target="#navbar">
         <span class="icon-bar"></span>
         <span class="icon-bar"></span>
         <span class="icon-bar"></span>
@@ -290,7 +338,7 @@ div.tocify {
   </div><!--/.container -->
 </div><!--/.navbar -->
 
-<div class="fluid-row" id="header">
+<div id="header">
 
 
 
@@ -299,71 +347,246 @@ div.tocify {
 </div>
 
 
-<div id="implementation-of-graph-index-and-calculation-relationships." class="section level1">
+<div id="implementation-of-graph-index-and-calculation-relationships."
+class="section level1">
 <h1>Implementation of graph, index, and calculation relationships.</h1>
 <ul>
-<li><p>An <code>indexRange</code> manages the index content of one dimension of one variable.</p>
+<li><p>An <code>indexRange</code> manages the index content of one
+dimension of one variable.</p>
 <ul>
-<li>This is implemented as a list, with attributes for <code>class</code> and <code>rangeType</code></li>
-<li><code>rangeType</code>s include block (<code>1:10</code>), vector (arbitrary), scalar, and blank.</li>
+<li>This is implemented as a list, with attributes for
+<code>class</code> and <code>rangeType</code></li>
+<li><code>rangeType</code>s include sequence (<code>1:10</code>), matrix
+(arbitrary), scalar, and blank.</li>
 </ul></li>
-<li><p>An <code>indexRule</code> manages the determination of LHS indices from RHS indices for one or more <code>indexRange</code>s. (Sometimes multiple index dimensions needs to be solved jointly.)</p>
+<li><p>An <code>indexRule</code> manages the determination of LHS
+indices from RHS indices for one or more <code>indexRange</code>s.
+(Sometimes multiple index dimensions needs to be solved jointly.)</p>
 <ul>
 <li>Kinds of <code>indexRule</code>s include block and arbitrary.</li>
-<li>Inputs and outputs to application of an <code>indexRule</code> may be an <code>indexRange</code> and/or <code>varRange</code> (somewhat TBD).</li>
+<li>Inputs and outputs to application of an <code>indexRule</code> are
+<code>indexRange</code>s.</li>
 <li>Inputs that are out of range do not produce output</li>
 <li>Includes checks for going out of range</li>
-<li>By reversing the order of a declaration, we can create both parent and child rules</li>
+<li>By reversing the order of a declaration, we can create both parent
+and child rules</li>
+<li>Consider all possibilities of LHS blank, constant, vector/block and
+RHS blank, constant, vector/block.</li>
 </ul></li>
-<li><p>An <code>originalIndexRule</code> manages the determination of nodeFunction indices from actual index values, e.g., with a declaration such as <code>y[i+1] &lt;- x[i]</code>, determining that calculation for <code>y[2]</code> is handled with <code>i=1</code>.</p>
+<li><p>An <code>originalIndexRule</code> manages the determination of
+nodeFunction indices from actual index values, e.g., with a declaration
+such as <code>y[i+1] &lt;- x[i]</code>, determining that calculation for
+<code>y[2]</code> is handled with <code>i=1</code>.</p>
 <ul>
-<li>This can be handled with the <code>indexRule</code> functionality by making dummy declarations such as <code>w[i,j] &lt;- y[i+j]</code> if the focal declaration is, say, <code>y[i+j] &lt;- x[i] + x[j]</code>.</li>
+<li>This can be handled with the <code>indexRule</code> functionality by
+making dummy declarations such as <code>w[i,j] &lt;- y[i+j]</code> if
+the focal declaration is, say,
+<code>y[i+j] &lt;- x[i] + x[j]</code>.</li>
 </ul></li>
-<li><p>A <code>varRange</code> manages a set of <code>indexRange</code>s representing all dimensions of a variable.</p>
+<li><p>A <code>varRange</code> manages a set of <code>indexRange</code>s
+representing all dimensions of a variable.</p>
 <ul>
-<li>A <code>varRange</code> also keeps track of how each <code>indexRange</code> would be crossed or combined with others to represent the set of variable elements correctly.</li>
-<li>Ultimately we may want to be able to collapse multiple <code>varRange</code>s to a single <code>varRange</code> when possible.</li>
+<li>A <code>varRange</code> also keeps track of how each
+<code>indexRange</code> would be crossed or combined with others to
+represent the set of variable elements correctly.</li>
+<li>Ultimately we may want to be able to <a
+href="combining_ranges.html">collapse multiple <code>varRange</code>s to
+a single <code>varRange</code></a> when possible.</li>
 </ul></li>
-<li><p>A <code>graphRule</code> manages the set of <code>indexRule</code>s needed to determine all LHS indices from all RHS indices for one set of edges created one of the RHS variables and the LHS variable of a single declaration.</p>
+<li><p>A <code>graphRule</code> manages the set of
+<code>indexRule</code>s needed to determine all LHS indices from all RHS
+indices for one set of edges created one of the RHS variables and the
+LHS variable of a single declaration.</p>
 <ul>
-<li>Inputs and outputs to a <code>graphRule</code> are <code>varRange</code>s.</li>
+<li>Inputs and outputs to a <code>graphRule</code> are
+<code>varRange</code>s.</li>
+<li>Probably retain stoch vs. det indication via pointer to relevant
+declRule to help with dependency queries.</li>
 </ul></li>
-<li><p>A <code>varRules</code> manages the set of <code>graphRule</code>s for the same variable (RHS).</p></li>
-<li><p>A <code>calcRange</code> manages the indexing for a single calculation for a variable</p>
+<li><p>A <code>varRules</code> manages the set of
+<code>graphRule</code>s for the same variable (RHS).</p></li>
+<li><p>A <code>calcRange</code> manages the indexing for a single
+calculation for a variable</p>
 <ul>
-<li>Keeps track of declaration ID, indexing (probably using <code>indexRange</code>s), index values, and nodeFunction version to be used.</li>
-<li>Includes sort ID so that multiple <code>calcRange</code>s can be calculated in correct order.</li>
-<li>Eventually might deal with doing calcs that don’t have complete sort ties, e.g., <code>y[i]~dfoo(y[i-1])</code>, as a block but probably not to start.</li>
+<li>Keeps track of declaration (via <code>declRule</code>, including
+associated nodeFunction), indexing (using <code>varRange</code>s), index
+values, and nodeFunction version to be used.</li>
+<li>Index values are based on original declaration context, e.g., a
+declaration of <code>y[i+1] ~ dnorm(x[i], 1)</code> with
+<code>i=1:5</code> has <code>calcRange</code> indexing of
+<code>1:5</code> since nodeFunctions use <code>i</code> directly.</li>
+<li>Includes sort ID so that multiple <code>calcRange</code>s can be
+calculated in correct order.</li>
+<li>Eventually might deal with doing calcs that don’t have complete sort
+ties, e.g., <code>y[i]~dfoo(y[i-1])</code>, as a block but probably not
+to start.</li>
 </ul></li>
-<li><p>A <code>calcRule</code> manages a single <code>varRange</code> that can be calculated jointly.</p>
+<li><p>There will be multiple <code>nodeFunction</code>s for a given
+declaration, allowing for various types of vectorized calculations.</p>
 <ul>
-<li>An individual <code>calcRule</code> is produced from the elements in a declaration that are tied in terms of their sort order.</li>
-<li>When passed another <code>varRange</code> it returns a <code>calcRange</code> (or nothing if there is no overlap between the input <code>varRange</code> and the <code>varRange</code> of the rule) that can be used for calculation.</li>
-<li>Uses (contains?) <code>originalIndexRule</code>s to relate back to original index values in the declaration context.</li>
-<li>Contains the sort ID for the <code>varRange</code></li>
+<li>Still a bit up in the air – currently <code>calcRange</code> has a
+calculation function that loops over ranges of original indexes and
+calls <code>declRule</code> scalar-index-valued nodeFunction.</li>
+<li>Currently unclear how the compilation of this would work.</li>
 </ul></li>
-<li><p>A <code>varCalcRules</code> manages the set of <code>calcRule</code>s for a given variable.</p></li>
-<li><p>A <code>copyRule</code> manages the determination of copying for a variable</p>
+<li><p>A <code>calcRule</code> manages a single <code>varRange</code>
+that can be calculated jointly.</p>
+<ul>
+<li>Inherits from the <code>nodeRule</code> base class (see below) as we
+also need to be able to determine nodeRanges containing elements of all
+the same type (e.g., from <code>getNodeNames(latent = TRUE)</code>.</li>
+<li>An individual <code>calcRule</code> is produced from the elements in
+a declaration that are tied in terms of their sort order and (are all of
+the same type).</li>
+<li>Includes parent/child links.</li>
+<li>Associated with types such as ‘end’,‘top’, etc. since those will
+relate directly to sort ID. (Noting that
+<code>theta[i] ~ dnorm(theta0[i], 1)</code> are not necessarily all
+latent or all top nodes, as it depends on how <code>theta0[i]</code> are
+declared; this would involve splitting an original <code>calcRule</code>
+when graph processing is done.)</li>
+<li>This avoids having to store information in
+<code>variableStore</code>s and can use all of our tools for working
+with <code>indexRange</code>s and <code>varRange</code>s.</li>
+<li>When passed a <code>varRange</code> (or a <code>nodeRange</code>) it
+returns a <code>calcRange</code> (or nothing if there is no overlap
+between the input <code>varRange</code> and the <code>varRange</code> of
+the rule) that can be used for calculation.</li>
+<li>Uses <code>originalIndexRule</code>s from its <code>declRule</code>
+to relate back to original index values in the declaration context.
+<ul>
+<li>Indexing is based on indexes of the variable, not the original index
+values, e.g., <code>y[i+1] ~ dnorm(x[i], 1)</code> with
+<code>i=1:5</code> has the <code>varRange</code> of
+<code>y[2:6]</code>.</li>
+</ul></li>
+<li>Contains the sort ID for the <code>varRange</code>.</li>
+<li>Produced from original <code>calcRule</code> generated by each
+<code>declRule</code> and subsequent fracturing of those rules (using
+<code>fracture()</code>) based on walking down the graph.</li>
+<li>Inherits density calculation from original nodeRule it is created
+from.</li>
+<li>Indexing is over nodes.</li>
+<li>everything on LHS starts out as both <code>top</code> and
+<code>end</code></li>
+<li><code>top</code> found by walking down the graph (from known
+<code>top</code> [those with only constant RHS] and
+<code>RHSonly</code>), fracturing, and tagging what has stoch parents;
+the resulting <code>calcRule</code>s that don’t have stoch parents are
+<code>top</code></li>
+<li><code>end</code> found by starting with final <code>calcRule</code>s
+with no dependents. Then also walk up from each stoch end rule and
+anything found along the way is removed from being <code>end</code></li>
+<li><code>latent</code> found by what is not top or end</li>
+<li>sort ID presumably determined by recursion based on walking the
+final set of <code>calcRules</code> (which will have parent/child
+information) either top-down or bottom-up (perhaps bottom-up so that all
+data nodes are set to be tied, given data nodes generally more numerous
+than parameter nodes, but maybe not if thinking about nodeRanges that
+group many current ‘nodes’.</li>
+</ul></li>
+<li><p>A <code>varCalcRules</code> manages the set of
+<code>calcRule</code>s for a given variable.</p>
+<ul>
+<li><code>varTopRules</code>, <code>varEndRules</code>,
+<code>varStochRules</code>, etc. manage the set of
+<code>calcRules</code>s for a given type and variable.</li>
+</ul></li>
+<li><p>A <code>nodeRule</code> manages a single set of nodes from a
+declaration that are equivalent in some sense. Given a
+<code>varRange</code>, it produces a <code>nodeRange</code> (or nothing
+if no overlap).</p>
+<ul>
+<li>A base class for <code>declRule</code>, <code>calcRule</code>, and
+<code>RHSrule</code></li>
+<li>Input is a <code>varRange</code>.</li>
+<li>Output is a <code>nodeRange</code>.</li>
+<li>Indexing is over nodes (see comments below regarding
+<code>nodeRange</code>).</li>
+</ul></li>
+</ul>
+<p><code>A</code>declRule<code>manages information from a single declaration     - Generates the nodeFunction as function of scalar-valued index arguments (e.g.,</code>calculate(i,j)<code>)     - Contains</code>originalIndexRule<code>with indexing information needed for calculations to pass along to related</code>calcRule<code>s.     - Created by initial pass through model, with LHS from the declarations     - Notion of "equivalence" in terms of sort order, type, etc. is pushed down into</code>calcRule<code>s.     - Contains</code>originalIndexRule<code>to pass along to constituent</code>calcRule`s.</p>
+<p><code>A</code>rhsRule<code>manages information about RHS only nodes     - Produced from original</code>rhsRule<code>s generated from all RHS terms in a declaration and subsequent modification of those rules based on all or portions of the RHS appearing in a different LHS rule (a</code>calcRule<code>) via</code>exclude()`.</p>
+<ul>
+<li><p>A <code>nodeRange</code> compactly represents a set of equivalent
+nodes</p>
+<ul>
+<li>E.g., <code>y[i, 1:3] for i in 1:500</code> or
+<code>y[i, j] for i in 1:5, j in 1:20</code></li>
+<li>Not equivalent to a <code>varRange</code> as
+<code>y[i, 1:3] for i in 1:500</code> is a <code>nodeRange</code> while
+<code>y[1:500, 1:3]</code> is a <code>varRange</code>
+<ul>
+<li>Contains the internalRange (e.g., <code>1:3</code>) and the
+nodeRange (e.g, <code>1:500</code>); probably want a different name for
+the embedded ‘nodeRange’</li>
+</ul></li>
+<li>Currently contains a <code>getVarRange</code> method that converts
+to the equivalent varRange.</li>
+<li>Perhaps printed representation is <code>y[1:500, (1:3)]</code>,
+where (..) represents the ‘internal’ block.</li>
+<li>Perhaps should be re-implemented as inheriting from a
+<code>varRange</code> as various API calls should work with either
+<code>varRange</code> or <code>nodeRange</code> input (e.g.,
+<code>getDependencies</code>, <code>getNodes</code>).
+<ul>
+<li><code>internalRange</code> and <code>externalRange</code> currently
+would need to be <code>varRange</code>s (and have redundant info to the
+<code>indexRanges</code>), but perhaps some way to rewor so they are
+subsets of <code>indexRanges</code>.</li>
+</ul></li>
+</ul></li>
+<li><p>A <code>copyRule</code> manages the determination of copying for
+a variable</p>
 <ul>
 <li>presumably trivial but a bit fuzzy at the moment</li>
 <li>Input is a <code>varRange</code>?</li>
 <li>Output is a <code>varRange</code>.</li>
-<li>Perhaps all it needs to do is check for out of bounds and expand missing indexes?</li>
+<li>Perhaps all it needs to do is check for out of bounds and expand
+missing indexes?</li>
 </ul></li>
-<li><p>A <code>variableStore</code> manages array-like information for variables</p>
+<li><p>(Deprecated?) A <code>variableStore</code> manages array-like
+information for variables (see below for alternative idea of using
+<code>varTypeRule</code>s)</p>
 <ul>
 <li>Stores information such as sort ID, isData, node types</li>
 <li>Could be integer, logical, or character-valued</li>
 <li>Should efficiently handle case where all values are the same</li>
-<li>Ultimately may want to handle additional structure, such as blocks of equal values</li>
+<li>Ultimately may want to handle additional structure, such as blocks
+of equal values
+<ul>
+<li>Could have sets of blocks, with remaining values a “discontinuous
+block” if all the same.</li>
 </ul></li>
-<li><p>There will be multiple <code>nodeFunction</code>s for a given declaration, allowing for various types of vectorized calculations.</p></li>
+<li>Ultimately may want to handle simple sequential values (e.g.,
+row-major or column-major in a matrix) as this could be useful for sort
+ID values in state-space/time-series contexts.</li>
+<li>Should we have <code>variableStore</code>s that map back to
+<code>calcRule</code>s and <code>nodeRule</code>s? This might avoid need
+to store something like node type if all node types for a given
+<code>nodeRule</code> are the same. Also avoids need for variable-level
+sort ID unless there is an ordering with a given <code>calcRule</code>
+(since could just look up sort ID of the <code>calcRule</code>).</li>
+</ul></li>
 <li><p>Topological sorting needs to:</p>
 <ul>
-<li>create a sort ID for each element of each variable (for tracking dependencies), stored in a <code>variableStore</code>.</li>
-<li>also create sort IDs in the ‘original index space’ - perhaps this just means assigning a sort ID to each <code>calcRule</code>?</li>
+<li>create a sort ID for each <code>calcRule</code></li>
+<li>These sort IDs can be generated from the final
+<code>calcRule</code>s as being the minimum of the sort IDs of the
+childen <code>calcRules</code> minus 1, using recursion. (Alternatively,
+go from top down with maximum of sort IDs of parents plus 1.)</li>
+<li>still need to consider state-space type case where might want to
+have some sort of nested sort ID for a given <code>calcRule</code>.</li>
 </ul></li>
-<li><p>Dynamic indexing still needs consideration.</p></li>
+<li><p>Dynamic indexing still needs consideration.</p>
+<ul>
+<li>Currently we introduce a hidden ‘unknownIndex’ lifted node that
+allows for our standard dependency processing.</li>
+<li>Possibly handle things similarly to current approach: have one
+<code>graphRule</code> with <code>varRange</code> of the ‘unknownIndex’
+as the LHS and another <code>graphRule</code> with <code>varRange</code>
+of the ‘unknownIndex’ as the RHS.</li>
+</ul></li>
 </ul>
 </div>
 
@@ -378,13 +601,59 @@ div.tocify {
 
 // add bootstrap table styles to pandoc tables
 function bootstrapStylePandocTables() {
-  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
 }
 $(document).ready(function () {
   bootstrapStylePandocTables();
 });
 
 
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+
+<script>
+$(document).ready(function ()  {
+
+    // temporarily add toc-ignore selector to headers for the consistency with Pandoc
+    $('.unlisted.unnumbered').addClass('toc-ignore')
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_');
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = false;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
 </script>
 
 <!-- dynamically load mathjax for compatibility with self-contained -->
