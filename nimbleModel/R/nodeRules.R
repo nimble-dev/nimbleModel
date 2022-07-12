@@ -75,6 +75,7 @@ nodeRuleClass <- R6Class(
             } else {
                 if(is(inputRange, 'nodeRangeClass'))
                     varRange <- inputRange$getVarRange() else varRange <- inputRange
+            }
             if(numExternalRules) {
                 externalRange <- applyGraphIndexRules(varRange, externalRules)
             } else externalRange <- NULL # varRangeClass$new(list(nimbleModel:::indexRange_empty()))
@@ -107,8 +108,7 @@ nodeRuleClass <- R6Class(
                                              function(i) indexRange(
                                                              substitute(1:MAX, list(MAX = maxes[i]))))),
                allRules))
-        },
-
+        }
     )
 )
 
