@@ -417,7 +417,8 @@ nodeRange_isEqual <- function(nr1, nr2) {
 ##  - two subsets of original rule and a rule created from the fracturingRange (when dealing with a sequence that is split)
 
 ## LHSrule will be a calcRule, not a declRule
-
+## fracture() should take in ID of parent calcRule that generated the fracturingRange via getDeps
+## assign the parents to any rules that are fractured
 fracture <- function(LHSrule, fracturingRange) {
     ## presume fracturingRange is a nodeRange, so has external/internal split consistent with LHS rule
     ## but it could be that we pass in a varRange and then use nodeRule$apply to get the nodeRange
