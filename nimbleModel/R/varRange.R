@@ -153,6 +153,7 @@ varRange_isEqual <- function(vr1, vr2) {
         identical(vr1$indexRanges, vr2$indexRanges)
 }
 
+## 2022-07-25: this is apparently never used.
 invertIndexList <- function(indexList) {
     browser()
     inputLengths <- lapply(indexList, length)
