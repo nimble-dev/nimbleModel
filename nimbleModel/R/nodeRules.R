@@ -304,9 +304,7 @@ nodeRangeClass <- R6Class(
     public = list(
         declRule = NULL,
         boolExternalIndexRanges = NULL,
-        externalIndexID_2_rangeID = NULL,
-        internalIndexID_2_rangeID = NULL,
-        numExternalRanges = NULL,
+        numExternalIndexRanges = NULL,
 
         initialize = function(varName,
                               externalRange,
@@ -314,38 +312,27 @@ nodeRangeClass <- R6Class(
                               index2setID,
                               declRule) {
 
-            numExternalRanges <<- length(externalRange$indexRanges)
+            numExternalIndexRanges <<- length(externalRange$indexRanges)
             
-            ## It feels convoluted to determine the indexID_2_rangeID and rangeID_2_indexID
+            ## This is convoluted to determine the indexID_2_rangeID and rangeID_2_indexID
             ## and then pass these into varRange initialization where indexID_2_rangeID will be recalculated
             ## from rangeID_2_indexID.
            
             indexID_2_rangeID <<- rep(0, length(index2setID))
             indexID_2_rangeID[index2setID != 0] <<- externalRange$indexID_2_rangeID
             indexID_2_rangeID[index2setID == 0] <<- internalRange$indexID_2_rangeID +
-                numExternalRanges
+                numExternalIndexRanges
             rangeID_2_indexID <<- lapply(seq_len(max(indexID_2_rangeID)),
                                          function(x) which(indexID_2_rangeID == x))
 
             super$initialize(indexInfo = c(externalRange$indexRanges, internalRange$indexRanges),
                              indexOrders = rangeID_2_indexID,
                              name = varName)
-            boolExternalIndexRanges <<- c(rep(TRUE, numExternalRanges),
+            boolExternalIndexRanges <<- c(rep(TRUE, numExternalIndexRanges),
                                           rep(FALSE, length(internalRange$indexRanges)))
-
-            externalIndexID_2_rangeID <<- externalRange$indexID_2_rangeID,
-            internalIndexID_2_rangeID <<- internalRange$indexID_2_rangeID,
 
             declRule <<- declRule  ## pointer to governing declRule
 
-        },
-
-        getExternalIndexID_2_rangeID = function() {
-            return(indexID_2_rangeID[indexID_2_rangeID <= numExternalRanges])
-        },
-
-        getInternalIndexID_2_rangeID = function() {
-            return(indexID_2_rangeID[indexID_2_rangeID > numExternalRanges])
         },
         
         expandNames = function() {
@@ -355,7 +342,7 @@ nodeRangeClass <- R6Class(
             nc <- length(index2setID)  # might be, e.g., 0 1 0 2 3 or 0 1 0 2 1
             str <- paste0(varName, "[")
 
-            nodeInfo <- lapply(indexRanges[[boolExternalIndexRanges]], function(x) {
+            nodeInfo <- lapply(indexRanges, function(x) {
                 if(identical(attr(x, 'rangeType'), 'sequence'))
                     result <- seq(x[[1]][[1]], x[[1]][[2]]) else result <- x[[1]]
                 if(!is.matrix(result)) result <- matrix(result, ncol = 1)
@@ -366,7 +353,8 @@ nodeRangeClass <- R6Class(
             }))
 
             internalInfo <- lapply(indexRanges[[!boolExternalIndexRanges]], function(x) {
-                if(identical(attr(x, 'rangeType'), 'sequence')) return(deparse(substitute(X:Y, list(X = x[[1]][[1]], Y = x[[1]][[2]]))))
+                if(identical(attr(x, 'rangeType'), 'sequence'))
+                    return(deparse(substitute(X:Y, list(X = x[[1]][[1]], Y = x[[1]][[2]]))))
                 return(x)
             })
 
@@ -383,7 +371,7 @@ nodeRangeClass <- R6Class(
                     str <- paste0(str, internalInfo[[idxInternal]])
                     idxInternal <- idxInternal + 1
                 } else {
-                    rangeIdx <-  externalRange$indexID_2_rangeID[idxNode]  ## which indexRange is being used
+                    rangeIdx <- indexID_2_rangeID[indexID_2_rangeID <= numExternalIndexRanges][idxNode] ## which indexRange is being used
                     str <- paste0(str, nodeInfo[[rangeIdx]][expanded[ , rangeIdx], colID[[rangeIdx]]])
                     colID[[rangeIdx]] <- colID[[rangeIdx]] + 1  ## index through columns of the indexRange_matrix 
                     idxNode <- idxNode + 1
