@@ -13,8 +13,8 @@ calcRangeClass <- R6Class(
         },
 
         ## Generic calculate function that crosses the indexRanges in the indexingRange (a varRange)
-        ## and extracts the original indexes to feed into calculate nodeFunction
-        ## that operates on set of scalar indexes.
+        ## and extracts the original indice to feed into calculate nodeFunction
+        ## that operates on set of scalar indices.
         
         ## Will need to figure out how this is going to get compiled.
         ## Will there be a permanent C++ version?

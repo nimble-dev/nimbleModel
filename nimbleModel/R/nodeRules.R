@@ -69,13 +69,10 @@ nodeRuleClass <- R6Class(
         },
         
         ## Generate nodeRange from a varRange (or another nodeRange)
-        apply = function(inputRange = NULL) {
-            if(is.null(inputRange)) {   ## user wants full range for the variable
+        apply = function(varRange = NULL) {
+            if(is.null(varRange)) {   ## user wants full range for the variable
                 varRange <- getFullRange()
-            } else {
-                if(is(inputRange, 'nodeRangeClass'))
-                    varRange <- inputRange$getVarRange() else varRange <- inputRange
-            }
+            } 
             if(numExternalRules) {
                 externalRange <- applyGraphIndexRules(varRange, externalRules)
             } else externalRange <- NULL # varRangeClass$new(list(nimbleModel:::indexRange_empty()))
@@ -86,6 +83,7 @@ nodeRuleClass <- R6Class(
             return(result)
         },
 
+        ## TODO: should this extract the full nodeRange not a varRange?
         getFullRange = function() {
             extent <- lapply(seq_along(allRules$indexRules), function(idx)
                 allRules$indexRules[[idx]]$get_max())
@@ -100,7 +98,6 @@ nodeRuleClass <- R6Class(
                 } else {
                     maxes[index2setID == i] <- extent[[i]] 
                 }
-
             }
             
             return(applyGraphIndexRules(
@@ -176,7 +173,7 @@ calcRuleClass <- R6Class(
         
         ## This code below needs to operate at the node level since calculation is done by indexing
         ## over nodes.
-        ## Actually, indexing is done over original indexes for calculation, so need to think more about this.
+        ## Actually, indexing is done over original indices for calculation, so need to think more about this.
         initialize = function(declRule = NULL, expr = NULL, ID, context, constants = list()) {
             ## If LHS is NULL, just use declRule internalRange
 
@@ -303,47 +300,52 @@ expect_equal(calcRange$indexingRange,
 nodeRangeClass <- R6Class(
     classname = "nodeRangeClass",
     portable = FALSE,
+    inherit = varRangeClass,
     public = list(
-        varName = NULL,
-        externalRange = NULL,  # a varRange
-        internalRange = NULL,  # a varRange
         declRule = NULL,
-        index2setID = NULL,
-        indexID_2_rangeID = NULL,    
-        rangeID_2_indexID = NULL,
+        boolExternalIndexRanges = NULL,
+        externalIndexID_2_rangeID = NULL,
+        internalIndexID_2_rangeID = NULL,
+        numExternalRanges = NULL,
 
         initialize = function(varName,
                               externalRange,
                               internalRange,
                               index2setID,
                               declRule) {
-            varName <<- varName
-            externalRange <<- externalRange
-            internalRange <<- internalRange
-            declRule <<- declRule  ## pointer to governing declRule
-            index2setID <<- index2setID  # should this be a field or just use declRule$index2setID?
 
-            ## These apply to the combination of the externalRange and internalRange;
-            ## internalRules indexRanges are considered to be last.
-            indexID_2_rangeID <<- index2setID
-            indexID_2_rangeID[indexID_2_rangeID != 0] <<- externalRange$indexID_2_rangeID
-            indexID_2_rangeID[indexID_2_rangeID == 0] <<- internalRange$indexID_2_rangeID +
-                length(externalRange$indexRanges)
+            numExternalRanges <<- length(externalRange$indexRanges)
+            
+            ## It feels convoluted to determine the indexID_2_rangeID and rangeID_2_indexID
+            ## and then pass these into varRange initialization where indexID_2_rangeID will be recalculated
+            ## from rangeID_2_indexID.
+           
+            indexID_2_rangeID <<- rep(0, length(index2setID))
+            indexID_2_rangeID[index2setID != 0] <<- externalRange$indexID_2_rangeID
+            indexID_2_rangeID[index2setID == 0] <<- internalRange$indexID_2_rangeID +
+                numExternalRanges
             rangeID_2_indexID <<- lapply(seq_len(max(indexID_2_rangeID)),
                                          function(x) which(indexID_2_rangeID == x))
 
-            ## originalIndexRange <<- declRule$originalIndexRules$apply(self$getVarRange())
+            super$initialize(indexInfo = c(externalRange$indexRanges, internalRange$indexRanges),
+                             indexOrders = rangeID_2_indexID,
+                             name = varName)
+            boolExternalIndexRanges <<- c(rep(TRUE, numExternalRanges),
+                                          rep(FALSE, length(internalRange$indexRanges)))
 
+            externalIndexID_2_rangeID <<- externalRange$indexID_2_rangeID,
+            internalIndexID_2_rangeID <<- internalRange$indexID_2_rangeID,
 
+            declRule <<- declRule  ## pointer to governing declRule
 
         },
 
-        getVarRange = function() {
-            ## Extract varRange (i.e., ignoring node structure) for use with methods that apply
-            ## to varRanges.
-            varRangeClass$new(indexInfo = c(externalRange$indexRanges, internalRange$indexRanges),
-                              indexOrders = rangeID_2_indexID)
-            
+        getExternalIndexID_2_rangeID = function() {
+            return(indexID_2_rangeID[indexID_2_rangeID <= numExternalRanges])
+        },
+
+        getInternalIndexID_2_rangeID = function() {
+            return(indexID_2_rangeID[indexID_2_rangeID > numExternalRanges])
         },
         
         expandNames = function() {
@@ -353,7 +355,7 @@ nodeRangeClass <- R6Class(
             nc <- length(index2setID)  # might be, e.g., 0 1 0 2 3 or 0 1 0 2 1
             str <- paste0(varName, "[")
 
-            nodeInfo <- lapply(externalRange$indexRanges, function(x) {
+            nodeInfo <- lapply(indexRanges[[boolExternalIndexRanges]], function(x) {
                 if(identical(attr(x, 'rangeType'), 'sequence'))
                     result <- seq(x[[1]][[1]], x[[1]][[2]]) else result <- x[[1]]
                 if(!is.matrix(result)) result <- matrix(result, ncol = 1)
@@ -363,14 +365,14 @@ nodeRangeClass <- R6Class(
                 if(is.matrix(x)) 1:nrow(x) else 1:length(x)
             }))
 
-            internalInfo <- lapply(internalRange$indexRanges, function(x) {
+            internalInfo <- lapply(indexRanges[[!boolExternalIndexRanges]], function(x) {
                 if(identical(attr(x, 'rangeType'), 'sequence')) return(deparse(substitute(X:Y, list(X = x[[1]][[1]], Y = x[[1]][[2]]))))
                 return(x)
             })
 
             ## Mark column position within indexRanges of the externalRange.
             colID <- as.list(rep(1, length(nodeInfo)))
-            ## Mark position within internal- and node-related indexes.
+            ## Mark position within internal- and node-related indices.
             idxInternal <- 1
             idxNode <- 1
             
@@ -394,17 +396,9 @@ nodeRangeClass <- R6Class(
 )
 
 nodeRange_isEqual <- function(nr1, nr2) {
-    if(is.null(nr1$externalRange) && !is.null(nr2$externalRange) ||
-       !is.null(nr1$externalRange) && is.null(nr2$externalRange) ||
-       is.null(nr1$internalRange) && !is.null(nr2$internalRange) ||
-       !is.null(nr1$internalRange) && is.null(nr2$internalRange))
-        return(FALSE)
     ok <- identical(nr1$indexID_2_rangeID, nr2$indexID_2_rangeID) &&
-        identical(nr1$rangeID_2_indexID, nr2$rangeID_2_indexID)
-    if(!is.null(nr1$externalRange))
-        ok <- ok && identical(nr1$externalRange$indexRanges, nr2$externalRange$indexRanges)
-    if(!is.null(nr1$internalRange))
-        ok <- ok && identical(nr1$internalRange$indexRanges, nr2$internalRange$indexRanges)
+        identical(nr1$indexRanges, nr2$indexRanges) &&
+        identical(nr1$boolExternalIndexRanges, nr2$boolExternalIndexRanges) 
     return(ok)
 }
 
@@ -424,9 +418,8 @@ fracture <- function(LHSrule, fracturingRange) {
     ## but it could be that we pass in a varRange and then use nodeRule$apply to get the nodeRange
     ## this also means that fracturingRange is the 'intersection' as it shouldn't contain anything not in the LHSrule
 
-    ## A bit convoluted to extract the varRange and then turn that into a nodeRange.
-    LHSrange <- LHSrule$apply(LHSrule$getFullRange())
-    ## equivalent to LHSrule$apply()
+    ## Get full nodeRange of the rule.
+    LHSrange <- LHSrule$apply()
 
     if(nodeRange_isEqual(LHSrange, fracturingRange)) {
         LHSrule$set('stochParent')
@@ -434,25 +427,25 @@ fracture <- function(LHSrule, fracturingRange) {
     }
 
     ## Indices for internalRange should be identical, so just check/fracture those for external
-    identicalIndices <- sapply(seq_along(LHSrange$externalRange$indexID_2_rangeID), function(idx)
-        isTRUE(all.equal(LHSrange$externalRange$indexRanges[[LHSrange$externalRange$indexID_2_rangeID[idx]]],
-                  fracturingRange$externalRange$indexRanges[[fracturingRange$externalRange$indexID_2_rangeID[[idx]]]])))
-    
-    nonIdenticalExternalIndices <- which(!identicalIndices)
-    nonIdenticalFullIndices <- which(LHSrule$index2setID != 0)[nonIdenticalExternalIndices]
+    boolIdenticalIndices <- sapply(LHSrange$indexID_2_rangeID, function(idx)
+        isTRUE(all.equal(LHSrange$indexRanges[[idx]],
+                          fracturingRange$indexRanges[[idx]])))
+
+    nonIdenticalIndices <- which(!boolIdenticalIndices)
     
     expr <- LHSrule$expr
     singleContexts <- LHSrule$context$singleContexts
-
-    if(LHSrule$numIndices == 1 || length(nonIdenticalFullIndices) == 1) {
+  
+    if(length(nonIdenticalIndices) == 1) {
         ## Handle simple cases where need only fracture one index
-        LHS <- LHSrange$externalRange$indexRanges[[LHSrange$externalRange$indexID_2_rangeID[nonIdenticalExternalIndices]]]
-        frac <- fracturingRange$externalRange$indexRanges[[fracturingRange$externalRange$indexID_2_rangeID[nonIdenticalExternalIndices]]]
+        LHS <- LHSrange$indexRanges[[indexID_2_rangeID[nonIdenticalIndices]]]
+        frac <- fracturingRange$$indexRanges[[indexID_2_rangeID[nonIdenticalIndices]]]
+        
         typeLHS <- attr(LHS, "rangeType")
         typeFrac <- attr(frac, "rangeType")
 
         focalContext <- sapply(names(singleContexts), function(nm)
-            nm %in% all.vars(expr[[2+nonIdenticalFullIndices]]))
+            nm %in% all.vars(expr[[2+nonIdenticalIndices]]))
 
         ## If matrix involved, need to be dealt with so as to create an arbitrary rule.
         if(typeLHS == "matrix" || typeFrac == "matrix") {
@@ -482,7 +475,7 @@ fracture <- function(LHSrule, fracturingRange) {
                                indexVarExpr = quote(.newidx),
                 indexRangeExpr = substitute(1:L, list(L = length(valsFrac))))
 
-            expr[[nonIdenticalFullIndices+2]] <- quote(.idx[.newidx])
+            expr[[nonIdenticalIndices+2]] <- quote(.idx[.newidx])
          
             resultRule <- calcRuleClass$new(LHSrule$declRule, expr, context = modelContextClass$new(newSingleContexts1),
                                             constants = list(.idx = valsLHS))
@@ -513,7 +506,7 @@ fracture <- function(LHSrule, fracturingRange) {
                     indexVarExpr = quote(.newidx),
                     indexRangeExpr = substitute(A:B, list(A = frac[[1]][[1]], B = frac[[1]][[2]])))
 
-                expr[[nonIdenticalFullIndices+2]] <- newSingleContexts1[[length(newSingleContexts1)]]$indexVarExpr
+                expr[[nonIdenticalIndices+2]] <- newSingleContexts1[[length(newSingleContexts1)]]$indexVarExpr
 
                 resultRule <- calcRuleClass$new(LHSrule$declRule, expr, context = modelContextClass$new(newSingleContexts1))
 
@@ -531,17 +524,17 @@ fracture <- function(LHSrule, fracturingRange) {
                 newSingleContexts1[[length(newSingleContexts1)+1]] <- modelSingleContext(
                     indexVarExpr = quote(.newidx),
                     indexRangeExpr = substitute(A:B, list(A = LHS[[1]][[1]], B = frac[[1]][[1]]-1)))
-                expr1[[nonIdenticalFullIndices+2]] <- newSingleContexts1[[length(newSingleContexts1)]]$indexVarExpr
+                expr1[[nonIdenticalIndices+2]] <- newSingleContexts1[[length(newSingleContexts1)]]$indexVarExpr
 
                 newSingleContexts2[[length(newSingleContexts2)+1]] <- modelSingleContext(
                     indexVarExpr = quote(.newidx),
                     indexRangeExpr = substitute(A:B, list(A = frac[[1]][[2]]+1, B = LHS[[1]][[2]])))
-                expr2[[nonIdenticalFullIndices+2]] <- newSingleContexts2[[length(newSingleContexts2)]]$indexVarExpr
+                expr2[[nonIdenticalIndices+2]] <- newSingleContexts2[[length(newSingleContexts2)]]$indexVarExpr
 
                 newSingleContexts3[[length(newSingleContexts3)+1]] <- modelSingleContext(
                     indexVarExpr = quote(.newidx),
                     indexRangeExpr = substitute(A:B, list(A = frac[[1]][[1]], B = frac[[1]][[2]])))
-                expr3[[nonIdenticalFullIndices+2]] <- newSingleContexts3[[length(newSingleContexts3)]]$indexVarExpr
+                expr3[[nonIdenticalIndices+2]] <- newSingleContexts3[[length(newSingleContexts3)]]$indexVarExpr
                
                 resultRule1 <- calcRuleClass$new(LHSrule$declRule, expr1, context = modelContextClass$new(newSingleContexts1))
                 resultRule2 <- calcRuleClass$new(LHSrule$declRule, expr2, context = modelContextClass$new(newSingleContexts2))
@@ -552,8 +545,8 @@ fracture <- function(LHSrule, fracturingRange) {
             }
         }
     } else {     ## unroll, exclude, create new arbitrary rule based on all non-identical indices
-        unrolledLHS <- LHSrange$externalRange$getIndexRangeMatrix(nonIdenticalExternalIndices)
-        unrolledFrac <- fracturingRange$externalRange$getIndexRangeMatrix(nonIdenticalExternalIndices)
+        unrolledLHS <- LHSrange$$getIndexRangeMatrix(nonIdenticalIndices)
+        unrolledFrac <- fracturingRange$getIndexRangeMatrix(nonIdenticalIndices)
 
         lhsAsChar <- do.call(paste, as.data.frame(unrolledLHS[[1]]))
         fracAsChar <- do.call(paste, as.data.frame(unrolledFrac[[1]]))
@@ -563,7 +556,7 @@ fracture <- function(LHSrule, fracturingRange) {
         mat2 <- unrolledLHS[[1]][!remaining, ]
 
         focalContext <- sapply(names(singleContexts), function(nm)
-            nm %in% unlist(lapply(2+nonIdenticalFullIndices, function(x) all.vars(expr[[x]]))))
+            nm %in% unlist(lapply(2+nonIdenticalIndices, function(x) all.vars(expr[[x]]))))
 
         if(sum(!focalContext)) {
             newSingleContexts1 <- singleContexts[!focalContext]
@@ -579,8 +572,8 @@ fracture <- function(LHSrule, fracturingRange) {
             indexRangeExpr = substitute(1:L, list(L = nrow(mat2))))
 
         nms <- paste0(".idx", seq_len(ncol(mat1)), "[.newidx]")
-        for(i in seq_along(nonIdenticalFullIndices)) 
-            expr[[nonIdenticalFullIndices[i]+2]] <- parse(text = nms[i])[[1]]
+        for(i in seq_along(nonIdenticalIndices)) 
+            expr[[nonIdenticalIndices[i]+2]] <- parse(text = nms[i])[[1]]
         
         constants1 <- lapply(seq_len(ncol(mat1)), function(i) mat1[,i])
         names(constants1) <- paste0(".idx", seq_along(constants1))
