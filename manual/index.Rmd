@@ -31,6 +31,7 @@ Todos (a mostly complete list as of July 2022):
 - write out steps for overall RHS exclude process based on existing design notes (already have implemented code to do a given exclusion)
 - implement reworking of nodeRange as subclass of varRange based on existing design notes
 - implement code for combining varRanges based on existing design notes
+- consider converting one-column matrix indexRanges to sequences when possible (e.g., this would arise in the y[i] <- mu[k[i]] case)
 - work through declaration processing code based on declRules and graphRules
 - implement nodeFunction generation based on existing nimble 
 - work through re-implementation of getDependencies, getNodeNames, expandNodeNames, etc. based on graphRules and nodeRules.
@@ -39,5 +40,5 @@ Todos (a mostly complete list as of July 2022):
 - think about getParam, getBound and the like
 - do we need varStore for anything given calcRules and declRules will store stoch, end, top, latent; perhaps only for isData?
 - stochastic indexing (look back at somewhat recent CJP notes)
-- think about state-space style dependence; not yet handled or considered
+- think about ways to improve efficiency of state-space style dependence; in current design, it will involve a lot of calculation
 

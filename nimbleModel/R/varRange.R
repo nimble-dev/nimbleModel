@@ -236,6 +236,15 @@ varRange_getIndexRangeColumns <- function(varRange,
 ## The following could sensibly be class methods, but
 ## we are going to try to keep classes small.
 
+
+## TODO: varRange2{char,expr} only work if varRange created
+## using an expression. If created with a list of indexRanges, it
+## doesn't show the indexing.
+## Rework this in conjunction with nodeRangeClass$expandNames(),
+## allowing user to request compact or expanded representations and element vs block,
+## e.g., y[1:5,2] vs. y[i,2] for i=1,...5 vs y[1],y[2],y[3],y[4],y[5]
+## or y[i] for i=c(3,5,7,9,12) vs. y[i] for i=c(3,5,...,12) vs y[3],y[5],y[7],y[9],y[12]
+
 ## varRange2char takes a varRange object and returns the corresponding
 ## character string of the original expression.
 ## This inverts the initialize function of varRangeClass for

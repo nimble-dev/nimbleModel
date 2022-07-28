@@ -338,9 +338,9 @@ nodeRangeClass <- R6Class(
         expandNames = function() {
             ## Expand externalRange into full matrix (crossed if necessary), keeping full internal
             ## indexing for each individual node.
-            ## TODO: Could we instead rely on `varRange2expr`, after extracting the varRange?
-            nc <- length(index2setID)  # might be, e.g., 0 1 0 2 3 or 0 1 0 2 1
-            str <- paste0(varName, "[")
+            ## TODO: allow user to request all elements and compact/expanded
+            nc <- length(declRule$index2setID)  # might be, e.g., 0 1 0 2 3 or 0 1 0 2 1
+            str <- paste0(name, "[")
 
             nodeInfo <- lapply(indexRanges, function(x) {
                 if(identical(attr(x, 'rangeType'), 'sequence'))
@@ -352,7 +352,7 @@ nodeRangeClass <- R6Class(
                 if(is.matrix(x)) 1:nrow(x) else 1:length(x)
             }))
 
-            internalInfo <- lapply(indexRanges[[!boolExternalIndexRanges]], function(x) {
+            internalInfo <- lapply(indexRanges[!boolExternalIndexRanges], function(x) {
                 if(identical(attr(x, 'rangeType'), 'sequence'))
                     return(deparse(substitute(X:Y, list(X = x[[1]][[1]], Y = x[[1]][[2]]))))
                 return(x)
@@ -367,7 +367,7 @@ nodeRangeClass <- R6Class(
             for(i in 1:nc) {
                 if(i > 1)
                     str <- paste0(str, ", ")
-                if(index2setID[i] == 0) {
+                if(declRule$index2setID[i] == 0) {
                     str <- paste0(str, internalInfo[[idxInternal]])
                     idxInternal <- idxInternal + 1
                 } else {
@@ -427,7 +427,7 @@ fracture <- function(LHSrule, fracturingRange) {
     if(length(nonIdenticalIndices) == 1) {
         ## Handle simple cases where need only fracture one index
         LHS <- LHSrange$indexRanges[[indexID_2_rangeID[nonIdenticalIndices]]]
-        frac <- fracturingRange$$indexRanges[[indexID_2_rangeID[nonIdenticalIndices]]]
+        frac <- fracturingRange$indexRanges[[indexID_2_rangeID[nonIdenticalIndices]]]
         
         typeLHS <- attr(LHS, "rangeType")
         typeFrac <- attr(frac, "rangeType")
@@ -533,7 +533,7 @@ fracture <- function(LHSrule, fracturingRange) {
             }
         }
     } else {     ## unroll, exclude, create new arbitrary rule based on all non-identical indices
-        unrolledLHS <- LHSrange$$getIndexRangeMatrix(nonIdenticalIndices)
+        unrolledLHS <- LHSrange$getIndexRangeMatrix(nonIdenticalIndices)
         unrolledFrac <- fracturingRange$getIndexRangeMatrix(nonIdenticalIndices)
 
         lhsAsChar <- do.call(paste, as.data.frame(unrolledLHS[[1]]))
