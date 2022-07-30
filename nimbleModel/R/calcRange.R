@@ -43,20 +43,3 @@ calcRangeClass <- R6Class(
         }
     )
 )
-
-
-if(FALSE) {
-
-    calcRule <- calcRuleClass$new(quote(y[j,i+1,k]), NULL, context_ijk)
-    calcRange <- calcRule$apply(varRangeClass$new(list(
-                                                  indexRange(quote(3:5)),
-                                                  indexRange(matrix(c(1,2,2,3), ncol = 2))
-                                              ), indexOrders = list(2, c(1,3))))
-    
-    calcRule <- calcRuleClass$new(quote(y[j,i+1,3, k]), NULL, context_ijk)
-    calcRange <- calcRule$apply(varRangeClass$new(list(
-                                                  indexRange(quote(3:5)),
-                                                  indexRange(matrix(c(1,2,2,3), ncol = 2)),
-                                                  indexRange(3)
-                                              ), indexOrders = list(2, c(1,4), 3)))
-}

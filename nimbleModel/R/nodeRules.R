@@ -205,7 +205,7 @@ calcRuleClass <- R6Class(
             } else nodeRange <- inputRange
             
             indexingRange <- declRule$originalIndexRules$apply(nodeRange$getVarRange())
-            if(isEmpty(indexingRange))
+            if(varRange_isEmpty(indexingRange))
                 return(NULL)
             result <- calcRangeClass$new(varName, indexingRange, declRule$calcFun, sortID)
             ## if empty, return NULL
@@ -250,40 +250,51 @@ calcRuleClass <- R6Class(
     )
 )
 
+calcRangeClass <- R6Class(
+    classname = "calcRangeClass",
+    portable = FALSE,
+    public = list(
+        varName = NULL,
+        indexingRange = NULL,
+        sortID = NULL,
+        initialize = function(varName, indexingRange, calcFun, sortID) {
+            varName <<- varName
+            indexingRange <<- indexingRange
+            calcFun <<- calcFun  ## note that calcFun itself is not vectorized
+            sortID <<- sortID
+        },
 
+        ## Generic calculate function that crosses the indexRanges in the indexingRange (a varRange)
+        ## and extracts the original indice to feed into calculate nodeFunction
+        ## that operates on set of scalar indices.
+        
+        ## Will need to figure out how this is going to get compiled.
+        ## Will there be a permanent C++ version?
+        ## How will indexingRange be compiled?
+        ## This is a sketch and hasn't been debugged...
+        calculate = function() {
+            numRanges <- length(indexingRange$indexRanges)
+            index <- numeric(length(indexingRange$indexID_2_rangeID))  ## vector to hold the original index values
+            indexRange_lengths <- sapply(indexingRange$indexRanges, indexRange_numRows)
+            indexPositions <- indexingRange$rangeID_2_indexID
+            nestedLengths <- sapply(seq_len(numRanges), function(i) prod(indexRange_lengths[(i+1):numRanges]))
+                                    
+            for(item in prod(indexRange_lengths)) {
+                for(irIndex in seq_len(numRanges)) {
+                    ## Determine nested indexing from unrolled indexing
+                    if(irIndex == seq_len(numRanges)) {
+                        elementIdx <- 1 + (item-1) %% indexRange_lengths[irIndex]
+                    } else {
+                        elementIdx <- 1 + (item-1) %/% nestedLengths[irIndex]
+                    }
+                    index[indexPositions[irIndex]] <- indexRange_getItem(indexingRange$indexRanges[[irIndex]], elementIdx)
+                }
+                self$calcFun(index)  ## scalar calculation
+            }
 
-## build nodefun on the fly when provided a varRange; check if it already exists; pass the fun into the range?
-## actually I think it can all be pre-generated
-
-if(FALSE) {
-isEmpty <- function(varRange) 
-    any(sapply(varRange$indexRanges, function(x) identical(attr(x, 'rangeType'), 'empty')))
-
-
-calcRule <- calcRuleClass$new(quote(y[i+1]), NULL, context_i)
-
-calcRange <- calcRule$apply(varRangeClass$new(list(indexRange(quote(3:5)))))
-expect_equal(calcRange$indexingRange,
-                 varRangeClass$new(list(indexRange(quote(2:4)))))
-
-calcRule <- calcRuleClass$new(quote(y[2:4, i+1]), NULL, context_i)
-
-calcRange <- calcRule$apply(varRangeClass$new(list(indexRange(quote(2:4)), indexRange(quote(3:5)))))
-expect_equal(calcRange$indexingRange,
-                 varRangeClass$new(list(indexRange(quote(2:4)))))
-
-calcRange <- calcRule$apply(varRangeClass$new(list(indexRange(quote(2)), indexRange(quote(3:5)))))
-expect_equal(calcRange$indexingRange,
-                 varRangeClass$new(list(indexRange(quote(2:4)))))
-
-calcRange <- calcRule$apply(varRangeClass$new(list(indexRange(quote(6)), indexRange(quote(3:5)))))
-expect_equal(calcRange, NULL)
-
-calcRange <- calcRule$apply(varRangeClass$new(list(nimbleModel:::indexRange_none())))
-expect_equal(calcRange$indexingRange,
-                 varRangeClass$new(list(indexRange(quote(1:10)))))
-}
-
+        }
+    )
+)
 
 ## nodeRangeClass
 
@@ -577,258 +588,5 @@ fracture <- function(LHSrule, fracturingRange) {
 
         return(list(fracturingRule, resultRule))
     }
-}
-
-## I think nodeRuleClass can stay as a generic nodeRule rather than needed to be a calcRule,
-## even though in real work, input would be a calcRule.
-
-if(FALSE) {  
-    ## Hopefully comprehensive testing of exclude(); move into test-nodeRules.R or test-fracture.R
-    library(nimbleModel)
-    library(testthat)
-   singleContext1 <-
-       modelSingleContext(forCode = quote(for(i in 2:8){}))
-   
-   singleContext2 <-
-       modelSingleContext(forCode = quote(for(j in 1:4){}))
-   
-   context_0 <- modelContextClass$new()
-   context_i <- modelContextClass$new(list(singleContext1))
-   context_j <- modelContextClass$new(list(singleContext2))
-   
-   context_ij <- modelContextClass$new(list(singleContext1,
-                                            singleContext2))
-   
-   ## scalar overlap at end
-   LHS <- quote(mu[i+1])
-   LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
-   ## fracture with mu[3]
-   fracRange <- LHSrule$apply(varRangeClass$new(list(indexRange(3))))
-   
-   result <- fracture(LHSrule, fracRange)
-
-   expect_identical(length(result), 2L)
-   expr <- quote(mu[i])
-   context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 4:9){}))))
-   expected <- nodeRuleClass$new(expr, 1, context_tmp)
-   expect_identical(result[[1]]$externalRules$indexRules[[1]]$setupResults,
-                    expected$externalRules$indexRules[[1]]$setupResults)
-   context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 3:3){}))))
-   expected <- nodeRuleClass$new(expr, 1, context_tmp)
-   expect_identical(result[[2]]$externalRules$indexRules[[1]]$setupResults,
-                    expected$externalRules$indexRules[[1]]$setupResults)
-
-   ## seq overlap at end
-   LHS <- quote(mu[i+1])
-   LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
-   ## fracture with mu[3:4]
-   fracRange <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(3:4)))))
-   
-   result <- fracture(LHSrule, fracRange)
-
-   expect_identical(length(result), 2L)
-   expr <- quote(mu[i])
-   context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 5:9){}))))
-   expected <- nodeRuleClass$new(expr, 1, context_tmp)
-   expect_identical(result[[1]]$externalRules$indexRules[[1]]$setupResults,
-                    expected$externalRules$indexRules[[1]]$setupResults)
-   context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 3:4){}))))
-   expected <- nodeRuleClass$new(expr, 1, context_tmp)
-   expect_identical(result[[2]]$externalRules$indexRules[[1]]$setupResults,
-                    expected$externalRules$indexRules[[1]]$setupResults)
-      
-   ## seq overlap in middle
-   LHS <- quote(mu[i+1])
-   LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
-   ## fracture with mu[4:5]
-   fracRange <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(4:5)))))
-   
-   result <- fracture(LHSrule, fracRange)
-
-   expect_identical(length(result), 3L)
-   expr <- quote(mu[i])
-   context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 3:3){}))))
-   expected <- nodeRuleClass$new(expr, 1, context_tmp)
-   expect_identical(result[[1]]$externalRules$indexRules[[1]]$setupResults,
-                    expected$externalRules$indexRules[[1]]$setupResults)
-   context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 6:9){}))))
-   expected <- nodeRuleClass$new(expr, 1, context_tmp)
-   expect_identical(result[[2]]$externalRules$indexRules[[1]]$setupResults,
-                    expected$externalRules$indexRules[[1]]$setupResults)
-   context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 4:5){}))))
-   expected <- nodeRuleClass$new(expr, 1, context_tmp)
-   expect_identical(result[[3]]$externalRules$indexRules[[1]]$setupResults,
-                    expected$externalRules$indexRules[[1]]$setupResults)
-      
-
-   ## seq and matrix
-   LHS <- quote(mu[i+1])
-   LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
-   ## fracture with matrix
-   idx <- c(3,6,9)
-   fracRange <- LHSrule$apply(varRangeClass$new(list(indexRange(matrix(idx)))))
-   
-   result <- fracture(LHSrule, fracRange)
-
-   expect_identical(length(result), 2L)
-   expr <- quote(mu[idx[i]])
-   idx2 <- c(4,5,7,8)
-   context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:4){}))))
-   expected <- nodeRuleClass$new(expr, 1, context_tmp, constants = list(idx = idx2))
-   expect_equal(result[[1]]$externalRules$indexRules[[1]]$setupResults,
-                    expected$externalRules$indexRules[[1]]$setupResults)
-   context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:3){}))))
-   expected <- nodeRuleClass$new(expr, 1, context_tmp, constants = list(idx = idx))
-   expect_equal(result[[2]]$externalRules$indexRules[[1]]$setupResults,
-                expected$externalRules$indexRules[[1]]$setupResults)
-
-   ## basic case with one external, one internal: mu[1:3, i]
-   LHS <- quote(mu[1:3,i])
-   LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
-   fracRange <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(1:3)),
-                                                     indexRange(quote(2:3)))))
-   
-   result <- fracture(LHSrule, fracRange)
-
-   expect_identical(length(result), 2L)
-   expect_identical(result[[1]]$internalRules$indexRules[[1]]$setupResults,
-                LHSrule$internalRules$indexRules[[1]]$setupResults)
-   expect_identical(result[[2]]$internalRules$indexRules[[1]]$setupResults,
-                    LHSrule$internalRules$indexRules[[1]]$setupResults)
-   context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 4:8){}))))
-   expected <- nodeRuleClass$new(LHS, 1, context_tmp)
-   expect_identical(result[[1]]$externalRules$indexRules[[1]]$setupResults,
-                    expected$externalRules$indexRules[[1]]$setupResults)
-   context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 2:3){}))))
-   expected <- nodeRuleClass$new(LHS, 1, context_tmp)
-   expect_identical(result[[2]]$externalRules$indexRules[[1]]$setupResults,
-                    expected$externalRules$indexRules[[1]]$setupResults)
-
-   ## two external indices, one fractured, two constant internal rules
-   LHS <- quote(mu[1:3,j,i,2:3])
-   LHSrule <- nodeRuleClass$new(LHS, 1, context_ij)
-   fracRange <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(1:3)),
-                                                     indexRange(quote(1:4)),
-                                                     indexRange(matrix(c(2,4))),
-                                                     indexRange(2))))
-   
-   result <- fracture(LHSrule, fracRange)
-  
-   expect_identical(length(result), 2L)
-   expect_identical(LHSrule$index2setID, c(0,2,1,0))
-   for(k in 1:2) {
-       for(kk in 1:2)
-           expect_identical(result[[k]]$internalRules$indexRules[[kk]]$setupResults,
-                            LHSrule$internalRules$indexRules[[kk]]$setupResults)
-       expect_identical(result[[k]]$externalRules$indexRules[[1]]$setupResults,
-                        LHSrule$externalRules$indexRules[[2]]$setupResults)
-       expect_identical(result[[k]]$index2setID, c(0,1,2,0))
-   }
-   context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:5){}))))
-   idx <- as.integer(c(3,5,6,7,8))
-   expr <- quote(mu[idx[i]])
-   expected <- nodeRuleClass$new(expr, FALSE, 1, FALSE, context_tmp, constants = list(idx = idx))
-   expect_equal(result[[1]]$externalRules$indexRules[[2]]$setupResults,
-                        expected$externalRules$indexRules[[1]]$setupResults)
-   context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:2){}))))
-   idx <- as.integer(c(2,4))
-   expr <- quote(mu[idx[i]])
-   expected <- nodeRuleClass$new(expr, FALSE, 1, FALSE, context_tmp, constants = list(idx = idx))
-   expect_equal(result[[2]]$externalRules$indexRules[[2]]$setupResults,
-                        expected$externalRules$indexRules[[1]]$setupResults)
-
-   ## two external indices, one fractured, one constant internal rule and additional external from scalar
-   LHS <- quote(mu[1:3,j,i,2])
-   LHSrule <- nodeRuleClass$new(LHS, 1, context_ij)
-   fracRange <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(1:3)),
-                                                     indexRange(quote(1:4)),
-                                                     indexRange(matrix(c(2,4))),
-                                                     indexRange(2))))
-   
-   result <- fracture(LHSrule, fracRange)
-
-   ## Just check stuff related to the scalar constant index, given similarity to above test.
-   expect_identical(length(result), 2L)
-   expect_identical(LHSrule$index2setID, c(0,2,1,0))
-   for(k in 1:2) {
-       expect_identical(result[[k]]$internalRules$indexRules[[1]]$setupResults,
-                        LHSrule$internalRules$indexRules[[1]]$setupResults)
-       expect_identical(result[[k]]$externalRules$indexRules[[1]]$setupResults,
-                        LHSrule$externalRules$indexRules[[2]]$setupResults)
-       expect_identical(result[[k]]$index2setID, c(0,1,2,0))
-   }
-
-   
-   ## two external indices, both fractured: mu[1:3, j ,2, i]
-   LHS <- quote(mu[1:3,j,i,2])
-   LHSrule <- nodeRuleClass$new(LHS, 1, context_ij)
-   fracRange <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(1:3)),
-                                                     indexRange(quote(2:3)),
-                                                     indexRange(quote(2:3)),
-                                                     indexRange(2))))
-   
-   result <- fracture(LHSrule, fracRange)
-
-   expect_identical(length(result), 2L)
-   expect_identical(LHSrule$index2setID, c(0,2,1,0))
-   for(k in 1:2) {
-       expect_identical(result[[k]]$internalRules$indexRules[[1]]$setupResults,
-                        LHSrule$internalRules$indexRules[[1]]$setupResults)
-       expect_identical(result[[k]]$index2setID, c(0,1,1,0))
-   }
-
-   context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:24){}))))
-   idx1 <- as.integer(c(1,4,1,4,rep(1:4, 5)))
-   idx2 <- as.integer(c(2,2,3,3,rep(4:8, each = 4)))
-   expr <- quote(mu[idx1[i],idx2[i]])
-   expected <- nodeRuleClass$new(expr, FALSE, 1, FALSE, context_tmp, constants = list(idx1 = idx1, idx2 = idx2))
-   expect_equal(result[[1]]$externalRules$indexRules[[1]]$setupResults,
-                expected$externalRules$indexRules[[1]]$setupResults)
-   context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:4){}))))
-   idx1 <- as.integer(c(2,3,2,3))
-   idx2 <- as.integer(c(2,2,3,3))
-   expr <- quote(mu[idx1[i],idx2[i]])
-   expected <- nodeRuleClass$new(expr, FALSE, 1, FALSE, context_tmp, constants = list(idx1 = idx1, idx2 = idx2))
-   expect_equal(result[[2]]$externalRules$indexRules[[1]]$setupResults,
-                expected$externalRules$indexRules[[1]]$setupResults)
-
-
-   ## two external indices fractured: mu[1:3, j ,2, i] , based on 2-d matrix
-   LHS <- quote(mu[1:3,j,i,2])
-   LHSrule <- nodeRuleClass$new(LHS, 1, context_ij)
-    
-   fracRange <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(1:3)),
-                                                     indexRange(matrix(c(2,3,3,7), ncol = 2)),
-                                                     indexRange(2))))
-
-   result <- fracture(LHSrule, fracRange)
-
-   expect_identical(length(result), 2L)
-   expect_identical(LHSrule$index2setID, c(0,2,1,0))
-   for(k in 1:2) {
-       expect_identical(result[[k]]$internalRules$indexRules[[1]]$setupResults,
-                        LHSrule$internalRules$indexRules[[1]]$setupResults)
-       expect_identical(result[[k]]$index2setID, c(0,1,1,0))
-   }
-
-   context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:26){}))))
-   idx1 <- as.integer(rep(1:4, 7))
-   idx2 <- as.integer(rep(2:8, each = 4))
-   wh <- (idx1 == 2 & idx2 == 3) | (idx1 == 3 & idx2 == 7)
-   idx1 <- idx1[!wh]
-   idx2 <- idx2[!wh]
-   expr <- quote(mu[idx1[i],idx2[i]])
-   expected <- nodeRuleClass$new(expr, FALSE, 1, FALSE, context_tmp, constants = list(idx1 = idx1, idx2 = idx2))
-   expect_equal(result[[1]]$externalRules$indexRules[[1]]$setupResults,
-                expected$externalRules$indexRules[[1]]$setupResults)
-   context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:2){}))))
-   idx1 <- as.integer(c(2,3))
-   idx2 <- as.integer(c(3,7))
-   expr <- quote(mu[idx1[i],idx2[i]])
-   expected <- nodeRuleClass$new(expr, FALSE, 1, FALSE, context_tmp, constants = list(idx1 = idx1, idx2 = idx2))
-   expect_equal(result[[2]]$externalRules$indexRules[[1]]$setupResults,
-                expected$externalRules$indexRules[[1]]$setupResults)
-
-   
 }
 
