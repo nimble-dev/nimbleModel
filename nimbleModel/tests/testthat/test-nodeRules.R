@@ -1,4 +1,133 @@
+test_that("declRules are generated correctly", {
+    singleContext1 <-
+        modelSingleContext(forCode = quote(for(i in 2:8){}))
+    context_i <- modelContextClass$new(list(singleContext1))
 
+    rule <- declRuleClass$new(quote(y[i+2] ~ dnorm(0,1)), 1, context_i)
+
+    expect_identical(rule$stoch, TRUE)
+    expect_equal(
+        rule$originalIndexRules$apply(
+                  varRangeClass$new(list(
+                                    indexRange(quote(3:6))))),
+        varRangeClass$new(list(
+                          indexRange(quote(2:4))))
+    )
+})
+
+test_that("nodeRule creation and application works", {
+    ## Apply nodeRule to varRange
+    singleContext1 <-
+        modelSingleContext(forCode = quote(for(i in 2:8){}))
+    singleContext2 <-
+        modelSingleContext(forCode = quote(for(j in 3:5){}))
+    context_i <- modelContextClass$new(list(singleContext1))
+    context_ij <- modelContextClass$new(list(singleContext1, singleContext2))
+
+    LHS <- quote(mu[i+1])
+    LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
+
+    expect_identical(LHSrule$numExternalRules, 1L)
+    expect_identical(LHSrule$numInternalRules, 0L)
+    expect_identical(LHSrule$index2setID, 1)
+    expect_identical(is(LHSrule$externalRules$indexRules[[1]], 'indexRuleClass_block'), TRUE)
+                     
+    result <- LHSrule$apply(varRangeClass$new(list(indexRange(3))))
+    expect_identical(result$boolExternalIndexRanges, TRUE)
+    expect_identical(result$numExternalIndexRanges, 1L)
+    expect_identical(result$indexID_2_rangeID, 1L)
+    expect_identical(result$indexRanges[[1]], indexRange(3))
+
+    result <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(6:11)))))
+    expect_identical(result$boolExternalIndexRanges, TRUE)
+    expect_identical(result$numExternalIndexRanges, 1L)
+    expect_identical(result$indexID_2_rangeID, 1L)
+    expect_identical(result$indexRanges[[1]], indexRange(quote(6:9)))
+
+    LHS <- quote(mu[1:3,i])
+    LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
+
+    expect_identical(LHSrule$numExternalRules, 1L)
+    expect_identical(LHSrule$numInternalRules, 1L)
+    expect_identical(LHSrule$index2setID, c(0,1))
+    expect_identical(is(LHSrule$externalRules$indexRules[[1]], 'indexRuleClass_block'), TRUE)
+    expect_identical(is(LHSrule$internalRules$indexRules[[1]], 'indexRuleClass_constant'), TRUE)
+
+    result <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(1:3)),
+                                                   indexRange(quote(4:9)))))
+
+    expect_identical(result$boolExternalIndexRanges, c(TRUE, FALSE))
+    expect_identical(result$numExternalIndexRanges, 1L)
+    expect_identical(result$indexID_2_rangeID, c(2L, 1L))
+    expect_identical(result$indexRanges[[1]], indexRange(quote(4:8)))
+    expect_identical(result$indexRanges[[2]], indexRange(quote(1:3)))
+
+    ## input of part of the internal block resolves to full internal block
+    result <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(1:2)),
+                                                   indexRange(quote(4:9)))))
+    expect_identical(result$boolExternalIndexRanges, c(TRUE, FALSE))
+    expect_identical(result$numExternalIndexRanges, 1L)
+    expect_identical(result$indexID_2_rangeID, c(2L, 1L))
+    expect_identical(result$indexRanges[[1]], indexRange(quote(4:8)))
+    expect_identical(result$indexRanges[[2]], indexRange(quote(1:3)))
+
+    
+    ## HERE; for each of these need tests for the rule and the application of the rule
+    
+    LHS <- quote(mu[1:3,j,i,2])
+    LHSrule <- nodeRuleClass$new(LHS, 1, context_ij)
+
+    expect_identical(LHSrule$numExternalRules, 2L)
+    expect_identical(LHSrule$numInternalRules, 2L)
+    expect_identical(LHSrule$index2setID, c(0,2,1,0))
+    expect_identical(is(LHSrule$externalRules$indexRules[[1]], 'indexRuleClass_block'), TRUE)
+    expect_identical(is(LHSrule$externalRules$indexRules[[2]], 'indexRuleClass_block'), TRUE)
+    expect_identical(is(LHSrule$internalRules$indexRules[[1]], 'indexRuleClass_constant'), TRUE)
+    expect_identical(is(LHSrule$internalRules$indexRules[[2]], 'indexRuleClass_constant'), TRUE)
+
+    result <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(1:2)),
+                                                      indexRange(quote(4:6)),
+                                                      indexRange(matrix(c(1,9,4,6,5))),
+                                                      indexRange(2))))
+
+    expect_identical(result$boolExternalIndexRanges, c(TRUE,TRUE,FALSE,FALSE))
+    expect_identical(result$numExternalIndexRanges, 2L)
+    expect_identical(result$indexID_2_rangeID, c(3L,1L,2L,4L))
+    expect_identical(result$indexRanges[[1]], indexRange(quote(4:5)))
+    expect_identical(result$indexRanges[[2]], indexRange(matrix(c(4,6,5))))
+    ## will fail until merge into master and get indexRange_matrix2sequence
+    expect_identical(result$indexRanges[[2]], indexRange(quote(4:6)))
+    expect_identical(result$indexRanges[[3]], indexRange(quote(1:3)))
+    expect_identical(result$indexRanges[[4]], indexRange(2))
+
+    ## invalid external range - FAILS
+    result <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(1:2)),
+                                                      indexRange(quote(4:6)),
+                                                      indexRange(matrix(c(1,9,4,6,5))),
+                                                   indexRange(4))))
+
+    ## invalid internal range - ???
+    
+    ## try with varRange matrix covering two columns
+    ## try with varRange matrix covering two columns that go across internal and external
+
+    ## Apply nodeRule to nodeRange (modified so that output is not same as input)
+    LHS <- quote(mu[1:3,i])
+    LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
+    nr <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(1:3)),
+                                                   indexRange(quote(4:9)))))
+    result <- LHSrule$apply(nr)
+    expect_equal(result, nr)
+
+    nr$indexRanges[[1]][[1]][[2]] <- 35  # have nodeRange extend beyond true extent
+    result <- LHSrule$apply(nr)
+    expect_identical(result$boolExternalIndexRanges, c(TRUE, FALSE))
+    expect_identical(result$numExternalIndexRanges, 1L)
+    expect_identical(result$indexID_2_rangeID, c(2L, 1L))
+    expect_identical(result$indexRanges[[1]], indexRange(quote(4:8)))
+    expect_identical(result$indexRanges[[2]], indexRange(quote(1:3)))
+
+})
 
 test_that("calcRanges are generated correctly", {  
     calcRule <- calcRuleClass$new(quote(y[i+1]), NULL, context_i)
@@ -667,7 +796,7 @@ test_that("RHS exclusion works", {
                  "Missing values found in setting up arbitrary indexRule")
 }
 
-if(FALSE) {
+test_that("getFullRange works correctly", {
     ## Checking getFullRange
     LHS <- quote(mu[5, 1:3])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_0)
@@ -707,6 +836,6 @@ if(FALSE) {
                  varRangeClass$new(list(indexRange(quote(1:4)), indexRange(quote(1:3)),
                                         indexRange(quote(2:8)), indexRange(2))))
 
-}
+})
 
 

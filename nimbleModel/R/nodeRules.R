@@ -40,6 +40,7 @@ nodeRuleClass <- R6Class(
 
             ## Note: this is awkward to go into the data structures and modify them
 
+            ## We'll use graphRules, though no actual RHS.
             ## TODO: modify allRules to be a graphRule
             allRules <<- makeGraphIndexRules(expr, expr, context, constants)
             allRules$constraints <- list()
@@ -119,12 +120,12 @@ declRuleClass <- R6Class(
         
         calculate = NULL,  ## generic function for calculation
 
-        initialize = function(expr, ID, stoch, context = modelContextClass$new(), constants = list()) {
+        initialize = function(decl, ID, context = modelContextClass$new(), constants = list()) {
             ## Set up rules that operate on the indexing of the nodes and on
             ## the internal indexing of the elements of a node.
-            super$initialize(expr, ID, context = context, constants = constants)
-                  
-            stoch <<- stoch
+            stoch <<- decl[[1]] == '~'
+
+            super$initialize(decl[[2]], ID, context = context, constants = constants)
             
             originalIndexRules <<- originalIndexRuleClass$new(expr, context, constants)
             calcFun <<- genCalcFun(decl, context)
@@ -143,10 +144,6 @@ declRuleClass <- R6Class(
         
     )
 )
-
-
-## Note: still unclear if calcRules operate on varRanges or nodeRanges (or both)
-## to produce calcRanges
 
 calcRuleClass <- R6Class(
     classname = "calcRuleClass",
@@ -192,7 +189,7 @@ calcRuleClass <- R6Class(
             declRule <<- declRule
         },
 
-        ## nodeRuleClass$apply generates a nodeRange
+        ## calcRuleClass$apply generates a nodeRange
         
         ## Generate calcRange given either a varRange or a nodeRange
         generate_calcRange = function(inputRange) {
