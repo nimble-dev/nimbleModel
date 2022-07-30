@@ -1771,3 +1771,25 @@ test_that("Correct indexRule is used for various cases", {
     )
 })
 
+
+test_that("indexRange matrix converted to sequence if appropriate", {
+    
+    singleContext1 <-
+        modelSingleContext(forCode = quote(for(i in 2:5){}))
+    singleContext2 <-
+        modelSingleContext(forCode = quote(for(j in 1:3){}))
+    
+    context_ij <- modelContextClass$new(list(singleContext1, singleContext2))
+    
+    k <- c(2,4,3,5)
+    rules <- makeGraphIndexRules(LHS = quote(y[i+1,j]),
+                                 RHS = quote(x[k[i-1],j]),
+                                 context = context_ij,
+                                 constants = list(k = k))
+    expect_equal(
+        applyGraphIndexRules(
+            varRangeClass$new(list(indexRange(quote(2:5)),
+                                   indexRange(2))),rules),
+        varRangeClass$new(list(indexRange(quote(3:6)), indexRange(2)))
+    )
+})

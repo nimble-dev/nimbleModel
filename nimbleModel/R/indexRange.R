@@ -199,6 +199,15 @@ indexRange2matrix <- function(inputIndexRange) {
            )
 }
 
+indexRange_matrix2sequence <- function(inputIndexRange) {
+    if(ncol(inputIndexRange[[1]]) > 1)
+        return(inputIndexRange)
+    mn <- min(inputIndexRange[[1]])
+    mx <- max(inputIndexRange[[1]])
+    if(length(inputIndexRange[[1]]) == mx - mn + 1)
+       return(indexRange_sequence(list(mn,mx))) else return(inputIndexRange)
+}
+
 expandIndexRangeMatrices <- function(inputIndexRange) {
     switch(attr(inputIndexRange, 'rangeType'),
            matrix = stop('expandIndexRangeMatrices on a matrix indexRange not expected'),
