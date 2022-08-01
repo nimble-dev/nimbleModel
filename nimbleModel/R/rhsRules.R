@@ -37,7 +37,7 @@ rhsRuleClass <- R6Class(
                 }
             }
 
-            super$initialize(expr, ID, context = modelContextClass$new(), constants = list())
+            super$initialize(expr, ID, context = context, constants = list())
 
         }
     )
@@ -60,7 +60,7 @@ exclude <- function(RHSrule, LHSrule) {
     LHSrange <- LHSrule$getFullRange()
     RHSrange <- RHSrule$getFullRange()
     intersection <- RHSrule$apply(LHSrange)$getVarRange()
-    if(varRange_isEmpty(intersection))
+    if(intersection$isEmpty())
         return(list(RHSrule))
     if(varRange_isEqual(RHSrange, intersection)) 
         return(NULL)

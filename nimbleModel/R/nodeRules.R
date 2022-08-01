@@ -41,9 +41,7 @@ nodeRuleClass <- R6Class(
             ## Note: this is awkward to go into the data structures and modify them
 
             ## We'll use graphRules, though no actual RHS.
-            ## TODO: modify allRules to be a graphRule
             allRules <<- makeGraphIndexRules(expr, expr, context, constants)
-            allRules$constraints <- list()
             index2setID <<- allRules$indexSets$LHSindex2setID
             isConstant <- sapply(allRules$indexRules, is, "indexRuleClass_constant")
             
@@ -80,6 +78,12 @@ nodeRuleClass <- R6Class(
             if(numInternalRules) {
                 internalRange <- applyGraphIndexRules(varRange, internalRules)
             } else internalRange <- NULL # varRangeClass$new(list(nimbleModel:::indexRange_empty()))
+            if((!is.null(externalRange) && externalRange$isEmpty()) || (!is.null(internalRange) &&  internalRange$isEmpty())) {
+                if(!is.null(externalRange))
+                    externalRange <- varRangeClass$new(lapply(seq_len(numExternalRules), function(i) indexRange_empty()))
+                if(!is.null(internalRange))
+                    internalRange <- varRangeClass$new(lapply(seq_len(numInternalRules), function(i) indexRange_empty()))
+            }
             result <- nodeRangeClass$new(varName, externalRange, internalRange, index2setID, self)
             return(result)
         },
@@ -117,14 +121,14 @@ declRuleClass <- R6Class(
     public = list(
         stoch = logical(),
         originalIndexRules = NULL, # determines original indexing (based on context)
-        
+        decl = NULL,
         calculate = NULL,  ## generic function for calculation
 
         initialize = function(decl, ID, context = modelContextClass$new(), constants = list()) {
             ## Set up rules that operate on the indexing of the nodes and on
             ## the internal indexing of the elements of a node.
             stoch <<- decl[[1]] == '~'
-
+            decl <<- decl
             super$initialize(decl[[2]], ID, context = context, constants = constants)
             
             originalIndexRules <<- originalIndexRuleClass$new(expr, context, constants)
@@ -164,48 +168,41 @@ calcRuleClass <- R6Class(
         end = FALSE,
         ## latent is !top & !end
 
-        ## should canonicalRange should be in terms of nodes not var?
+        sortID = NULL,
 
-        ## could calcRule just use declRule internal indexing?
-        
-        ## This code below needs to operate at the node level since calculation is done by indexing
-        ## over nodes.
-        ## Actually, indexing is done over original indices for calculation, so need to think more about this.
         initialize = function(declRule = NULL, expr = NULL, ID, context, constants = list()) {
             ## If LHS is NULL, just use declRule internalRange
 
             ## This wastes some calculation by redoing the internal/external rule stuff
             ## even though at least the internal stuff already done in the declRule
-            if(is.null(expr)) expr <<- declRule$expr
+            if(is.null(expr)) expr <- declRule$expr
             super$initialize(expr, ID, context = context, constants = constants)
 
             ## full range, for use with calculate applied to full var
 
+            ## 1:Inf fails if ijni
+            ## use getFullRange()
+            
             ## canonicalRule <- makeGraphIndexRules(expr, expr, context, constants)
-            canonicalRange <<- applyGraphIndexRules(
-                varRangeClass$new(lapply(seq_along(allRules$indexSets$LHSindex2setID),
-                    function(i) indexRange(quote(1:Inf)))), allRules)
+            ## The following fails in ijni type case where 1:Inf is actually expanded in a matrix.
+            ## canonicalRange <<- applyGraphIndexRules(
+            ##    varRangeClass$new(lapply(seq_along(allRules$indexSets$LHSindex2setID),
+            ##        function(i) indexRange(quote(1:Inf)))), allRules)
+            canonicalRange <<- declRule$getFullRange()
             context <<- context
             declRule <<- declRule
         },
 
         ## calcRuleClass$apply generates a nodeRange
         
-        ## Generate calcRange given either a varRange or a nodeRange
-        generate_calcRange = function(inputRange) {
-            ## Get legitimate nodeRange
-            if(!is(inputRange, 'nodeRangeClass')) {
-                if(length(inputRange$indexRanges) == 1 && identical(attr(inputRange$indexRanges[[1]], 'rangeType'), "none"))
-                    inputRange <- canonicalRange
-
-                nodeRange <- calcRule$apply(inputRange)
-            } else nodeRange <- inputRange
-            
-            indexingRange <- declRule$originalIndexRules$apply(nodeRange$getVarRange())
-            if(varRange_isEmpty(indexingRange))
+        ## Generate calcRange given a varRange (including a nodeRange).
+        generate_calcRange = function(inputRange = NULL) {
+            if(is.null(inputRange))
+                inputRange <- canonicalRange            
+            indexingRange <- declRule$originalIndexRules$apply(inputRange)
+            if(indexingRange$isEmpty())
                 return(NULL)
             result <- calcRangeClass$new(varName, indexingRange, declRule$calcFun, sortID)
-            ## if empty, return NULL
             return(result)
         },
 
@@ -239,11 +236,8 @@ calcRuleClass <- R6Class(
                 stochParent = stochParent <<- FALSE,
                 stop("Invalid type ", type)
             )
-        },
-
-        get_sortID = function() {
-            return(declRule$sortID)
         }
+
     )
 )
 
@@ -409,7 +403,7 @@ nodeRange_isEqual <- function(nr1, nr2) {
 ## LHSrule will be a calcRule, not a declRule
 ## fracture() should take in ID of parent calcRule that generated the fracturingRange via getDeps
 ## assign the parents to any rules that are fractured
-fracture <- function(LHSrule, fracturingRange) {
+fracture <- function(LHSrule, fracturingRange, currentID = 0) {
     ## presume fracturingRange is a nodeRange, so has external/internal split consistent with LHS rule
     ## but it could be that we pass in a varRange and then use nodeRule$apply to get the nodeRange
     ## this also means that fracturingRange is the 'intersection' as it shouldn't contain anything not in the LHSrule
@@ -434,8 +428,8 @@ fracture <- function(LHSrule, fracturingRange) {
   
     if(length(nonIdenticalIndices) == 1) {
         ## Handle simple cases where need only fracture one index
-        LHS <- LHSrange$indexRanges[[indexID_2_rangeID[nonIdenticalIndices]]]
-        frac <- fracturingRange$indexRanges[[indexID_2_rangeID[nonIdenticalIndices]]]
+        LHS <- LHSrange$indexRanges[[LHSrange$indexID_2_rangeID[nonIdenticalIndices]]]
+        frac <- fracturingRange$indexRanges[[LHSrange$indexID_2_rangeID[nonIdenticalIndices]]]
         
         typeLHS <- attr(LHS, "rangeType")
         typeFrac <- attr(frac, "rangeType")
@@ -473,10 +467,10 @@ fracture <- function(LHSrule, fracturingRange) {
 
             expr[[nonIdenticalIndices+2]] <- quote(.idx[.newidx])
          
-            resultRule <- calcRuleClass$new(LHSrule$declRule, expr, context = modelContextClass$new(newSingleContexts1),
+            resultRule <- calcRuleClass$new(LHSrule$declRule, expr, currentID + 1, context = modelContextClass$new(newSingleContexts1),
                                             constants = list(.idx = valsLHS))
 
-            fracturingRule <- calcRuleClass$new(LHSrule$declRule, expr, context = modelContextClass$new(newSingleContexts2),
+            fracturingRule <- calcRuleClass$new(LHSrule$declRule, expr, currentID + 2, context = modelContextClass$new(newSingleContexts2),
                                             constants = list(.idx = valsFrac))
             fracturingRule$set('stochParent')
             
@@ -504,9 +498,9 @@ fracture <- function(LHSrule, fracturingRange) {
 
                 expr[[nonIdenticalIndices+2]] <- newSingleContexts1[[length(newSingleContexts1)]]$indexVarExpr
 
-                resultRule <- calcRuleClass$new(LHSrule$declRule, expr, context = modelContextClass$new(newSingleContexts1))
+                resultRule <- calcRuleClass$new(LHSrule$declRule, expr, currentID + 1, context = modelContextClass$new(newSingleContexts1))
 
-                fracturingRule <- calcRuleClass$new(LHSrule$declRule, expr, context = modelContextClass$new(newSingleContexts2))
+                fracturingRule <- calcRuleClass$new(LHSrule$declRule, expr, currentID + 2, context = modelContextClass$new(newSingleContexts2))
                 fracturingRule$set('stochParent')
                 
                 return(list(fracturingRule, resultRule))
@@ -532,9 +526,9 @@ fracture <- function(LHSrule, fracturingRange) {
                     indexRangeExpr = substitute(A:B, list(A = frac[[1]][[1]], B = frac[[1]][[2]])))
                 expr3[[nonIdenticalIndices+2]] <- newSingleContexts3[[length(newSingleContexts3)]]$indexVarExpr
                
-                resultRule1 <- calcRuleClass$new(LHSrule$declRule, expr1, context = modelContextClass$new(newSingleContexts1))
-                resultRule2 <- calcRuleClass$new(LHSrule$declRule, expr2, context = modelContextClass$new(newSingleContexts2))
-                fracturingRule <- calcRuleClass$new(LHSrule$declRule, expr3, context = modelContextClass$new(newSingleContexts3))
+                resultRule1 <- calcRuleClass$new(LHSrule$declRule, expr1, currentID + 1, context = modelContextClass$new(newSingleContexts1))
+                resultRule2 <- calcRuleClass$new(LHSrule$declRule, expr2, currentID + 2, context = modelContextClass$new(newSingleContexts2))
+                fracturingRule <- calcRuleClass$new(LHSrule$declRule, expr3, currentID + 3, context = modelContextClass$new(newSingleContexts3))
                 fracturingRule$set('stochParent')
                 
                 return(list(fracturingRule, resultRule1, resultRule2))
@@ -577,9 +571,9 @@ fracture <- function(LHSrule, fracturingRange) {
         names(constants2) <- paste0(".idx", seq_along(constants2))
 
       
-        resultRule <- calcRuleClass$new(LHSrule$declRule, expr, context = modelContextClass$new(newSingleContexts1),
+        resultRule <- calcRuleClass$new(LHSrule$declRule, expr, currentID + 1, context = modelContextClass$new(newSingleContexts1),
                                         constants = constants1)
-        fracturingRule <- calcRuleClass$new(LHSrule$declRule, expr, context = modelContextClass$new(newSingleContexts2),
+        fracturingRule <- calcRuleClass$new(LHSrule$declRule, expr, currentID + 2, context = modelContextClass$new(newSingleContexts2),
                                         constants = constants2)
         fracturingRule$set('stochParent')
 

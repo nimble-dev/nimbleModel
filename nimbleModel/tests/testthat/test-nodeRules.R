@@ -71,9 +71,6 @@ test_that("nodeRule creation and application works", {
     expect_identical(result$indexRanges[[1]], indexRange(quote(4:8)))
     expect_identical(result$indexRanges[[2]], indexRange(quote(1:3)))
 
-    
-    ## HERE; for each of these need tests for the rule and the application of the rule
-    
     LHS <- quote(mu[1:3,j,i,2])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_ij)
 
@@ -95,32 +92,65 @@ test_that("nodeRule creation and application works", {
     expect_identical(result$indexID_2_rangeID, c(3L,1L,2L,4L))
     expect_identical(result$indexRanges[[1]], indexRange(quote(4:5)))
     expect_identical(result$indexRanges[[2]], indexRange(matrix(c(4,6,5))))
-    ## will fail until merge into master and get indexRange_matrix2sequence
+    ## Simplification to sequence here will fail until merge into master and get indexRange_matrix2sequence
     expect_identical(result$indexRanges[[2]], indexRange(quote(4:6)))
     expect_identical(result$indexRanges[[3]], indexRange(quote(1:3)))
     expect_identical(result$indexRanges[[4]], indexRange(2))
 
-    ## invalid external range - FAILS
+    irEmpty <- nimbleModel:::indexRange_empty()
+    irEmpty4 <- list(irEmpty, irEmpty, irEmpty, irEmpty)
+    ## invalid external range
+    result <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(1:2)),
+                                                      indexRange(35),
+                                                      indexRange(matrix(c(1,9,4,6,5))),
+                                                   indexRange(2))))
+    expect_identical(result$numExternalIndexRanges, 2L)
+    expect_identical(result$indexID_2_rangeID, c(3L,1L,2L,4L))
+    expect_identical(result$indexRanges, irEmpty4)
+    
+    ## invalid internal range 
     result <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(1:2)),
                                                       indexRange(quote(4:6)),
                                                       indexRange(matrix(c(1,9,4,6,5))),
                                                    indexRange(4))))
+    expect_identical(result$numExternalIndexRanges, 2L)
+    expect_identical(result$indexID_2_rangeID, c(3L,1L,2L,4L))
+    expect_identical(result$indexRanges, irEmpty4)
 
-    ## invalid internal range - ???
+    ## with varRange matrix covering two columns that go across internal and external
+
+    ## some pairs of input indexRange invalid
+    result <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(1:2)),
+                                                   indexRange(quote(4:6)),
+                                                   indexRange(matrix(c(5,3,12,12,6,2,4,2,4,2),
+                                                                     ncol = 2)))))
+
+    expect_identical(result$boolExternalIndexRanges, c(TRUE,TRUE,FALSE,FALSE))
+    expect_identical(result$numExternalIndexRanges, 2L)
+    expect_identical(result$indexID_2_rangeID, c(3L,1L,2L,4L))
+    expect_identical(result$indexRanges[[1]], indexRange(quote(4:5)))
+    expect_identical(result$indexRanges[[2]], indexRange(matrix(c(5,6))))
+    ## Simplification to sequence here will fail until merge into master and get indexRange_matrix2sequence
+    expect_identical(result$indexRanges[[2]], indexRange(quote(5:6)))
+    expect_identical(result$indexRanges[[3]], indexRange(quote(1:3)))
+    expect_identical(result$indexRanges[[4]], indexRange(2))
     
-    ## try with varRange matrix covering two columns
-    ## try with varRange matrix covering two columns that go across internal and external
-
+    ## all pairs of input indexRange invalid
+    result <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(1:2)),
+                                                   indexRange(4:6),
+                                                   indexRange(matrix(c(3,12,4,2), ncol = 2)))))
+    expect_identical(result$indexRanges, irEmpty4)
+    
     ## Apply nodeRule to nodeRange (modified so that output is not same as input)
     LHS <- quote(mu[1:3,i])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
-    nr <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(1:3)),
+    nodeRange <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(1:3)),
                                                    indexRange(quote(4:9)))))
-    result <- LHSrule$apply(nr)
-    expect_equal(result, nr)
+    result <- LHSrule$apply(nodeRange)
+    expect_equal(result, nodeRange)
 
-    nr$indexRanges[[1]][[1]][[2]] <- 35  # have nodeRange extend beyond true extent
-    result <- LHSrule$apply(nr)
+    nodeRange$indexRanges[[1]][[1]][[2]] <- 35  # have nodeRange extend beyond true extent
+    result <- LHSrule$apply(nodeRange)
     expect_identical(result$boolExternalIndexRanges, c(TRUE, FALSE))
     expect_identical(result$numExternalIndexRanges, 1L)
     expect_identical(result$indexID_2_rangeID, c(2L, 1L))
@@ -129,42 +159,185 @@ test_that("nodeRule creation and application works", {
 
 })
 
-test_that("calcRanges are generated correctly", {  
-    calcRule <- calcRuleClass$new(quote(y[i+1]), NULL, context_i)
+test_that("rhsRule creation and application works", {
+    ## Basic case. More (implicitly) in exclude testing.
+    singleContext1 <-
+        modelSingleContext(forCode = quote(for(i in 2:8){}))
+    
+    context_i <- modelContextClass$new(list(singleContext1))
 
-    calcRange <- calcRule$apply(varRangeClass$new(list(indexRange(quote(3:5)))))
+    RHS <- quote(mu[i+1])
+    RHSrule <- rhsRuleClass$new(RHS, 1, context_i)
+
+    expect_identical(RHSrule$numExternalRules, 1L)
+    expect_identical(RHSrule$numInternalRules, 0L)
+    expect_identical(RHSrule$index2setID, 1)
+    expect_identical(is(RHSrule$externalRules$indexRules[[1]], 'indexRuleClass_block'), TRUE)
+
+    result <- RHSrule$apply(varRangeClass$new(list(indexRange(quote(5:12)))))
+    expect_identical(result$numExternalIndexRanges, 1L)
+    expect_identical(result$indexID_2_rangeID, 1L)
+    expect_equal(result$indexRanges[[1]], indexRange(quote(5:9)))
+    
+    RHS <- quote(mu[i+1, 1:3])
+    RHSrule <- rhsRuleClass$new(RHS, 1, context_i)
+
+    expect_identical(RHSrule$numExternalRules, 2L)
+    expect_identical(RHSrule$numInternalRules, 0L)
+    expect_identical(RHSrule$index2setID, c(1,2))
+    expect_identical(is(RHSrule$externalRules$indexRules[[1]], 'indexRuleClass_block'), TRUE)
+    expect_identical(is(RHSrule$externalRules$indexRules[[2]], 'indexRuleClass_block'), TRUE)
+
+    result <- RHSrule$apply(varRangeClass$new(list(
+                                              indexRange(quote(5:12)),
+                                              indexRange(3))))
+    expect_identical(result$numExternalIndexRanges, 2L)
+    expect_identical(result$indexID_2_rangeID, c(1L, 2L))
+    expect_equal(result$indexRanges[[1]], indexRange(quote(5:9)))
+    expect_equal(result$indexRanges[[2]], indexRange(3))
+
+    result <- RHSrule$apply(varRangeClass$new(list(
+                                              indexRange(quote(5:12)),
+                                              indexRange(quote(2:4)))))
+    expect_identical(result$numExternalIndexRanges, 2L)
+    expect_identical(result$indexID_2_rangeID, c(1L, 2L))
+    expect_equal(result$indexRanges[[1]], indexRange(quote(5:9)))
+    expect_equal(result$indexRanges[[2]], indexRange(quote(2:3)))
+    
+})
+
+
+test_that("calcRanges are generated correctly", {  
+    singleContext1 <-
+        modelSingleContext(forCode = quote(for(i in 2:8){}))
+    singleContext2 <-
+        modelSingleContext(forCode = quote(for(j in 3:5){}))
+    singleContext3 <-
+        modelSingleContext(forCode = quote(for(k in 1:4){}))
+    context_i <- modelContextClass$new(list(singleContext1))
+    context_ijk <- modelContextClass$new(list(singleContext1, singleContext2, singleContext3))
+
+    declRule_i <- declRuleClass$new(quote(y[i+1] ~ dnorm(0,1)), 1, context_i)
+    
+    calcRule <- calcRuleClass$new(declRule_i, NULL, NULL, context_i)
+
+    ## Basic nodeRule style apply
+    result <- calcRule$apply(varRangeClass$new(list(indexRange(quote(3:5)))))
+    expect_identical(result$boolExternalIndexRanges, TRUE)
+    expect_identical(result$numExternalIndexRanges, 1L)
+    expect_identical(result$indexID_2_rangeID, 1L)
+    expect_identical(result$indexRanges[[1]], indexRange(quote(3:5)))
+
+    ## Generation of calcRules
+   
+    calcRange <- calcRule$generate_calcRange(varRangeClass$new(list(indexRange(quote(3:5)))))
     expect_equal(calcRange$indexingRange,
                  varRangeClass$new(list(indexRange(quote(2:4)))))
     
-    calcRule <- calcRuleClass$new(quote(y[2:4, i+1]), NULL, context_i)
-    
-    calcRange <- calcRule$apply(varRangeClass$new(list(indexRange(quote(2:4)), indexRange(quote(3:5)))))
+    ## No overlap
+    calcRange <- calcRule$generate_calcRange(varRangeClass$new(list(indexRange(quote(50:53)))))
+    expect_equal(calcRange, NULL)
+
+    ## No input range
+    calcRange <- calcRule$generate_calcRange()
+    expect_equal(calcRange$indexingRange,
+                 varRangeClass$new(list(indexRange(quote(2:8)))))
+
+    ## Multiple indices
+    declRule_i <- declRuleClass$new(quote(y[7:9, i+1] ~ dmnorm(z[1:3],pr[1:3,1:3])), 1, context_i)
+    calcRule <- calcRuleClass$new(declRule_i, NULL, NULL, context_i)
+ 
+    calcRange <- calcRule$generate_calcRange(varRangeClass$new(list(indexRange(quote(2:4)), indexRange(quote(3:5)))))
+    expect_equal(calcRange$indexingRange, NULL)
+
+    calcRange <- calcRule$generate_calcRange(varRangeClass$new(list(indexRange(quote(7:9)), indexRange(quote(3:5)))))
+    expect_equal(calcRange$indexingRange,
+                 varRangeClass$new(list(indexRange(quote(2:4)))))
+
+    calcRange <- calcRule$generate_calcRange(varRangeClass$new(list(indexRange(quote(2)), indexRange(quote(3:5)))))
+    expect_equal(calcRange, NULL)
+
+    calcRange <- calcRule$generate_calcRange(varRangeClass$new(list(indexRange(quote(7)), indexRange(quote(3:5)))))
     expect_equal(calcRange$indexingRange,
                  varRangeClass$new(list(indexRange(quote(2:4)))))
     
-    calcRange <- calcRule$apply(varRangeClass$new(list(indexRange(quote(2)), indexRange(quote(3:5)))))
-    expect_equal(calcRange$indexingRange,
-                 varRangeClass$new(list(indexRange(quote(2:4)))))
-    
-    calcRange <- calcRule$apply(varRangeClass$new(list(indexRange(quote(6)), indexRange(quote(3:5)))))
+    calcRange <- calcRule$generate_calcRange(varRangeClass$new(list(indexRange(quote(6)), indexRange(quote(3:5)))))
     expect_equal(calcRange, NULL)
     
-    calcRange <- calcRule$apply(varRangeClass$new(list(nimbleModel:::indexRange_none())))
+    ## Using a nodeRange (modified so that output is not same as input)
+    LHS <- quote(mu[7:9, i+1])
+    LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
+    nodeRange <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(7:9)),
+                                                   indexRange(quote(5:9)))))
+    calcRange <- calcRule$generate_calcRange(nodeRange)
     expect_equal(calcRange$indexingRange,
-                 varRangeClass$new(list(indexRange(quote(1:10)))))
+                 varRangeClass$new(list(indexRange(quote(4:8)))))
 
-    calcRule <- calcRuleClass$new(quote(y[j,i+1,k]), NULL, context_ijk)
-    calcRange <- calcRule$apply(varRangeClass$new(list(
-                                                  indexRange(quote(3:5)),
-                                                  indexRange(matrix(c(1,2,2,3), ncol = 2))
-                                              ), indexOrders = list(2, c(1,3))))
+    nodeRange$indexRanges[[1]][[1]][[2]] <- 35  # have nodeRange extend beyond true extent
+    calcRange <- calcRule$generate_calcRange(nodeRange)
+    expect_equal(calcRange$indexingRange,
+                 varRangeClass$new(list(indexRange(quote(4:8)))))
+
+    ## Multiple loops
+    declRule_ijk <- declRuleClass$new(quote(y[j, i+1, k, 2] ~ dnorm(0,1)), 1, context_ijk)
+    calcRule <- calcRuleClass$new(declRule_ijk, NULL, NULL, context_ijk)
     
-    calcRule <- calcRuleClass$new(quote(y[j,i+1,3, k]), NULL, context_ijk)
-    calcRange <- calcRule$apply(varRangeClass$new(list(
+    calcRange <- calcRule$generate_calcRange(varRangeClass$new(list(
                                                   indexRange(quote(3:5)),
-                                                  indexRange(matrix(c(1,2,2,3), ncol = 2)),
-                                                  indexRange(3)
-                                              ), indexOrders = list(2, c(1,4), 3)))
+                                                  indexRange(matrix(c(3,12,8))),
+                                                  indexRange(quote(1:6)),
+                                                  indexRange(2))))
+    expect_equal(calcRange$indexingRange,
+                 varRangeClass$new(list(indexRange(matrix(c(2,7))),
+                                        indexRange(quote(3:5)),
+                                        indexRange(quote(1:4)))))
+    
+
+    calcRange <- calcRule$generate_calcRange(varRangeClass$new(list(
+                                                  indexRange(quote(3:5)),
+                                                  indexRange(matrix(c(3,12,8))),
+                                                  indexRange(quote(1:6)),
+                                                  indexRange(3))))
+    expect_equal(calcRange, NULL)
+
+    calcRange <- calcRule$generate_calcRange(varRangeClass$new(list(
+                                                  indexRange(quote(3:5)),
+                                                  indexRange(matrix(c(3,9,3,11,11,1,2,5,2,7), ncol = 2)),
+                                                  indexRange(2))
+                                              ))
+    expect_equal(calcRange$indexingRange,
+                 varRangeClass$new(list(indexRange(matrix(c(2,8,1,2), ncol = 2)),
+                                        indexRange(quote(3:5))), indexOrders = list(c(1,3), 2)))
+
+    calcRange <- calcRule$generate_calcRange(varRangeClass$new(list(
+                                                  indexRange(quote(3:5)),
+                                                  indexRange(matrix(c(3,12,5,7,2,2,3,2), ncol = 2)),
+                                                  indexRange(quote(1:5))
+                                              ), indexOrders = list(1,c(2,4), 3)))
+    expect_equal(calcRange$indexingRange,
+                 varRangeClass$new(list(indexRange(matrix(c(2,6))),
+                                        indexRange(quote(3:5)),
+                                        indexRange(quote(1:4)))))
+
+    ## j in 1:n[i] type case
+    singleContext1 <-
+        modelSingleContext(forCode = quote(for(i in 1:3){}))
+    singleContext2ni <-
+        modelSingleContext(indexVarExpr = quote(j),
+                           indexRangeExpr = quote(1:n[i]),
+                           )
+    context_ijni <- modelContextClass$new(list(singleContext1,
+                                               singleContext2ni))
+    n <- c(1,3,2)
+    declRule_ijni <- declRuleClass$new(quote(y[j, i+1] ~ dnorm(0,1)), 1, context_ijni, constants = list(n = n))
+    calcRule <- calcRuleClass$new(declRule_ijni, NULL, NULL, context_ijni, constants = list(n = n))
+
+    calcRange <- calcRule$generate_calcRange(varRangeClass$new(list(
+                                                               indexRange(quote(1:4)),
+                                                               indexRange(quote(1:3))
+                                                           )))
+    expect_equal(calcRange$indexingRange,
+                 varRangeClass$new(list(indexRange(matrix(c(1,2,2,2,1,1,2,3), ncol = 2)))))                                        
 })
 
 
@@ -797,7 +970,14 @@ test_that("RHS exclusion works", {
 }
 
 test_that("getFullRange works correctly", {
-    ## Checking getFullRange
+    context_0 <- modelContextClass$new()
+    singleContext1 <-
+        modelSingleContext(forCode = quote(for(i in 2:8){}))
+    context_i <- modelContextClass$new(list(singleContext1))
+    singleContext2 <-
+        modelSingleContext(forCode = quote(for(j in 1:4){}))
+    context_ij <- modelContextClass$new(list(singleContext1, singleContext2))
+
     LHS <- quote(mu[5, 1:3])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_0)
     expect_equal(LHSrule$getFullRange(),
@@ -818,24 +998,14 @@ test_that("getFullRange works correctly", {
     expect_equal(LHSrule$getFullRange(),
                  varRangeClass$new(list(indexRange(quote(4:5)), indexRange(quote(1:4)),
                                         indexRange(quote(2:8)), indexRange(quote(3)))))
-    RHSrule <- rhsRuleClass$new(expr, 1, context_ij)
-    expect_equal(RHSrule$getFullRange(),
-                 varRangeClass$new(list(indexRange(quote(4:5)), indexRange(quote(1:4)),
-                                        indexRange(quote(2:8)), indexRange(quote(3)))))
-
+    
     LHS <- quote(mu[4:5, i, i, 3])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
     expect_equal(LHSrule$getFullRange(),
                  varRangeClass$new(list(indexRange(quote(4:5)), indexRange(matrix(rep(2:8, 2), ncol = 2)), indexRange(3))))
-    
-    expr <- quote(mu[j, 1:3, i, 2])
-    RHSrule <- rhsRuleClass$new(expr, 1, context_ij)
-    LHSrule <- nodeRuleClass$new(expr, 1, context_ij)
-
-    expect_equal(RHSrule$getFullRange(),
-                 varRangeClass$new(list(indexRange(quote(1:4)), indexRange(quote(1:3)),
-                                        indexRange(quote(2:8)), indexRange(2))))
 
 })
+
+
 
 

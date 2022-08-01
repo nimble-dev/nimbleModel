@@ -401,7 +401,7 @@ checkOneConstraint <- function(indexRange, constraint, col = 1) {
 applyGraphIndexRules <- function(fromVarRange,
                                  rules) {
 
-    if(varRange_isEmpty(fromVarRange))
+    if(fromVarRange$isEmpty())
         return(fromVarRange)
 
     if(!is(fromVarRange, 'varRangeClass'))

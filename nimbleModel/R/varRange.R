@@ -139,13 +139,13 @@ varRangeClass <- R6Class(
                 }
             }
             self
+        },
+        isEmpty = function() {
+            any(sapply(self$indexRanges, function(x) identical(attr(x, 'rangeType'), 'empty')))
         }
     )
 )
 
-## Make this a varRangeClass method?
-varRange_isEmpty <- function(varRange) 
-    any(sapply(varRange$indexRanges, function(x) identical(attr(x, 'rangeType'), 'empty')))
 
 varRange_isEqual <- function(vr1, vr2) {
     identical(vr1$indexID_2_rangeID, vr2$indexID_2_rangeID) &&
