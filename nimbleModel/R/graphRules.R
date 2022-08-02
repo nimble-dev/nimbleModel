@@ -620,12 +620,9 @@ applyGraphIndexRules <- function(fromVarRange,
                 if(identical(
                     attr(finalIndexRanges[[iAns]], 'rangeType'),
                     'matrixList'
-                )) { ## Simplify to a matrix indexRange.
+                ))  ## Simplify to a matrix indexRange.
                     finalIndexRanges[[iAns]] <-
                         indexRange2matrix(finalIndexRanges[[iAns]])
-                    ## Convert to sequence if possible (e.g., to more efficiently handle y[i] <- x[k[i]] cases where all y's included
-                    finalIndexRanges[[iAns]] <- indexRange_matrix2sequence(finalIndexRanges[[iAns]])
-                }
                 finalIndexOrders[[iAns]] <-
                     ansIndexOrders[[ sets ]]
             }
@@ -659,6 +656,13 @@ applyGraphIndexRules <- function(fromVarRange,
                 finalIndexRanges[[iRange]] <- indexRange_empty()
             } else finalIndexRanges[[iRange]][[1]] <- finalIndexRanges[[iRange]][[1]][!NArows, , drop = FALSE]
         }
+
+    ## Convert single-column matrix indexRanges to sequence if possible
+    ## (e.g., to more efficiently handle y[i] <- x[k[i]] cases where all y's included
+    for(iRange in seq_along(finalIndexRanges)) 
+        if(identical(attr(finalIndexRanges[[iRange]], 'rangeType'), 'matrix'))
+           finalIndexRanges[[iRange]] <- indexRange_matrix2sequence(finalIndexRanges[[iRange]])
+    
 
     ## Add in results from 'any' rules, as these have no RHS index used in the rule (i.e., blank or constant RHS, e.g., x[] or x[2])
     missedSets <- which(!seq_along(ansIndexRanges) %in% unlist(rangeID_2_setIDs))

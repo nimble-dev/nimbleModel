@@ -91,8 +91,6 @@ test_that("nodeRule creation and application works", {
     expect_identical(result$numExternalIndexRanges, 2L)
     expect_identical(result$indexID_2_rangeID, c(3L,1L,2L,4L))
     expect_identical(result$indexRanges[[1]], indexRange(quote(4:5)))
-    expect_identical(result$indexRanges[[2]], indexRange(matrix(c(4,6,5))))
-    ## Simplification to sequence here will fail until merge into master and get indexRange_matrix2sequence
     expect_identical(result$indexRanges[[2]], indexRange(quote(4:6)))
     expect_identical(result$indexRanges[[3]], indexRange(quote(1:3)))
     expect_identical(result$indexRanges[[4]], indexRange(2))
@@ -129,8 +127,6 @@ test_that("nodeRule creation and application works", {
     expect_identical(result$numExternalIndexRanges, 2L)
     expect_identical(result$indexID_2_rangeID, c(3L,1L,2L,4L))
     expect_identical(result$indexRanges[[1]], indexRange(quote(4:5)))
-    expect_identical(result$indexRanges[[2]], indexRange(matrix(c(5,6))))
-    ## Simplification to sequence here will fail until merge into master and get indexRange_matrix2sequence
     expect_identical(result$indexRanges[[2]], indexRange(quote(5:6)))
     expect_identical(result$indexRanges[[3]], indexRange(quote(1:3)))
     expect_identical(result$indexRanges[[4]], indexRange(2))
