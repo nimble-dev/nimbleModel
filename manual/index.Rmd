@@ -23,14 +23,22 @@ knitr::opts_chunk$set(echo = TRUE)
 
 [Combining ranges](combining_ranges.html)
 
-Todos (completely incomplete):
+Todos (a mostly complete list as of July 2022):
 
-- generate downstreamRules, upstreamRules, and originalIndexRules in modelDef processing
+- figure out compilation of calculate based on calcRanges; discuss current approach of generic calculate function operating on calcRange's original index ranges and calculate nodeFunction operating on scalar-valued original indexes.
+- discuss and implement design for fracturing original LHS into calcRules and assigning child/parent information (actual fracturing code for a given instance is complete)
+- finalize design for sortID assignment based on child/parent information using (presumably) recursion
+- write out steps for overall RHS exclude process based on existing design notes (already have implemented code to do a given exclusion)
+- implement reworking of nodeRange as subclass of varRange based on existing design notes
+- implement code for combining varRanges based on existing design notes
+- consider converting one-column matrix indexRanges to sequences when possible (e.g., this would arise in the y[i] <- mu[k[i]] case)
+- work through declaration processing code based on declRules and graphRules
+- implement nodeFunction generation based on existing nimble 
+- work through re-implementation of getDependencies, getNodeNames, expandNodeNames, etc. based on graphRules and nodeRules.
+- rework indexRange code as actual classes
+- copyRules has nothing done yet
+- think about getParam, getBound and the like
+- do we need varStore for anything given calcRules and declRules will store stoch, end, top, latent; perhaps only for isData?
+- stochastic indexing (look back at somewhat recent CJP notes)
+- think about ways to improve efficiency of state-space style dependence; in current design, it will involve a lot of calculation
 
-- add varRange of LHS for each declaration
-
-- topological sorting to produce sortID for each variable
-
-- develop calcRule code and use for calcRules for each variable
-
-- develop code to produce calcRanges given a varRange and a calcRule

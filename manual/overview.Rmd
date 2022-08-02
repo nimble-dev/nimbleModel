@@ -11,10 +11,12 @@ To more efficiently process nimbleModels and provide for scalability, we are red
 
 - representing values of individual indexes (and groups of indexes when paired in arbitrary ways) of a variable as abstractions called varRanges rather than (unless required) complete unrolling
 - providing functionality to determine graph dependencies abstractly based on the index abstraction, including child and parent relationships, using what we call index inversion
-- representing the relationship between variable indexes and nodeFunction code, such as `y[i+1] <- x[i]`
-- representing a set of equivalent (in some sense) nodes within a variable in a compact representation called a `nodeRange` (perhaps `nodeSet`), such as `y[i, 1:3] for i in 1:500`.
+- representing the relationship between variable indexes and nodeFunction code, such as `y[i+1] <- x[i]`, using `originalIndexRules`
 - providing topological sorting at the declaration level that allows for ties
-- determining what nodeFunction calculations need to be done based on the variables and their indexes provided by a user or by a dependency calculation
+- representing a set of equivalent (in some sense) nodes within a variable in a compact representation called a `nodeRange` (perhaps `nodeSet`), such as `y[i, 1:3] for i in 1:500`, determined using `nodeRules`.
+- determining equivalent nodes within a variable using `nodeRules`, a superclass containing `declRules`, `calcRules`, and `rhsRules`
+- determining sets of nodes with the same type (and same topological level) using `calcRules`
+- determining what nodeFunction calculations need to be done based on the variables and their indexes provided by a user or by a dependency calculation, using `calcRules`.
 - providing multiple versions of nodeFunctions so as to allow vectorized calculations, and determining which version to call
-- providing efficient (sparse in some form) storage of variable information, including topological order, isData status, node type, etc.
+- providing efficient (sparse in some form) storage of variable information, including topological order, isData status, node type, etc. (Node type, topological order, and some other information may actually be stored in `calcRules`.)
 

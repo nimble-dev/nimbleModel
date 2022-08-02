@@ -221,6 +221,8 @@ checkForVars <- function(LHS, RHS, context, constants) {
 
 ## The following functions may be used from class methods in the future.
 ## For now they are standalone for development and debugging.
+
+## Probably want stoch vs. det information, so need to have declRule as an additional argument
 makeGraphIndexRules <- function(LHS,
                                 RHS,
                                 context,
@@ -337,6 +339,7 @@ makeGraphIndexRules <- function(LHS,
                                                      constants = constantsEnv)
         indexRules[[iSet]] <- thisIndexRule
     }
+    ## Also add: declRule = declRule from input argument
     return(list(indexSets = indexSets,
          indexRules = indexRules,
          constraints = constraints,
@@ -398,7 +401,7 @@ checkOneConstraint <- function(indexRange, constraint, col = 1) {
 applyGraphIndexRules <- function(fromVarRange,
                                  rules) {
 
-    if(varRange_isEmpty(fromVarRange))
+    if(fromVarRange$isEmpty())
         return(fromVarRange)
 
     if(!is(fromVarRange, 'varRangeClass'))

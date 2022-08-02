@@ -9,11 +9,9 @@ knitr::opts_chunk$set(echo = TRUE)
 
 Model preprocessing:
 
-- Each declaration should produce one or more `calcRule`s for the LHS variable, where there is one `calcRule` for each unique sortID in the sortIDs corresponding to the `varRange` of the LHS variable.
+- Each declaration should produce one or more `calcRule`s for the LHS variable, where there is one `calcRule` for each unique sortID in the sortIDs corresponding to the `varRange` of the LHS variable (also note that all elements within a `calcRule` will be of the same type, i.e., 'latent','top', etc.).
 
 - Each declaration will have multiple calculate functions, potentially allowing for various types of vectorized calculations (pure nimble vectorization, Eigen vectorization, looping over sets, looping over blocks)
-
-- Question: how deal with explosion of cases, such as y[i,j,k] ~ dnorm(0,1), where each index could be scalar, sequence, set, and not known when generating calculate functions.
 
 Roughly the order of operations when calculate is invoked is
 
