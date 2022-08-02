@@ -420,11 +420,10 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0) {
     ## Get full nodeRange of the rule.
     LHSrange <- LHSrule$apply()
 
-    ## TODO: change to return NULL and handle in processModelGraph.R?
-    
     if(nodeRange_isEqual(LHSrange, fracturingRange)) {
-        LHSrule$set('stochParent')
-        return(LHSrule)
+        return(NULL)
+        ## LHSrule$set('stochParent')
+        ## return(LHSrule)
     }
 
     ## Indices for internalRange should be identical, so just check/fracture those for external
