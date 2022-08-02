@@ -809,7 +809,7 @@ test_that("RHS exclusion works", {
 
     context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 2:4){})),
                                               modelSingleContext(forCode = quote(for(j in 1:4){}))))
-    expected <- rhsRuleClass$new(RHS, 1, context_tmp)
+    expected <- rhsRuleClass$new(RHS, 1, context_tmp, constants = list(idx = idx))
     expect_equal(result[[1]]$externalRules$indexRules[[1]]$setupResults,
                      RHSrule$externalRules$indexRules[[2]]$setupResults)
     expect_identical(result[[1]]$externalRules$indexRules[[2]]$setupResults,
@@ -817,7 +817,7 @@ test_that("RHS exclusion works", {
     
     context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 6:8){})),
                                               modelSingleContext(forCode = quote(for(j in 1:4){}))))
-    expected <- rhsRuleClass$new(RHS, 1, context_tmp)
+    expected <- rhsRuleClass$new(RHS, 1, context_tmp, constants = list(idx = idx))
     expect_equal(result[[2]]$externalRules$indexRules[[1]]$setupResults,
                     RHSrule$externalRules$indexRules[[2]]$setupResults)
     expect_identical(result[[2]]$externalRules$indexRules[[2]]$setupResults,
