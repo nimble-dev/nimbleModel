@@ -178,7 +178,7 @@ calcRuleClass <- R6Class(
             if(is.null(expr)) expr <- declRule$expr
             super$initialize(expr, ID, context = context, constants = constants)
 
-            ## full range, for use with calculate applied to full var
+            ## Full range, for use with calculate applied to full variable.
 
             ## 1:Inf fails if ijni
             ## use getFullRange()
@@ -188,7 +188,11 @@ calcRuleClass <- R6Class(
             ## canonicalRange <<- applyGraphIndexRules(
             ##    varRangeClass$new(lapply(seq_along(allRules$indexSets$LHSindex2setID),
             ##        function(i) indexRange(quote(1:Inf)))), allRules)
-            canonicalRange <<- declRule$getFullRange()
+
+            ## For testing we are doing fracturing on generic nodeRules rather than declRules,
+            ## so declRule not available. Revisit whether it's ok to leave this as is.
+            if(!is.null(declRule))
+                canonicalRange <<- declRule$getFullRange()
             context <<- context
             declRule <<- declRule
         },
@@ -417,9 +421,13 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0) {
     }
 
     ## Indices for internalRange should be identical, so just check/fracture those for external
-    boolIdenticalIndices <- sapply(LHSrange$indexID_2_rangeID, function(idx)
-        isTRUE(all.equal(LHSrange$indexRanges[[idx]],
-                          fracturingRange$indexRanges[[idx]])))
+    boolIdenticalIndices <- sapply(seq_along(LHSrange$indexID_2_rangeID), function(idx)
+        isTRUE(all.equal(LHSrange$indexRanges[[LHSrange$indexID_2_rangeID[idx]]],
+                          fracturingRange$indexRanges[[fracturingRange$indexID_2_rangeID[idx]]])))
+
+    ## boolIdenticalIndices <- sapply(LHSrange$indexID_2_rangeID, function(idx)
+    ##     isTRUE(all.equal(LHSrange$indexRanges[[idx]],
+    ##                       fracturingRange$indexRanges[[idx]])))
 
     nonIdenticalIndices <- which(!boolIdenticalIndices)
     

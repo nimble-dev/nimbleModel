@@ -37,7 +37,7 @@ rhsRuleClass <- R6Class(
                 }
             }
 
-            super$initialize(expr, ID, context = context, constants = list())
+            super$initialize(expr, ID, context = context, constants = constants)
 
         }
     )
@@ -59,7 +59,7 @@ rhsRuleClass <- R6Class(
 exclude <- function(RHSrule, LHSrule) {
     LHSrange <- LHSrule$getFullRange()
     RHSrange <- RHSrule$getFullRange()
-    intersection <- RHSrule$apply(LHSrange)$getVarRange()
+    intersection <- RHSrule$apply(LHSrange)
     if(intersection$isEmpty())
         return(list(RHSrule))
     if(varRange_isEqual(RHSrange, intersection)) 
@@ -109,7 +109,7 @@ exclude <- function(RHSrule, LHSrule) {
             expr[[nonIdenticalIndices+2]] <- quote(.idx[.newidx])
          
             resultRule <- rhsRuleClass$new(expr, 1, context = modelContextClass$new(newSingleContexts),
-                                            constants = list(.idx = valsRHS)) 
+                                            constants = c(list(.idx = valsRHS), RHSrule$constants)) 
             return(list(resultRule))
         } else {  # seq+seq or seq+scalar
             if(typeInt == "scalar")
@@ -128,7 +128,7 @@ exclude <- function(RHSrule, LHSrule) {
                     indexRangeExpr = substitute(A:B, list(A = RHS[[1]][[1]], B = RHS[[1]][[2]])))
                 expr[[nonIdenticalIndices+2]] <- newSingleContexts[[length(newSingleContexts)]]$indexVarExpr
 
-                resultRule <- rhsRuleClass$new(expr, 1, context = modelContextClass$new(newSingleContexts))
+                resultRule <- rhsRuleClass$new(expr, 1, context = modelContextClass$new(newSingleContexts), constants = RHSrule$constants)
                 return(list(resultRule))
             } else {
                 ## Modify RHSrule expr and context to create two new rules.
@@ -146,8 +146,8 @@ exclude <- function(RHSrule, LHSrule) {
                     indexRangeExpr = substitute(A:B, list(A = int[[1]][[2]]+1, B = RHS[[1]][[2]])))
                 expr2[[nonIdenticalIndices+2]] <- newSingleContexts2[[length(newSingleContexts2)]]$indexVarExpr
                
-                resultRule1 <- rhsRuleClass$new(expr1, 1, context = modelContextClass$new(newSingleContexts1))
-                resultRule2 <- rhsRuleClass$new(expr2, 1, context = modelContextClass$new(newSingleContexts2))
+                resultRule1 <- rhsRuleClass$new(expr1, 1, context = modelContextClass$new(newSingleContexts1), constants = RHSrule$constants)
+                resultRule2 <- rhsRuleClass$new(expr2, 1, context = modelContextClass$new(newSingleContexts2), constants = RHSrule$constants)
                 return(list(resultRule1, resultRule2))
             }
         }
@@ -178,7 +178,7 @@ exclude <- function(RHSrule, LHSrule) {
         constants <- lapply(seq_len(ncol(mat)), function(i) mat[,i])
         names(constants) <- paste0(".idx", seq_along(constants))
         resultRule <- rhsRuleClass$new(expr, 1, context = modelContextClass$new(newSingleContexts),
-                                        constants = constants)
+                                        constants = c(constants, RHSrule$constants))
         return(list(resultRule))
      }
 }

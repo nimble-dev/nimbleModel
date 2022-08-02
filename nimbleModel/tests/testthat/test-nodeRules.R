@@ -369,11 +369,11 @@ test_that("calcRule fracturing works", {
 
     expect_identical(length(result), 2L)
     expr <- quote(mu[i])
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 4:9){}))))
+    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 3:3){}))))
     expected <- nodeRuleClass$new(expr, 1, context_tmp)
     expect_identical(result[[1]]$externalRules$indexRules[[1]]$setupResults,
                      expected$externalRules$indexRules[[1]]$setupResults)
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 3:3){}))))
+    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 4:9){}))))
     expected <- nodeRuleClass$new(expr, 1, context_tmp)
     expect_identical(result[[2]]$externalRules$indexRules[[1]]$setupResults,
                      expected$externalRules$indexRules[[1]]$setupResults)
@@ -388,11 +388,11 @@ test_that("calcRule fracturing works", {
 
     expect_identical(length(result), 2L)
     expr <- quote(mu[i])
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 5:9){}))))
+    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 3:4){}))))
     expected <- nodeRuleClass$new(expr, 1, context_tmp)
     expect_identical(result[[1]]$externalRules$indexRules[[1]]$setupResults,
                      expected$externalRules$indexRules[[1]]$setupResults)
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 3:4){}))))
+    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 5:9){}))))
     expected <- nodeRuleClass$new(expr, 1, context_tmp)
     expect_identical(result[[2]]$externalRules$indexRules[[1]]$setupResults,
                      expected$externalRules$indexRules[[1]]$setupResults)
@@ -407,15 +407,15 @@ test_that("calcRule fracturing works", {
 
     expect_identical(length(result), 3L)
     expr <- quote(mu[i])
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 3:3){}))))
+    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 4:5){}))))
     expected <- nodeRuleClass$new(expr, 1, context_tmp)
     expect_identical(result[[1]]$externalRules$indexRules[[1]]$setupResults,
                      expected$externalRules$indexRules[[1]]$setupResults)
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 6:9){}))))
+    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 3:3){}))))
     expected <- nodeRuleClass$new(expr, 1, context_tmp)
     expect_identical(result[[2]]$externalRules$indexRules[[1]]$setupResults,
                      expected$externalRules$indexRules[[1]]$setupResults)
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 4:5){}))))
+    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 6:9){}))))
     expected <- nodeRuleClass$new(expr, 1, context_tmp)
     expect_identical(result[[3]]$externalRules$indexRules[[1]]$setupResults,
                      expected$externalRules$indexRules[[1]]$setupResults)
@@ -433,12 +433,12 @@ test_that("calcRule fracturing works", {
     expect_identical(length(result), 2L)
     expr <- quote(mu[idx[i]])
     idx2 <- c(4,5,7,8)
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:4){}))))
-    expected <- nodeRuleClass$new(expr, 1, context_tmp, constants = list(idx = idx2))
-    expect_equal(result[[1]]$externalRules$indexRules[[1]]$setupResults,
-                 expected$externalRules$indexRules[[1]]$setupResults)
     context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:3){}))))
     expected <- nodeRuleClass$new(expr, 1, context_tmp, constants = list(idx = idx))
+    expect_equal(result[[1]]$externalRules$indexRules[[1]]$setupResults,
+                 expected$externalRules$indexRules[[1]]$setupResults)
+    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:4){}))))
+    expected <- nodeRuleClass$new(expr, 1, context_tmp, constants = list(idx = idx2))
     expect_equal(result[[2]]$externalRules$indexRules[[1]]$setupResults,
                  expected$externalRules$indexRules[[1]]$setupResults)
 
@@ -455,11 +455,11 @@ test_that("calcRule fracturing works", {
                      LHSrule$internalRules$indexRules[[1]]$setupResults)
     expect_identical(result[[2]]$internalRules$indexRules[[1]]$setupResults,
                      LHSrule$internalRules$indexRules[[1]]$setupResults)
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 4:8){}))))
+    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 2:3){}))))
     expected <- nodeRuleClass$new(LHS, 1, context_tmp)
     expect_identical(result[[1]]$externalRules$indexRules[[1]]$setupResults,
                      expected$externalRules$indexRules[[1]]$setupResults)
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 2:3){}))))
+    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 4:8){}))))
     expected <- nodeRuleClass$new(LHS, 1, context_tmp)
     expect_identical(result[[2]]$externalRules$indexRules[[1]]$setupResults,
                      expected$externalRules$indexRules[[1]]$setupResults)
@@ -484,16 +484,17 @@ test_that("calcRule fracturing works", {
                          LHSrule$externalRules$indexRules[[2]]$setupResults)
         expect_identical(result[[k]]$index2setID, c(0,1,2,0))
     }
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:5){}))))
-    idx <- as.integer(c(3,5,6,7,8))
-    expr <- quote(mu[idx[i]])
-    expected <- nodeRuleClass$new(expr, FALSE, 1, FALSE, context_tmp, constants = list(idx = idx))
-    expect_equal(result[[1]]$externalRules$indexRules[[2]]$setupResults,
-                 expected$externalRules$indexRules[[1]]$setupResults)
+    
     context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:2){}))))
     idx <- as.integer(c(2,4))
     expr <- quote(mu[idx[i]])
-    expected <- nodeRuleClass$new(expr, FALSE, 1, FALSE, context_tmp, constants = list(idx = idx))
+    expected <- nodeRuleClass$new(expr, 1, context_tmp, constants = list(idx = idx))
+    expect_equal(result[[1]]$externalRules$indexRules[[2]]$setupResults,
+                 expected$externalRules$indexRules[[1]]$setupResults)
+    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:5){}))))
+    idx <- as.integer(c(3,5,6,7,8))
+    expr <- quote(mu[idx[i]])
+    expected <- nodeRuleClass$new(expr, 1, context_tmp, constants = list(idx = idx))
     expect_equal(result[[2]]$externalRules$indexRules[[2]]$setupResults,
                  expected$externalRules$indexRules[[1]]$setupResults)
 
@@ -537,18 +538,18 @@ test_that("calcRule fracturing works", {
         expect_identical(result[[k]]$index2setID, c(0,1,1,0))
     }
 
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:24){}))))
-    idx1 <- as.integer(c(1,4,1,4,rep(1:4, 5)))
-    idx2 <- as.integer(c(2,2,3,3,rep(4:8, each = 4)))
-    expr <- quote(mu[idx1[i],idx2[i]])
-    expected <- nodeRuleClass$new(expr, FALSE, 1, FALSE, context_tmp, constants = list(idx1 = idx1, idx2 = idx2))
-    expect_equal(result[[1]]$externalRules$indexRules[[1]]$setupResults,
-                 expected$externalRules$indexRules[[1]]$setupResults)
     context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:4){}))))
     idx1 <- as.integer(c(2,3,2,3))
     idx2 <- as.integer(c(2,2,3,3))
     expr <- quote(mu[idx1[i],idx2[i]])
-    expected <- nodeRuleClass$new(expr, FALSE, 1, FALSE, context_tmp, constants = list(idx1 = idx1, idx2 = idx2))
+    expected <- nodeRuleClass$new(expr, 1, context_tmp, constants = list(idx1 = idx1, idx2 = idx2))
+    expect_equal(result[[1]]$externalRules$indexRules[[1]]$setupResults,
+                 expected$externalRules$indexRules[[1]]$setupResults)
+    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:24){}))))
+    idx1 <- as.integer(c(1,4,1,4,rep(1:4, 5)))
+    idx2 <- as.integer(c(2,2,3,3,rep(4:8, each = 4)))
+    expr <- quote(mu[idx1[i],idx2[i]])
+    expected <- nodeRuleClass$new(expr, 1, context_tmp, constants = list(idx1 = idx1, idx2 = idx2))
     expect_equal(result[[2]]$externalRules$indexRules[[1]]$setupResults,
                  expected$externalRules$indexRules[[1]]$setupResults)
 
@@ -571,6 +572,13 @@ test_that("calcRule fracturing works", {
         expect_identical(result[[k]]$index2setID, c(0,1,1,0))
     }
 
+    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:2){}))))
+    idx1 <- as.integer(c(2,3))
+    idx2 <- as.integer(c(3,7))
+    expr <- quote(mu[idx1[i],idx2[i]])
+    expected <- nodeRuleClass$new(expr, 1, context_tmp, constants = list(idx1 = idx1, idx2 = idx2))
+    expect_equal(result[[1]]$externalRules$indexRules[[1]]$setupResults,
+                 expected$externalRules$indexRules[[1]]$setupResults)
     context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:26){}))))
     idx1 <- as.integer(rep(1:4, 7))
     idx2 <- as.integer(rep(2:8, each = 4))
@@ -578,14 +586,7 @@ test_that("calcRule fracturing works", {
     idx1 <- idx1[!wh]
     idx2 <- idx2[!wh]
     expr <- quote(mu[idx1[i],idx2[i]])
-    expected <- nodeRuleClass$new(expr, FALSE, 1, FALSE, context_tmp, constants = list(idx1 = idx1, idx2 = idx2))
-    expect_equal(result[[1]]$externalRules$indexRules[[1]]$setupResults,
-                 expected$externalRules$indexRules[[1]]$setupResults)
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:2){}))))
-    idx1 <- as.integer(c(2,3))
-    idx2 <- as.integer(c(3,7))
-    expr <- quote(mu[idx1[i],idx2[i]])
-    expected <- nodeRuleClass$new(expr, FALSE, 1, FALSE, context_tmp, constants = list(idx1 = idx1, idx2 = idx2))
+    expected <- nodeRuleClass$new(expr, 1, context_tmp, constants = list(idx1 = idx1, idx2 = idx2))
     expect_equal(result[[2]]$externalRules$indexRules[[1]]$setupResults,
                  expected$externalRules$indexRules[[1]]$setupResults)
   
