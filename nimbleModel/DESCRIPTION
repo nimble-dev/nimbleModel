@@ -29,6 +29,7 @@ Collate:
     options.R       
     origIndexRules.R
     processModelCode.R
+    processModelGraph.R
     rhsRules.R
     varRange.R
     varRules.R

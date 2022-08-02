@@ -240,8 +240,13 @@ calcRuleClass <- R6Class(
                 stochParent = stochParent <<- FALSE,
                 stop("Invalid type ", type)
             )
-        }
+        },
 
+        setTop = function() {
+            vars <- all.vars(declRule$decl[[3]])
+            if(all(vars %in% c(names(declRule$constants), declRule$context$indexVarNames)))
+                set('top')
+        }
     )
 )
 
@@ -415,6 +420,8 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0) {
     ## Get full nodeRange of the rule.
     LHSrange <- LHSrule$apply()
 
+    ## TODO: change to return NULL and handle in processModelGraph.R?
+    
     if(nodeRange_isEqual(LHSrange, fracturingRange)) {
         LHSrule$set('stochParent')
         return(LHSrule)

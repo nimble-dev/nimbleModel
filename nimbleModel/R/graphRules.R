@@ -233,6 +233,9 @@ makeGraphIndexRules <- function(LHS,
                         list2env(constants)
 
     checkForVars(LHS, RHS, context, constants)
+
+    parentVar <- ifelse(length(RHS) > 1, RHS[[2]], RHS)
+    childVar <- ifelse(length(LHS) > 1, LHS[[2]], LHS)
     
     indexSets <-
         makeSeparableIndexSets(LHS, RHS, context)
@@ -340,10 +343,13 @@ makeGraphIndexRules <- function(LHS,
         indexRules[[iSet]] <- thisIndexRule
     }
     ## Also add: declRule = declRule from input argument
-    return(list(indexSets = indexSets,
-         indexRules = indexRules,
-         constraints = constraints,
-         numRHSindices = numRHSindices))
+    return(list(
+        parentVar = RHSvar,
+        childVar = LHSvar,
+        indexSets = indexSets,
+        indexRules = indexRules,
+        constraints = constraints,
+        numRHSindices = numRHSindices))
 }
 
 ## Evaluate validity on a per indexRange basis, looping through constraints
