@@ -234,8 +234,8 @@ makeGraphIndexRules <- function(LHS,
 
     checkForVars(LHS, RHS, context, constants)
 
-    parentVar <- ifelse(length(RHS) > 1, RHS[[2]], RHS)
-    childVar <- ifelse(length(LHS) > 1, LHS[[2]], LHS)
+    parentVar <- deparse(ifelse(length(RHS) > 1, RHS[[2]], RHS))
+    childVar <- deparse(ifelse(length(LHS) > 1, LHS[[2]], LHS))
     
     indexSets <-
         makeSeparableIndexSets(LHS, RHS, context)
@@ -344,8 +344,8 @@ makeGraphIndexRules <- function(LHS,
     }
     ## Also add: declRule = declRule from input argument
     return(list(
-        parentVar = RHSvar,
-        childVar = LHSvar,
+        parentVar = parentVar,
+        childVar = childVar,
         indexSets = indexSets,
         indexRules = indexRules,
         constraints = constraints,
@@ -714,6 +714,7 @@ applyGraphIndexRules <- function(fromVarRange,
     
     varRangeClass$new(
         indexInfo = finalIndexRanges[!repeats],
-        indexOrders = finalIndexOrders[!repeats]
+        indexOrders = finalIndexOrders[!repeats],
+        varName = rules$childVar
     )
 }

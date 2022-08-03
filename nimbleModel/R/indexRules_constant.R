@@ -39,6 +39,7 @@ indexRuleClass_constant <- R6Class(
                    matrix = apply(setupResults$constant[[1]], 2, max),
                    sequence = setupResults$constant[[1]][[2]],
                    scalar = setupResults$constant[[1]],
+                   none = numeric(0),
                    stop("unexpected indexRange type")))
         }
     )

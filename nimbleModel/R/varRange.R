@@ -31,7 +31,7 @@ varRangeClass <- R6Class(
         ## Two examples: x[1:10]; y[ c(2, 4, 6) ]
         ##
         ## name: 'x'; 'y'
-        name = character(),
+        varName = character(),
         ## indexRangeExprs: list(quote(1:10)); list(quote(c(2, 4, 6)))
         indexRangeExprs = list(),
         ## indexRanges: list(list(1, 10)); list(list(c(2, 4, 6)))
@@ -52,7 +52,7 @@ varRangeClass <- R6Class(
         ##                 rangeID_2_indexID[[2]]: 2
         initialize = function(indexInfo,
                               indexOrders = NULL,
-                              name = NULL) {
+                              varName = NULL) {
             ## initialization from an expression
             ## does not support some of the complicated cases.
             ##
@@ -86,15 +86,15 @@ varRangeClass <- R6Class(
                     rangeID_2_indexID <<-
                         as.list(seq_along(indexRanges))
                 }
-                if(is.null(name))
-                    name <<- nameFromExpr
+                if(is.null(varName))
+                    varName <<- nameFromExpr
                 else
-                    name <<- name
+                    varName <<- varName
                 return(self)
             }
             ## input is a list that should be of indexRanges
             if(is.list(indexInfo)) {
-                name <<- name
+                varName <<- varName
                 setIndexRanges(indexInfo, indexOrders)
             }
             rangeID <- rep(seq_along(rangeID_2_indexID), times = sapply(rangeID_2_indexID, length))
@@ -141,8 +141,12 @@ varRangeClass <- R6Class(
             self
         },
         isEmpty = function() {
-            any(sapply(self$indexRanges, function(x) identical(attr(x, 'rangeType'), 'empty')))
-        }
+            return(any(sapply(self$indexRanges,
+                              function(x) identical(attr(x, 'rangeType'), 'empty'))))
+        },
+        isNone = function() {
+            return(length(indexRanges) == 1 && identical(indexRanges[[1]], indexRange_none()))
+        
     )
 )
 
@@ -263,7 +267,7 @@ varRange2char <- function(VR) {
 varRange2expr <- function(VR) {
     do.call("call",
             c(list("[",
-                   as.name(VR$name)),
+                   as.name(VR$varName)),
               VR$indexRangeExprs),
             quote = TRUE)
 }
