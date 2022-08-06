@@ -21,21 +21,24 @@ if(FALSE) {
     ##     sigma ~ dunif(0, 5)
     ##     mu[7:8] ~ dmnorm(z[1:2],pr[1:2,1:2])
     ##     w ~ dnorm(y[10], theta)
-    ##     z ~ dnorm(y[12], 1)
+    ##     z[2] ~ dnorm(y[12], 1)
     ## })
-    
+
+    ## declRules should have their IDs in order of entries in list.
     declRules <- list(
-        declRuleClass$new(quote(y[i] ~ dnorm(mu[i],sigma)), 9, context_i),
-        declRuleClass$new(quote(mu[j] ~ dnorm(mu0,1)), 10, context_j),
-        declRuleClass$new(quote(sigma ~ dunif(0,1)), 11, context_0),
-        declRuleClass$new(quote(mu[7:8] ~ dmnorm(z[1:2],pr[1:2,1:2])), 12, context_0),
-        declRuleClass$new(quote(w ~ dnorm(y[10],1)), 13, context_0),
-        declRuleClass$new(quote(z ~ dnorm(y[12],1)), 14, context_0)
+        declRuleClass$new(quote(y[i] ~ dnorm(mu[i],sigma)), 1, context_i),
+        declRuleClass$new(quote(mu[j] ~ dnorm(mu0,1)), 2, context_j),
+        declRuleClass$new(quote(sigma ~ dunif(0,1)), 3, context_0),
+        declRuleClass$new(quote(mu[7:8] ~ dmnorm(z[1:2],pr[1:2,1:2])), 4, context_0),
+        declRuleClass$new(quote(w ~ dnorm(y[10],1)), 5, context_0),
+        declRuleClass$new(quote(z[2] ~ dnorm(y[12],1)), 6, context_0)
     )
 
-    ## need rhsRules; should these be before or after exclude()?
+    ## set up test of generation of rhsOnlyRules starting with originalRHSrules 
+    ## for now hand-code rhsRules
 
-    rhsRules <- list(
+
+    rhsOriginalRules <- list(
         rhsRuleClass$new(quote(mu[i]), 1, context_i),
         rhsRuleClass$new(quote(sigma), 2, context_0),
         rhsRuleClass$new(quote(mu0), 3, context_0),
@@ -87,21 +90,111 @@ if(FALSE) {
                                  context = context_0,
                                  constants = list(theta = 2)))
 
-    irNone <- nimbleModel:::indexRange_none()
-    vrNone <- varRangeClass$new(list(irNone))
-
-    gr <- makeGraphIndexRules(LHS = quote(y[i]),
-                                 RHS = quote(x),
-                                 context = context_i)
-    tmp=applyGraphIndexRules(vrNone,gr)
 }
 
+if(FALSE) {  # test case for rhsOnly
 
-generateInitialCalcRules <- function(declRules) {
-    currentID <- length(rhsRules) + length(declRules)
+    singleContext1 <-
+        modelSingleContext(forCode = quote(for(i in 1:10){}))
+    singleContext2 <-
+        modelSingleContext(forCode = quote(for(j in 2:3){}))
+    context_0 <- modelContextClass$new()
+    
+    context_i <- modelContextClass$new(list(singleContext1))
+    context_j <- modelContextClass$new(list(singleContext2))
+    
+    ## code <- nimbleCode({
+    ##     for(i in 1:10)
+    ##         y[i] ~ dnorm(mu[i], sigma)
+    ##     for(j in 2:3)
+    ##         mu[j] ~ dnorm(mu0, 1)
+    ##     sigma ~ dunif(0, 5)
+    ##     mu[7:8] ~ dmnorm(z[1:2],pr[1:2,1:2])
+    ##     w ~ dnorm(y[10], theta)
+    ##     z[2] ~ dnorm(y[12], 1)
+    ## })
+
+    ## declRules should have their IDs in order of entries in list.
+    declRules <- list(
+        declRuleClass$new(quote(w[i] ~ dnorm(mu[i],sigma)), 1,
+                          modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:10){}))))),
+        declRuleClass$new(quote(y[i] ~ dnorm(mu[i],sigma)), 2,
+                          modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 10:15){}))))),
+        declRuleClass$new(quote(z[i] ~ dnorm(mu[i],sigma)), 3,
+                          modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 3:7){}))))),
+        declRuleClass$new(quote(mu[j] ~ dnorm(0,1)), 4, context_j)
+    )
+   
+    rhsOriginalRules <- list(
+        rhsRuleClass$new(quote(mu[i]), 1,
+                         modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:10){}))))),
+        rhsRuleClass$new(quote(mu[i]), 2,
+                         modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 10:15){}))))),
+        rhsRuleClass$new(quote(mu[i]), 3,
+                         modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 3:7){}))))),
+        rhsRuleClass$new(quote(sigma), 4, context_0),
+        rhsRuleClass$new(quote(mu0), 5, context_0)
+        )
+
+}
+
+## split up rhsRules to get rhsOnlyRules using exclude(), to extract parts of rhs that don't appear in LHS
+
+## Not clear we need to generate RHSonlyRules
+## There may be some non-uniqueness if we don't combine the results of
+## running exclude on a rhsRule applied to another rhsRule
+generateRHSonlyRules <- function(rhsRules) {
+    rhsOnlyRules <- rhsRules
+
+    ## Step 1: exclude each rhsRule based on other rhsRules
+    ## Otherwise exclusion process with LHSrules can create redundant rhsOnlyRules
+    ## Step 2: exclude each rhsRule with each LHSrule
+    
+    pos <- 1
+    while(pos < length(rhsOnlyRules)) {
+        mx <- length(rhsOnlyRules)
+        rulesToRemove <- NULL
+        for(i in (pos+1):mx) {
+            if(rhsOnlyRules[[i]]$varName == rhsOnlyRules[[pos]]$varName) {
+                result <- exclude(rhsOnlyRules[[i]], rhsOnlyRules[[pos]])
+                if(!is.null(result)) {  # some or no overlap
+                    rhsOnlyRules <- c(rhsOnlyRules, result)
+                    ## TODO: combine result and rhsOnlyRules[[pos]] (for sequence rules and maybe matrix rules)
+                    ## if possible to reduce non-uniqueness.
+                    ## But note that one can get a resulting rhsOnlyRule that is larger than a declaration RHS
+                }
+                rulesToRemove <- c(rulesToRemove, i)
+            }
+        }
+        if(length(rulesToRemove))
+            rhsOnlyRules <- rhsOnlyRules[-rulesToRemove]
+        pos <- pos + 1
+    }
+    
+    for(pos in seq_along(declRules)) {
+        rulesToRemove <- NULL
+        for(i in seq_along(rhsOnlyRules)) {
+            if(rhsOnlyRules[[i]]$varName == declRules[[pos]]$varName) {
+                result <- exclude(rhsOnlyRules[[i]], declRules[[pos]])
+                if(!is.null(result)) {
+                    rhsOnlyRules <- c(rhsOnlyRules, result)
+                    rulesToRemove <- c(rulesToRemove, i)
+                }
+            }
+        }
+        if(length(rulesToRemove))
+            rhsOnlyRules <- rhsOnlyRules[-rulesToRemove]
+    }
+    tmp <- sapply(seq_along(rhsOnlyRules), function(idx) rhsOnlyRules[[idx]]$ID <- idx)
+}
+
+generateCalcRules <- function(declRules) {
+    ## Step 1: fracture LHS with rhsOriginalRules  of same var
+    ## Step 2: fracture LHS based on same-var deps of other LHS
+    numRHSrules <- length(rhsOriginalRules)
     
     originalCalcRules <- lapply(declRules, function(rule)
-        calcRuleClass$new(rule, NULL, rule$ID, rule$context, rule$constants)
+        calcRuleClass$new(rule, NULL, NULL, rule$context, rule$constants)
         )
 
     ## Determine if top
@@ -112,75 +205,70 @@ generateInitialCalcRules <- function(declRules) {
     topRules <- sapply(originalCalcRules, function(rule) rule$is_type('top'))
     calcRules <- c(originalCalcRules[topRules], originalCalcRules[!topRules])
 
+    tmp <- sapply(seq_along(calcRules), function(i) calcRules[[i]]$ID <- i)
+    
     ## fracture LHS of same varName as rhsRule
     pos <- 1
-    while(pos <= length(rhsRules)) {
-        rhsRange <- rhsRules[[pos]]$getFullRange()
-        for(i in idx:length(calcRules)) {
-            if(rhsRange$varName == calcRules[[i]]$varName) {
-                result <- fracture(calcRules[[i]], rhsRange, currentID = currentID,
-                                   stochParent = FALSE, parentID = rhsRules[[pos]]$ID)
+    start <- sum(topRules) + 1 # index of rules to be fractured
 
-                ## need to check if RHS doesn't overlap with LHS
-                
-                ## if result is same as original rule, don't put at end
-                if(is.null(result)) {
-                    rhsRules[[pos]]$setChild(calcRules[[i]]$ID)
-                    calcRules[[i]]$setParent(rhsRules[[pos]]$ID)
-                } else {
-                    ## first of the newRules will be the fracturingRule, which is the child
-                    ## This is awkward as relies on assumption about how fracture() works internally
-                    rhsRules[[pos]]$setChild(length(calcRules)+1)
-                    newRules <- c(newRules, result)
-                    rulesToRemove <- c(rulesToRemove, i)
-                    currentID <- result[[length(result)]]$ID
+    fracturedRules <- rep(FALSE, length(calcRules))
+    while(pos <= length(rhsOriginalRules)) {   # use while rather than for to match needed while in loop over calcRules
+        rhsRange <- rhsOriginalRules[[pos]]$getFullRange()
+        if(!rhsRange$isNone()) {
+            ## Try to fracture all rules by looping over non-top rules.
+            for(i in start:length(calcRules)) {
+                if(rhsRange$varName == calcRules[[i]]$varName) {
+                    result <- fracture(calcRules[[i]], rhsRange, currentID = length(calcRules),
+                                       parentRule = rhsOriginalRules[[pos]], currentRules = calcRules)
+                    
+                    ## RHS doesn't overlap with LHS
+                    ## Could probably handle this compared to full overlap more elegantly.
+                    if(!is.null(result) && !is.list(result) && result$isEmpty())
+                        next
+                    
+                    ## if result is same as original rule, don't put at end
+                    if(!is.null(result)) {
+                        calcRules <- c(calcRules, result)
+                        fracturedRules[i] <- TRUE
+                        fracturedRules <- c(fracturedRules, rep(FALSE, length(result)))
+                    }
                 }
             }
         }
-        if(!is.null(rulesToRemove))
-            calcRules <- c(calcRules[-rulesToRemove], newRules)
         pos <- pos + 1
     }
     
     pos <- 1  # index of fracturer
-    idx <- sum(topRules) + 1 # index of rules to be fractured
 
     while(pos <= length(calcRules)) {
         varName <- calcRules[[pos]]$varName
         deps <- getDependencies(calcRules[[pos]]$getFullRange(), graphRules[[varName]])
-        stochParent <- calcRules[[pos]]$declRule$stoch || calcRules[[pos]]$stochParent
         for(d in seq_along(deps)) {
-            ## Try to fracture all remaining rules
+            ## Try to fracture all remaining rules by looping over non-top rules.
             newRules <- list()
             rulesToRemove <- NULL
-            for(i in idx:length(calcRules)) {
-                if(deps[[d]]$varName == calcRules[[i]]$varName) {
+            for(i in start:length(calcRules)) {
+                if(!deps[[d]]$isNone() && deps[[d]]$varName == calcRules[[i]]$varName) {
                     result <- fracture(calcRules[[i]], deps[[d]], currentID = length(calcRules),
-                                       stochParent, parentID = calcRules[[pos]]$ID)
-                    ## if result is same as original rule, don't put at end
-                    if(is.null(result)) {
-                        if(stochParent)
-                            calcRules[[i]]$set('stochParent')
-                        calcRules[[pos]]$setChild(calcRules[[i]]$ID)
-                        calcRules[[i]]$setParent(calcRules[[pos]]$ID)
-                    } else {
-                        ## first of the newRules will be the fracturingRule, which is the child
-                        ## This is awkward as relies on assumption about how fracture() works internally
-                        calcRules[[pos]]$setChild(length(calcRules)+1)
-                        newRules <- c(newRules, result)
-                        rulesToRemove <- c(rulesToRemove, i)
+                                       parentRule = calcRules[[pos]], currentRules = calcRules)
+                    if(!is.null(result) && !is.list(result) && result$isEmpty())
+                        next
+                    if(!is.null(result)) {
+                        calcRules <- c(calcRules, result)
+                        fracturedRules[i] <- TRUE
+                        fracturedRules <- c(fracturedRules, rep(FALSE, length(result)))
                     }
                 }
             }
-            if(!is.null(rulesToRemove))
-                calcRules <- c(calcRules[-rulesToRemove], newRules)
         }
         pos <- pos + 1
     }
+    calcRules <- calcRules[!fracturedRules]
 }
 
-## will need to deal with generating unique IDs
-## will need to deal with top/end/stochParent, etc.
+## will need to deal with top/end/stochParent, etc.; go back to notes of walking back up the tree
+## when set stochParent - leave as is for now, but may change to recursive assignment after look at notes
+
 
 ## how will getDependencies work and interact with set(s) of graphRules?
 

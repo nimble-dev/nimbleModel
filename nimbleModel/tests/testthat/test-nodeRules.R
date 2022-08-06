@@ -157,6 +157,10 @@ test_that("nodeRule creation and application works", {
 
 test_that("rhsRule creation and application works", {
     ## Basic case. More (implicitly) in exclude testing.
+
+    context_0 <- modelContextClass$new()
+    RHSrule <- rhsRuleClass$new(quote(sigma), 1, context_0)
+    
     singleContext1 <-
         modelSingleContext(forCode = quote(for(i in 2:8){}))
     

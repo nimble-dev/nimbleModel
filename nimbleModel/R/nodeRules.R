@@ -93,7 +93,7 @@ nodeRuleClass <- R6Class(
 
             ## Case of no indexing, e.g. x ~ dnorm(0,1)
             if(!length(extent[[1]]))
-                return(varRangeClass$new(list(indexRange_none())))
+                return(varRangeClass$new(list(indexRange_none()), varName = varName))
 
             maxes <- rep(0, length(index2setID))
             cnt <- 1
@@ -111,7 +111,8 @@ nodeRuleClass <- R6Class(
             return(applyGraphIndexRules(
                     varRangeClass$new(lapply(seq_len(numIndices),
                                              function(i) indexRange(
-                                                             substitute(1:MAX, list(MAX = maxes[i]))))),
+                                                             substitute(1:MAX, list(MAX = maxes[i])))),
+                                      varName = varName),
                allRules))
         }
     )
@@ -251,12 +252,20 @@ calcRuleClass <- R6Class(
                 set('top')
         },
 
-        setParent = function(ID) {
-            parents <<- c(parents, ID)
+        setParents = function(IDs) {
+            parents <<- c(parents, IDs)
         },
         
-        setChild = function(ID) {
-            children <<- c(children, ID)
+        setChildren = function(IDs) {
+            children <<- c(children, IDs)
+        },
+
+        unsetParents = function(IDs) {
+            parents <<- parents[!parents %in% IDs]
+        },
+        
+        unsetChildren = function(IDs) {
+            children <<- children[!children %in% IDs]
         }
         
     )
@@ -345,9 +354,10 @@ nodeRangeClass <- R6Class(
             indexID_2_rangeID[index2setID != 0] <<- externalRange$indexID_2_rangeID
             indexID_2_rangeID[index2setID == 0] <<- internalRange$indexID_2_rangeID +
                 numExternalIndexRanges
-            rangeID_2_indexID <<- lapply(seq_len(max(indexID_2_rangeID)),
-                                         function(x) which(indexID_2_rangeID == x))
-
+            if(length(indexID_2_rangeID)) {
+                rangeID_2_indexID <<- lapply(seq_len(max(indexID_2_rangeID)),
+                                             function(x) which(indexID_2_rangeID == x))
+            } else rangeID_2_indexID <- list()
             super$initialize(indexInfo = c(externalRange$indexRanges, internalRange$indexRanges),
                              indexOrders = rangeID_2_indexID,
                              varName = varName)
@@ -424,7 +434,7 @@ nodeRange_isEqual <- function(nr1, nr2) {
 ## LHSrule will be a calcRule, not a declRule
 ## fracture() should take in ID of parent calcRule that generated the fracturingRange via getDeps
 ## assign the parents to any rules that are fractured
-fracture <- function(LHSrule, fracturingRange, currentID = 0, stochParent = FALSE, parentID = NULL) {
+fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL, currentRules = NULL) {
     ## presume fracturingRange is a nodeRange, so has external/internal split consistent with LHS rule
     ## but it could be that we pass in a varRange and then use nodeRule$apply to get the nodeRange
     ## this also means that fracturingRange is the 'intersection' as it shouldn't contain anything not in the LHSrule
@@ -432,16 +442,25 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, stochParent = FALS
     ## TODO: do we need to guard against being provided a fracturingRange that is a nodeRange that contains elements not
     ## part of the LHSrange?
     
+    stochParent <- !is(parentRule, "rhsRuleClass") && (parentRule$declRule$stoch || parentRule$stochParent)
+    
     ## Get full nodeRange of the rule.
     LHSrange <- LHSrule$apply()
 
     if(!is(fracturingRange, 'nodeRangeClass'))
         fracturingRange <- LHSrule$apply(fracturingRange)
 
+    if(fracturingRange$isEmpty()) 
+        return(fracturingRange)
+
     if(nodeRange_isEqual(LHSrange, fracturingRange)) {
+        if(stochParent)
+            LHSrule$set('stochParent')
+        if(!is.null(parentRule)) {  # if parent is not RHS
+            parentRule$setChildren(LHSrule$ID)
+            LHSrule$setParents(parentRule$ID)
+        }
         return(NULL)
-        ## LHSrule$set('stochParent')
-        ## return(LHSrule)
     }
 
     ## Indices for internalRange should be identical, so just check/fracture those for external
@@ -504,10 +523,8 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, stochParent = FALS
 
             fracturingRule <- calcRuleClass$new(LHSrule$declRule, expr, currentID + 2, context = modelContextClass$new(newSingleContexts2),
                                                 constants = list(.idx = valsFrac))
-            fracturingRule$setParent(parentID)
-            if(stochParent) fracturingRule$set('stochParent')
-            
-            return(list(fracturingRule, resultRule))
+
+            result <- list(fracturingRule, resultRule)
         } else {  # seq+seq or seq+scalar
             if(typeFrac == "scalar")   # process as a sequence
                 frac <- indexRange(substitute(A:A, list(A = frac[[1]])))
@@ -534,10 +551,7 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, stochParent = FALS
                 fracturingRule <- calcRuleClass$new(LHSrule$declRule, expr, currentID + 1, context = modelContextClass$new(newSingleContexts2))
                 resultRule <- calcRuleClass$new(LHSrule$declRule, expr, currentID + 2, context = modelContextClass$new(newSingleContexts1))
 
-                fracturingRule$setParent(parentID)
-                if(stochParent) fracturingRule$set('stochParent')
-                
-                return(list(fracturingRule, resultRule))
+                result <- list(fracturingRule, resultRule)
             } else {
                 ## Split an existing sequence 
                 newSingleContexts1 <- singleContexts[!focalContext]
@@ -559,15 +573,12 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, stochParent = FALS
                     indexVarExpr = quote(.newidx),
                     indexRangeExpr = substitute(A:B, list(A = frac[[1]][[2]]+1, B = LHS[[1]][[2]])))
                 expr3[[nonIdenticalIndices+2]] <- newSingleContexts3[[length(newSingleContexts3)]]$indexVarExpr
-
                
                 fracturingRule <- calcRuleClass$new(LHSrule$declRule, expr1, currentID + 1, context = modelContextClass$new(newSingleContexts1))
                 resultRule1 <- calcRuleClass$new(LHSrule$declRule, expr2, currentID + 2, context = modelContextClass$new(newSingleContexts2))
                 resultRule2 <- calcRuleClass$new(LHSrule$declRule, expr3, currentID + 3, context = modelContextClass$new(newSingleContexts3))
-                fracturingRule$setParent(parentID)
-                if(stochParent) fracturingRule$set('stochParent')
-                
-                return(list(fracturingRule, resultRule1, resultRule2))
+
+                result <- list(fracturingRule, resultRule1, resultRule2)
             }
         }
     } else {     ## unroll, exclude, create new arbitrary rule based on all non-identical indices
@@ -611,10 +622,28 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, stochParent = FALS
                                         constants = constants2)
         resultRule <- calcRuleClass$new(LHSrule$declRule, expr, currentID + 2, context = modelContextClass$new(newSingleContexts1),
                                         constants = constants1)
-        fracturingRule$setParent(parentID)
-        if(stochParent) fracturingRule$set('stochParent')
 
-        return(list(fracturingRule, resultRule))
+        result <- list(fracturingRule, resultRule)
     }
+    
+    if(!is.null(parentRule)) {  # if parent is not RHS
+        results[[1]]$setParents(parentRule$ID)
+        parentRule$setChildren(results[[1]]$ID)
+        sapply(results, function(rule) rule$setParents(LHSrule$parents))
+        if(stochParent) results[[1]]$set('stochParent')
+
+        ## Update children of parents of the fractured rule
+        newChildren <- sapply(results, function(idx) results[[idx]]$ID)
+        tmp <- sapply(LHSrule$parents, function(idx)
+            currentRules[[idx]]$setChildren(newChildren))
+        tmp <- sapply(LHSrule$parents, function(idx) currentRules[[idx]]$unsetChildren(LHSrule$ID))
+    }
+    ## Remove fractured rule as parent of its children
+    ## The new fractured rules will be added in as parents when they are used as fracturers,
+    ## later in looping over calcRules.
+    tmp <- sapply(LHSrule$children, function(idx)
+        currentRules[[idx]]$unsetParents(LHSrule$ID))
+    return(result)
 }
 
+            ## sapply(LHSrule$parents, 

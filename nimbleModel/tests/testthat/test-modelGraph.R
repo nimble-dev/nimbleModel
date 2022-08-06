@@ -35,3 +35,12 @@ test_that("setting top nodes works", {
 
     ## TODO: add some more complicated cases
 })
+
+## test case:
+
+## y[1:10] ~ dmnorm(mu[1:10],sigma[1:10])
+## mu[2:4] ~ dmnorm()
+## for(i in 4:7)
+##     sigma[i] ~ dgamma(1,1)
+
+## need various module complicated cases

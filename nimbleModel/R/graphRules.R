@@ -573,7 +573,7 @@ applyGraphIndexRules <- function(fromVarRange,
     invalid <- sapply(seq_along(RHSconstraints), function(i)
         !is.null(RHSconstraints[[i]]) && !any(RHSconstraints[[i]]))
     if(any(invalid)) # as many empty indexRanges as number of rules (apart from RHSonly constraint rules)
-        return(varRangeClass$new(lapply(seq_len(numSetsResult), function(i) indexRange_empty())))
+        return(varRangeClass$new(lapply(seq_len(numSetsResult), function(i) indexRange_empty()), varName = rules$childVar))
 
     ## Compose results from the various rules, including those unrelated to input indexRanges.
 

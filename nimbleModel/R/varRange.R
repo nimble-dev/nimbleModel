@@ -97,8 +97,10 @@ varRangeClass <- R6Class(
                 varName <<- varName
                 setIndexRanges(indexInfo, indexOrders)
             }
-            rangeID <- rep(seq_along(rangeID_2_indexID), times = sapply(rangeID_2_indexID, length))
-            indexID_2_rangeID <<- rangeID[order(unlist(rangeID_2_indexID))]
+            if(length(rangeID_2_indexID)) { ## no indexing of the variable
+                rangeID <- rep(seq_along(rangeID_2_indexID), times = sapply(rangeID_2_indexID, length))
+                indexID_2_rangeID <<- rangeID[order(unlist(rangeID_2_indexID))]
+            } else indexID_2_rangeID <<- numeric(0)
         },
         getSingleIndexRange = function(index, ...) {
             ## Iterate over indexRanges rather than indices
@@ -146,6 +148,7 @@ varRangeClass <- R6Class(
         },
         isNone = function() {
             return(length(indexRanges) == 1 && identical(indexRanges[[1]], indexRange_none()))
+        }
         
     )
 )

@@ -7,7 +7,7 @@ rhsRuleClass <- R6Class(
         initialize = function(expr, ID, context = modelContextClass$new(), constants = list()) {
 
             ## Treat constants in RHS as sequences because we need indexing for them when determining RHSonly.
-            if(length(expr) && expr[[1]] == "[") {
+            if(length(expr) > 1 && expr[[1]] == "[") {
                 scalarConstants <- sapply(3:length(expr),
                                          function(i) length(expr[[i]]) == 1 && !length(all.vars(expr[[i]])))
                 blockConstants <- sapply(3:length(expr),
