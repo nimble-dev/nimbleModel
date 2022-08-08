@@ -3,6 +3,27 @@
 ## assume we have graphRules as list of lists, indexed by parentVar
 ## e.g., graphRules[['mu']], graphRules[['x']]
 
+if(FALSE) {  ## start of testing of mdelDef creation and subsequent processing
+
+    code <- nimbleCode({
+        for(i in 1:10)
+            y[i] ~ dnorm(mu[i], sigma)
+        for(j in 2:3)
+            mu[j] ~ dnorm(mu0, 1)
+        sigma ~ dunif(0, 5)
+        mu[7:8] ~ dmnorm(z[1:2],pr[1:2,1:2])
+        w ~ dnorm(y[10], theta)
+        z[2] ~ dnorm(y[12], 1)
+    })
+
+    md <- modelDefClass$new(code)
+
+    ## now extract declRules, rhsOriginalRules and graphRules
+    ## rework graphRules to be named based on RHS
+
+}
+
+
 if(FALSE) {
     singleContext1 <-
         modelSingleContext(forCode = quote(for(i in 1:10){}))
@@ -138,13 +159,106 @@ if(FALSE) {  # test case for rhsOnly
 
 }
 
+if(FALSE) { # for testing 'end' nodes
+    context_0 <- modelContextClass$new()
+    declRules <- list(
+        declRuleClass$new(quote(theta ~ dnorm(0,1)), 1, context_0),
+        declRuleClass$new(quote(mu <- theta), 2, context_0),
+        declRuleClass$new(quote(y ~ dnorm(mu,1)), 3, context_0),
+        declRuleClass$new(quote(z <- y), 4, context_0)
+    )
+    rhsOriginalRules <- list()
+
+    graphRules <- list()
+    graphRules[['y']] <- list(makeGraphIndexRules(LHS = quote(z),
+                                                      RHS = quote(y),
+                                                  context = context_0))
+    graphRules[['mu']] <- list(makeGraphIndexRules(LHS = quote(y),
+                                                      RHS = quote(mu),
+                                                  context = context_0))
+    graphRules[['theta']] <- list(makeGraphIndexRules(LHS = quote(mu),
+                                                      RHS = quote(theta),
+                                                  context = context_0))
+    calcRules <- generateCalcRules(declRules, rhsOriginalRules, graphRules)
+
+    ## temp while need to debug parent/children generation
+    calcRules[[1]]$setChildren(2)
+    calcRules[[2]]$setChildren(3)
+    calcRules[[3]]$setChildren(4)
+    calcRules[[2]]$setParents(1)
+    calcRules[[3]]$setParents(2)
+    calcRules[[4]]$setParents(3)
+}
+ 
+
+if(FALSE) { # for testing 'top' nodes
+    context_0 <- modelContextClass$new()
+    declRules <- list(
+        declRuleClass$new(quote(theta <- 7), 1, context_0),
+        declRuleClass$new(quote(mu <- theta), 2, context_0),
+        declRuleClass$new(quote(y ~ dnorm(mu,1)), 3, context_0),
+        declRuleClass$new(quote(z <- y), 4, context_0)
+    )
+    rhsOriginalRules <- list()
+
+    graphRules <- list()
+    graphRules[['y']] <- list(makeGraphIndexRules(LHS = quote(z),
+                                                      RHS = quote(y),
+                                                  context = context_0))
+    graphRules[['mu']] <- list(makeGraphIndexRules(LHS = quote(y),
+                                                      RHS = quote(mu),
+                                                  context = context_0))
+    graphRules[['theta']] <- list(makeGraphIndexRules(LHS = quote(mu),
+                                                      RHS = quote(theta),
+                                                  context = context_0))
+    calcRules <- generateCalcRules(declRules, rhsOriginalRules, graphRules)
+
+    ## temp while need to debug parent/children generation
+    calcRules[[1]]$setChildren(2)
+    calcRules[[2]]$setChildren(3)
+    calcRules[[3]]$setChildren(4)
+    calcRules[[2]]$setParents(1)
+    calcRules[[3]]$setParents(2)
+    calcRules[[4]]$setParents(3)
+}
+
+if(FALSE) { # for testing sortID
+    context_0 <- modelContextClass$new()
+    declRules <- list(
+        declRuleClass$new(quote(theta ~ dnorm(0,1)), 1, context_0),
+        declRuleClass$new(quote(mu ~ dnorm(theta, 1)), 2, context_0),
+        declRuleClass$new(quote(y ~ dnorm(mu+theta, 1)), 3, context_0)
+    )
+    rhsOriginalRules <- list()
+
+    graphRules <- list()
+    graphRules[['mu']] <- list(makeGraphIndexRules(LHS = quote(y),
+                                                      RHS = quote(mu),
+                                                  context = context_0))
+    graphRules[['theta']] <- list(makeGraphIndexRules(LHS = quote(mu),
+                                                      RHS = quote(theta),
+                                                      context = context_0),
+                                  makeGraphIndexRules(LHS = quote(y),
+                                                      RHS = quote(theta),
+                                                      context = context_0))
+    calcRules <- generateCalcRules(declRules, rhsOriginalRules, graphRules)
+
+    ## temp while need to debug parent/children generation
+    calcRules[[1]]$setChildren(2)
+    calcRules[[1]]$setChildren(3)
+    calcRules[[2]]$setChildren(3)
+    calcRules[[2]]$setParents(1)
+    calcRules[[3]]$setParents(1)
+    calcRules[[3]]$setParents(2)
+}
+ 
 ## split up rhsRules to get rhsOnlyRules using exclude(), to extract parts of rhs that don't appear in LHS
 
 ## Not clear we need to generate RHSonlyRules
 ## There may be some non-uniqueness if we don't combine the results of
 ## running exclude on a rhsRule applied to another rhsRule
-generateRHSonlyRules <- function(rhsRules) {
-    rhsOnlyRules <- rhsRules
+generateRHSonlyRules <- function(rhsOriginalRules) {
+    rhsOnlyRules <- rhsOriginalRules
 
     ## Step 1: exclude each rhsRule based on other rhsRules
     ## Otherwise exclusion process with LHSrules can create redundant rhsOnlyRules
@@ -188,8 +302,13 @@ generateRHSonlyRules <- function(rhsRules) {
     tmp <- sapply(seq_along(rhsOnlyRules), function(idx) rhsOnlyRules[[idx]]$ID <- idx)
 }
 
-generateCalcRules <- function(declRules) {
-    ## Step 1: fracture LHS with rhsOriginalRules  of same var
+getDependencies <- function(varRange, graphRules) {
+    lapply(graphRules, function(rule)
+        applyGraphIndexRules(varRange, rule))
+}
+
+generateCalcRules <- function(declRules, rhsOriginalRules, graphRules) {
+    ## Step 1: fracture LHS with rhsOriginalRules of same var
     ## Step 2: fracture LHS based on same-var deps of other LHS
     numRHSrules <- length(rhsOriginalRules)
     
@@ -197,9 +316,9 @@ generateCalcRules <- function(declRules) {
         calcRuleClass$new(rule, NULL, NULL, rule$context, rule$constants)
         )
 
-    ## Determine if top
+    ## Determine if no RHS vars as clear top nodes.
     for(rule in originalCalcRules) 
-        rule$setTop()
+        rule$setObviousTop()
 
     ## Start process with known top calcRules 
     topRules <- sapply(originalCalcRules, function(rule) rule$is_type('top'))
@@ -266,16 +385,43 @@ generateCalcRules <- function(declRules) {
     calcRules <- calcRules[!fracturedRules]
 }
 
-## will need to deal with top/end/stochParent, etc.; go back to notes of walking back up the tree
-## when set stochParent - leave as is for now, but may change to recursive assignment after look at notes
-
-
 ## how will getDependencies work and interact with set(s) of graphRules?
 
-getDependencies <- function(varRange, graphRules) {
-    lapply(graphRules, function(rule)
-        applyGraphIndexRules(varRange, rule))
+setEndNodes <- function(calcRules) {
+    tmp <- sapply(calcRules, function(rule)
+        rule$setStochDep(calcRules))
+    tmp <- sapply(calcRules, function(rule)
+        if(rule$stochDep) rule$unset('end') else rule$set('end'))
+}
+
+setTopNodes <- function(calcRules) {
+    tmp <- sapply(calcRules, function(rule)
+        rule$setStochParent(calcRules))
+    tmp <- sapply(calcRules, function(rule)
+        if(rule$stochParent) rule$unset('top') else rule$set('top'))
+}
+
+setLatentNodes <- function(calcRules) {
+    tmp <- sapply(calcRules, function(rule)
+        if(rule$is('end') || rule$is('top')) rule$unset('latent'))
+}
+        
+
+setSortIDs <- function(calcRules) {
+    tmp <- sapply(calcRules, function(rule)
+        rule$setSortID(calcRules))
+    ## Now renumber so sortID=1 is first
+    mx <- max(sapply(calcRules, function(rule) rule$sortID))
+    tmp <- sapply(calcRules, function(rule)
+        rule$sortID <- mx - rule$sortID + 1
+        )
 }
 
 
-    
+##        if(!hasStochDep(calcRules[[idx]], calcRules))
+##           calcRules[[idx]]$set('end')
+
+    ## for(idx in seq_along(calcRule$children)) {
+    ##     if(rules[[calcRule$children[[idx]]]]$declRule$stoch) return(TRUE)
+    ##     if(hasStochDep(rules[[calcRule$children[idx]]], rules)) return(TRUE)
+    ## }

@@ -161,16 +161,16 @@ calcRuleClass <- R6Class(
         canonicalRange = NULL,
         declRule = NULL,  # multiple calcRules can share a declRule and its density function
 
-        stochParent = FALSE,
-        stochDep = FALSE,
-        touchedDown = FALSE,
-        touchedUp = FALSE,
+        stochParent = NA,
+        stochDep = NA,
+        ## touchedDown = FALSE,
+        ## touchedUp = FALSE,
         parents = numeric(),
         children = numeric(),
 
         top = FALSE,
-        end = FALSE,
-        ## latent is !top & !end
+        end = NA,
+        latent = TRUE,
 
         sortID = NULL,
 
@@ -232,7 +232,9 @@ calcRuleClass <- R6Class(
             switch(type,
                 end = end <<- TRUE,
                 top = top <<- TRUE,
+                latent = latent <<- TRUE,
                 stochParent = stochParent <<- TRUE,
+                stochDep = stochDep <<- TRUE,
                 stop("Invalid type ", type)
             )            
         },
@@ -241,12 +243,14 @@ calcRuleClass <- R6Class(
             switch(type,
                 end = end <<- FALSE,
                 top = top <<- FALSE,
+                latent = latent <<- TRUE,
                 stochParent = stochParent <<- FALSE,
+                stochDep = stochDep <<- FALSE,
                 stop("Invalid type ", type)
             )
         },
 
-        setTop = function() {
+        setObviousTop = function() {
             vars <- all.vars(declRule$decl[[3]])
             if(all(vars %in% c(names(declRule$constants), declRule$context$indexVarNames)))
                 set('top')
@@ -266,6 +270,74 @@ calcRuleClass <- R6Class(
         
         unsetChildren = function(IDs) {
             children <<- children[!children %in% IDs]
+        },
+
+        setStochDep = function(calcRules) {
+            if(!is.na(stochDep))
+                return(stochDep)
+            if(!length(children)) {
+                unset('stochDep')
+                return(FALSE)
+            }
+            ## First check if any children are stochastic
+            stoch <- sapply(children, function(idx)
+                calcRules[[idx]]$declRule$stoch)
+            if(any(stoch)) {
+                set('stochDep')
+                return(TRUE)
+            } else {   ## If necessary check if deterministic children have stoch dependents
+                idx <- 1
+                while(idx <= length(stoch)) {
+                    ## Walk down the tree as needed.
+                    if(calcRules[[children[[idx]]]]$setStochDep(calcRules)) {
+                        set('stochDep')
+                        return(TRUE)
+                    }
+                    idx <- idx + 1
+                }
+            }
+            unset('stochDep')
+            return(FALSE)
+        },
+        
+        setStochParent = function(calcRules) {
+            if(!is.na(stochParent))
+                return(stochParent)
+            if(!length(parents)) {
+                unset('stochParent')
+                return(FALSE)
+            }
+            ## First check if any parents are stochastic
+            stoch <- sapply(parents, function(idx)
+                calcRules[[idx]]$declRule$stoch)
+            if(any(stoch)) {
+                set('stochParent')
+                return(TRUE)
+            } else {   ## If necessary check if deterministic children have stoch dependents
+                idx <- 1
+                while(idx <= length(stoch)) {
+                    ## Walk down the tree as needed.
+                    if(calcRules[[parents[[idx]]]]$setStochParent(calcRules)) {
+                        set('stochParent')
+                        return(TRUE)
+                    }
+                    idx <- idx + 1
+                }
+            }
+            unset('stochParent')
+            return(FALSE)
+        },
+
+        setSortID = function(calcRules) {
+            ## Bottom-up determination (since want maximal ties amongst potentially most-numerous data nodes)
+            ## Easiest here to have bottom-most rules have sortID of 1, since have to start with bottom.
+            if(!length(children)) {
+                sortID <<- 1
+                return(sortID)
+            }
+            sortID <<- max(sapply(children, function(i)
+                calcRules[[i]]$setSortID(calcRules[[i]](calcRules))) + 1
+            return(sortID)
         }
         
     )
@@ -442,7 +514,7 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
     ## TODO: do we need to guard against being provided a fracturingRange that is a nodeRange that contains elements not
     ## part of the LHSrange?
     
-    stochParent <- !is(parentRule, "rhsRuleClass") && (parentRule$declRule$stoch || parentRule$stochParent)
+    ## stochParent <- !is(parentRule, "rhsRuleClass") && (parentRule$declRule$stoch || parentRule$stochParent)
     
     ## Get full nodeRange of the rule.
     LHSrange <- LHSrule$apply()
@@ -454,8 +526,8 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
         return(fracturingRange)
 
     if(nodeRange_isEqual(LHSrange, fracturingRange)) {
-        if(stochParent)
-            LHSrule$set('stochParent')
+        ## if(stochParent)
+        ##    LHSrule$set('stochParent')
         if(!is.null(parentRule)) {  # if parent is not RHS
             parentRule$setChildren(LHSrule$ID)
             LHSrule$setParents(parentRule$ID)
@@ -630,7 +702,7 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
         results[[1]]$setParents(parentRule$ID)
         parentRule$setChildren(results[[1]]$ID)
         sapply(results, function(rule) rule$setParents(LHSrule$parents))
-        if(stochParent) results[[1]]$set('stochParent')
+        ## if(stochParent) results[[1]]$set('stochParent')
 
         ## Update children of parents of the fractured rule
         newChildren <- sapply(results, function(idx) results[[idx]]$ID)

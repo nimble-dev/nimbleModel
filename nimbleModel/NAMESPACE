@@ -18,7 +18,13 @@ export(rhsRuleClass)
 export(calcRuleClass)
 export(calcRangeClass)
 export(originalIndexRuleClass)
-
+export(getDependencies)
+export(generateCalcRules)
+export(generateRHSonlyRules)
+export(setSortIDs)
+export(setEndNodes)
+export(setTopNodes)
+export(setLatentNodes)
 
 ## functions and other objects
 export(applyGraphIndexRules)

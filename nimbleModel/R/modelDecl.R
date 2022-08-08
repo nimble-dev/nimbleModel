@@ -27,6 +27,10 @@ modelDeclClass <- R6Class(
         boundExprs = NULL,
         symbolicParentNodes = NULL,
         downstreamRules = NULL,
+        rhsOriginalRules = NULL,
+        declRule = NULL,  # placeholder that modelDecl contains the declRule
+        ## TODO: clean this up and determine relationship between modelDecl and declRule
+        
         setup = function(code,
                          context,
                          sourceLineNum,
@@ -38,10 +42,14 @@ modelDeclClass <- R6Class(
                                  sourceLineNum,
                                  truncated,
                                  boundExprs)
+            ## Placeholder to get things going. For now assume 'code' is simple cases
+            ## that can be handed by declRuleClass initialization.
+            declRule <<- declRuleClass$new(code, sourceLineNum, context)
         },
         process = function(constantsNamesList, nimFunNames) {
             genSymbolicParentNodes(constantsNamesList, nimFunNames)
             makeDownstreamRules()
+            makeRHSoriginalRules()
         },
         genSymbolicParentNodes = function(constantsNamesList,
                                           nimFunNames) {
@@ -64,10 +72,23 @@ modelDeclClass <- R6Class(
             downstreamRules <- vector('list',
                                       length(symbolicParentNodes))
             for(i in seq_along(symbolicParentNodes)) {
+                browser()  ## need to get varName into indexing somehow
                 downstreamRules[[i]] <<-
                     graphRuleClass$new(targetNodeExpr,
                                        symbolicParentNodes[[i]],
                                        context)
+            }
+        },
+
+        makeRHSoriginalRules = function() {
+            if(is.null(symbolicParentNodes))
+                genSymbolicParentNodes(list(),
+                                       context$indexVarExprs)
+            downstreamRules <- vector('list',
+                                      length(symbolicParentNodes))
+            for(i in seq_along(symbolicParentNodes)) {
+                rhsOriginalRules[[i]] <<-
+                    rhsRuleClass$new(symbolicParentNodes[[i]], i, context)
             }
         }
     )
