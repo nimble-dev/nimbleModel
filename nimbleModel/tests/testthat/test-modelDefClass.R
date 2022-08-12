@@ -1,7 +1,6 @@
 context("processModelCode")
 
-test_that("processModelCode works in simplest case",
-{
+test_that("processModelCode works in simplest case", {
     modelCode <- quote({
         a ~ dnorm(0, 1)
     })
@@ -11,11 +10,9 @@ test_that("processModelCode works in simplest case",
         modelDef$declInfo[[1]]$symbolicParentNodes,
         NULL
     )
-}
-)
+})
 
-test_that("processModelCode works",
-{
+test_that("processModelCode works", {
     modelCode <- quote({
         for(i in 1:10)
             logit(a[i]) ~ dnorm(mu[i], tau)
@@ -37,11 +34,107 @@ test_that("processModelCode works",
            test2
        }
     )
-}
-)
 
-test_that("makeDownstreamRules works",
-{
+    ## Multiple lines; and check declRules
+    modelCode <- quote({
+        for(i in 1:10) {
+            a[i] ~ dnorm(mu[i], tau)
+            mu[i] ~ dnorm(mu0, theta)
+        }
+        tau ~ dunif(0, 1)
+        theta <- thetaVal
+    })
+    modelDef <- modelDefClass$new(modelCode, constants = list(thetaVal = 7))
+    modelDef$processModelCode()
+
+    expect_identical(
+        modelDef$declInfo[[1]]$targetNodeExpr, quote(a[i]))
+    expect_identical(
+        modelDef$declInfo[[1]]$valueExpr, quote(dnorm(mu[i],tau)))
+    expect_identical(
+        modelDef$declInfo[[1]]$indexExpr, list(quote(i)))
+    expect_identical(
+        modelDef$declInfo[[1]]$type, "stoch")
+
+    expect_identical(
+        modelDef$declInfo[[4]]$targetNodeExpr, quote(theta))
+    expect_identical(
+        modelDef$declInfo[[4]]$valueExpr, quote(thetaVal))
+    expect_identical(
+        modelDef$declInfo[[4]]$indexExpr, NULL)
+    expect_identical(
+        modelDef$declInfo[[4]]$type, "determ")
+    
+    expect_identical(
+        modelDef$declInfo[[1]]$declRule$varName, "a")
+    expect_identical(
+        modelDef$declInfo[[1]]$declRule$stoch, TRUE)
+    expect_identical(
+        modelDef$declInfo[[4]]$declRule$varName, "theta")
+    expect_identical(
+        modelDef$declInfo[[4]]$declRule$stoch, FALSE)
+    
+})
+
+## This overlaps with test-modelDeclClass. Move it there if needed.
+test_that("genSymbolicParentNodes works", {
+    modelCode <- quote({
+        for(i in 1:10) {
+            a[i] ~ dnorm(mu[i]+thetaVal, tau)
+            mu[i] ~ dnorm(mu0, theta)
+        }
+        tau ~ dunif(0, 1)
+        theta <- thetaVal
+    })
+    constants <- list(thetaVal = 7)
+    modelDef <- modelDefClass$new(modelCode, constants = constants)
+    modelDef$processModelCode()
+    modelDef$declInfo[[1]]$genSymbolicParentNodes(constants, c('dnorm','dunif'))
+    modelDef$declInfo[[3]]$genSymbolicParentNodes(constants, c('dnorm','dunif'))
+    modelDef$declInfo[[4]]$genSymbolicParentNodes(constants, c('dnorm','dunif'))
+
+    ## NOTE: constants not replaced at this point.
+    expect_identical(
+        modelDef$declInfo[[1]]$symbolicParentNodes,
+        list(quote(mu[i]), quote(thetaVal), quote(tau)))
+    expect_identical(
+        modelDef$declInfo[[3]]$symbolicParentNodes, NULL)
+    expect_identical(
+        modelDef$declInfo[[4]]$symbolicParentNodes, quote(thetaVal))
+    
+})
+
+test_that("makeRHSoriginalNodes works", {
+     modelCode <- quote({
+        for(i in 1:10)
+            a[i] ~ dnorm(mu[i], tau)
+    })
+    modelDef <- modelDefClass$new(modelCode)
+    modelDef$processModelCode()
+    modelDef$declInfo[[1]]$makeDownstreamRules(constants = list())
+    modelDef$declInfo[[1]]$makeRHSoriginalRules()
+
+})
+
+
+test_that("makeDownstreamRules works", {
+    modelCode <- quote({
+        for(i in 1:10)
+            a[i] ~ dnorm(mu[i], tau)
+    })
+    modelDef <- modelDefClass$new(modelCode)
+    modelDef$processModelCode()
+    modelDef$declInfo[[1]]$makeDownstreamRules(constants = list())
+
+    expect_identical(
+        length(modelDef$declInfo[[1]]$downstreamRules, 2))
+    expect_is(modelDef$declInfo[[1]]$downstreamRules[[1]]$indexRules[[1]],
+              'indexRuleClass_block')
+    expect_is(modelDef$declInfo[[1]]$downstreamRules[[2]]$indexRules[[1]],
+              'indexRuleClass_all')
+
+    
+    ## LHS transformations not currently being processed correctly.
     modelCode <- quote({
         for(i in 1:10)
             logit(a[i]) ~ dnorm(mu[i], tau)
@@ -65,5 +158,16 @@ test_that("makeDownstreamRules works",
            test2
        }
     )
-}
-)
+})
+
+test_that("processDecls works", {
+    modelCode <- quote({
+        for(i in 1:10)
+            a[i] ~ dnorm(mu[i], tau)
+    })
+    modelDef <- modelDefClass$new(modelCode)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+
+})
+

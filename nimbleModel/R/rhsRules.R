@@ -56,6 +56,7 @@ rhsRuleClass <- R6Class(
 ## or split the rule into two rules.
 ## But could be a method and code that manipulates the rhsRule could throw away the original rule.
 
+## LHSrule is the rule being used to do the exclusion, but it could actually come from a RHS. 
 exclude <- function(RHSrule, LHSrule) {
     LHSrange <- LHSrule$getFullRange()
     RHSrange <- RHSrule$getFullRange()

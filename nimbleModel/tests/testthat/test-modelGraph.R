@@ -44,3 +44,7 @@ test_that("setting top nodes works", {
 ##     sigma[i] ~ dgamma(1,1)
 
 ## need various module complicated cases
+
+
+## TODO: be careful that probably will not have replaced constants
+## at point we start testing here.

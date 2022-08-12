@@ -4,12 +4,13 @@ modelDefClass <- R6Class(
     public = list(
         modelCode = NULL,
         contexts = list(),
-        constantsNamesList = list(),
+        constants = list(),
         declInfo = list(),
         downstreamRules = NULL,
         upstreamRules = NULL,
-        initialize = function(modelCode = NULL) {
+        initialize = function(modelCode = NULL, constants = list()) {
             modelCode <<- modelCode
+            constants <<- constants
             initializeContexts()
         },
         processModelCode = function() {
@@ -21,8 +22,12 @@ modelDefClass <- R6Class(
             nimFunNames <- list(as.name('dnorm'), as.name('dunif'))
             ## placeholder until we add in constants processing
             for(i in seq_along(declInfo)) {
-                declInfo[[i]]$process(constantsNamesList, nimFunNames)
+                declInfo[[i]]$process(constants, nimFunNames)
             }
+
+            ## Collect all declRules, rhsOriginalRules, downstreamRules
+            ## into lists we can use in processModelGraph.
+            ## Do in a setupModel method?
         },
         initializeContexts = function() {
             contextClassObject <- modelContextClass$new()
