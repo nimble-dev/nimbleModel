@@ -219,6 +219,18 @@ checkForVars <- function(LHS, RHS, context, constants) {
         stop("Index or constant ", paste(unique(varsInExpr[wh]), collapse = ','), " not found as loop index or in constants.")
 }
 
+
+modifyContextForRHSonlyRules <- function(LHS, RHS, context, constants) {
+    if(identical(LHS, RHS)) {
+        varsInExpr <- NULL
+        if(length(RHS) > 1)
+            varsInExpr <- all.vars(RHS[2:length(RHS)]) 
+        indexVarsInExpr <- varsInExpr[!varsInExpr %in% constants]
+        context <- modelContextClass$new(context$singleContexts[names(context$singleContexts) %in% indexVarsInExpr])
+    }
+    return(context)
+}
+    
 ## The following functions may be used from class methods in the future.
 ## For now they are standalone for development and debugging.
 
@@ -234,6 +246,10 @@ makeGraphIndexRules <- function(LHS,
 
     checkForVars(LHS, RHS, context, constants)
 
+    ## rhsOnlyRules can involve fewer single contexts than the full declaration (e.g., mu[i] <- tau)
+    ## Need to remove unneeded contexts or the indexSets won't be correct.
+    context <- modifyContextForRHSonlyRules(LHS, RHS, context, constants)
+    
     parentVar <- deparse(ifelse(length(RHS) > 1, RHS[[2]], RHS))
     childVar <- deparse(ifelse(length(LHS) > 1, LHS[[2]], LHS))
     

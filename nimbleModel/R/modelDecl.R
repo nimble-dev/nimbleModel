@@ -83,7 +83,6 @@ modelDeclClass <- R6Class(
         },
 
         makeRHSoriginalRules = function() {
-            browser()
             if(is.null(symbolicParentNodes))
                 genSymbolicParentNodes(list(),
                                        context$indexVarExprs)

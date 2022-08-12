@@ -160,6 +160,16 @@ test_that("rhsRule creation and application works", {
 
     context_0 <- modelContextClass$new()
     RHSrule <- rhsRuleClass$new(quote(sigma), 1, context_0)
+
+    vrNone <- varRangeClass$new(list(irNone))
+
+    ## TODO: test error trapping if apply to varRange with indexing?
+    result <- RHSrule$apply(vrNone)
+    expect_identical(result, vrNone)
+
+    ## TODO: test cases with extra single contexts:
+    ## mu[i] <- tau
+    ## mu[i,j] <- mu0[i]
     
     singleContext1 <-
         modelSingleContext(forCode = quote(for(i in 2:8){}))

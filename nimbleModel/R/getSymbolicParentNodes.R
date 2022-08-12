@@ -1,3 +1,18 @@
+## Temporarily here as need for initial testing of processing.
+is.rcf <- function(x, inputIsName = FALSE, where = -1) {
+    if(inputIsName)
+        x <- get(x, pos = where)
+    if(inherits(x, 'nfMethodRC'))
+        return(TRUE)
+    if(is.function(x)) {
+        if(is.null(environment(x)))
+            return(FALSE)
+        if(exists('nfMethodRCobject', envir = environment(x), inherits = FALSE))
+            return(TRUE)
+    }
+    FALSE
+}
+
 nimbleOrRfunctionNames <- c('[',
                             '+',
                             '-',

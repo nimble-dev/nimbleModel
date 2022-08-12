@@ -105,15 +105,24 @@ test_that("genSymbolicParentNodes works", {
 })
 
 test_that("makeRHSoriginalNodes works", {
-     modelCode <- quote({
+    modelCode <- quote({
+        theta[1:2] <- phi[1:2]
         for(i in 1:10)
             a[i] ~ dnorm(mu[i], tau)
+        sigma <-  tau2
+        for(j in 1:3)
+            for(i in 1:2)
+                y[i,j] ~ dnorm(mu0[i], 1)
     })
     modelDef <- modelDefClass$new(modelCode)
     modelDef$processModelCode()
     modelDef$declInfo[[1]]$makeDownstreamRules(constants = list())
-    modelDef$declInfo[[1]]$makeRHSoriginalRules()
-
+    for(i in 1:4)
+        modelDef$declInfo[[i]]$makeRHSoriginalRules()
+    expect_identical(length(modelDef$declInfo[[1]]$rhsOriginalRules), 1L)
+    expect_identical(length(modelDef$declInfo[[2]]$rhsOriginalRules), 2L)
+    expect_identical(length(modelDef$declInfo[[3]]$rhsOriginalRules), 1L)
+    expect_identical(length(modelDef$declInfo[[4]]$rhsOriginalRules), 1L)     
 })
 
 

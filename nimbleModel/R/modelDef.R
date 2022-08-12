@@ -19,7 +19,7 @@ modelDefClass <- R6Class(
         },
         processDecls = function() {
             ## placeholder so we don't need to invoke all our distribution stuff
-            nimFunNames <- list(as.name('dnorm'), as.name('dunif'))
+            nimFunNames <- list(as.name(':'), as.name('dnorm'), as.name('dunif'))
             ## placeholder until we add in constants processing
             for(i in seq_along(declInfo)) {
                 declInfo[[i]]$process(constants, nimFunNames)
