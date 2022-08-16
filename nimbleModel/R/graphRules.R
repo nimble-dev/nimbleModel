@@ -10,6 +10,8 @@ graphRuleClass <- R6Class(
         indexSets = NULL,
         constraints = NULL,
         numRHSindices = NULL,
+        parentVar = NULL,
+        childVar = NULL,
         initialize = function(LHS,
                               RHS,
                               context,
@@ -25,6 +27,8 @@ graphRuleClass <- R6Class(
             indexSets <<- output$indexSets
             constraints <<- output$constraints
             numRHSindices <<- output$numRHSindices
+            parentVar <<- output$parentVar
+            childVar <<- output$childVar
         },
         apply = function(fromVarRange) {
             applyGraphIndexRules(

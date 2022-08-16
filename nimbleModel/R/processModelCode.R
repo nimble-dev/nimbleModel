@@ -1,5 +1,6 @@
 ## Modified from old modelDefClass$processBUGScode
 
+## 2022-08-14: this has been transformed into modelDef$processModelCode() method.
 processModelCode_impl <- function(modelDef = modelDefClass$new(),
                                   code = NULL,
                                   contextID = 1,
@@ -113,9 +114,9 @@ processModelCode_impl <- function(modelDef = modelDefClass$new(),
                  deparse(code[[i]]))
     }
     if(recursiveCall)
-        lineNumber
+        return(lineNumber)
     else
-        modelDef
+        return(modelDef)
 }
 
 reprioritizeColonOperator <- function(code) {

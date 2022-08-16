@@ -24,7 +24,7 @@ export(generateRHSonlyRules)
 export(setSortIDs)
 export(setEndNodes)
 export(setTopNodes)
-export(setLatentNodes)
+## export(setLatentNodes)
 
 ## functions and other objects
 export(applyGraphIndexRules)

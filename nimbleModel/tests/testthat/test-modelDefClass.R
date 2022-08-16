@@ -13,6 +13,7 @@ test_that("processModelCode works in simplest case", {
 })
 
 test_that("processModelCode works", {
+    ## Something about logit() causes problems
     modelCode <- quote({
         for(i in 1:10)
             logit(a[i]) ~ dnorm(mu[i], tau)
@@ -100,7 +101,7 @@ test_that("genSymbolicParentNodes works", {
     expect_identical(
         modelDef$declInfo[[3]]$symbolicParentNodes, NULL)
     expect_identical(
-        modelDef$declInfo[[4]]$symbolicParentNodes, quote(thetaVal))
+        modelDef$declInfo[[4]]$symbolicParentNodes, list(quote(thetaVal)))
     
 })
 
@@ -136,7 +137,7 @@ test_that("makeDownstreamRules works", {
     modelDef$declInfo[[1]]$makeDownstreamRules(constants = list())
 
     expect_identical(
-        length(modelDef$declInfo[[1]]$downstreamRules, 2))
+        length(modelDef$declInfo[[1]]$downstreamRules), 2L)
     expect_is(modelDef$declInfo[[1]]$downstreamRules[[1]]$indexRules[[1]],
               'indexRuleClass_block')
     expect_is(modelDef$declInfo[[1]]$downstreamRules[[2]]$indexRules[[1]],
@@ -178,5 +179,24 @@ test_that("processDecls works", {
     modelDef$processModelCode()
     modelDef$processDecls()
 
+    expect_identical(length(modelDef$declInfo[[1]]$downstreamRules), 2L)
+    expect_identical(length(modelDef$declInfo[[1]]$rhsOriginalRules), 2L)
 })
 
+test_that("generateGraphInfo works", {
+    modelCode <- quote({
+        for(i in 1:10) {
+            a[i] ~ dnorm(mu[i], tau)
+            mu[i] ~ dnorm(mu0, 1)
+        }
+    })
+    modelDef <- modelDefClass$new(modelCode)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
+
+    expect_identical(length(modelDef$calcRules), 2L)
+    expect_identical(length(modelDef$downstreamRules), 3L)
+    expect_identical(length(modelDef$rhsOnlyRules), 1L)
+   
+})

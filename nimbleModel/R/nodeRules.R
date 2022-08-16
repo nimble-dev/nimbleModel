@@ -170,7 +170,6 @@ calcRuleClass <- R6Class(
 
         top = FALSE,
         end = NA,
-        latent = TRUE,
 
         sortID = NULL,
 
@@ -232,28 +231,30 @@ calcRuleClass <- R6Class(
             switch(type,
                 end = end <<- TRUE,
                 top = top <<- TRUE,
-                latent = latent <<- TRUE,
+                ## latent = latent <<- TRUE,
                 stochParent = stochParent <<- TRUE,
                 stochDep = stochDep <<- TRUE,
                 stop("Invalid type ", type)
-            )            
+                )
+            return(TRUE)
         },
 
         unset = function(type) {
             switch(type,
                 end = end <<- FALSE,
                 top = top <<- FALSE,
-                latent = latent <<- TRUE,
+                ## latent = latent <<- FALSE,
                 stochParent = stochParent <<- FALSE,
                 stochDep = stochDep <<- FALSE,
                 stop("Invalid type ", type)
-            )
+                )
+            return(FALSE)
         },
 
-        setObviousTop = function() {
+        checkAnyRHS = function() {
             vars <- all.vars(declRule$decl[[3]])
             if(all(vars %in% c(names(declRule$constants), declRule$context$indexVarNames)))
-                set('top')
+                return(FALSE) else return(TRUE)
         },
 
         setParents = function(IDs) {
@@ -276,56 +277,48 @@ calcRuleClass <- R6Class(
             if(!is.na(stochDep))
                 return(stochDep)
             if(!length(children)) {
-                unset('stochDep')
-                return(FALSE)
+                return(unset('stochDep'))
             }
             ## First check if any children are stochastic
             stoch <- sapply(children, function(idx)
                 calcRules[[idx]]$declRule$stoch)
             if(any(stoch)) {
-                set('stochDep')
-                return(TRUE)
+                return(set('stochDep'))
             } else {   ## If necessary check if deterministic children have stoch dependents
                 idx <- 1
                 while(idx <= length(stoch)) {
                     ## Walk down the tree as needed.
                     if(calcRules[[children[[idx]]]]$setStochDep(calcRules)) {
-                        set('stochDep')
-                        return(TRUE)
+                        return(set('stochDep'))
                     }
                     idx <- idx + 1
                 }
             }
-            unset('stochDep')
-            return(FALSE)
+            return(unset('stochDep'))
         },
         
         setStochParent = function(calcRules) {
             if(!is.na(stochParent))
                 return(stochParent)
             if(!length(parents)) {
-                unset('stochParent')
-                return(FALSE)
+                return(unset('stochParent'))
             }
             ## First check if any parents are stochastic
             stoch <- sapply(parents, function(idx)
                 calcRules[[idx]]$declRule$stoch)
             if(any(stoch)) {
-                set('stochParent')
-                return(TRUE)
+                return(set('stochParent'))
             } else {   ## If necessary check if deterministic children have stoch dependents
                 idx <- 1
                 while(idx <= length(stoch)) {
-                    ## Walk down the tree as needed.
-                    if(calcRules[[parents[[idx]]]]$setStochParent(calcRules)) {
-                        set('stochParent')
-                        return(TRUE)
+                    ## Walk up the tree as needed.
+                    if(calcRules[[parents[idx]]]$setStochParent(calcRules)) {
+                        return(set('stochParent'))
                     }
                     idx <- idx + 1
                 }
             }
-            unset('stochParent')
-            return(FALSE)
+            return(unset('stochParent'))
         },
 
         setSortID = function(calcRules) {
@@ -336,7 +329,8 @@ calcRuleClass <- R6Class(
                 return(sortID)
             }
             sortID <<- max(sapply(children, function(i)
-                calcRules[[i]]$setSortID(calcRules[[i]](calcRules))) + 1)
+                calcRules[[i]]$setSortID(calcRules))) + 1
+##                calcRules[[i]]$setSortID(calcRules[[i]](calcRules))) + 1)
             return(sortID)
         }
         
