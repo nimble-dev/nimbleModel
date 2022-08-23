@@ -51,10 +51,11 @@ modelDeclClass <- R6Class(
             genSymbolicParentNodes(constants, nimFunNames)
             makeDownstreamRules(constants)
             ## makeUpstreamRules()  ## TODO
-            makeRHSoriginalRules()
+            makeRHSoriginalRules(constants)
         },
         genSymbolicParentNodes = function(constants,
                                           nimFunNames) {
+            constantsNamesList <<- lapply(ls(constants), as.name)
             indexVarExprs <- if(is.null(context))
                                  list()
                              else
@@ -62,14 +63,14 @@ modelDeclClass <- R6Class(
             symbolicParentNodes <<-
                 unique(
                     getSymbolicParentNodes(valueExpr,
-                                           constants,
+                                           constantsNamesList,
                                            indexVarExprs,
                                            nimFunNames)
                 ) 
         },
         makeDownstreamRules = function(constants) {
             if(is.null(symbolicParentNodes))
-                genSymbolicParentNodes(list(),
+                genSymbolicParentNodes(constants,
                                        context$indexVarExprs)
             downstreamRules <<- vector('list',
                                       length(symbolicParentNodes))
@@ -82,15 +83,15 @@ modelDeclClass <- R6Class(
             }
         },
 
-        makeRHSoriginalRules = function() {
+        makeRHSoriginalRules = function(constants) {
             if(is.null(symbolicParentNodes))
-                genSymbolicParentNodes(list(),
+                genSymbolicParentNodes(constants,
                                        context$indexVarExprs)
             rhsOriginalRules <<- vector('list',
                                       length(symbolicParentNodes))
             for(i in seq_along(symbolicParentNodes)) {
                 rhsOriginalRules[[i]] <<-
-                    rhsRuleClass$new(symbolicParentNodes[[i]], i, context)
+                    rhsRuleClass$new(symbolicParentNodes[[i]], i, context, constants)
             }
         }
     )

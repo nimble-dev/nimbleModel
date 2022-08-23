@@ -107,10 +107,18 @@ exclude <- function(RHSrule, LHSrule) {
                                indexVarExpr = quote(.newidx),
                 indexRangeExpr = substitute(1:L, list(L = length(valsRHS))))
 
-            expr[[nonIdenticalIndices+2]] <- quote(.idx[.newidx])
-         
+            browser()
+            nm <- paste0(".idx", nonIdenticalIndices, "[.newidx]")
+            expr[[nonIdenticalIndices+2]] <- parse(text = nm[1])[[1]]
+
+            ## Replace any constants related to a previously processed index.
+            constants <- list(valsRHS)
+            names(constants) <- nm
+            oldConstants <- RHSrule$constants
+            oldConstants[names(oldConstants) %in% names(constants)] <- NULL
+
             resultRule <- rhsRuleClass$new(expr, 1, context = modelContextClass$new(newSingleContexts),
-                                            constants = c(list(.idx = valsRHS), RHSrule$constants)) 
+                                           constants = c(constants, oldconstants))
             return(list(resultRule))
         } else {  # seq+seq or seq+scalar
             if(typeInt == "scalar")
@@ -161,7 +169,7 @@ exclude <- function(RHSrule, LHSrule) {
         intAsChar <- do.call(paste, as.data.frame(unrolledIntersection[[1]]))
 
         remaining <- !rhsAsChar %in% intAsChar
-        mat <- unrolledRHS[[1]][remaining, ]
+        mat <- unrolledRHS[[1]][remaining, , drop = FALSE]
 
         focalContext <- sapply(names(singleContexts), function(nm)
             nm %in% unlist(lapply(2+nonIdenticalIndices, function(x) all.vars(expr[[x]]))))
@@ -173,13 +181,16 @@ exclude <- function(RHSrule, LHSrule) {
                                indexVarExpr = quote(.newidx),
             indexRangeExpr = substitute(1:L, list(L = nrow(mat))))
 
-        nms <- paste0(".idx", seq_len(ncol(mat)), "[.newidx]")
+        browser()
+        nms <- paste0(".idx", nonIdenticalIndices, "[.newidx]")
         for(i in seq_along(nonIdenticalIndices)) 
             expr[[nonIdenticalIndices[i]+2]] <- parse(text = nms[i])[[1]]
         constants <- lapply(seq_len(ncol(mat)), function(i) mat[,i])
-        names(constants) <- paste0(".idx", seq_along(constants))
+        names(constants) <- nms
+        oldConstants <- RHSrule$constants
+        oldConstants[names(oldConstants) %in% names(constants)] <- NULL
         resultRule <- rhsRuleClass$new(expr, 1, context = modelContextClass$new(newSingleContexts),
-                                        constants = c(constants, RHSrule$constants))
+                                       constants = c(constants, oldConstants))
         return(list(resultRule))
      }
 }

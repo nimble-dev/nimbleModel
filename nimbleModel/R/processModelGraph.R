@@ -16,8 +16,6 @@ generateRHSonlyRules <- function(rhsOriginalRules, declRules) {
     ## Otherwise exclusion process with LHSrules can create redundant rhsOnlyRules
     ## Step 2: exclude each rhsRule with each LHSrule
 
-    ## TODO: check removal process and if need 'rulesToRemove'
-    
     pos <- 1
     while(pos < length(rhsOnlyRules)) {
         newRules <- NULL
@@ -37,7 +35,6 @@ generateRHSonlyRules <- function(rhsOriginalRules, declRules) {
         rhsOnlyRules <- c(rhsOnlyRules[1:pos], newRules)
         pos <- pos + 1
     }
-    
     for(pos in seq_along(declRules)) {
         newRules <- NULL
         for(i in seq_along(rhsOnlyRules)) {
@@ -54,14 +51,19 @@ generateRHSonlyRules <- function(rhsOriginalRules, declRules) {
     return(rhsOnlyRules)
 }
 
-getDependencies <- function(varRange, graphRules) {
+getChildren <- function(varRange, graphRules) {
     lapply(graphRules, function(rule)
         applyGraphIndexRules(varRange, rule))
 }
 
 generateCalcRules <- function(declRules, rhsOriginalRules, graphRules) {
     ## Step 1: fracture LHS with rhsOriginalRules of same var
-    ## Step 2: fracture LHS based on same-var deps of other LHS (e.g., y[i] ~ dnorm(z[i], 1); z[j] ~ dnorm(0,1))
+    ## e.g., mu[i] ~ dnorm(z[i], 1); y[2:3] <- mu[2:3]
+    ## Fracture based on pieces of var potentially having different children.
+    
+    ## Step 2: fracture LHS based on same-var deps of other LHS 
+    ## e.g., y[i] ~ dnorm(z[i], 1); z[j] ~ dnorm(0,1)
+    ## Fracture based on pieces of var potentially having different parents.
     numRHSrules <- length(rhsOriginalRules)
     
     originalCalcRules <- lapply(declRules, function(rule)
@@ -117,7 +119,7 @@ generateCalcRules <- function(declRules, rhsOriginalRules, graphRules) {
 
     while(pos <= length(calcRules)) {
         varName <- calcRules[[pos]]$varName
-        deps <- getDependencies(calcRules[[pos]]$getFullRange(), graphRules[[varName]])
+        deps <- getChildren(calcRules[[pos]]$getFullRange(), graphRules[[varName]])
         for(d in seq_along(deps)) {
             ## Try to fracture all remaining rules by looping over non-top rules.
             for(i in start:length(calcRules)) {

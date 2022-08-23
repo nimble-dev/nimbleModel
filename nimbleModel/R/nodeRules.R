@@ -321,15 +321,17 @@ calcRuleClass <- R6Class(
             return(unset('stochParent'))
         },
 
-        setSortID = function(calcRules) {
+        setSortID = function(calcRules, ancestors = NULL) {
             ## Bottom-up determination (since want maximal ties amongst potentially most-numerous data nodes)
             ## Easiest here to have bottom-most rules have sortID of 1, since have to start with bottom.
             if(!length(children)) {
                 sortID <<- 1
                 return(sortID)
             }
+            if(any(children %in% ancestors))
+                stop("Cycle found in model graph. NIMBLE does not allow cyclic models.")
             sortID <<- max(sapply(children, function(i)
-                calcRules[[i]]$setSortID(calcRules))) + 1
+                calcRules[[i]]$setSortID(calcRules, c(ancestors, ID)))) + 1
 ##                calcRules[[i]]$setSortID(calcRules[[i]](calcRules))) + 1)
             return(sortID)
         }

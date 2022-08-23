@@ -196,7 +196,6 @@ getSymbolicParentNodesRecurse <- function(code,
                         hasIndex = FALSE))
         }
     }
-
     ## a call:
     if(is.call(code)) {
         indexingBracket <- code[[1]] == '['
@@ -411,4 +410,133 @@ addUnknownIndexToVarNameInBracketExpr <- function(parentExpr) {
                                      Rname2CppName(parentExpr))
         )
     parentExpr
+}
+
+detectNonscalarIndex <- function(expr) {
+    if(usedInIndex(expr) || length(expr) == 1)
+        return(FALSE)  ## The condition is needed because recursion
+                       ## means that we might already have processed
+                       ## the dynamic index.
+    if(length(expr) == 2) {  ## This can occur if we have mu[k[j[i]]]
+        expr <- stripIndexWrapping(expr)
+        if(length(expr) <= 2)
+            stop("detectNonscalarIndex: unexpected expression ", expr)
+    }
+    return(
+        any(sapply(expr[3:length(expr)],
+                   isVectorIndex)
+            )
+    )
+}
+
+usedInIndex <- function(expr)
+    length(expr) > 1 && expr[[1]] == ".USED_IN_INDEX"
+
+isDynamicIndex <- function(expr) {
+(length(expr) > 1 && expr[[1]] == ".DYN_INDEXED") ||
+    identical(expr, quote(NA_real_))
+}
+
+stripIndexWrapping <- function(expr) { 
+    if(length(expr) == 1 || !usedInIndex(expr))
+        return(expr)
+    else
+        return(expr[[2]])
+}
+
+isVectorIndex <- function(expr) {
+    if(isDynamicIndex(expr))
+        return(FALSE)
+    if(length(expr) > 1 && expr[[1]] == ":")
+        return(TRUE)
+    return(FALSE)
+}
+
+Rname2CppName <- function(rName, colonsOK = TRUE, maxLength = 250) {
+    ## This will serve to replace and combine our former Rname2CppName and nameMashupFromExpr
+    ## which were largely redundant
+    if (!is.character(rName)) 
+        rName <- safeDeparse(rName)
+
+    if( colonsOK) {
+        # Substitute single colons but preserve double colons.
+        rName <- gsub('::', '_DOUBLE_COLON_', rName)
+        rName <- gsub(':', 'to', rName)  # replace colons with 'to'
+        rName <- gsub('_DOUBLE_COLON_', '::', rName)
+    } else if(grepl(':', rName)) {
+        stop(paste0('trying to do name mashup on expression with colon (\':\') from ', rName))
+    }
+    rName <- gsub(' ', '', rName)
+    rName <- gsub('\\.', '_dot_', rName) 
+    rName <- gsub("\"", "_quote_", rName)
+    rName <- gsub(',', '_comma_', rName)   
+    rName <- gsub("`", "_backtick_" , rName)
+    rName <- gsub('\\[', '_oB', rName)
+    rName <- gsub('\\]', '_cB', rName)
+    rName <- gsub('\\(', '_oP', rName)
+    rName <- gsub('\\)', '_cP', rName)
+    rName <- gsub('\\{', '_oC', rName)
+    rName <- gsub('\\}', '_cC', rName)
+    rName <- gsub("\\$", "_" , rName)
+    rName <- gsub(">=", "_gte_", rName)
+    rName <- gsub("<=", "_lte_", rName)
+    rName <- gsub("<=", "_eq_", rName)
+    rName <- gsub("!=", "_neq_", rName)
+    rName <- gsub(">", "_gt_", rName)
+    rName <- gsub("<", "_lt_", rName)
+    rName <- gsub("!", "_not_", rName)
+    rName <- gsub("\\|\\|", "_or2_", rName)
+    rName <- gsub("&&", "_and2_", rName)
+    rName <- gsub("\\|", "_or_", rName)
+    rName <- gsub("&", "_and_", rName)
+    rName <- gsub("%%", "_mod_", rName)
+    rName <- gsub("%\\*%", "_matmult_", rName)
+    rName <- gsub("=", "_eq_" , rName)
+    rName <- gsub("\\(", "_" , rName)
+    rName <- gsub("\\+", "_plus_" , rName)
+    rName <- gsub("-", "_minus_" , rName)
+    rName <- gsub("\\*", "_times_" , rName)
+    rName <- gsub("/", "_over_" , rName)
+    rName <- gsub('\\^', '_tothe_', rName)
+    rName <- gsub('^_+', '', rName) # remove leading underscores.  can arise from (a+b), for example
+    rName <- gsub('^([[:digit:]])', 'd\\1', rName)    # if begins with a digit, add 'd' in front
+    rName <- sapply(rName,
+                    function(x) {
+                        if(nchar(x) > maxLength &&
+                           !length(grep("___TRUNC___", x)) &&
+                           !length(grep("_Vec$", x))) ## when we add _Vec on we need it to stay on (issue #1216)
+                            ## Note this could break if a user has long syntax that ends in _Vec, but deal if it arises.
+                            x <- paste0(substring(x, 1, maxLength), CppNameLabelMaker())
+                        return(x)
+                    })
+    rName
+    
+}
+
+
+# simply adds width.cutoff = 500 as the default to deal with creation of long variable names from expressions
+deparse <- function(...) {
+    if("width.cutoff" %in% names(list(...))) {
+        base::deparse(..., control = "digits17")
+    } else {
+        base::deparse(..., width.cutoff = 500L, control = "digits17")
+    }
+}
+
+## This version of deparse avoids splitting into multiple lines, which generally would lead to
+## problems. We keep the original nimble:::deparse above as deparse is widely used and there
+## are cases where not modifying the nlines behavior may be best. 
+safeDeparse <- function(..., warn = FALSE) {
+    out <- deparse(...)
+    if(TRUE) { ## TODO: nimbleOptions('useSafeDeparse')) {
+        dotArgs <- list(...)
+        if("nlines" %in% names(dotArgs))
+            nlines <- dotArgs$nlines else nlines <- 1L
+        if(nlines != -1L && length(out) > nlines) {
+            if(warn)
+                message("  [Note] safeDeparse: truncating deparse output to ", nlines, " lines.")
+            out <- out[1:nlines]
+        }
+    }
+    return(out)
 }
