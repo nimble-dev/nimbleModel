@@ -108,17 +108,17 @@ exclude <- function(RHSrule, LHSrule) {
                 indexRangeExpr = substitute(1:L, list(L = length(valsRHS))))
 
             browser()
-            nm <- paste0(".idx", nonIdenticalIndices, "[.newidx]")
-            expr[[nonIdenticalIndices+2]] <- parse(text = nm[1])[[1]]
+            newcode <- paste0(".idx", nonIdenticalIndices, "[.newidx]")
+            expr[[nonIdenticalIndices+2]] <- parse(text = newcode[1])[[1]]
 
             ## Replace any constants related to a previously processed index.
             constants <- list(valsRHS)
-            names(constants) <- nm
+            names(constants) <- paste0(".idx", nonIdenticalIndices)
             oldConstants <- RHSrule$constants
             oldConstants[names(oldConstants) %in% names(constants)] <- NULL
 
             resultRule <- rhsRuleClass$new(expr, 1, context = modelContextClass$new(newSingleContexts),
-                                           constants = c(constants, oldconstants))
+                                           constants = c(constants, oldConstants))
             return(list(resultRule))
         } else {  # seq+seq or seq+scalar
             if(typeInt == "scalar")
@@ -182,11 +182,11 @@ exclude <- function(RHSrule, LHSrule) {
             indexRangeExpr = substitute(1:L, list(L = nrow(mat))))
 
         browser()
-        nms <- paste0(".idx", nonIdenticalIndices, "[.newidx]")
+        newcode <- paste0(".idx", nonIdenticalIndices, "[.newidx]")
         for(i in seq_along(nonIdenticalIndices)) 
-            expr[[nonIdenticalIndices[i]+2]] <- parse(text = nms[i])[[1]]
+            expr[[nonIdenticalIndices[i]+2]] <- parse(text = newcode[i])[[1]]
         constants <- lapply(seq_len(ncol(mat)), function(i) mat[,i])
-        names(constants) <- nms
+        names(constants) <- paste0(".idx", nonIdenticalIndices)
         oldConstants <- RHSrule$constants
         oldConstants[names(oldConstants) %in% names(constants)] <- NULL
         resultRule <- rhsRuleClass$new(expr, 1, context = modelContextClass$new(newSingleContexts),

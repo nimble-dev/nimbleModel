@@ -824,10 +824,25 @@ test_that("graph processing for model with overlapping RHS works", {
             y[1:4, i] <- mu[1:4, k1[i]]
             z[1:4, i] <- mu[1:4, k2[i]]
         }
-        mu[1:4, 2] <- theta[1:4]
+        mu[1:4, 1:2] <- theta[1:4]
     })
-    ## FAILING 
-    modelDef <- modelDefClass$new(code, constants = list(k1 = c(1,2,3), k2 = c(1,2,4)))
+    ## why not .idx invoked again? LHS is not a matrix so what happens?
+    ## FAILS: Missing values found in setting up arbitrary indexRule: are constants the correct size?
+    modelDef <- modelDefClass$new(code, constants = list(k1 = c(1,3), k2 = c(1,2,4)))
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
+
+
+    code <- quote({
+        for(i in 1:3) {
+            y[1:4, i] <- mu[1:4, k1[i]]
+            z[1:4, i] <- mu[1:4, k2[i]]
+        }
+        for(i in 1:2)
+            mu[1:4, k3[i]] <- theta[1:4]
+    })
+    modelDef <- modelDefClass$new(code, constants = list(k1 = c(1,3), k2 = c(1,2,4), k3 = c(1,4)))
     modelDef$processModelCode()
     modelDef$processDecls()
     modelDef$generateGraphInfo()
