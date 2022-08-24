@@ -419,6 +419,7 @@ nodeRangeClass <- R6Class(
             ## from rangeID_2_indexID.
            
             indexID_2_rangeID <<- rep(0, length(index2setID))
+            # if(sum(index2setID != 0) != length(externalRange$indexID_2_rangeID)) browser()
             indexID_2_rangeID[index2setID != 0] <<- externalRange$indexID_2_rangeID
             indexID_2_rangeID[index2setID == 0] <<- internalRange$indexID_2_rangeID +
                 numExternalIndexRanges
@@ -582,13 +583,22 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
                                indexVarExpr = quote(.newidx),
                 indexRangeExpr = substitute(1:L, list(L = length(valsFrac))))
 
-            expr[[nonIdenticalIndices+2]] <- quote(.idx[.newidx])
+            newcode <- paste0(".idx", nonIdenticalIndices, "[.newidx]") 
+            expr[[nonIdenticalIndices+2]] <- parse(text = newcode[1])[[1]]
          
+            ## Replace any constants related to a previously processed index.
+            constants1 <- list(valsRHS)
+            constants2 <- list(valsFrac)
+            names(constants1) <- paste0(".idx", nonIdenticalIndices)
+            names(constants2) <- paste0(".idx", nonIdenticalIndices)
+            oldConstants <- LHSrule$constants
+            oldConstants[names(oldConstants) %in% names(constants1)] <- NULL
+
             resultRule <- calcRuleClass$new(LHSrule$declRule, expr, as.character(currentID + 1), context = modelContextClass$new(newSingleContexts1),
-                                            constants = list(.idx = valsLHS))
+                                            constants = list(constants1, oldConstants))
 
             fracturingRule <- calcRuleClass$new(LHSrule$declRule, expr, as.character(currentID + 2), context = modelContextClass$new(newSingleContexts2),
-                                                constants = list(.idx = valsFrac))
+                                                constants = list(constants2, oldConstants))
 
             result <- list(fracturingRule, resultRule)
         } else {  # seq+seq or seq+scalar
@@ -655,8 +665,8 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
         fracAsChar <- do.call(paste, as.data.frame(unrolledFrac[[1]]))
 
         remaining <- !lhsAsChar %in% fracAsChar
-        mat1 <- unrolledLHS[[1]][remaining, ]
-        mat2 <- unrolledLHS[[1]][!remaining, ]
+        mat1 <- unrolledLHS[[1]][remaining, , drop = FALSE]
+        mat2 <- unrolledLHS[[1]][!remaining, , drop = FALSE]
 
         focalContext <- sapply(names(singleContexts), function(nm)
             nm %in% unlist(lapply(2+nonIdenticalIndices, function(x) all.vars(expr[[x]]))))
@@ -674,20 +684,22 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
                                indexVarExpr = quote(.newidx),
             indexRangeExpr = substitute(1:L, list(L = nrow(mat2))))
 
-        nms <- paste0(".idx", seq_len(ncol(mat1)), "[.newidx]")
+        newcode <- paste0(".idx", nonIdenticalIndices, "[.newidx]")
         for(i in seq_along(nonIdenticalIndices)) 
-            expr[[nonIdenticalIndices[i]+2]] <- parse(text = nms[i])[[1]]
+            expr[[nonIdenticalIndices[i]+2]] <- parse(text = newcode[i])[[1]]
         
         constants1 <- lapply(seq_len(ncol(mat1)), function(i) mat1[,i])
-        names(constants1) <- paste0(".idx", seq_along(constants1))
+        names(constants1) <- paste0(".idx", nonIdenticalIndices)
         constants2 <- lapply(seq_len(ncol(mat2)), function(i) mat2[,i])
-        names(constants2) <- paste0(".idx", seq_along(constants2))
+        names(constants2) <- paste0(".idx", nonIdenticalIndices)
+        oldConstants <- LHSrule$constants
+        oldConstants[names(oldConstants) %in% names(constants1)] <- NULL
 
       
         fracturingRule <- calcRuleClass$new(LHSrule$declRule, expr, as.character(currentID + 1), context = modelContextClass$new(newSingleContexts2),
-                                        constants = constants2)
+                                        constants = c(constants2, oldConstants))
         resultRule <- calcRuleClass$new(LHSrule$declRule, expr, as.character(currentID + 2), context = modelContextClass$new(newSingleContexts1),
-                                        constants = constants1)
+                                        constants = c(constants1, oldConstants))
 
         result <- list(fracturingRule, resultRule)
     }

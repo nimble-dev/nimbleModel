@@ -34,6 +34,7 @@ modelDeclClass <- R6Class(
         
         setup = function(code,
                          context,
+                         constants,
                          sourceLineNum,
                          truncated = FALSE,
                          boundExprs = NULL) {
@@ -45,7 +46,7 @@ modelDeclClass <- R6Class(
                                  boundExprs)
             ## Placeholder to get things going. For now assume 'code' is simple cases
             ## that can be handed by declRuleClass initialization.
-            declRule <<- declRuleClass$new(code, sourceLineNum, context)
+            declRule <<- declRuleClass$new(code, sourceLineNum, context, constants)
         },
         process = function(constants, nimFunNames) {
             genSymbolicParentNodes(constants, nimFunNames)

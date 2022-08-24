@@ -791,6 +791,15 @@ test_that("graph processing error trapping for cycles", {
     modelDef$processModelCode()
     modelDef$processDecls()
     expect_error(modelDef$generateGraphInfo(), "Cycle found")
+
+    code <- quote({
+        y ~ dnorm(y, 1)
+    })
+
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    expect_error(modelDef$generateGraphInfo(), "Cycle found")
 })
 
 test_that("graph processing for model with overlapping RHS works", {
@@ -819,20 +828,25 @@ test_that("graph processing for model with overlapping RHS works", {
                      indexRange(quote(10:12)))
 
     ## Multiple exclusion over a single index
+    ## .idx2 is replaced in constants when excluding mu[1:4,c(2,5)] with mu[1:4,4:5]
     code <- quote({
         for(i in 1:3) {
             y[1:4, i] <- mu[1:4, k1[i]]
             z[1:4, i] <- mu[1:4, k2[i]]
         }
-        mu[1:4, 1:2] <- theta[1:4]
+        mu[1:4, 4:5] <- theta[1:4]
     })
-    ## why not .idx invoked again? LHS is not a matrix so what happens?
-    ## FAILS: Missing values found in setting up arbitrary indexRule: are constants the correct size?
-    modelDef <- modelDefClass$new(code, constants = list(k1 = c(1,3), k2 = c(1,2,4)))
+    modelDef <- modelDefClass$new(code, constants = list(k1 = c(1,3,4), k2 = c(1,2,5)))
     modelDef$processModelCode()
     modelDef$processDecls()
     modelDef$generateGraphInfo()
+    
+    expect_identical(length(modelDef$rhsOnlyRules), 3L)
 
+    expect_identical(modelDef$rhsOnlyRules[[1]]$getFullRange()$indexRanges,
+                     list(indexRange(quote(1:4)), indexRange(matrix(c(1,3)))))
+    expect_identical(modelDef$rhsOnlyRules[[2]]$getFullRange()$indexRanges,
+                     list(indexRange(quote(1:4)), indexRange(quote(2:2))))
 
     code <- quote({
         for(i in 1:3) {
@@ -842,11 +856,18 @@ test_that("graph processing for model with overlapping RHS works", {
         for(i in 1:2)
             mu[1:4, k3[i]] <- theta[1:4]
     })
-    modelDef <- modelDefClass$new(code, constants = list(k1 = c(1,3), k2 = c(1,2,4), k3 = c(1,4)))
+    modelDef <- modelDefClass$new(code, constants = list(k1 = c(1,3,4), k2 = c(1,2,5), k3 = c(3,5,7)))
     modelDef$processModelCode()
     modelDef$processDecls()
     modelDef$generateGraphInfo()
     
+    expect_identical(length(modelDef$rhsOnlyRules), 3L)
+
+    expect_identical(modelDef$rhsOnlyRules[[1]]$getFullRange()$indexRanges,
+                     list(indexRange(quote(1:4)), indexRange(matrix(c(1,4)))))
+    expect_identical(modelDef$rhsOnlyRules[[2]]$getFullRange()$indexRanges,
+                     list(indexRange(quote(1:4)), indexRange(quote(2:2))))
+
     ## Multiple exclusion over same indices, checking multiple use of .idx constants
     code <- quote({
         y <- mu[1, 1]
@@ -855,26 +876,47 @@ test_that("graph processing for model with overlapping RHS works", {
         mu[1:2, 2] ~ dmnorm(mu0[1:2], pr[1:2, 1:2])
         mu[1, 1] ~ dnorm(0, 1)
     })
-    ### NEED TO CHECK
+
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
     modelDef$generateGraphInfo()
 
     expect_identical(length(modelDef$rhsOnlyRules), 4L)
+    expect_identical(modelDef$rhsOnlyRules[[1]]$getFullRange()$indexRanges,
+                     list(indexRange(matrix(c(2,3,3,1,1,2), ncol = 2))))
+    expect_identical(modelDef$rhsOnlyRules[[2]]$getFullRange()$indexRanges,
+                     list(indexRange(matrix(c(3,3), ncol = 2))))
 
     
     ## Multiple exclusion over disjoint indices, checking multiple use of .idx constants
     code <- quote({
-       ## NEED TO DEVELOP 
+        y[1:2, 1:3, 1:4] <- mu[1:2, 1:3, 1:4]
+        for(i in 1:2)
+            for(j in 1:2)
+                w[i, 1:3, j] <- mu[k1[i], 1:3, k2[j]]
+        mu[2, 3, 1:4] <- mu0[2, 3, 1:4]
     })
+    ## TODO might need to modify the example to draw out particular issues
     
-    modelDef <- modelDefClass$new(code)
+    modelDef <- modelDefClass$new(code, constants = list(k1 = c(2,3), k2 = c(4,5)))
     modelDef$processModelCode()
     modelDef$processDecls()
     modelDef$generateGraphInfo()
 
+    ## intersection of RHS of ((3,4),(2,5),(3,5)),(1:3) with LHS of 2,3,1:4 is messed up - should have no overlap
 
+    ## try to create graphRule for ((3,4),(2,5),(3,5)),(1:3) <- ((3,4),(2,5),(3,5)),(1:3)
+    
+## In addition: Warning message:
+## In indexID_2_rangeID[index2setID != 0] <<- externalRange$indexID_2_rangeID :
+##   number of items to replace is not a multiple of replacement length
+
+    ## probably do this instead as (2,3), (4,5) are converted to seq
+    modelDef <- modelDefClass$new(code, constants = list(k1 = c(2,4), k2 = c(4,6)))
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
 })
 
 

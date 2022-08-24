@@ -107,7 +107,6 @@ exclude <- function(RHSrule, LHSrule) {
                                indexVarExpr = quote(.newidx),
                 indexRangeExpr = substitute(1:L, list(L = length(valsRHS))))
 
-            browser()
             newcode <- paste0(".idx", nonIdenticalIndices, "[.newidx]")
             expr[[nonIdenticalIndices+2]] <- parse(text = newcode[1])[[1]]
 
@@ -181,7 +180,6 @@ exclude <- function(RHSrule, LHSrule) {
                                indexVarExpr = quote(.newidx),
             indexRangeExpr = substitute(1:L, list(L = nrow(mat))))
 
-        browser()
         newcode <- paste0(".idx", nonIdenticalIndices, "[.newidx]")
         for(i in seq_along(nonIdenticalIndices)) 
             expr[[nonIdenticalIndices[i]+2]] <- parse(text = newcode[i])[[1]]

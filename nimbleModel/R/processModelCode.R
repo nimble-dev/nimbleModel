@@ -4,6 +4,7 @@
 processModelCode_impl <- function(modelDef = modelDefClass$new(),
                                   code = NULL,
                                   contextID = 1,
+                                  constants = NULL,
                                   lineNumber = 0,
                                   userEnv) {
     ## uses BUGScode, sets fields: contexts, declInfo$code, declInfo$contextID.
@@ -37,6 +38,7 @@ processModelCode_impl <- function(modelDef = modelDefClass$new(),
             
             modelDeclClassObject$setup(code[[i]],
                                        modelDef$contexts[[contextID]],
+                                       constants,
                                        lineNumber)
             modelDef$declInfo[[iAns]] <<- modelDeclClassObject
         }
@@ -93,6 +95,7 @@ processModelCode_impl <- function(modelDef = modelDefClass$new(),
                     modelDef,
                     recurseCode,
                     nextContextID,
+                    constants,
                     lineNumber = lineNumber,
                     userEnv = userEnv)
         }
@@ -104,6 +107,7 @@ processModelCode_impl <- function(modelDef = modelDefClass$new(),
                     modelDef,
                     code[[i]],
                     contextID,
+                    constants,
                     lineNumber = lineNumber,
                     userEnv = userEnv)
         }

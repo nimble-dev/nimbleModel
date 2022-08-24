@@ -47,6 +47,7 @@ modelDefClass <- R6Class(
                     
                     modelDeclClassObject$setup(code[[i]],
                                                contexts[[contextID]],
+                                               constants,
                                                lineNumber)
                     declInfo[[iAns]] <<- modelDeclClassObject
                 }
@@ -143,10 +144,10 @@ modelDefClass <- R6Class(
             names(downstreamRules) <<- unique(varNames)
             calcRules <<- generateCalcRules(declRules, rhsOriginalRules, downstreamRules)
             rhsOnlyRules <<- generateRHSonlyRules(rhsOriginalRules, declRules)
+            setSortIDs(calcRules)  ## do before top/end to catch cycles
             setEndNodes(calcRules)
             setTopNodes(calcRules)
             ## setLatentNodes(calcRules)
-            setSortIDs(calcRules)
             invisible(0)
         },
         initializeContexts = function() {
