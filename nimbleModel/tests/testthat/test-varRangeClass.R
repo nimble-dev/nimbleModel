@@ -189,11 +189,10 @@ test_that('varRangeClass initialized from expr', {
 
 })
 
-test_that("varRange initialized with matrix indexRange(s)",
-{
+
+test_that("varRange initialized with matrix indexRange(s)",{
     
-}
-)
+})
 
 test_that("varRange expr, char, and indexRange replacement", {
     input <- quote(x[3])
@@ -235,5 +234,47 @@ test_that("varRange expr, char, and indexRange replacement", {
     )
     ## It doesn't appear we can keep indexRangeExprs identical
     
-}
-)
+})
+
+test_that("getIndexRangeMatrix", {
+    ## full indices, checking that ordering is correct
+    vr <- varRangeClass$new(list(
+               indexRange(matrix(c(2,3,1,2), ncol = 2)),
+               indexRange(quote(2:3))), indexOrders = list(c(1,3), 2))
+
+    full_result <- matrix(c(2,3,2,3,2,2,3,3,1,2,1,2), ncol = 3)
+
+    inds <- 1:3
+    mat <- vr$getIndexRangeMatrix(inds)
+    expect_identical(mat, indexRange(full_result[ , inds]))
+
+    ## different order
+    inds <- 3:1
+    mat <- vr$getIndexRangeMatrix(inds)
+    expect_identical(mat, indexRange(full_result[ , inds]))
+    
+    ## partial indices, not breaking up an indexRange
+    inds <- c(1,3)
+    mat <- vr$getIndexRangeMatrix(inds)
+    expect_identical(mat, indexRange(unique(full_result[ , inds])))
+
+    ## partial indices, not breaking up an indexRange, out of order
+    inds <- c(3,1)
+    mat <- vr$getIndexRangeMatrix(inds)
+    expect_identical(mat, indexRange(unique(full_result[ , inds])))
+
+    ## partial indices, breaking up an indexRange
+    inds <- 2:3
+    mat <- vr$getIndexRangeMatrix(inds)
+    expect_identical(mat, indexRange(full_result[ , inds]))
+
+    ## partial indices, out of order
+    inds <- 3:2
+    mat <- vr$getIndexRangeMatrix(inds)
+    expect_identical(mat, indexRange(full_result[ , inds]))
+
+    ## single index
+    inds <- 3
+    mat <- vr$getIndexRangeMatrix(inds)
+    expect_identical(mat, indexRange(unique(full_result[ , inds, drop = FALSE])))
+})

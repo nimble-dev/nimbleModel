@@ -212,8 +212,10 @@ varRange_getIndexRangeMatrix <- function(varRange,
     indexRangeResults <- list()
     iResult <- 1
     usedRanges <- integer()
+    usedIndices <- NULL
     while(!done) {
         boolIndex <- varRange$rangeID_2_indexID[[iRange]] %in% indices
+        usedIndices <- c(usedIndices, varRange$rangeID_2_indexID[[iRange]][boolIndex])
         if(any(boolIndex)) {
             innerIndices <- which(boolIndex)
             indexRangeResults[[iResult]] <-
@@ -227,6 +229,8 @@ varRange_getIndexRangeMatrix <- function(varRange,
         if(iRange > length(varRange$indexRanges)) done <- TRUE
     }
     result <- indexRangeList2matrix(indexRangeResults)
+    ## Extract requested indices in correct order.
+    result[[1]] <- result[[1]][ , match(indices, usedIndices), drop = FALSE]
     if(!details)
         result
     else

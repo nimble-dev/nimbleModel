@@ -677,7 +677,41 @@ test_that("graph processing for complicated multiple mv LHS nodes", {
     expect_identical(length(modelDef$rhsOnlyRules), 2L)
     expect_is(modelDef$rhsOnlyRules[[1]]$externalRules$indexRules[[1]],
               'indexRuleClass_arbitrary')
+
+    
+    code <- quote({
+        for(i in 1:3)
+            mu[i, 1:3] ~ dmnorm(mu0[1:3, i], pr[1:3,1:3])
+        mu0[1, 1:2] ~ dmnorm(zero[1:2], pr[1:2, 1:2])
+        y ~ dnorm(mu[1,1], 1)
+    })
+    
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
+
+    vars <- sapply(modelDef$calcRules, function(rule) rule$varName)
+    ids <- names(modelDef$calcRules)
+    names(ids) <- vars
                      
+    var <- "mu"
+    wh <- which(vars == var)
+    expect_identical(length(wh), 3L)
+
+    expect_identical(modelDef$calcRules[[wh[1]]]$getFullRange()$indexRanges,
+                     list(indexRange(1), indexRange(quote(1:3))))
+    expect_identical(modelDef$calcRules[[wh[2]]]$getFullRange()$indexRanges,
+                     list(indexRange(2), indexRange(quote(1:3))))
+    expect_identical(modelDef$calcRules[[wh[3]]]$getFullRange()$indexRanges,
+                     list(indexRange(3), indexRange(quote(1:3))))
+
+    expect_identical(modelDef$calcRules[[wh[1]]]$is_type('latent'), TRUE)
+    expect_identical(modelDef$calcRules[[wh[2]]]$is_type('end'), TRUE)
+    expect_identical(modelDef$calcRules[[wh[2]]]$is_type('top'), FALSE)
+    expect_identical(modelDef$calcRules[[wh[3]]]$is_type('top'), TRUE)
+    expect_identical(modelDef$calcRules[[wh[3]]]$is_type('end'), TRUE)
+
 })
 
 test_that("graph processing for RHS var used twice", {
@@ -777,6 +811,54 @@ test_that("graph processing for basic RHS exclusion and LHS fracturing", {
                      indexRange(quote(10)))
     expect_identical(modelDef$rhsOnlyRules[[5]]$getFullRange()$indexRanges[[1]],
                      indexRange(quote(1:2)))
+
+    ## complete overlap
+    code <- quote({
+        for(i in 1:3) {
+            y[i] ~ dnorm(mu[k1[i]], 1)
+            mu[k2[i]] ~ dnorm(0, 1)
+        }
+    })
+
+    modelDef <- modelDefClass$new(code, constants = list(k1 = c(1,2,4), k2 = c(1,2,4)))
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
+    
+    vars <- sapply(modelDef$calcRules, function(rule) rule$varName)
+    ids <- names(modelDef$calcRules)
+    names(ids) <- vars
+
+    expect_identical(length(modelDef$calcRules), 2L)
+    var <- "mu"
+    wh <- which(vars == var)
+    expect_identical(length(wh), 1L)
+    expect_identical(modelDef$calcRules[[wh]]$is_type('end'), FALSE)
+    expect_identical(modelDef$calcRules[[wh]]$is_type('top'), TRUE)
+
+    ## no overlap
+    code <- quote({
+        for(i in 1:3) {
+            y[i] ~ dnorm(mu[k1[i]], 1)
+            mu[k2[i]] ~ dnorm(0, 1)
+        }
+    })
+
+    modelDef <- modelDefClass$new(code, constants = list(k1 = c(1,2,4), k2 = c(3,5,7)))
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
+    
+    vars <- sapply(modelDef$calcRules, function(rule) rule$varName)
+    ids <- names(modelDef$calcRules)
+    names(ids) <- vars
+
+    expect_identical(length(modelDef$calcRules), 2L)
+    var <- "mu"
+    wh <- which(vars == var)
+    expect_identical(length(wh), 1L)
+    expect_identical(modelDef$calcRules[[wh]]$is_type('end'), TRUE)
+    expect_identical(modelDef$calcRules[[wh]]$is_type('top'), TRUE)
     
 })
 
@@ -897,27 +979,83 @@ test_that("graph processing for model with overlapping RHS works", {
                 w[i, 1:3, j] <- mu[k1[i], 1:3, k2[j]]
         mu[2, 3, 1:4] <- mu0[2, 3, 1:4]
     })
-    ## TODO might need to modify the example to draw out particular issues
     
-    modelDef <- modelDefClass$new(code, constants = list(k1 = c(2,3), k2 = c(4,5)))
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$generateGraphInfo()
-
-    ## intersection of RHS of ((3,4),(2,5),(3,5)),(1:3) with LHS of 2,3,1:4 is messed up - should have no overlap
-
-    ## try to create graphRule for ((3,4),(2,5),(3,5)),(1:3) <- ((3,4),(2,5),(3,5)),(1:3)
-    
-## In addition: Warning message:
-## In indexID_2_rangeID[index2setID != 0] <<- externalRange$indexID_2_rangeID :
-##   number of items to replace is not a multiple of replacement length
-
-    ## probably do this instead as (2,3), (4,5) are converted to seq
     modelDef <- modelDefClass$new(code, constants = list(k1 = c(2,4), k2 = c(4,6)))
     modelDef$processModelCode()
     modelDef$processDecls()
     modelDef$generateGraphInfo()
+
+    expect_identical(length(modelDef$rhsOnlyRules), 3L)
+
+    expect_identical(modelDef$rhsOnlyRules[[1]]$getFullRange()$indexRanges,
+                     list(indexRange(matrix(c(1,2,1,2,1,1,1,2,2,3), ncol = 2)), indexRange(quote(1:4))))
+    expect_is(modelDef$rhsOnlyRules[[1]]$externalRules$indexRules[[1]],
+              'indexRuleClass_block')
+    expect_is(modelDef$rhsOnlyRules[[1]]$externalRules$indexRules[[2]],
+              'indexRuleClass_arbitrary')
+    expect_identical(modelDef$rhsOnlyRules[[1]]$index2setID, c(2,2,1))
+    
+    expect_identical(modelDef$rhsOnlyRules[[2]]$getFullRange()$indexRanges,
+                     list(indexRange(matrix(c(4,2,4,4,6,6), ncol = 2)), indexRange(quote(1:3))))
+    expect_is(modelDef$rhsOnlyRules[[2]]$externalRules$indexRules[[1]],
+              'indexRuleClass_block')
+    expect_is(modelDef$rhsOnlyRules[[2]]$externalRules$indexRules[[2]],
+              'indexRuleClass_arbitrary')
+    expect_identical(modelDef$rhsOnlyRules[[2]]$index2setID, c(2,1,2))
+
+    ## With an additional exclusion
+    code <- quote({
+        y[1:2, 1:3, 1:4] <- mu[1:2, 1:3, 1:4]
+        for(i in 1:2)
+            for(j in 1:2)
+                w[i, 1:3, j] <- mu[k1[i], 1:3, k2[j]]
+        mu[2, 3, 1:4] <- mu0[2, 3, 1:4]
+        mu[4, 3, 6] <- mu0[4, 3, 6]
+    })
+    
+    modelDef <- modelDefClass$new(code, constants = list(k1 = c(2,4), k2 = c(4,6)))
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
+
+    expect_identical(length(modelDef$rhsOnlyRules), 4L)
+
+    expect_identical(modelDef$rhsOnlyRules[[1]]$getFullRange()$indexRanges,
+                     list(indexRange(matrix(c(1,2,1,2,1,1,1,2,2,3), ncol = 2)), indexRange(quote(1:4))))
+    expect_is(modelDef$rhsOnlyRules[[1]]$externalRules$indexRules[[1]],
+              'indexRuleClass_block')
+    expect_is(modelDef$rhsOnlyRules[[1]]$externalRules$indexRules[[2]],
+              'indexRuleClass_arbitrary')
+    expect_identical(modelDef$rhsOnlyRules[[1]]$index2setID, c(2,2,1))
+
+    expect_identical(modelDef$rhsOnlyRules[[2]]$getFullRange()$indexRanges,
+                     list(indexRange(matrix(c(4,4,4,2,4,2,4,2,1,2,3,1,1,2,2,3,rep(4,3),rep(6,5)), ncol = 3))))
+    expect_is(modelDef$rhsOnlyRules[[2]]$externalRules$indexRules[[1]],
+              'indexRuleClass_arbitrary')
+    expect_identical(modelDef$rhsOnlyRules[[2]]$index2setID, c(1,1,1))
+
 })
+
+
+singleContext1 <-
+    modelSingleContext(forCode = quote(for(i in 1:3){}))
+
+singleContext2 <-
+    modelSingleContext(forCode = quote(for(j in 1:3){}))
+context_ij <- modelContextClass$new(list(singleContext1,
+                                         singleContext2))
+
+    rules <- makeGraphIndexRules(LHS = quote(y[k1[i],j,k2[i]]),
+                                RHS = quote(x[k1[i],j,k2[i]]),
+                                context = context_ij,
+                                constants = list(k1=c(3,2,3),k2=c(4,5,5)))
+
+    tmp<-    applyGraphIndexRules(
+            varRangeClass$new(list(
+                              indexRange(2),
+                              indexRange(3),
+                              indexRange(quote(1:4)))),rules)
+
 
 
 test_that("graph processing for multiple RHS only cases", {

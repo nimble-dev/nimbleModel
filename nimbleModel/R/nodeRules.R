@@ -79,9 +79,11 @@ nodeRuleClass <- R6Class(
             } else internalRange <- NULL # varRangeClass$new(list(nimbleModel:::indexRange_empty()))
             if((!is.null(externalRange) && externalRange$isEmpty()) || (!is.null(internalRange) &&  internalRange$isEmpty())) {
                 if(!is.null(externalRange))
-                    externalRange <- varRangeClass$new(lapply(seq_len(numExternalRules), function(i) indexRange_empty()))
+                    externalRange <- varRangeClass$new(lapply(seq_len(numExternalRules), function(i) indexRange_empty()),
+                                                       indexOrders = externalRange$rangeID_2_indexID)
                 if(!is.null(internalRange))
-                    internalRange <- varRangeClass$new(lapply(seq_len(numInternalRules), function(i) indexRange_empty()))
+                    internalRange <- varRangeClass$new(lapply(seq_len(numInternalRules), function(i) indexRange_empty()),
+                                                       indexOrders = internalRange$rangeID_2_indexID)
             }
             result <- nodeRangeClass$new(varName, externalRange, internalRange, index2setID, self)
             return(result)
@@ -419,7 +421,7 @@ nodeRangeClass <- R6Class(
             ## from rangeID_2_indexID.
            
             indexID_2_rangeID <<- rep(0, length(index2setID))
-            # if(sum(index2setID != 0) != length(externalRange$indexID_2_rangeID)) browser()
+
             indexID_2_rangeID[index2setID != 0] <<- externalRange$indexID_2_rangeID
             indexID_2_rangeID[index2setID == 0] <<- internalRange$indexID_2_rangeID +
                 numExternalIndexRanges
@@ -587,7 +589,7 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
             expr[[nonIdenticalIndices+2]] <- parse(text = newcode[1])[[1]]
          
             ## Replace any constants related to a previously processed index.
-            constants1 <- list(valsRHS)
+            constants1 <- list(valsLHS)
             constants2 <- list(valsFrac)
             names(constants1) <- paste0(".idx", nonIdenticalIndices)
             names(constants2) <- paste0(".idx", nonIdenticalIndices)
@@ -595,10 +597,10 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
             oldConstants[names(oldConstants) %in% names(constants1)] <- NULL
 
             resultRule <- calcRuleClass$new(LHSrule$declRule, expr, as.character(currentID + 1), context = modelContextClass$new(newSingleContexts1),
-                                            constants = list(constants1, oldConstants))
+                                            constants = c(constants1, oldConstants))
 
             fracturingRule <- calcRuleClass$new(LHSrule$declRule, expr, as.character(currentID + 2), context = modelContextClass$new(newSingleContexts2),
-                                                constants = list(constants2, oldConstants))
+                                                constants = c(constants2, oldConstants))
 
             result <- list(fracturingRule, resultRule)
         } else {  # seq+seq or seq+scalar
