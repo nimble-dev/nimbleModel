@@ -980,6 +980,96 @@ test_that("RHS exclusion works", {
                  "Missing values found in setting up arbitrary indexRule")
 }
 
+
+test_that("declaration-specific calculate generated correctly", {
+    singleContext1 <-
+        modelSingleContext(forCode = quote(for(i in 2:8){}))
+    singleContext2 <-
+        modelSingleContext(forCode = quote(for(j in 1:4){}))
+    context_ij <- modelContextClass$new(list(singleContext1, singleContext2))
+
+    rule <- declRuleClass$new(quote(y[j,i] ~ dnorm(x[i], 1)), 1, context_ij)
+    expect_identical(body(rule$calculate), quote(logProb_y[idx[2], idx[1]] <- dnorm(y[idx[2], idx[1]], x[idx[1]], 1)))
+    
+})
+    
+test_that("calculate works correctly", {
+    ## NOTE: until nodeFun generation and model building are integrated, this testing relies on
+    ## inserting logProb_y as hard-coded initialization in the declRule$calculate. 
+    singleContext1 <-
+        modelSingleContext(forCode = quote(for(i in 2:6){}))
+    context_i <- modelContextClass$new(list(singleContext1))
+    declRule <- declRuleClass$new(quote(y[i] ~ dnorm(0, 1)), 1, context_i)
+
+    y <- rnorm(6)
+    logProb_y <- dnorm(y, 0, 1)
+    
+    calcRule <- calcRuleClass$new(declRule, NULL, NULL, context_i)
+    calcRange <- calcRule$generate_calcRange(varRangeClass$new(list(indexRange(quote(3:5)))))
+    expect_identical(calcRange$calculate(), logProb_y[3:5])
+
+    calcRange <- calcRule$generate_calcRange(varRangeClass$new(list(indexRange(matrix(c(3,5))))))
+    expect_identical(calcRange$calculate(), logProb_y[c(3,5)])
+
+    ## also test with 1e6 dnorms once have indexRange as proper R6 class to see if faster (avoid current list copies)
+    ## current nimble 1e5 dnorms is 34 sec. (compare to vec dnorm in R of .02 f0r 1e6 and for loop of 0.88 sec for 1e6)
+
+    singleContext1 <-
+        modelSingleContext(forCode = quote(for(i in 2:6){}))
+    singleContext2 <-
+        modelSingleContext(forCode = quote(for(j in 3:9){}))
+    context_ij <- modelContextClass$new(list(singleContext1, singleContext2))
+    declRule <- declRuleClass$new(quote(y[j,i] ~ dnorm(x[i], 1)), 1, context_ij)
+
+    y <- matrix(rnorm(6*9), 9)
+    x <- rep(0, 6)
+    logProb_y <- dnorm(y, 0, 1)
+
+    calcRule <- calcRuleClass$new(declRule, NULL, NULL, context_ij)
+    calcRange <- calcRule$generate_calcRange(varRangeClass$new(
+                        list(indexRange(matrix(c(6,2,5,4,7,5), ncol = 2)))))
+    expect_identical(calcRange$calculate(), logProb_y[matrix(c(6,5,4,5), ncol = 2)])
+
+    calcRange <- calcRule$generate_calcRange(varRangeClass$new(
+                        list(indexRange(quote(8:9)), indexRange(quote(2:3)))))
+                                             
+    expect_identical(calcRange$calculate(), c(logProb_y[8:9,2:3]))
+
+    ## internal block and deterministic
+    y <- array(0, c(6,3,9))
+    x <- matrix(rnorm(6*9), 6)
+
+    declRule <- declRuleClass$new(quote(y[i,2:3,j] <- x[i,j]), 1, context_ij)
+    calcRule <- calcRuleClass$new(declRule, NULL, NULL, context_ij)
+    calcRange <- calcRule$generate_calcRange(varRangeClass$new(
+                        list(indexRange(matrix(c(3,2,4,3,3,4,5,2,5,5,3,5), byrow = TRUE, ncol = 3)))))
+    expect_identical(calcRange$calculate(), x[matrix(c(3,4,3,4,5,5,5,5), byrow = TRUE, ncol = 2)])
+
+
+    singleContext1 <-
+        modelSingleContext(forCode = quote(for(i in 1:2){}))
+    singleContext2 <-
+        modelSingleContext(forCode = quote(for(j in 1:3){}))
+    singleContext3 <-
+        modelSingleContext(forCode = quote(for(k in 1:4){}))
+    context_ijk <- modelContextClass$new(list(singleContext1, singleContext2, singleContext3))
+
+    y <- array(rnorm(2*3*4), c(2,3,4))
+    logProb_y  <- dnorm(y, 0, 1)
+    declRule <- declRuleClass$new(quote(y[i,j,k] ~ dnorm(0,1)), 1, context_ijk)
+    calcRule <- calcRuleClass$new(declRule, NULL, NULL, context_ijk)
+    calcRange <- calcRule$generate_calcRange(varRangeClass$new(
+                                                               list(indexRange(matrix(c(2,1,3,1), ncol = 2)),
+                                                                    indexRange(quote(2:3))),
+                                                               indexOrders = list(c(1,3), 2)))
+    expect_identical(calcRange$calculate(), logProb_y[matrix(c(2,2,3,2,3,3,1,2,1,1,3,1), ncol = 3, byrow = TRUE)])
+
+    ## TODO: add tests with mv nodes
+    ## TODO: add test where there is no indexing: y ~ dnorm(0,1)
+
+})
+
+
 test_that("getFullRange works correctly", {
     context_0 <- modelContextClass$new()
     singleContext1 <-

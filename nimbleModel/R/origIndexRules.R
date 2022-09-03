@@ -22,10 +22,11 @@ originalIndexRuleClass <- R6Class(
                                     context,
                                     constants)
         },
-        apply = function(fromVarRange) {
+        apply = function(fromVarRange, varName = NULL) {
             applyGraphIndexRules(
                 fromVarRange,
-                graphRule
+                graphRule,
+                varName
             )
         }
     )

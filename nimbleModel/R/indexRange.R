@@ -76,6 +76,16 @@ indexRange <- function(expr) {
     }
 }
 
+## kludge until we make indexRanges proper R6 classes.
+indexRange_init <- function(indexRange, delay = 0) {
+    indexRange$current <- 1
+    indexRange$local <- 1
+    indexRange$length <- indexRange_numRows(indexRange)
+    indexRange$delay <- delay
+    return(indexRange)
+}
+
+    
 ## Notes:
 ##
 ## We may need to distinguish vector from matrix
@@ -269,14 +279,27 @@ collapse_indexRangeMatrices <- function(indexRangeMatrices) {
     return(result)
 }
 
-## placeholder proof of concept for use with generic calculate() to extract element from indexRange
-indexRange_getItem <- function(inputIndexRange, item) {
-   switch(attr(inputIndexRange, 'rangeType'),
+indexRange_getItem <- function(inputIndexRange) {
+    item <- inputIndexRange$current
+
+    ## Increment internal indexing
+    if(inputIndexRange$local < inputIndexRange$delay) {
+        inputIndexRange$local <- inputIndexRange$local + 1
+    } else {
+        inputIndexRange$local <- 1
+        inputIndexRange$current <- inputIndexRange$current + 1
+        if(inputIndexRange$current > inputIndexRange$length)
+            inputIndexRange$current <- 1
+    }
+
+    ## Return original index values
+    ## TODO remove kludge that has to return modified indexRange as well
+    result <- switch(attr(inputIndexRange, 'rangeType'),
            matrix = inputIndexRange[[1]][item, ],
-           sequence = inputIndexRange[[1]] + item - 1,
+           sequence = inputIndexRange[[1]][[1]] + item - 1,
            stop("In inputRange_getItem: invalid type of inputIndexRange.")
            )
-
+    return(list(result = result, range = inputIndexRange))
 }
 
 getRangeType <- function(IRL) {

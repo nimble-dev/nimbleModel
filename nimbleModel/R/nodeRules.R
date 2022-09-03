@@ -141,14 +141,35 @@ declRuleClass <- R6Class(
             calcFun <<- genCalcFun(decl, context)
         },
 
-
         genCalcFun = function(decl, context) {
-            ## using context$indexVarNames, substitute "idx[1]", "idx[2]", etc.
-            ## then generate a function with the decl code in it.
-            ## e.g.
-            ## function(idx) {
-            ##   logProb_y[idx[2]+1, idx[1]] <- dnorm(mu[idx[2]], 1)
-            ## }
+            newDecl <- decl
+            replacements <- sapply(seq_along(context$singleContexts),
+                                   function(i) parse(text = paste0('idx[',i,']'))[[1]])
+            names(replacements) <- context$indexVarNames
+            
+            for(i in seq_along(context$singleContexts))
+                newDecl <- eval(substitute(substitute(e, replacements), list(e = newDecl)))
+
+            ## Insert 'logProb_' and change to assignment
+            if(stoch) {
+                finalDecl <- quote(A <- B)
+                finalDecl[[3]] <- newDecl[[3]]
+                replacements <- list(parse(text = paste0('logProb_', varName))[[1]])
+                names(replacements) <- varName
+                finalDecl[[2]] <- eval(substitute(substitute(e, replacements), list(e = newDecl[[2]])))
+                len <- length(finalDecl[[3]])
+                if(len > 1)
+                    finalDecl[[3]][3:(len+1)] <- finalDecl[[3]][2:len]
+                finalDecl[[3]][[2]] <- newDecl[[2]]
+                calculate <<- function(idx) {
+                    logProb_y <- array(0, rep(100, length(newDecl[[2]])-2))  # TODO: placeholder so logProb storage exists for testing
+                }
+                body(calculate)[[length(body(calculate))+1]] <<- finalDecl
+            } else {
+                calculate <<- function(idx) {}
+                body(calculate) <<- newDecl
+            }
+            ## will need to deal with logProb for mv node having single value inserted.
             ## will need to deal with the various complexities we currently deal with - alt params, truncation, etc.
         }
         
@@ -208,10 +229,10 @@ calcRuleClass <- R6Class(
         generate_calcRange = function(inputRange = NULL) {
             if(is.null(inputRange))
                 inputRange <- canonicalRange            
-            indexingRange <- declRule$originalIndexRules$apply(inputRange)
+            indexingRange <- declRule$originalIndexRules$apply(inputRange, varName)
             if(indexingRange$isEmpty())
                 return(NULL)
-            result <- calcRangeClass$new(varName, indexingRange, declRule$calcFun, sortID)
+            result <- calcRangeClass$new(varName, indexingRange, declRule$calculate, sortID)
             return(result)
         },
 
@@ -358,32 +379,55 @@ calcRangeClass <- R6Class(
         ## Generic calculate function that crosses the indexRanges in the indexingRange (a varRange)
         ## and extracts the original indice to feed into calculate nodeFunction
         ## that operates on set of scalar indices.
+
+        ## Keep indexing internal to the indexRange to avoid complicated and possibly repetitive
+        ## calculation of internal indexing.
         
         ## Will need to figure out how this is going to get compiled.
-        ## Will there be a permanent C++ version?
-        ## How will indexingRange be compiled?
-        ## This is a sketch and hasn't been debugged...
+        ## This will rely on nCompiler indexing of eigen tensors for static block indexes, e.g. '3:5' in x[i, 3:5]
+        ## which will presumably use the information in the symbolicParentNodes.
+
         calculate = function() {
             numRanges <- length(indexingRange$indexRanges)
             index <- numeric(length(indexingRange$indexID_2_rangeID))  ## vector to hold the original index values
             indexRange_lengths <- sapply(indexingRange$indexRanges, indexRange_numRows)
             indexPositions <- indexingRange$rangeID_2_indexID
-            nestedLengths <- sapply(seq_len(numRanges), function(i) prod(indexRange_lengths[(i+1):numRanges]))
-                                    
-            for(item in prod(indexRange_lengths)) {
-                for(irIndex in seq_len(numRanges)) {
-                    ## Determine nested indexing from unrolled indexing
-                    if(irIndex == seq_len(numRanges)) {
-                        elementIdx <- 1 + (item-1) %% indexRange_lengths[irIndex]
-                    } else {
-                        elementIdx <- 1 + (item-1) %/% nestedLengths[irIndex]
-                    }
-                    index[indexPositions[irIndex]] <- indexRange_getItem(indexingRange$indexRanges[[irIndex]], elementIdx)
-                }
-                self$calcFun(index)  ## scalar calculation
+            len <- prod(indexRange_lengths)
+            ## nestedLengths <- sapply(seq_len(numRanges), function(i) prod(indexRange_lengths[(i+1):numRanges]))
+
+            delay <- 1
+            for(irIndex in rev(seq_len(numRanges))) {
+                indexingRange$indexRanges[[irIndex]] <- indexRange_init(indexingRange$indexRanges[[irIndex]], delay)
+                delay <- delay * indexingRange$indexRanges[[irIndex]]$length
             }
 
+            ## TODO: This is a placeholder so we can test numerical results
+            ## once fuller workflow is in place, remove this and assignment of output of calcFun()
+            result <- rep(0, len)
+            
+            for(item in seq_len(len)) {
+                for(irIndex in seq_len(numRanges)) {
+                    ## Determine nested indexing from unrolled indexing
+                    ## if(irIndex == seq_len(numRanges)) {
+                    ##     elementIdx <- 1 + (item-1) %% indexRange_lengths[irIndex]
+                    ## } else {
+                    ##     elementIdx <- 1 + (item-1) %/% nestedLengths[irIndex]
+                    ##}
+
+                    ## TODO: remove kludge when indexRanges are proper R6 classes
+                    tmp <- indexRange_getItem(indexingRange$indexRanges[[irIndex]])
+                    index[indexPositions[[irIndex]]] <- tmp$result
+                    indexingRange$indexRanges[[irIndex]] <- tmp$range
+                }
+                result[item] <- calcFun(index)  ## scalar calculation
+            }
+            return(result)
+
         }
+
+        ## simulate() should be very similar to calculate()
+        ## need to think more about getParam, getBound, etc., but probably also very similar,
+        ## just swapping out calcFun() for appropriate function.
     )
 )
 

@@ -425,7 +425,8 @@ checkOneConstraint <- function(indexRange, constraint, col = 1) {
 ## We need to extract the relevant components of fromVarRange for each rule, apply the rules,
 ## and compose the result as a new varRange.
 applyGraphIndexRules <- function(fromVarRange,
-                                 rules) {
+                                 rules,
+                                 varName = NULL) {
 
     if(fromVarRange$isEmpty())
         return(fromVarRange)
@@ -731,10 +732,10 @@ applyGraphIndexRules <- function(fromVarRange,
 
     ## Remove duplicate columns (from cases where two indexRanges are used in a single rule).
     repeats <- duplicated(finalIndexOrders)
-    
+
     varRangeClass$new(
         indexInfo = finalIndexRanges[!repeats],
         indexOrders = finalIndexOrders[!repeats],
-        varName = rules$childVar
+        varName = ifelse(is.null(varName), rules$childVar, varName)
     )
 }
