@@ -68,7 +68,9 @@ nodeRuleClass <- R6Class(
         
         ## Generate nodeRange from a varRange (or another nodeRange)
         apply = function(varRange = NULL) {
-            if(is.null(varRange)) {   ## user wants full range for the variable
+            if(is.character(varRange) && varRange != varName)
+                return(NULL)  
+            if(is.null(varRange) || is.character(varRange)) {   
                 varRange <- getFullRange()
             } 
             if(numExternalRules) {
@@ -86,6 +88,7 @@ nodeRuleClass <- R6Class(
                                                        indexOrders = internalRange$rangeID_2_indexID)
             }
             result <- nodeRangeClass$new(varName, externalRange, internalRange, index2setID, self)
+            if(result$isEmpty) result <- NULL
             return(result)
         },
 

@@ -12,12 +12,15 @@ graphRuleClass <- R6Class(
         numRHSindices = NULL,
         parentVar = NULL,
         childVar = NULL,
+        stoch = logical(),
         initialize = function(LHS,
                               RHS,
                               context,
-                              constants) {
+                              constants,
+                              stoch) {
             ## This is a hack for the moment, as makeGraphIndexRules
             ## needs to be a method, not a stand-alone function.
+            stoch <<- stoch
             output <- 
                 makeGraphIndexRules(LHS,
                                     RHS,
@@ -431,6 +434,12 @@ applyGraphIndexRules <- function(fromVarRange,
     if(fromVarRange$isEmpty())
         return(fromVarRange)
 
+    if(is.character(fromVarRange)) {
+        if(fromVarRange != varName)
+            return(varRangeClass$new(list(nimbleModel:::indexRange_empty())))
+        return(rules$getFullRange())
+    }
+    
     if(!is(fromVarRange, 'varRangeClass'))
         stop("applyGraphIndexRules: 'fromVarRange' needs to be a varRange object.")
     ## Some of the steps below will reveal things that

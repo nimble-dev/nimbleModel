@@ -80,7 +80,8 @@ modelDeclClass <- R6Class(
                     graphRuleClass$new(targetNodeExpr,
                                        symbolicParentNodes[[i]],
                                        context,
-                                       constants)
+                                       constants,
+                                       declRule$stoch)
             }
         },
 

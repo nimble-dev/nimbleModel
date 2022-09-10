@@ -10,6 +10,11 @@ modelDefClass <- R6Class(
         upstreamRules = NULL,
         calcRules = NULL,
         rhsOnlyRules = NULL,
+        declRules = NULL,
+        topRules = NULL,
+        latentRules = NULL,
+        endRules = NULL,
+        varNames = NULL,
         initialize = function(modelCode = NULL, constants = list()) {
             modelCode <<- modelCode
             constants <<- constants
@@ -134,20 +139,30 @@ modelDefClass <- R6Class(
             invisible(0)
         },
         generateGraphInfo = function() {
-            declRules <- lapply(declInfo, function(x) x$declRule)
+            declRules <<- lapply(declInfo, function(x) x$declRule)
+            varNames <<- unique(lapply(declRules, function(rule) rule$varName))
             rhsOriginalRules <- unlist(lapply(declInfo, function(x) x$rhsOriginalRules))
+            rhsOnlyRules <<- createNestedList(
+                generateRHSonlyRules(rhsOriginalRules, declRules))
+
             allDownstreamRules <- unlist(lapply(declInfo, function(x) x$downstreamRules))
             varNames <- sapply(allDownstreamRules, function(rule)
                 rule$parentVar)
-            downstreamRules <<- lapply(unique(varNames), function(nm)
-                allDownstreamRules[varNames == nm])
-            names(downstreamRules) <<- unique(varNames)
-            calcRules <<- generateCalcRules(declRules, rhsOriginalRules, downstreamRules)
-            rhsOnlyRules <<- generateRHSonlyRules(rhsOriginalRules, declRules)
-            setSortIDs(calcRules)  ## do before top/end to catch cycles
-            setEndNodes(calcRules)
-            setTopNodes(calcRules)
+            downstreamRules <<- createNestedList(allDownstreamRules, varNames)
+            
+            allCalcRules <- generateCalcRules(declRules, rhsOriginalRules, downstreamRules)
+            setSortIDs(allCalcRules)  ## do before top/end to catch cycles
+            setEndNodes(allCalcRules)
+            setTopNodes(allCalcRules)
             ## setLatentNodes(calcRules)
+
+            ## Set up nested lists indexed by varName
+            topRules <<- createNestedList(allCalcRules, type = 'top')
+            endRules <<- createNestedList(allCalcRules, type = 'end')
+            latentRules <<- createNestedList(allCalcRules, type = 'latent')
+            calcRules <<- createNestedList(allCalcRules)
+            declRules <<- createNestedList(declRules)
+                        
             invisible(0)
         },
         initializeContexts = function() {
@@ -158,3 +173,169 @@ modelDefClass <- R6Class(
         }
     )
 )
+
+createNestedList <- function(items, varNames = NULL, type = NULL) {
+    if(is.null(varNames)) {
+        varNames <- sapply(items, function(item) item$varName)
+    } else 
+        if(length(varNames) != length(items))
+            stop("createNestedList: length of `varNames` must match length of `items`.")
+    if(!is.null(type)) {
+        if(is(items[[1]], 'varRangeClass')) stop("createNestedList: `type` restriction cannot be applied to `varRange`s.")
+        include <- sapply(items, function(item) item$is_type(type))
+    } else include <- rep(TRUE, length(varNames))
+    result <- lapply(unique(varNames), function(nm)
+        items[varNames == nm & include])
+    names(result) <- varNames
+    return(result)
+}
+
+
+## Graph and node querying -- standalone functions for now, but presumably will become
+## part of model class. That said, more naturally part of modelDef class.
+
+## TODO: look into combining results - duplication only deals with complete overlap, e.g., from y[i]~dnorm(mu,sigma)
+## getDependencies(c('mu','sigma'))
+## TODO: data-related flags not yet dealt with. Perhaps not done here as that relates to nodes and not varRanges?
+## NOTE: formerly had `includeRHSonly` but that relates to nodes and not varRanges.
+
+getDependencies <- function(modelDef, nodes,
+                            self = TRUE,
+                            stochOnly = FALSE, determOnly = FALSE,
+                            includeData = TRUE, dataOnly = FALSE, 
+                            downstream = FALSE, immediateOnly = FALSE) {
+    traverseGraph(modelDef$downstreamRules, modelDef$declRules, nodes = nodes,
+              self = self, stochOnly = stochOnly, determOnly = determOnly,
+              includeData = includeData, dataOnly = dataOnly, 
+              follow = downstream, immediateOnly = immediateOnly)
+
+}
+
+getParents <- function(modelDef, nodes,
+                            self = TRUE,
+                            stochOnly = FALSE, determOnly = FALSE,
+                            includeData = TRUE, dataOnly = FALSE, 
+                            upstream = FALSE, immediateOnly = FALSE) {
+    traverseGraph(modelDef$upstreamRules, modelDef$declRules, nodes = nodes,
+              self = self, stochOnly = stochOnly, determOnly = determOnly,
+              includeData = includeData, dataOnly = dataOnly, 
+              follow = upstream, immediateOnly = immediateOnly)
+}
+
+
+traverseGraph <- function(streamRules, declRules,
+                          nodes, self = TRUE,
+                            stochOnly = FALSE, determOnly = FALSE,
+                            includeData = TRUE, dataOnly = FALSE, 
+                            follow = FALSE, immediateOnly = FALSE) {
+                          
+    results <- traverseGraphRecurse(streamRules, nodes, follow, immediateOnly)
+
+    if(self) {
+        chars <- is.character(nodes)
+        selfNodes <- c(nodes[!chars],
+            flatten(lapply(nodes[chars],
+                                       function(varName)
+                                           lapply(declRules[varName],
+                                                  function(rule) rule$getFullRange()))))
+        results <- c(selfNodes, results)
+    }
+    
+    if(stochOnly)
+        results <- result[lapply(results, function(nodeRange) nodeRange$declRule$stoch)]
+    if(determOnly)
+        results <- result[!lapply(results, function(nodeRange) nodeRange$declRule$stoch)]
+
+    return(removeDuplicates(results))
+}
+
+traverseGraphRecurse <- function(rules, nodes, self = TRUE, downstream = FALSE, immediateOnly = FALSE) {
+    results <- flatten(lapply(nodes, function(node) traverseGraphOne(rules, node)))
+    if(immediateOnly)
+        return(results)
+    propagators <- results
+    if(!follow) {
+        stoch <- sapply(nodes, function(node) traverseGraphStochOne(rules, node))
+        propagators <- propagators[!stoch]
+    }
+    if(length(propagators)) {
+        results <- c(results, traverseGraphRecurse(rules, propagators, downstream))
+    } else {
+        return(results)
+    }
+}
+        
+
+traverseGraphOne <- function(rules, node) {
+    lapply(rules[node$varName], function(rule) rule$apply(node))
+}
+
+traverseGraphStochOne <- function(rules, node) {
+    sapply(rules[node$varName], function(rule) rule$stoch)
+}
+
+
+## Incorporates functionality formerly in `getNodeNames` and `expandNodeNames`
+getNodes <- function(modelDef, nodes = NULL,
+                     stochOnly = FALSE, determOnly = FALSE,
+                     includeData = TRUE, dataOnly = FALSE,
+                     includeRHSonly = FALSE, topOnly = FALSE, latentOnly = FALSE, endOnly = FALSE) {
+    ## `nodes` may include varRanges or varNames.
+    
+    if(topOnly + latentOnly + endOnly > 1)
+        stop("getNodes: only one of `topOnly`, `latentOnly`, `endOnly` can be `TRUE`.")
+
+    if(is.null(nodes)) {
+        nodes <- unique(sapply(modelDef$declRules, function(rule) rule$varName)) 
+    } else {
+        if(!all(is.character(nodes) | sapply(nodes, function(node) is(node, 'varRangeClass'))))
+            stop("getNodes: `nodes` must be variable names or variable ranges.")
+    }
+    
+    if(!topOnly && !latentOnly && !endOnly) 
+        result <- lapply(nodes, function(node) getNodesOne(modelDef$declRules, node))
+        
+    if(topOnly) result <- lapply(nodes, function(node) getNodesOne(modelDef$topRules, node))
+    if(latentOnly) result <- lapply(nodes, function(node) getNodesOne(modelDef$latentRules, node))
+    if(endOnly) result <- lapply(nodes, function(node) getNodesOne(modelDef$endRules, node))
+
+    result <- flatten(result)  ## flatten the result so don't have nested list
+    if(includeRHSonly)
+        rhsResult <- lapply(nodes, function(node) getNodesOne(modelDef$rhsOnlyRules, node))
+        result <- c(result, flatten(rhsResult))
+
+    if(stochOnly)
+        result <- result[lapply(result, function(nodeRange) nodeRange$declRule$stoch)]
+    if(determOnly)
+        result <- result[!lapply(result, function(nodeRange) nodeRange$declRule$stoch)]
+    
+    return(removeDuplicates(result))
+
+}
+
+getNodesOne <- function(rules, node) {
+    lapply(rules[node$varName], function(rule) rule$apply(node))
+}
+
+        
+flatten <- function(x)
+    do.call(c, x)
+
+removeDuplicates <- function(varRanges) {
+    varRanges <- createNestedList(varRanges)
+    return(flatten(lapply(varRanges, function(vr) removeDuplicatesOne(vr))))
+}
+
+removeDuplicatesOne <- function(varRanges) {
+    mx <- length(varRanges)
+    if(mx == 1) return(varRanges)
+    
+    varRangeIDs <- seq_len(mx)
+    dups <- rep(FALSE, mx)
+    for(id in 1:(mx-1)) {
+        equal <- sapply((id+1):mx, function(id2)
+            varRange_isEqual(varRanges[[id]], varRanges[[id2]]))
+        dups[(id+1):mx] <- equal
+    }
+    return(varRanges[!dups])
+}
