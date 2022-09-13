@@ -153,6 +153,18 @@ test_that("nodeRule creation and application works", {
     expect_identical(result$indexRanges[[1]], indexRange(quote(4:8)))
     expect_identical(result$indexRanges[[2]], indexRange(quote(1:3)))
 
+    ## no indexing case
+    context_0 <- modelContextClass$new()
+    LHSrule <- nodeRuleClass$new(quote(mu), 1, context_0)
+    
+    vrNone <- varRangeClass$new(list(nimbleModel:::indexRange_none()))
+
+    result <- LHSrule$apply(vrNone)
+    expect_identical(result$indexRanges[[1]], nimbleModel:::indexRange_none())
+
+    expect_error(LHSrule$apply(varRangeClass$new(list(indexRange(3)))),
+                 "incorrect number of input indices")
+    
 })
 
 test_that("rhsRule creation and application works", {
@@ -161,11 +173,14 @@ test_that("rhsRule creation and application works", {
     context_0 <- modelContextClass$new()
     RHSrule <- rhsRuleClass$new(quote(sigma), 1, context_0)
 
-    vrNone <- varRangeClass$new(list(irNone))
+    vrNone <- varRangeClass$new(list(nimbleModel:::indexRange_none()))
 
-    ## TODO: test error trapping if apply to varRange with indexing?
     result <- RHSrule$apply(vrNone)
-    expect_identical(result, vrNone)
+    expect_identical(result$indexRanges[[1]], nimbleModel:::indexRange_none())
+
+    expect_error(RHSrule$apply(varRangeClass$new(list(indexRange(3)))),
+                 "incorrect number of input indices")
+                            
 
     ## TODO: test cases with extra single contexts:
     ## mu[i] <- tau
@@ -226,7 +241,14 @@ test_that("calcRanges are generated correctly", {
         modelSingleContext(forCode = quote(for(k in 1:4){}))
     context_i <- modelContextClass$new(list(singleContext1))
     context_ijk <- modelContextClass$new(list(singleContext1, singleContext2, singleContext3))
+    context_0 <- modelContextClass$new()
 
+    declRule <- declRuleClass$new(quote(y ~ dnorm(mu, sigma)), 1, context_0)
+    calcRule <- calcRuleClass$new(declRule, NULL, NULL, context_0)
+    result <- calcRule$apply(varRangeClass$new(list(nimbleModel:::indexRange_none())))
+    expect_identical(result$numExternalIndexRanges, 0L)
+    expect_identical(result$indexRanges[[1]], nimbleModel:::indexRange_none())
+    
     declRule_i <- declRuleClass$new(quote(y[i+1] ~ dnorm(0,1)), 1, context_i)
     
     calcRule <- calcRuleClass$new(declRule_i, NULL, NULL, context_i)
@@ -368,6 +390,14 @@ test_that("calcRule fracturing works", {
     
     context_ij <- modelContextClass$new(list(singleContext1,
                                              singleContext2))
+
+    
+    LHS <- quote(mu)
+    LHSrule <- nodeRuleClass$new(LHS, 1, context_0)
+    ## fracture with mu itself
+    fracRange <- LHSrule$apply(varRangeClass$new(list(nimbleModel:::indexRange_none())))
+    result <- fracture(LHSrule, fracRange)
+    expect_identical(result, NULL)
     
     ## scalar overlap at end
     LHS <- quote(mu[i+1])
@@ -618,6 +648,13 @@ test_that("RHS exclusion works", {
     
     context_ij <- modelContextClass$new(list(singleContext1,
                                              singleContext2))
+
+    RHS <- quote(mu)
+    RHSrule <- rhsRuleClass$new(RHS, 1, context_0)
+    LHS <- quote(mu)
+    LHSrule <- nodeRuleClass$new(LHS, 1, context_0)
+    result <- exclude(RHSrule, LHSrule)[[1]]
+    expect_identical(result, NULL)
 
     ## scalar/seq overlap at end
     RHS <- quote(mu[i+1])
@@ -988,6 +1025,11 @@ test_that("declaration-specific calculate generated correctly", {
         modelSingleContext(forCode = quote(for(j in 1:4){}))
     context_ij <- modelContextClass$new(list(singleContext1, singleContext2))
 
+    context_0 <- modelContextClass$new()
+    rule <- declRuleClass$new(quote(y ~ dnorm(mu, sigma)), 1, context_0)
+    expect_identical(body(rule$calculate), quote(logProb_y <- dnorm(y, mu, sigma)))
+   
+   
     rule <- declRuleClass$new(quote(y[j,i] ~ dnorm(x[i], 1)), 1, context_ij)
     expect_identical(body(rule$calculate), quote(logProb_y[idx[2], idx[1]] <- dnorm(y[idx[2], idx[1]], x[idx[1]], 1)))
     
@@ -996,6 +1038,15 @@ test_that("declaration-specific calculate generated correctly", {
 test_that("calculate works correctly", {
     ## NOTE: until nodeFun generation and model building are integrated, this testing relies on
     ## inserting logProb_y as hard-coded initialization in the declRule$calculate. 
+    context_0 <- modelContextClass$new()
+    y <- rnorm(1)
+    logProb_y <- dnorm(y, 0, 1)
+    
+    declRule <- declRuleClass$new(quote(y ~ dnorm(0, 1)), 1, context_0)
+    calcRule <- calcRuleClass$new(declRule, NULL, NULL, context_0)
+    calcRange <- calcRule$generate_calcRange(varRangeClass$new(list(nimbleModel:::indexRange_none())))
+    expect_identical(calcRange$calculate(), logProb_y)
+
     singleContext1 <-
         modelSingleContext(forCode = quote(for(i in 2:6){}))
     context_i <- modelContextClass$new(list(singleContext1))
@@ -1079,31 +1130,37 @@ test_that("getFullRange works correctly", {
         modelSingleContext(forCode = quote(for(j in 1:4){}))
     context_ij <- modelContextClass$new(list(singleContext1, singleContext2))
 
+    LHS <- quote(mu)
+    LHSrule <- nodeRuleClass$new(LHS, 1, context_0)
+    expect_equal(LHSrule$getFullRange(),
+                     varRangeClass$new(list(nimbleModel:::indexRange_none()), varName = 'mu'))
+
+    
     LHS <- quote(mu[5, 1:3])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_0)
     expect_equal(LHSrule$getFullRange(),
-                     varRangeClass$new(list(indexRange(5), indexRange(quote(1:3)))))
+                     varRangeClass$new(list(indexRange(5), indexRange(quote(1:3))), varName = 'mu'))
 
     LHS <- quote(mu[4:5, 1:3])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_0)
     expect_equal(LHSrule$getFullRange(),
-                     varRangeClass$new(list(indexRange(quote(4:5)), indexRange(quote(1:3)))))
+                     varRangeClass$new(list(indexRange(quote(4:5)), indexRange(quote(1:3))), varName = 'mu'))
     
     LHS <- quote(mu[4:5, i, 1:3])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
     expect_equal(LHSrule$getFullRange(),
-                 varRangeClass$new(list(indexRange(quote(4:5)), indexRange(quote(2:8)), indexRange(quote(1:3)))))
+                 varRangeClass$new(list(indexRange(quote(4:5)), indexRange(quote(2:8)), indexRange(quote(1:3))), varName = 'mu'))
     
     expr <- quote(mu[4:5, j, i, 3])
     LHSrule <- nodeRuleClass$new(expr, 1, context_ij)
     expect_equal(LHSrule$getFullRange(),
                  varRangeClass$new(list(indexRange(quote(4:5)), indexRange(quote(1:4)),
-                                        indexRange(quote(2:8)), indexRange(quote(3)))))
+                                        indexRange(quote(2:8)), indexRange(quote(3))), varName = 'mu'))
     
     LHS <- quote(mu[4:5, i, i, 3])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
     expect_equal(LHSrule$getFullRange(),
-                 varRangeClass$new(list(indexRange(quote(4:5)), indexRange(matrix(rep(2:8, 2), ncol = 2)), indexRange(3))))
+                 varRangeClass$new(list(indexRange(quote(4:5)), indexRange(matrix(rep(2:8, 2), ncol = 2)), indexRange(3)), varName = 'mu'))
 
 })
 

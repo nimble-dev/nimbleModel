@@ -53,7 +53,7 @@ generateRHSonlyRules <- function(rhsOriginalRules, declRules) {
 
 getChildren <- function(varRange, graphRules) {
     lapply(graphRules, function(rule)
-        applyGraphIndexRules(varRange, rule))
+        applyGraphRule(varRange, rule))
 }
 
 generateCalcRules <- function(declRules, rhsOriginalRules, graphRules) {

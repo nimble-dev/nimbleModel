@@ -4,8 +4,8 @@
 ## is there an orig index rule?
 ## if not, how handle finding calc for y[6:8] (i.e, offset/partial)
 
-originalIndexRuleClass <- R6Class(
-    classname = "originalIndexRuleClass",
+originalIndexingRuleClass <- R6Class(
+    classname = "originalIndexingRuleClass",
     portable = FALSE,
     public = list(
         graphRule = NULL,
@@ -17,13 +17,13 @@ originalIndexRuleClass <- R6Class(
                                                 paste(context$indexVarNames, collapse = ","), "]"))[[1]]
                 } else dummyLHS <- quote(w)
             graphRule <<-
-                makeGraphIndexRules(dummyLHS,
+                makeGraphRule(dummyLHS,
                                     LHS,
                                     context,
                                     constants)
         },
         apply = function(fromVarRange, varName = NULL) {
-            applyGraphIndexRules(
+            applyGraphRule(
                 fromVarRange,
                 graphRule,
                 varName

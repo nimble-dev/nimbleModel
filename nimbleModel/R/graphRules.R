@@ -1,6 +1,6 @@
 ## To make this more object-oriented, we probably want the elements of
 ## the indexRules list to be elements of the graphRuleClass,
-## with makeGraphIndexRules a method that populates those.
+## with makeGraphRule a method that populates those.
 
 graphRuleClass <- R6Class(
     classname = "graphRuleClass",
@@ -16,16 +16,16 @@ graphRuleClass <- R6Class(
         initialize = function(LHS,
                               RHS,
                               context,
-                              constants,
-                              stoch) {
-            ## This is a hack for the moment, as makeGraphIndexRules
+                              constants = list(),
+                              stoch = NULL) {
+            ## This is a hack for the moment, as makeGraphRule
             ## needs to be a method, not a stand-alone function.
             stoch <<- stoch
             output <- 
-                makeGraphIndexRules(LHS,
-                                    RHS,
-                                    context,
-                                    constants)
+                makeGraphRule(LHS,
+                              RHS,
+                              context,
+                              constants)
             indexRules <<- output$indexRules
             indexSets <<- output$indexSets
             constraints <<- output$constraints
@@ -34,9 +34,9 @@ graphRuleClass <- R6Class(
             childVar <<- output$childVar
         },
         apply = function(fromVarRange) {
-            applyGraphIndexRules(
+            applyGraphRule(
                 fromVarRange,
-                indexRules
+                self
             )
         },
 
@@ -47,18 +47,18 @@ graphRuleClass <- R6Class(
             for(i in seq_len(max(maxes)))
                 maxes[indexSets$LHSindex2setID == i] <- extent[[i]]
             return(
-                applyGraphIndexRules(
+                applyGraphRule(
                     varRangeClass$new(lapply(seq_len(numIndices),
                                              function(i) indexRange(
                                                              substitute(1:MAX, list(MAX = maxes[i]))))),
-                    indexRules))
+                    self))
         }
             
     )
 )
 
 
-## This file has code for managing the set of rules for a variable.
+## This file has code for managing the set of indexRules (i.e., a graphRule) for a variable.
 ##
 ## This first function here separates sets of index relationships
 ## into separable sets.
@@ -242,10 +242,10 @@ modifyContextForRHSonlyRules <- function(LHS, RHS, context, constants) {
 ## For now they are standalone for development and debugging.
 
 ## Probably want stoch vs. det information, so need to have declRule as an additional argument
-makeGraphIndexRules <- function(LHS,
-                                RHS,
-                                context,
-                                constants = list()) {
+makeGraphRule <- function(LHS,
+                          RHS,
+                          context,
+                          constants = list()) {
     constantsEnv <- if(is.environment(constants))
                         constants
                     else
@@ -266,12 +266,12 @@ makeGraphIndexRules <- function(LHS,
     if(length(LHS) >= 3 && LHS[[1]] == '[') {
         LHSindexExprs <- as.list(LHS[-c(1,2)])
     } else if(length(LHS) == 1) LHSindexExprs <- list() else
-        stop("makeGraphIndexRules: 'LHS' should be an index expression or variable name")
+        stop("makeGraphRule: 'LHS' should be an index expression or variable name")
 
     if(length(RHS) >= 3 && RHS[[1]] == '[') {
         RHSindexExprs <- as.list(RHS[-c(1,2)])
     } else if(length(RHS) == 1) RHSindexExprs <- list() else
-        stop("makeGraphIndexRules: 'RHS' should be an index expression or variable name")
+        stop("makeGraphRule: 'RHS' should be an index expression or variable name")
 
     ## Constraints from RHS fixed index values
     constraints <- list()
@@ -425,27 +425,29 @@ checkOneConstraint <- function(indexRange, constraint, col = 1) {
 
 ## fromVarRange will have indexRanges that may be sequences, matrices, blanks, or scalars.
 ##
-## We need to extract the relevant components of fromVarRange for each rule, apply the rules,
+## We need to extract the relevant components of fromVarRange for each rule, apply the rule,
 ## and compose the result as a new varRange.
-applyGraphIndexRules <- function(fromVarRange,
-                                 rules,
+applyGraphRule <- function(fromVarRange,
+                                 rule,
                                  varName = NULL) {
-
-    if(fromVarRange$isEmpty())
-        return(fromVarRange)
 
     if(is.character(fromVarRange)) {
         if(fromVarRange != varName)
             return(varRangeClass$new(list(nimbleModel:::indexRange_empty())))
-        return(rules$getFullRange())
+        return(rule$getFullRange())
     }
     
     if(!is(fromVarRange, 'varRangeClass'))
-        stop("applyGraphIndexRules: 'fromVarRange' needs to be a varRange object.")
+        stop("applyGraphRule: 'fromVarRange' needs to be a varRange object.")
+
+    if(fromVarRange$isEmpty())
+        return(NULL)
+        ## return(fromVarRange)
+
     ## Some of the steps below will reveal things that
     ## could be cached and re-used.
-    indexSets <- rules$indexSets
-    indexRules <- rules$indexRules
+    indexSets <- rule$indexSets
+    indexRules <- rule$indexRules
     numSets <- indexSets$numSets
 
     ## Determine number of sets applied to get result (i.e., excluding RHSonly constraint rules from getParents cases)
@@ -455,8 +457,8 @@ applyGraphIndexRules <- function(fromVarRange,
     
     ## Check valid number of input indices
     numRHSindices <- length(unlist(fromVarRange$rangeID_2_indexID))
-    if(numRHSindices != rules$numRHSindices)
-        stop("applyGraphIndexRules: incorrect number of input indices.")
+    if(numRHSindices != rule$numRHSindices)
+        stop("applyGraphRule: incorrect number of input indices.")
         
     ansIndexRanges <- list()
     ansIndexOrders <- list()
@@ -528,19 +530,19 @@ applyGraphIndexRules <- function(fromVarRange,
             fromVarRange$getIndexRangeMatrix(seq_len(numRHSindices),
                                              details = TRUE)
         if(!identical(attr(fromIndicesInfoFullyCrossed$result, 'rangeType'), 'matrix'))
-            stop("applyGraphIndexRules: expecting a matrix indexRange.")
+            stop("applyGraphRule: expecting a matrix indexRange.")
     }
 
     ## Check valid RHS.
     
     ## Returns a list indicating the valid rows for each input indexRange (for matrices) or scalars for non-matrix indexRanges.
     if(complicatedCrossing) {
-        RHSconstraints <- checkConstraints(varRangeClass$new(list(fromIndicesInfoFullyCrossed$result)), rules$constraints)
+        RHSconstraints <- checkConstraints(varRangeClass$new(list(fromIndicesInfoFullyCrossed$result)), rule$constraints)
     } else {
-        RHSconstraints <- checkConstraints(fromVarRange, rules$constraints)
+        RHSconstraints <- checkConstraints(fromVarRange, rule$constraints)
     }
 
-    ## Apply rules, getting inputs from multiple indexRanges if necessary.
+    ## Apply indexRules, getting inputs from multiple indexRanges if necessary.
     
     setIdx <- 1
     for(iSet in seq_len(numSets)) {
@@ -603,7 +605,8 @@ applyGraphIndexRules <- function(fromVarRange,
     invalid <- sapply(seq_along(RHSconstraints), function(i)
         !is.null(RHSconstraints[[i]]) && !any(RHSconstraints[[i]]))
     if(any(invalid)) # as many empty indexRanges as number of rules (apart from RHSonly constraint rules)
-        return(varRangeClass$new(lapply(seq_len(numSetsResult), function(i) indexRange_empty()), varName = rules$childVar))
+        return(NULL)
+        ## return(varRangeClass$new(lapply(seq_len(numSetsResult), function(i) indexRange_empty()), varName = rules$childVar))
 
     ## Compose results from the various rules, including those unrelated to input indexRanges.
 
@@ -742,9 +745,11 @@ applyGraphIndexRules <- function(fromVarRange,
     ## Remove duplicate columns (from cases where two indexRanges are used in a single rule).
     repeats <- duplicated(finalIndexOrders)
 
-    varRangeClass$new(
+    result <- varRangeClass$new(
         indexInfo = finalIndexRanges[!repeats],
         indexOrders = finalIndexOrders[!repeats],
-        varName = ifelse(is.null(varName), rules$childVar, varName)
-    )
+        varName = ifelse(is.null(varName), rule$childVar, varName)
+        )
+    if(result$isEmpty()) result <- NULL
+    return(result)
 }

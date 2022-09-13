@@ -40,7 +40,7 @@ nodeRuleClass <- R6Class(
             ## Note: this is awkward to go into the data structures and modify them
 
             ## We'll use graphRules, though only have a single side of declaration.
-            allRules <<- makeGraphIndexRules(expr, expr, context, constants)
+            allRules <<- makeGraphRule(expr, expr, context, constants)
             index2setID <<- allRules$indexSets$LHSindex2setID
             isConstant <- sapply(allRules$indexRules, is, "indexRuleClass_constant")
             
@@ -74,19 +74,19 @@ nodeRuleClass <- R6Class(
                 varRange <- getFullRange()
             } 
             if(numExternalRules) {
-                externalRange <- applyGraphIndexRules(varRange, externalRules)
+                externalRange <- applyGraphRule(varRange, externalRules)
             } else externalRange <- NULL # varRangeClass$new(list(nimbleModel:::indexRange_empty()))
             if(numInternalRules) {
-                internalRange <- applyGraphIndexRules(varRange, internalRules)
+                internalRange <- applyGraphRule(varRange, internalRules)
             } else internalRange <- NULL # varRangeClass$new(list(nimbleModel:::indexRange_empty()))
-            if((!is.null(externalRange) && externalRange$isEmpty()) || (!is.null(internalRange) &&  internalRange$isEmpty())) {
-                if(!is.null(externalRange))
-                    externalRange <- varRangeClass$new(lapply(seq_len(numExternalRules), function(i) indexRange_empty()),
-                                                       indexOrders = externalRange$rangeID_2_indexID)
-                if(!is.null(internalRange))
-                    internalRange <- varRangeClass$new(lapply(seq_len(numInternalRules), function(i) indexRange_empty()),
-                                                       indexOrders = internalRange$rangeID_2_indexID)
-            }
+            ## if((!is.null(externalRange) && externalRange$isEmpty()) || (!is.null(internalRange) &&  internalRange$isEmpty())) {
+            ##     if(!is.null(externalRange))
+            ##         externalRange <- varRangeClass$new(lapply(seq_len(numExternalRules), function(i) indexRange_empty()),
+            ##                                            indexOrders = externalRange$rangeID_2_indexID)
+            ##     if(!is.null(internalRange))
+            ##         internalRange <- varRangeClass$new(lapply(seq_len(numInternalRules), function(i) indexRange_empty()),
+            ##                                            indexOrders = internalRange$rangeID_2_indexID)
+            ## }
             result <- nodeRangeClass$new(varName, externalRange, internalRange, index2setID, self)
             if(result$isEmpty) result <- NULL
             return(result)
@@ -113,7 +113,7 @@ nodeRuleClass <- R6Class(
                 }
             }
             
-            return(applyGraphIndexRules(
+            return(applyGraphRule(
                     varRangeClass$new(lapply(seq_len(numIndices),
                                              function(i) indexRange(
                                                              substitute(1:MAX, list(MAX = maxes[i])))),
@@ -129,7 +129,7 @@ declRuleClass <- R6Class(
     inherit = nodeRuleClass,
     public = list(
         stoch = logical(),
-        originalIndexRules = NULL, # determines original indexing (based on context)
+        originalIndexingRule = NULL, # determines original indexing (based on context)
         decl = NULL,
         calculate = NULL,  ## generic function for calculation
 
@@ -140,7 +140,7 @@ declRuleClass <- R6Class(
             decl <<- decl
             super$initialize(decl[[2]], ID, context = context, constants = constants)
             
-            originalIndexRules <<- originalIndexRuleClass$new(expr, context, constants)
+            originalIndexingRule <<- originalIndexingRuleClass$new(expr, context, constants)
             calcFun <<- genCalcFun(decl, context)
         },
 
@@ -164,8 +164,11 @@ declRuleClass <- R6Class(
                 if(len > 1)
                     finalDecl[[3]][3:(len+1)] <- finalDecl[[3]][2:len]
                 finalDecl[[3]][[2]] <- newDecl[[2]]
+
+                nvals <- length(newDecl[[2]])-2 ## placeholder
+                if(nvals < 1) nvals <- 1        ## placeholder
                 calculate <<- function(idx) {
-                    logProb_y <- array(0, rep(100, length(newDecl[[2]])-2))  # TODO: placeholder so logProb storage exists for testing
+                    logProb_y <- array(0, rep(100, nvals))  # TODO: placeholder so logProb storage exists for testing
                 }
                 body(calculate)[[length(body(calculate))+1]] <<- finalDecl
             } else {
@@ -232,7 +235,7 @@ calcRuleClass <- R6Class(
         generate_calcRange = function(inputRange = NULL) {
             if(is.null(inputRange))
                 inputRange <- canonicalRange            
-            indexingRange <- declRule$originalIndexRules$apply(inputRange, varName)
+            indexingRange <- declRule$originalIndexingRule$apply(inputRange, varName)
             if(indexingRange$isEmpty())
                 return(NULL)
             result <- calcRangeClass$new(varName, indexingRange, declRule$calculate, sortID)
@@ -398,31 +401,36 @@ calcRangeClass <- R6Class(
             len <- prod(indexRange_lengths)
             ## nestedLengths <- sapply(seq_len(numRanges), function(i) prod(indexRange_lengths[(i+1):numRanges]))
 
-            delay <- 1
-            for(irIndex in rev(seq_len(numRanges))) {
-                indexingRange$indexRanges[[irIndex]] <- indexRange_init(indexingRange$indexRanges[[irIndex]], delay)
-                delay <- delay * indexingRange$indexRanges[[irIndex]]$length
-            }
-
-            ## TODO: This is a placeholder so we can test numerical results
-            ## once fuller workflow is in place, remove this and assignment of output of calcFun()
-            result <- rep(0, len)
+            if(!len) {  # no indexing
+                result <- calcFun(NULL)
+            } else {
             
-            for(item in seq_len(len)) {
-                for(irIndex in seq_len(numRanges)) {
-                    ## Determine nested indexing from unrolled indexing
-                    ## if(irIndex == seq_len(numRanges)) {
-                    ##     elementIdx <- 1 + (item-1) %% indexRange_lengths[irIndex]
-                    ## } else {
-                    ##     elementIdx <- 1 + (item-1) %/% nestedLengths[irIndex]
-                    ##}
-
-                    ## TODO: remove kludge when indexRanges are proper R6 classes
-                    tmp <- indexRange_getItem(indexingRange$indexRanges[[irIndex]])
-                    index[indexPositions[[irIndex]]] <- tmp$result
-                    indexingRange$indexRanges[[irIndex]] <- tmp$range
+                delay <- 1
+                for(irIndex in rev(seq_len(numRanges))) {
+                    indexingRange$indexRanges[[irIndex]] <- indexRange_init(indexingRange$indexRanges[[irIndex]], delay)
+                    delay <- delay * indexingRange$indexRanges[[irIndex]]$length
                 }
-                result[item] <- calcFun(index)  ## scalar calculation
+                
+                ## TODO: This is a placeholder so we can test numerical results
+                ## once fuller workflow is in place, remove this and assignment of output of calcFun()
+                result <- rep(0, len)
+                
+                for(item in seq_len(len)) {
+                    for(irIndex in seq_len(numRanges)) {
+                        ## Determine nested indexing from unrolled indexing
+                        ## if(irIndex == seq_len(numRanges)) {
+                        ##     elementIdx <- 1 + (item-1) %% indexRange_lengths[irIndex]
+                        ## } else {
+                        ##     elementIdx <- 1 + (item-1) %/% nestedLengths[irIndex]
+                        ##}
+                        
+                        ## TODO: remove kludge when indexRanges are proper R6 classes
+                        tmp <- indexRange_getItem(indexingRange$indexRanges[[irIndex]])
+                        index[indexPositions[[irIndex]]] <- tmp$result
+                        indexingRange$indexRanges[[irIndex]] <- tmp$range
+                    }
+                    result[item] <- calcFun(index)  ## scalar calculation
+                }
             }
             return(result)
 

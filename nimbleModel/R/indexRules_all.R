@@ -62,7 +62,8 @@ indexRule_all_setup <- function(toIndexExprList,
                                             indexVarName,
                                             constants),
                                silent = TRUE)
-        if(!inherits(toSignAndOffset, 'try-error')) {
+        ## TODO: when does that error out vs. returning NULL?
+        if(!is.null(toSignAndOffset) && !inherits(toSignAndOffset, 'try-error')) {
             indexRangeExpr <- context$singleContexts[[1]]$indexRangeExpr
             index_range <- 
                 c(eval(indexRangeExpr[[2]], envir = constants),
