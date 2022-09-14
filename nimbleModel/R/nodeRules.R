@@ -75,10 +75,12 @@ nodeRuleClass <- R6Class(
             } 
             if(numExternalRules) {
                 externalRange <- applyGraphRule(varRange, externalRules)
-            } else externalRange <- NULL # varRangeClass$new(list(nimbleModel:::indexRange_empty()))
+                if(is.null(externalRange)) return(NULL)
+            } else externalRange <- NULL
             if(numInternalRules) {
                 internalRange <- applyGraphRule(varRange, internalRules)
-            } else internalRange <- NULL # varRangeClass$new(list(nimbleModel:::indexRange_empty()))
+                if(is.null(internalRange)) return(NULL)
+            } else internalRange <- NULL
             ## if((!is.null(externalRange) && externalRange$isEmpty()) || (!is.null(internalRange) &&  internalRange$isEmpty())) {
             ##     if(!is.null(externalRange))
             ##         externalRange <- varRangeClass$new(lapply(seq_len(numExternalRules), function(i) indexRange_empty()),
@@ -87,8 +89,8 @@ nodeRuleClass <- R6Class(
             ##         internalRange <- varRangeClass$new(lapply(seq_len(numInternalRules), function(i) indexRange_empty()),
             ##                                            indexOrders = internalRange$rangeID_2_indexID)
             ## }
-            result <- nodeRangeClass$new(varName, externalRange, internalRange, index2setID, self)
-            if(result$isEmpty) result <- NULL
+            result <- nodeRangeClass$new(varName, externalRange, internalRange,
+                                                index2setID, self)
             return(result)
         },
 
@@ -236,7 +238,7 @@ calcRuleClass <- R6Class(
             if(is.null(inputRange))
                 inputRange <- canonicalRange            
             indexingRange <- declRule$originalIndexingRule$apply(inputRange, varName)
-            if(indexingRange$isEmpty())
+            if(is.null(indexingRange))
                 return(NULL)
             result <- calcRangeClass$new(varName, indexingRange, declRule$calculate, sortID)
             return(result)
@@ -576,7 +578,7 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
     if(!is(fracturingRange, 'nodeRangeClass'))
         fracturingRange <- LHSrule$apply(fracturingRange)
 
-    if(fracturingRange$isEmpty()) 
+    if(is.null(fracturingRange))
         return(NULL)
 
     if(nodeRange_isEqual(LHSrange, fracturingRange)) {

@@ -1,6 +1,8 @@
 ## A varRule manages a set of graphRules, which together
 ## comprise all the edges for a variable.
 
+## could abstract this to have it manage a set of rules, whether graphRules, calcRules (incl. topRules, etc.) or what not.
+
 varRuleClass <- R6Class(
     classname = "varRuleClass",
     portable = FALSE,

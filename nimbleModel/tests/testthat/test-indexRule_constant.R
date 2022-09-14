@@ -36,8 +36,6 @@ test_that("indexRule_constant works",
     expect_identical(
         rule$apply(NULL),
         expected_result
-    )
-
-    
-}
+    )    
+})
 

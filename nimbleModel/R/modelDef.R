@@ -198,6 +198,12 @@ createNestedList <- function(items, varNames = NULL, type = NULL) {
 ## getDependencies(c('mu','sigma'))
 ## TODO: data-related flags not yet dealt with. Perhaps not done here as that relates to nodes and not varRanges?
 ## NOTE: formerly had `includeRHSonly` but that relates to nodes and not varRanges.
+## NOTE: getDependencies assumes a nodeRange (possibly varRange?) - do we want it to work with varName?
+
+## TODO: should this functionality use varRules, where a varRule is set of rules for a variable?
+## We could also build combining results into the varRule functionality
+
+## getDeps(c('y[1:3]', 'mu')) ---> varRules[['y']]$apply('y[1:3]')
 
 getDependencies <- function(modelDef, nodes,
                             self = TRUE,

@@ -71,7 +71,7 @@ test_that("indexRule_block works",
     expect_identical(
         indexRule_block_apply(indexRange(quote(2:4)),
                               setupResults),
-        indexRange(quote(2:2))
+        indexRange(2)
     )
 
     expect_identical(

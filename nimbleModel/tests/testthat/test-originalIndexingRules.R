@@ -1,4 +1,4 @@
-test_that("originalIndexRules work correctly", {
+test_that("originalIndexingRules work correctly", {
     singleContext1 <-
         modelSingleContext(forCode = quote(for(i in 1:10){}))
     
@@ -11,11 +11,11 @@ test_that("originalIndexRules work correctly", {
                                              singleContext2))
     
     
-    rules <- originalIndexRuleClass$new(LHS = quote(y[i+1]),
+    rule <- originalIndexingingRuleClass$new(LHS = quote(y[i+1]),
                                         context = context_i)
     
     expect_equal(
-        rules$apply(
+        rule$apply(
                   varRangeClass$new(list(
                                     indexRange(quote(3:6))))),
         varRangeClass$new(list(
@@ -28,12 +28,12 @@ test_that("originalIndexRules work correctly", {
     
     context_i <- modelContextClass$new(list(singleContext1))
     k <- c(5,1,3)
-    rules <- originalIndexRuleClass$new(LHS = quote(y[k[i]]),
+    rule <- originalIndexingRuleClass$new(LHS = quote(y[k[i]]),
                                         context = context_i,
                                         constants = list(k = k))
     
     expect_equal(
-        rules$apply(
+        rule$apply(
                   varRangeClass$new(list(
                                     indexRange(quote(3:5))))),
         varRangeClass$new(list(
@@ -41,11 +41,11 @@ test_that("originalIndexRules work correctly", {
     )
     
     
-    rules <- originalIndexRuleClass$new(LHS = quote(y[j, i+1]),
+    rule <- originalIndexingRuleClass$new(LHS = quote(y[j, i+1]),
                                         context = context_ij)
     
     expect_equal(
-        rules$apply(
+        rule$apply(
                   varRangeClass$new(list(
                                     indexRange(quote(3:5)),
                                     indexRange(quote(2:3))))),
@@ -55,7 +55,7 @@ test_that("originalIndexRules work correctly", {
     )
     
     expect_equal(
-        rules$apply(
+        rule$apply(
                   varRangeClass$new(list(
                                     indexRange(matrix(c(8,4,3,2), ncol = 2))))),
         varRangeClass$new(list(
@@ -72,10 +72,10 @@ test_that("originalIndexRules work correctly", {
     context_ijni <- modelContextClass$new(list(singleContext1,
                                                singleContext2))
     
-    rules <- originalIndexRuleClass$new(LHS = quote(y[j, i+1]),
+    rule <- originalIndexingRuleClass$new(LHS = quote(y[j, i+1]),
                                         context = context_ijni)
     expect_equal(
-        rules$apply(
+        rule$apply(
                   varRangeClass$new(list(
                                     indexRange(quote(1:2)),
                                     indexRange(quote(1:3))))),

@@ -440,7 +440,7 @@ applyGraphRule <- function(fromVarRange,
     if(!is(fromVarRange, 'varRangeClass'))
         stop("applyGraphRule: 'fromVarRange' needs to be a varRange object.")
 
-    if(fromVarRange$isEmpty())
+    if(fromVarRange$isEmpty())  ## TODO: probably no longer needed
         return(NULL)
         ## return(fromVarRange)
 

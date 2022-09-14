@@ -13,7 +13,7 @@ test_that("processModelCode works in simplest case", {
 })
 
 test_that("processModelCode works", {
-    ## Something about logit() causes problems
+    ## FIXME: Something about logit() causes problems
     modelCode <- quote({
         for(i in 1:10)
             logit(a[i]) ~ dnorm(mu[i], tau)
@@ -77,33 +77,6 @@ test_that("processModelCode works", {
     
 })
 
-## This overlaps with test-modelDeclClass. Move it there if needed.
-test_that("genSymbolicParentNodes works", {
-    modelCode <- quote({
-        for(i in 1:10) {
-            a[i] ~ dnorm(mu[i]+thetaVal, tau)
-            mu[i] ~ dnorm(mu0, theta)
-        }
-        tau ~ dunif(0, 1)
-        theta <- thetaVal
-    })
-    constants <- list(thetaVal = 7)
-    modelDef <- modelDefClass$new(modelCode, constants = constants)
-    modelDef$processModelCode()
-    modelDef$declInfo[[1]]$genSymbolicParentNodes(constants, c('dnorm','dunif'))
-    modelDef$declInfo[[3]]$genSymbolicParentNodes(constants, c('dnorm','dunif'))
-    modelDef$declInfo[[4]]$genSymbolicParentNodes(constants, c('dnorm','dunif'))
-
-    ## NOTE: constants not replaced at this point.
-    expect_identical(
-        modelDef$declInfo[[1]]$symbolicParentNodes,
-        list(quote(mu[i]), quote(thetaVal), quote(tau)))
-    expect_identical(
-        modelDef$declInfo[[3]]$symbolicParentNodes, NULL)
-    expect_identical(
-        modelDef$declInfo[[4]]$symbolicParentNodes, list(quote(thetaVal)))
-    
-})
 
 test_that("makeRHSoriginalNodes works", {
     modelCode <- quote({
@@ -119,7 +92,7 @@ test_that("makeRHSoriginalNodes works", {
     modelDef$processModelCode()
     modelDef$declInfo[[1]]$makeDownstreamRules(constants = list())
     for(i in 1:4)
-        modelDef$declInfo[[i]]$makeRHSoriginalRules()
+        modelDef$declInfo[[i]]$makeRHSoriginalRules(constants = list())
     expect_identical(length(modelDef$declInfo[[1]]$rhsOriginalRules), 1L)
     expect_identical(length(modelDef$declInfo[[2]]$rhsOriginalRules), 2L)
     expect_identical(length(modelDef$declInfo[[3]]$rhsOriginalRules), 1L)
@@ -143,8 +116,7 @@ test_that("makeDownstreamRules works", {
     expect_is(modelDef$declInfo[[1]]$downstreamRules[[2]]$indexRules[[1]],
               'indexRuleClass_all')
 
-    
-    ## LHS transformations not currently being processed correctly.
+    ## FIXME: LHS transformations not currently being processed correctly.
     modelCode <- quote({
         for(i in 1:10)
             logit(a[i]) ~ dnorm(mu[i], tau)
@@ -195,8 +167,8 @@ test_that("generateGraphInfo works", {
     modelDef$processDecls()
     modelDef$generateGraphInfo()
 
-    expect_identical(length(modelDef$calcRules), 2L)
-    expect_identical(length(modelDef$downstreamRules), 3L)
-    expect_identical(length(modelDef$rhsOnlyRules), 1L)
+    expect_identical(sort(names(modelDef$calcRules)), c('a','mu'))
+    expect_identical(sort(names(modelDef$downstreamRules)), c('mu','mu0','tau'))
+    expect_identical(sort(names(modelDef$rhsOnlyRules)), c('mu0','tau'))
    
 })

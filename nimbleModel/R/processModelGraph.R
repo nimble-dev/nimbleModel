@@ -123,7 +123,7 @@ generateCalcRules <- function(declRules, rhsOriginalRules, graphRules) {
         for(d in seq_along(deps)) {
             ## Try to fracture all remaining rules by looping over non-top rules.
             for(i in start:length(calcRules)) {
-                if(!fracturedRules[i] && !deps[[d]]$isEmpty() && deps[[d]]$varName == calcRules[[i]]$varName) {
+                if(!fracturedRules[i] && !is.null(deps[[d]]) && deps[[d]]$varName == calcRules[[i]]$varName) {
                     result <- fracture(calcRules[[i]], deps[[d]], currentID = currentID,
                                        parentRule = calcRules[[pos]], currentRules = calcRules)
 

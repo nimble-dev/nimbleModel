@@ -38,5 +38,5 @@ test_that("indexRule_all works",
                  list(all = expected_result))
 
 
-}
+})
 

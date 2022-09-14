@@ -34,7 +34,7 @@ modelDeclClass <- R6Class(
         
         setup = function(code,
                          context,
-                         constants,
+                         constants = list(),
                          sourceLineNum,
                          truncated = FALSE,
                          boundExprs = NULL) {

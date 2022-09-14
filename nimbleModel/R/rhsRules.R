@@ -61,7 +61,7 @@ exclude <- function(RHSrule, LHSrule) {
     LHSrange <- LHSrule$getFullRange()
     RHSrange <- RHSrule$getFullRange()
     intersection <- RHSrule$apply(LHSrange)
-    if(intersection$isEmpty())
+    if(is.null(intersection))
         return(list(RHSrule))
     if(varRange_isEqual(RHSrange, intersection)) 
         return(NULL)
