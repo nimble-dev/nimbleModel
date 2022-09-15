@@ -27,7 +27,7 @@ Collate:
     modelDef.R
     nodeRules.R
     options.R       
-    origIndexRules.R
+    originalIndexingRules.R
     processModelCode.R
     processModelGraph.R
     rhsRules.R

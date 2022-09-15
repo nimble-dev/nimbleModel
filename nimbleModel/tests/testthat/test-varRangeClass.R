@@ -1,12 +1,13 @@
 library(R6)
 library(testthat)
 
-## source('model_varRangeClass.R')
+## source('varRange.R')
+## source('indexRange.R')
 
 test_that("matrix_expand_grid",
 {
     expect_equal(
-        matrix_expand_grid(list(matrix(1:3, ncol = 1))),
+        matrix_expand_grid(matrix(1:3, ncol = 1)),
         matrix(1:3, ncol = 1)
     )
 
@@ -142,19 +143,19 @@ test_that('varRangeClass initialized from expr', {
 
     expect_equal(
         varRange_getIndexRangeMatrix(xVar, c(1, 2)),
-        matrix(c(rep(3, 3), 2:4), ncol = 2)
+        indexRange(matrix(c(rep(3, 3), 2:4), ncol = 2))
     )
 
     expect_equal(
         varRange_getIndexRangeMatrix(xVar, c(1))
         ,
-        matrix(3)
+        indexRange(matrix(3))
     )
 
     expect_equal(
         varRange_getIndexRangeMatrix(xVar, c(2))
         ,
-        matrix(2:4, ncol = 1)
+        indexRange(matrix(2:4, ncol = 1))
     )
     
     xVar <- varRangeClass$new('x[3:5, 6]')
@@ -168,11 +169,11 @@ test_that('varRangeClass initialized from expr', {
     expect_equal(
         varRange_getIndexRangeMatrix(xVar, c(1, 2))
        ,
-        structure(
+        indexRange(structure(
             as.matrix(
                 expand.grid(2:10, 3:5)
             ),
-            dimnames = NULL)
+            dimnames = NULL))
     )
     
     xVar <- varRangeClass$new('x[, 3:5]')
@@ -215,15 +216,6 @@ test_that("varRange expr, char, and indexRange replacement", {
 
     input <- quote(x[3, 4:6])
     VR <- varRangeClass$new(input)
-    VRnew <-  varRangeClass$new(quote(x[2:4, 5])) ## "x" is arbitrary here
-    VR$setIndexRanges( VRnew$indexRanges )
-    expect_identical(
-        varRange2expr( VR ),
-        varRange2expr( VRnew )
-    )
-    
-    input <- quote(x[3, 4:6])
-    VR <- varRangeClass$new(input)
     VRnew <-  varRangeClass$new(quote(x[c(2, 4, 6), 5])) ## "x" is arbitrary here
     VR$setIndexRanges( VRnew$indexRanges )
     ## equal because the arbitrary index range is evaluated
@@ -233,6 +225,7 @@ test_that("varRange expr, char, and indexRange replacement", {
         VRnew$indexRanges
     )
     ## It doesn't appear we can keep indexRangeExprs identical
+    expect_identical(VR$indexRangeExprs, list())
     
 })
 

@@ -118,6 +118,7 @@ varRangeClass <- R6Class(
                                   indexOrders = NULL) {
             ## expects a list input, as returned by indexRange
             self$indexRanges <- indexRanges
+            self$indexRangeExprs <- list()
             ## self$indexRangeExprs <- lapply(
             ##     indexRanges,
             ##     indexRange2expr

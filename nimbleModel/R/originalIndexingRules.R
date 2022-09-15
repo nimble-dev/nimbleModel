@@ -9,13 +9,16 @@ originalIndexingRuleClass <- R6Class(
     portable = FALSE,
     public = list(
         graphRule = NULL,
+        varName = character(),
         initialize = function(LHS,
                               context,
                               constants = list()) {
+            varNameExpr <- ifelse(length(LHS) == 1, LHS, LHS[[2]])
+            varName <<- deparse(varNameExpr)
             if(length(context$indexVarNames)) {
-                dummyLHS <- parse(text = paste0("w[",
+                dummyLHS <- parse(text = paste0(varName, "[",
                                                 paste(context$indexVarNames, collapse = ","), "]"))[[1]]
-                } else dummyLHS <- quote(w)
+                } else dummyLHS <- varNameExpr
             graphRule <<-
                 makeGraphRule(dummyLHS,
                                     LHS,

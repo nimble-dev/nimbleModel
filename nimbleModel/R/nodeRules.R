@@ -236,7 +236,9 @@ calcRuleClass <- R6Class(
         ## Generate calcRange given a varRange (including a nodeRange).
         generate_calcRange = function(inputRange = NULL) {
             if(is.null(inputRange))
-                inputRange <- canonicalRange            
+                inputRange <- canonicalRange
+            if(!is.null(inputRange$varName) && !is.null(varName) && inputRange$varName != varName)
+                stop("generate_calcRange: inputRange varianble name does not match the calcRule variable name.")
             indexingRange <- declRule$originalIndexingRule$apply(inputRange, varName)
             if(is.null(indexingRange))
                 return(NULL)

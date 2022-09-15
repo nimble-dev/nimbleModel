@@ -11,7 +11,7 @@ test_that("originalIndexingRules work correctly", {
                                              singleContext2))
     
     
-    rule <- originalIndexingingRuleClass$new(LHS = quote(y[i+1]),
+    rule <- originalIndexingRuleClass$new(LHS = quote(y[i+1]),
                                         context = context_i)
     
     expect_equal(
@@ -19,7 +19,7 @@ test_that("originalIndexingRules work correctly", {
                   varRangeClass$new(list(
                                     indexRange(quote(3:6))))),
         varRangeClass$new(list(
-                          indexRange(quote(2:5))))
+                          indexRange(quote(2:5))), varName = 'y')
     )
     
     
@@ -37,7 +37,7 @@ test_that("originalIndexingRules work correctly", {
                   varRangeClass$new(list(
                                     indexRange(quote(3:5))))),
         varRangeClass$new(list(
-                          indexRange(matrix(c(3,1), ncol = 1))))
+                          indexRange(matrix(c(3,1), ncol = 1))), varName = 'y')
     )
     
     
@@ -51,7 +51,7 @@ test_that("originalIndexingRules work correctly", {
                                     indexRange(quote(2:3))))),
         varRangeClass$new(list(
                           indexRange(quote(1:2)),
-                          indexRange(quote(3:5))))
+                          indexRange(quote(3:5))), varName = 'y')
     )
     
     expect_equal(
@@ -59,7 +59,7 @@ test_that("originalIndexingRules work correctly", {
                   varRangeClass$new(list(
                                     indexRange(matrix(c(8,4,3,2), ncol = 2))))),
         varRangeClass$new(list(
-                          indexRange(matrix(c(1,4),nrow = 1))))
+                          indexRange(matrix(c(1,4),nrow = 1))), varName = 'y')
     )
     
     n <- c(1,3,2)
@@ -73,13 +73,14 @@ test_that("originalIndexingRules work correctly", {
                                                singleContext2))
     
     rule <- originalIndexingRuleClass$new(LHS = quote(y[j, i+1]),
-                                        context = context_ijni)
+                                          context = context_ijni,
+                                          constants = list(n = n))
     expect_equal(
         rule$apply(
                   varRangeClass$new(list(
                                     indexRange(quote(1:2)),
                                     indexRange(quote(1:3))))),
         varRangeClass$new(list(
-                          indexRange(matrix(c(1,2,2,1,1,2), ncol = 2))))
+                          indexRange(matrix(c(1,2,2,1,1,2), ncol = 2))), varName = 'y')
     )
-}
+})
