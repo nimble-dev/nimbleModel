@@ -184,9 +184,10 @@ createNestedList <- function(items, varNames = NULL, type = NULL) {
         if(is(items[[1]], 'varRangeClass')) stop("createNestedList: `type` restriction cannot be applied to `varRange`s.")
         include <- sapply(items, function(item) item$is_type(type))
     } else include <- rep(TRUE, length(varNames))
-    result <- lapply(unique(varNames), function(nm)
+    uniqVarNames <- unique(varNames)
+    result <- lapply(uniqVarNames, function(nm)
         items[varNames == nm & include])
-    names(result) <- varNames
+    names(result) <- uniqVarNames
     return(result)
 }
 
