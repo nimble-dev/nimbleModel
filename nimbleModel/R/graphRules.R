@@ -433,7 +433,7 @@ applyGraphRule <- function(fromVarRange,
 
     if(is.character(fromVarRange)) {
         if(fromVarRange != varName)
-            return(varRangeClass$new(list(nimbleModel:::indexRange_empty())))
+            return(NULL)
         return(rule$getFullRange())
     }
     
