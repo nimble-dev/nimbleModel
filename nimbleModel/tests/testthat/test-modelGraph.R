@@ -971,9 +971,6 @@ test_that("graph processing for model with overlapping RHS works", {
 
 })
 
-
-
-
 test_that("graph processing for multiple RHS only cases", {
     code <- quote({
         for(i in 1:5)
@@ -1004,3 +1001,38 @@ test_that("graph processing for multiple RHS only cases", {
 })
 
 
+## Testing of model graph interface functions: getDependencies, getParents, getNodes
+
+test_that("basic check of graph interface", {
+    code <- quote({
+        y ~ dnorm(mu0, 1)
+        theta <- mu0 + 2
+        mu0 ~ dnorm(0, 1)        
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
+
+    getNodes(modelDef)
+    expect_identical(sapply(getNodes(modelDef), function(node) node$varName),
+                     c('y','theta','mu0'))
+    getNodes(modelDef, topOnly = TRUE)
+    getNodes(modelDef, stochOnly = TRUE)
+    getNodes(modelDef, determOnly = TRUE)
+    getNodes('theta')
+    getNodes(c('theta','y'))
+             
+    getDependencies(modelDef, 'mu0')
+    getDependencies(modelDef, 'mu0', immediateOnly = TRUE)
+    getDependencies(modelDef, 'mu0', determOnly = TRUE)
+    getDependencies(modelDef, 'mu0', stochOnly = TRUE)
+    getDependencies(modelDef, 'mu0', downstreatm = TRUE)
+    
+    getParents(modelDef, 'y')
+    getParents(modelDef, 'y', immediateOnly = TRUE)
+    getParents(modelDef, 'y', determOnly = TRUE)
+    getParents(modelDef, 'y', stochOnly = TRUE)
+    getParents(modelDef, 'y', downstreatm = TRUE)
+
+})

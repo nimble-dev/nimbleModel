@@ -150,7 +150,7 @@ modelDefClass <- R6Class(
                 rule$parentVar)
             downstreamRules <<- createNestedList(allDownstreamRules, varNames)
             
-            allCalcRules <- generateCalcRules(declRules, rhsOriginalRules, downstreamRules)
+            allCalcRules <- generateCalcRules(declRules, rhsOriginalRules, allDownstreamRules)
             setSortIDs(allCalcRules)  ## do before top/end to catch cycles
             setEndNodes(allCalcRules)
             setTopNodes(allCalcRules)
@@ -174,6 +174,7 @@ modelDefClass <- R6Class(
     )
 )
 
+## TODO: rename to account for the fact that this creates varRules not lists?
 createNestedList <- function(items, varNames = NULL, type = NULL) {
     if(is.null(varNames)) {
         varNames <- sapply(items, function(item) item$varName)
@@ -185,8 +186,12 @@ createNestedList <- function(items, varNames = NULL, type = NULL) {
         include <- sapply(items, function(item) item$is_type(type))
     } else include <- rep(TRUE, length(varNames))
     uniqVarNames <- unique(varNames)
-    result <- lapply(uniqVarNames, function(nm)
-        items[varNames == nm & include])
+    if(is(items[[1]], 'varRangeClass')) {
+        result <- lapply(uniqVarNames, function(nm)
+            items[varNames == nm & include])
+    } else  # some sort of rule
+        result <- lapply(uniqVarNames, function(nm)
+            varRuleClass$new(items[varNames == nm & include]))
     names(result) <- uniqVarNames
     return(result)
 }
@@ -243,7 +248,7 @@ traverseGraph <- function(streamRules, declRules,
         selfNodes <- c(nodes[!chars],
             flatten(lapply(nodes[chars],
                                        function(varName)
-                                           lapply(declRules[varName],
+                                           lapply(declRules[[varName]],
                                                   function(rule) rule$getFullRange()))))
         results <- c(selfNodes, results)
     }
@@ -262,7 +267,7 @@ traverseGraphRecurse <- function(rules, nodes, self = TRUE, downstream = FALSE, 
         return(results)
     propagators <- results
     if(!follow) {
-        stoch <- sapply(nodes, function(node) traverseGraphStochOne(rules, node))
+        stoch <- sapply(propagators, function(node) node$declRule$stoch)
         propagators <- propagators[!stoch]
     }
     if(length(propagators)) {
@@ -274,12 +279,9 @@ traverseGraphRecurse <- function(rules, nodes, self = TRUE, downstream = FALSE, 
         
 
 traverseGraphOne <- function(rules, node) {
-    lapply(rules[node$varName], function(rule) rule$apply(node))
+    rules[node$varName]$apply(node)
 }
 
-traverseGraphStochOne <- function(rules, node) {
-    sapply(rules[node$varName], function(rule) rule$stoch)
-}
 
 
 ## Incorporates functionality formerly in `getNodeNames` and `expandNodeNames`
@@ -293,7 +295,7 @@ getNodes <- function(modelDef, nodes = NULL,
         stop("getNodes: only one of `topOnly`, `latentOnly`, `endOnly` can be `TRUE`.")
 
     if(is.null(nodes)) {
-        nodes <- unique(sapply(modelDef$declRules, function(rule) rule$varName)) 
+        nodes <- names(modelDef$declRules)
     } else {
         if(!all(is.character(nodes) | sapply(nodes, function(node) is(node, 'varRangeClass'))))
             stop("getNodes: `nodes` must be variable names or variable ranges.")
@@ -307,10 +309,10 @@ getNodes <- function(modelDef, nodes = NULL,
     if(endOnly) result <- lapply(nodes, function(node) getNodesOne(modelDef$endRules, node))
 
     result <- flatten(result)  ## flatten the result so don't have nested list
-    if(includeRHSonly)
+    if(includeRHSonly) {
         rhsResult <- lapply(nodes, function(node) getNodesOne(modelDef$rhsOnlyRules, node))
         result <- c(result, flatten(rhsResult))
-
+    }
     if(stochOnly)
         result <- result[lapply(result, function(nodeRange) nodeRange$declRule$stoch)]
     if(determOnly)
@@ -321,16 +323,20 @@ getNodes <- function(modelDef, nodes = NULL,
 }
 
 getNodesOne <- function(rules, node) {
-    lapply(rules[node$varName], function(rule) rule$apply(node))
+    varName <- ifelse(is.character(node), node, node$varName)
+    rules[[varName]]$apply(node)
 }
 
         
-flatten <- function(x)
-    do.call(c, x)
+flatten <- function(x) {
+    result <- do.call(c, x)
+    names(result) <- NULL
+    return(result)
+}
 
 removeDuplicates <- function(varRanges) {
     varRanges <- createNestedList(varRanges)
-    return(flatten(lapply(varRanges, function(vr) removeDuplicatesOne(vr))))
+    flatten(lapply(varRanges, function(vr) removeDuplicatesOne(vr)))
 }
 
 removeDuplicatesOne <- function(varRanges) {

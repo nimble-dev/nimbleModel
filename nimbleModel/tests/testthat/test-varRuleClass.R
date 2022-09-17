@@ -1,6 +1,6 @@
 context("varRules")
 
-test_that("varRules works for 2 1D sequence rules") {
+test_that("varRules works for 2 1D sequence rules", {
     ## for(i in 1:10) y[i] <- foo(x[i])
     singleContext1 <-
         modelSingleContext(forCode = quote(for(i in 1:10){}))
@@ -34,12 +34,12 @@ test_that("varRules works for 2 1D sequence rules") {
                 list(
                     indexRange(
                         quote(3:10)
-                    ))),
+                    )), varName = 'y'),
             varRangeClass$new(
                 list(
                     indexRange(
                         quote(6:12)
-                    )))
+                    )), varName = 'z')
         )
     )
-}
+})
