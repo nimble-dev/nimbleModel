@@ -28,6 +28,7 @@ nodeRuleClass <- R6Class(
         numExternalRules = numeric(0),
         numInternalRules = numeric(0),
         index2setID = NULL,
+        stoch = logical(),
 
         initialize = function(expr, ID, context = modelContextClass$new(), constants = list()) {
             ## not clear everything will go through if no indexing
@@ -100,7 +101,7 @@ nodeRuleClass <- R6Class(
 
             ## Case of no indexing, e.g. x ~ dnorm(0,1)
             if(!length(extent[[1]]))
-                return(varRangeClass$new(list(indexRange_none()), varName = varName))
+                return(varRangeClass$new(list(indexRange_none()), varName = varName, stoch = stoch))
 
             maxes <- rep(0, length(index2setID))
             cnt <- 1
@@ -130,7 +131,7 @@ declRuleClass <- R6Class(
     portable = FALSE,
     inherit = nodeRuleClass,
     public = list(
-        stoch = logical(),
+#        stoch = logical(),
         originalIndexingRule = NULL, # determines original indexing (based on context)
         decl = NULL,
         calculate = NULL,  ## generic function for calculation

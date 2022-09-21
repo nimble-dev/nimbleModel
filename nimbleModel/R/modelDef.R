@@ -150,7 +150,12 @@ modelDefClass <- R6Class(
                 rule$parentVar)
             downstreamRules <<- createNestedList(allDownstreamRules, varNames)
             
-            allCalcRules <- generateCalcRules(declRules, rhsOriginalRules, allDownstreamRules)
+            allUpstreamRules <- unlist(lapply(declInfo, function(x) x$upstreamRules))
+            varNames <- sapply(allUpstreamRules, function(rule)
+                rule$parentVar)   ## nomenclature confusing - parent in an upstream rule is child in graph
+            upstreamRules <<- createNestedList(allUpstreamRules, varNames)
+
+            allCalcRules <- generateCalcRules(declRules, rhsOriginalRules, downstreamRules)
             setSortIDs(allCalcRules)  ## do before top/end to catch cycles
             setEndNodes(allCalcRules)
             setTopNodes(allCalcRules)
@@ -204,74 +209,75 @@ createNestedList <- function(items, varNames = NULL, type = NULL) {
 ## getDependencies(c('mu','sigma'))
 ## TODO: data-related flags not yet dealt with. Perhaps not done here as that relates to nodes and not varRanges?
 ## NOTE: formerly had `includeRHSonly` but that relates to nodes and not varRanges.
-## NOTE: getDependencies assumes a nodeRange (possibly varRange?) - do we want it to work with varName?
 
-## TODO: should this functionality use varRules, where a varRule is set of rules for a variable?
-## We could also build combining results into the varRule functionality
-
-## getDeps(c('y[1:3]', 'mu')) ---> varRules[['y']]$apply('y[1:3]')
+## graph traversal functions cannot handle stochOnly or determOnly because a given varRange result
+## for getParents could be partially stoch and partially determ
+## instead a user would pass the result through getNodes().
 
 getDependencies <- function(modelDef, nodes,
                             self = TRUE,
-                            stochOnly = FALSE, determOnly = FALSE,
                             includeData = TRUE, dataOnly = FALSE, 
                             downstream = FALSE, immediateOnly = FALSE) {
     traverseGraph(modelDef$downstreamRules, modelDef$declRules, nodes = nodes,
-              self = self, stochOnly = stochOnly, determOnly = determOnly,
+              down = TRUE, self = self, 
               includeData = includeData, dataOnly = dataOnly, 
               follow = downstream, immediateOnly = immediateOnly)
 
 }
 
 getParents <- function(modelDef, nodes,
-                            self = TRUE,
-                            stochOnly = FALSE, determOnly = FALSE,
+                            self = FALSE,
                             includeData = TRUE, dataOnly = FALSE, 
                             upstream = FALSE, immediateOnly = FALSE) {
     traverseGraph(modelDef$upstreamRules, modelDef$declRules, nodes = nodes,
-              self = self, stochOnly = stochOnly, determOnly = determOnly,
+              down = FALSE, self = self, 
               includeData = includeData, dataOnly = dataOnly, 
               follow = upstream, immediateOnly = immediateOnly)
 }
 
 
 traverseGraph <- function(streamRules, declRules,
-                          nodes, self = TRUE,
-                            stochOnly = FALSE, determOnly = FALSE,
+                          nodes, down, self = TRUE,
                             includeData = TRUE, dataOnly = FALSE, 
                             follow = FALSE, immediateOnly = FALSE) {
                           
-    results <- traverseGraphRecurse(streamRules, nodes, follow, immediateOnly)
+    results <- traverseGraphRecurse(streamRules, nodes, down, follow, immediateOnly)
 
     if(self) {
         chars <- is.character(nodes)
         selfNodes <- c(nodes[!chars],
             flatten(lapply(nodes[chars],
                                        function(varName)
-                                           lapply(declRules[[varName]],
+                                           lapply(declRules[[varName]]$rules,
                                                   function(rule) rule$getFullRange()))))
         results <- c(selfNodes, results)
     }
     
-    if(stochOnly)
-        results <- result[lapply(results, function(nodeRange) nodeRange$declRule$stoch)]
-    if(determOnly)
-        results <- result[!lapply(results, function(nodeRange) nodeRange$declRule$stoch)]
+    ## if(stochOnly)
+    ##     results <- results[sapply(results, function(varRange) varRange$stoch)]
+    ## if(determOnly)
+    ##     results <- results[!sapply(results, function(varRange) varRange$stoch)]
 
     return(removeDuplicates(results))
 }
 
-traverseGraphRecurse <- function(rules, nodes, self = TRUE, downstream = FALSE, immediateOnly = FALSE) {
+traverseGraphRecurse <- function(rules, nodes, down, follow = FALSE, immediateOnly = FALSE, first = TRUE) {
     results <- flatten(lapply(nodes, function(node) traverseGraphOne(rules, node)))
     if(immediateOnly)
         return(results)
+    if(!down && !first && !follow) {
+        ## stoch/determ needs to be determined from rule in which the range is on LHS
+        stoch <- sapply(results, function(varRange) varRange$stoch)
+        results <- results[!stoch]
+    }    
     propagators <- results
-    if(!follow) {
-        stoch <- sapply(propagators, function(node) node$declRule$stoch)
+    if(!follow && down) {
+        ## can only be used for getDeps because type of LHS not relevant for upward traversal
+        stoch <- sapply(propagators, function(varRange) varRange$stoch)
         propagators <- propagators[!stoch]
     }
     if(length(propagators)) {
-        results <- c(results, traverseGraphRecurse(rules, propagators, downstream))
+        results <- c(results, traverseGraphRecurse(rules, propagators, down, follow, first = FALSE))
     } else {
         return(results)
     }
@@ -279,7 +285,10 @@ traverseGraphRecurse <- function(rules, nodes, self = TRUE, downstream = FALSE, 
         
 
 traverseGraphOne <- function(rules, node) {
-    rules[node$varName]$apply(node)
+    varName <- ifelse(is.character(node), node, node$varName)
+    if(varName %in% names(rules)) {
+        return(rules[[varName]]$apply(node))
+    } else return(NULL)
 }
 
 
@@ -296,6 +305,8 @@ getNodes <- function(modelDef, nodes = NULL,
 
     if(is.null(nodes)) {
         nodes <- names(modelDef$declRules)
+        if(includeRHSonly)
+            nodes <- c(nodes, names(modelDef$rhsOnlyRules))
     } else {
         if(!all(is.character(nodes) | sapply(nodes, function(node) is(node, 'varRangeClass'))))
             stop("getNodes: `nodes` must be variable names or variable ranges.")
@@ -313,10 +324,13 @@ getNodes <- function(modelDef, nodes = NULL,
         rhsResult <- lapply(nodes, function(node) getNodesOne(modelDef$rhsOnlyRules, node))
         result <- c(result, flatten(rhsResult))
     }
+
     if(stochOnly)
-        result <- result[lapply(result, function(nodeRange) nodeRange$declRule$stoch)]
+        result <- result[sapply(result, function(nodeRange) nodeRange$declRule$stoch)]
     if(determOnly)
-        result <- result[!lapply(result, function(nodeRange) nodeRange$declRule$stoch)]
+        result <- result[!sapply(result, function(nodeRange) nodeRange$declRule$stoch)]
+
+    if(!length(result)) return(NULL)
     
     return(removeDuplicates(result))
 
@@ -324,7 +338,9 @@ getNodes <- function(modelDef, nodes = NULL,
 
 getNodesOne <- function(rules, node) {
     varName <- ifelse(is.character(node), node, node$varName)
-    rules[[varName]]$apply(node)
+    if(varName %in% names(rules)) {
+        return(rules[[varName]]$apply(node))
+    } else return(NULL)
 }
 
         

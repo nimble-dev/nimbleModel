@@ -50,8 +50,7 @@ modelDeclClass <- R6Class(
         },
         process = function(constants, nimFunNames) {
             genSymbolicParentNodes(constants, nimFunNames)
-            makeDownstreamRules(constants)
-            ## makeUpstreamRules()  ## TODO
+            makeGraphRules(constants)
             makeRHSoriginalRules(constants)
         },
         genSymbolicParentNodes = function(constants,
@@ -69,11 +68,13 @@ modelDeclClass <- R6Class(
                                            nimFunNames)
                 ) 
         },
-        makeDownstreamRules = function(constants) {
+        makeGraphRules = function(constants) {
             if(is.null(symbolicParentNodes))
                 genSymbolicParentNodes(constants,
                                        context$indexVarExprs)
             downstreamRules <<- vector('list',
+                                      length(symbolicParentNodes))
+            upstreamRules <<- vector('list',
                                       length(symbolicParentNodes))
             for(i in seq_along(symbolicParentNodes)) {
                 downstreamRules[[i]] <<-
@@ -82,6 +83,13 @@ modelDeclClass <- R6Class(
                                        context,
                                        constants,
                                        declRule$stoch)
+                upstreamRules[[i]] <<-
+                    graphRuleClass$new(symbolicParentNodes[[i]],
+                                       targetNodeExpr,
+                                       context,
+                                       constants,
+                                       declRule$stoch)
+                
             }
         },
 

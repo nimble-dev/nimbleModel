@@ -40,17 +40,35 @@ graphRuleClass <- R6Class(
             )
         },
 
-        ## TODO: need to come back to this
         getFullRange = function() {
-            extent <- lapply(indexRules, get_max)
+            extent <- lapply(indexRules, function(rule) rule$get_max())
+            ## Case of no indexing, e.g. x ~ dnorm(0,1)
+            if(!length(extent[[1]]))
+                return(varRangeClass$new(list(indexRange_none()), varName = childVar, stoch = stoch))
+            
             maxes <- indexSets$LHSindex2setID
             for(i in seq_len(max(maxes)))
                 maxes[indexSets$LHSindex2setID == i] <- extent[[i]]
+            
+            maxes <- rep(0, length(indexSets$LHSindex2setID))
+            cnt <- 1
+            cntConstant <- 0
+            constants <- which(indexSets$LHSindex2setID == 0)
+            for(i in seq_along(extent)) {
+                if(is(indexRules$indexRules[[i]], "indexRuleClass_constant")) {
+                    cntConstant <- cntConstant + 1
+                    maxes[constants[cntConstant]] <- extent[[i]]
+                } else {
+                    maxes[indexSets$LHSindex2setID == i] <- extent[[i]] 
+                }
+            }
+
             return(
                 applyGraphRule(
                     varRangeClass$new(lapply(seq_len(numIndices),
                                              function(i) indexRange(
-                                                             substitute(1:MAX, list(MAX = maxes[i]))))),
+                                                             substitute(1:MAX, list(MAX = maxes[i])))),
+                                     varName = childVar),
                     self))
         }
             
@@ -432,7 +450,7 @@ applyGraphRule <- function(fromVarRange,
                                  varName = NULL) {
 
     if(is.character(fromVarRange)) {
-        if(fromVarRange != varName)
+        if(!is.null(varName) && fromVarRange != varName)
             return(NULL)
         return(rule$getFullRange())
     }
@@ -748,7 +766,8 @@ applyGraphRule <- function(fromVarRange,
     result <- varRangeClass$new(
         indexInfo = finalIndexRanges[!repeats],
         indexOrders = finalIndexOrders[!repeats],
-        varName = ifelse(is.null(varName), rule$childVar, varName)
+        varName = ifelse(is.null(varName), rule$childVar, varName),
+        stoch = rule$stoch
         )
     if(result$isEmpty()) result <- NULL
     return(result)

@@ -119,7 +119,7 @@ generateCalcRules <- function(declRules, rhsOriginalRules, graphRules) {
 
     while(pos <= length(calcRules)) {
         varName <- calcRules[[pos]]$varName
-        deps <- getChildren(calcRules[[pos]]$getFullRange(), graphRules[[varName]])
+        deps <- getChildren(calcRules[[pos]]$getFullRange(), graphRules[[varName]]$rules)
         for(d in seq_along(deps)) {
             ## Try to fracture all remaining rules by looping over non-top rules.
             for(i in start:length(calcRules)) {
