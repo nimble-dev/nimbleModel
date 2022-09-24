@@ -1036,7 +1036,7 @@ test_that("basic check of graph interface", {
     expect_identical(sapply(result, function(node) node$varName),
                      c('theta'))
 
-    ## checking downstream/upstream
+    ## checking downstream/upstream with latent stoch node 
     code <- quote({
         y ~ dnorm(theta, 1)
         theta ~ dnorm(mu0, 1)
@@ -1124,17 +1124,160 @@ test_that("getParents traversal with mix of stoch/determ edges", {
 
 })
 
+test_that("same dependent on RHS", {
+    code <- quote({
+        y ~ dnorm(mu, exp(mu))
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
+
+    result <- getParents(modelDef, 'y')
+    expect_identical(sapply(result, function(node) node$varName),
+                     c('mu'))    
+})
 
 
-## library(nimbleModel); library(testthat)
+## need to add new fracturing test?
+## capture fact that overlap is not null if int/double
+
+## FAILS if define tau
+
+code <- quote({
+          for(i in 1:10) 
+            y[i] ~ dnorm(mu[i], tau)
+             for(i in 1:3)
+            z[k[i]] ~ dnorm(y[k[i]], 1)
+            tau ~ dunif(0,1)
+    })
+    k <- c(2,4,7)
+    modelDef <- modelDefClass$new(code, constants = list(k = k))
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
 
 
-## add variety of model test cases to assess getNodes, getParents, getDependencies
+    code <- quote({
+          for(i in 1:10) 
+            y[i] ~ dnorm(mu[i], tau)
+           for(i in 1:3)
+            z[k[i]] ~ dnorm(y[i], 1)
+        
+    })
+    k <- c(2,4,7)
+    modelDef <- modelDefClass$new(code, constants = list(k = k))
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
 
-## y[i]~dnorm(mu[i],1) (i=1:3); z[i]~dnorm(mu[i],1) (i=2:4)
 
-## some larger graph just to check agglomeration of results
+test_that("basic hierarchical models", {
+    ## FAILS
+    code <- quote({
+        for(i in 1:10) {
+            y[i] ~ dnorm(mu[i], tau)
+            mu[i] ~ dnorm(mu0, sigma)
+        }
+        tau ~ dunif(0, bnd) 
+        sigma ~ dunif(0, 1)
+        for(i in 1:3)
+            z[k[i]] ~ dnorm(y[k[i]], 1)
+        
+    })
+    k <- c(2,4,7)
+    modelDef <- modelDefClass$new(code, constants = list(k = k))
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
 
-## case with vectors
+    code <- quote({
+        for(i in 1:10) {
+            y[i] ~ dnorm(mu[i], tau)
+        }
+        mu[1:10] ~ dmnorm(mu0[1:10], pr[1:10,1:10])
+        mu0[1:10] <- mu00*z[1:10]
+        mu00 ~ dnorm(0, 1)
+        pr[1:10, 1:10] ~ dwish(S[1:10, 1:10], 5)
+        tau ~ dunif(0, bnd)
+        sigma ~ dunif(0, 1)
+        for(i in 1:3)
+            z[k[i]] ~ dnorm(y[k[i]], 1)
+        
+    })
+    k <- c(2,4,7)
+    modelDef <- modelDefClass$new(code, constants = list(k = k)))
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
 
-## what happens with splitting: y[1:2] ~ dmnorm(theta[1:2],1); theta[1] <- z; theta[2] ~ dnorm(0,1)
+
+    code <- quote({
+        for(i in 1:5) {
+            y[i, 1:3] ~ dmnorm(X[1:3, 1:5] %*% beta[1:5], pr[1:3,1:3])
+        }
+        pr[1:3, 1:3] ~ dwish(S[1:3, 1:3], 5)
+        for(i in 1:5)
+            beta[i] ~ dnorm(beta0, tau)
+        beta0 ~ dunif(0,1)        
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
+
+})
+
+    
+test_that("state-space model", {
+    code <- quote({
+        for(i in 1:5)
+            y[i] ~ dnorm(z[i], tau)
+        for(i in 2:5)
+            z[i] ~ dnorm(z[i-1], sigma)
+        z[1] ~ dunif(0, 1)
+        tau ~ dunif(0, bnd)
+        sigma ~ dunif(0, 1)
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
+
+})
+
+test_that("nodes split in various ways", {
+
+    code <- quote({
+        for(i in 1:4) 
+            y[i] ~ dnorm(theta[i], 1)
+        theta[1] ~ dnorm(0,1)
+        theta[2:4] <- z[1:3]
+    })
+
+    code <- quote({
+        for(i in 1:4) 
+            y[i] ~ dnorm(theta[i], 1)
+        z ~ dnorm(y[1], 1)
+        w <- y[3]
+    })
+
+    code <- quote({
+        y[1:4] ~ dmnorm(theta[1:4], pr[1:2,1:2])
+        theta[1] ~ dnorm(0,1)
+        theta[2:4] <- z[1:3]
+    })
+
+    code <- quote({
+        y[1:4] ~ dmnorm(theta[1:4], pr[1:2,1:2])
+        z ~ dnorm(y[1], 1)
+        w <- y[3]
+    })
+
+    ## are mv nodes kept together correctly in getNodes
+    ## is aggregation done?
+})
+
+
+
+

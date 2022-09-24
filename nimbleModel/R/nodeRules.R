@@ -619,16 +619,17 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
 
         ## If matrix involved, need to be dealt with so as to create an arbitrary rule.
         if(typeLHS == "matrix" || typeFrac == "matrix") {
+            ## (as.numeric prevents some indexRanges from having ints when generally have doubles)
             valsLHS <- switch(typeLHS,
                               matrix = LHS[[1]],
                               scalar = LHS[[1]],
-                              sequence = LHS[[1]][[1]]:LHS[[1]][[2]],
+                              sequence = as.numeric(LHS[[1]][[1]]:LHS[[1]][[2]]),
                               stop("typeLHS not found")
                               )
             valsFrac <- switch(typeFrac,
                               matrix = frac[[1]],
                               scalar = frac[[1]],
-                              sequence = frac[[1]][[1]]:frac[[1]][[2]],
+                              sequence = as.numeric(frac[[1]][[1]]:frac[[1]][[2]]),
                               stop("typeFrac not found")
                               )
             valsLHS <- valsLHS[!valsLHS %in% valsFrac]

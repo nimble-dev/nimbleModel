@@ -629,8 +629,10 @@ test_that("calcRule fracturing works", {
     expected <- nodeRuleClass$new(expr, 1, context_tmp, constants = list(idx1 = idx1, idx2 = idx2))
     expect_equal(result[[2]]$externalRules$indexRules[[1]]$setupResults,
                  expected$externalRules$indexRules[[1]]$setupResults)
-  
+
 })
+
+
 
 
 test_that("RHS exclusion works", {
