@@ -36,11 +36,15 @@ indexRuleClass_constant <- R6Class(
 
         get_max = function() {
             return(switch(attr(setupResults$constant, 'rangeType'),
-                   matrix = apply(setupResults$constant[[1]], 2, max),
-                   sequence = setupResults$constant[[1]][[2]],
                    scalar = setupResults$constant[[1]],
+                   sequence = setupResults$constant[[1]][[2]],
+                   matrix = apply(setupResults$constant[[1]], 2, max),
                    none = numeric(0),
                    stop("unexpected indexRange type")))
+        },
+
+        get_fullRange = function() {
+            apply_indexRange(NULL)
         }
     )
 )

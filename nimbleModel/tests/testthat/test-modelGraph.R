@@ -1067,7 +1067,6 @@ test_that("basic check of graph interface", {
 })
 
 test_that("getDependencies gives repeated children", {
-
     code <- quote({
         y ~ dnorm(mu, tau)
     })
@@ -1139,41 +1138,7 @@ test_that("same dependent on RHS", {
 })
 
 
-## need to add new fracturing test?
-## capture fact that overlap is not null if int/double
-
-## FAILS if define tau
-
-code <- quote({
-          for(i in 1:10) 
-            y[i] ~ dnorm(mu[i], tau)
-             for(i in 1:3)
-            z[k[i]] ~ dnorm(y[k[i]], 1)
-            tau ~ dunif(0,1)
-    })
-    k <- c(2,4,7)
-    modelDef <- modelDefClass$new(code, constants = list(k = k))
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$generateGraphInfo()
-
-
-    code <- quote({
-          for(i in 1:10) 
-            y[i] ~ dnorm(mu[i], tau)
-           for(i in 1:3)
-            z[k[i]] ~ dnorm(y[i], 1)
-        
-    })
-    k <- c(2,4,7)
-    modelDef <- modelDefClass$new(code, constants = list(k = k))
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$generateGraphInfo()
-
-
 test_that("basic hierarchical models", {
-    ## FAILS
     code <- quote({
         for(i in 1:10) {
             y[i] ~ dnorm(mu[i], tau)
@@ -1190,6 +1155,73 @@ test_that("basic hierarchical models", {
     modelDef$processModelCode()
     modelDef$processDecls()
     modelDef$generateGraphInfo()
+
+    result <- getNodes(modelDef)
+    expect_identical(sapply(result, function(node) node$varName),
+                     c('y','mu','tau','sigma','z'))
+    result <- getNodes(modelDef, topOnly = TRUE)
+    expect_identical(sapply(result, function(node) node$varName),
+                     c('tau','sigma'))
+    result <- getNodes(modelDef, endOnly = TRUE)
+    expect_identical(sapply(result, function(node) node$varName),
+                     c('y','z'))
+    expect_identical(result[[1]]$indexRanges,
+                     list(indexRange(matrix(c(1,3,5,6,8,9,10)))))
+    
+    result <- getNodes(modelDef, latentOnly = TRUE)
+    expect_identical(sapply(result, function(node) node$varName),
+                     c('y','mu'))
+    expect_identical(result[[1]]$indexRanges,
+                     list(indexRange(matrix(c(2,4,7)))))
+    expect_identical(result[[2]]$indexRanges,
+                     list(indexRange(quote(1:10))))
+
+    result <- getNodes(modelDef, stochOnly = TRUE)
+    expect_identical(sapply(result, function(node) node$varName),
+                     c('y','mu','tau','sigma','z'))
+    result <- getNodes(modelDef, determOnly = TRUE)
+    expect_identical(result, NULL)
+
+    result <- getNodes(modelDef, includeRHSonly = TRUE)
+    expect_identical(sapply(result, function(node) node$varName),
+                     c('y','mu','tau','sigma','z','mu0','bnd'))
+
+    result <- getDependencies(modelDef, 'sigma')
+    expect_identical(sapply(result, function(node) node$varName),
+                     c('sigma','mu'))
+    expect_identical(result[[2]]$indexRanges, 
+               list(indexRange(quote(1:10))))
+
+    result <- getDependencies(modelDef, 'mu', self = FALSE)
+    expect_identical(sapply(result, function(node) node$varName),
+                     c('y'))
+    expect_identical(result[[1]]$indexRanges, 
+               list(indexRange(quote(1:10))))
+    
+    result <- getDependencies(modelDef, 'y', self = FALSE)
+    ## FAILS:
+#    Error in switch(attr(inputIndexRange, "rangeType"), matrix = inputIndexRange,  : 
+#  EXPR must be a length 1 vector
+
+#>     result <- getDependencies(modelDef, 'y[1:3]')
+#Error in items[[1]] : subscript out of bounds
+
+    
+    result <- getDependencies(modelDef, 'sigma', downstream = TRUE)
+    expect_identical(sapply(result, function(node) node$varName),
+                     c('sigma','mu','y','z'))
+
+    ## FAILS
+    result <- getParents(modelDef, 'y')
+    # Error in rule$get_fullRange() : attempt to apply non-function
+
+    expect_identical(sapply(result, function(node) node$varName),
+                     c('mu','tau'))
+
+    result <- getParents(modelDef, 'y', upstream = TRUE)
+    expect_identical(sapply(result, function(node) node$varName),
+                     c('mu','tau','mu0','sigma'))
+
 
     code <- quote({
         for(i in 1:10) {
@@ -1228,7 +1260,7 @@ test_that("basic hierarchical models", {
 
 })
 
-    
+## NEED to check    
 test_that("state-space model", {
     code <- quote({
         for(i in 1:5)
@@ -1246,6 +1278,7 @@ test_that("state-space model", {
 
 })
 
+## NEED to check    
 test_that("nodes split in various ways", {
 
     code <- quote({

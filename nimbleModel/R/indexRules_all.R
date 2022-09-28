@@ -39,6 +39,22 @@ indexRuleClass_all <- R6Class(
                 stop('an index rule should be applied to an indexRange')
             else
                 apply_indexRange(from, ...)
+        },
+
+        get_max = function() {
+            return(
+                switch(attr(setupResults$all, 'rangeType'),
+                       scalar = setupResults$all[[1]],
+                       sequence = setupResults$all[[1]][[2]],
+                       matrix = apply(setupResults$all[[1]], 2, max),
+                       none = numeric(0),
+                       stop("indexRule_all$get_max: invalid type of setupResults indexRange.")
+                       )
+            )
+        },
+
+        get_fullRange = function() {
+            apply_indexRange(NULL)
         }
     )
 )

@@ -70,6 +70,12 @@ indexRuleClass_arbitrary <- R6Class(
         get_max = function() {
             sapply(seq_along(setupResults$iRow2toIndices[[1]]),
                    function(idx) max(sapply(setupResults$iRow2toIndices, '[', idx)))
+        },
+
+        get_fullRange = function() {
+            maxes <- get_max()
+            apply_indexRange(lapply(seq_along(maxes), function(i)
+                indexRange(substitute(1:MAX, list(MAX = maxes[i])))))
         }
     )
 )

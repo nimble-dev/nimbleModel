@@ -41,21 +41,23 @@ graphRuleClass <- R6Class(
         },
 
         getFullRange = function() {
+            return(varRangeClass$new(
+                                     lapply(indexRules, function(rule) rule$get_fullRange()),
+                                     varName = childVar, stoch = stoch))
+            
+            if(FALSE) { ## TODO: remove this after further testing, assessment of getFullRange
             extent <- lapply(indexRules, function(rule) rule$get_max())
+
             ## Case of no indexing, e.g. x ~ dnorm(0,1)
             if(!length(extent[[1]]))
                 return(varRangeClass$new(list(indexRange_none()), varName = childVar, stoch = stoch))
-            
-            maxes <- indexSets$LHSindex2setID
-            for(i in seq_len(max(maxes)))
-                maxes[indexSets$LHSindex2setID == i] <- extent[[i]]
             
             maxes <- rep(0, length(indexSets$LHSindex2setID))
             cnt <- 1
             cntConstant <- 0
             constants <- which(indexSets$LHSindex2setID == 0)
             for(i in seq_along(extent)) {
-                if(is(indexRules$indexRules[[i]], "indexRuleClass_constant")) {
+                if(is(indexRules[[i]], "indexRuleClass_constant")) {
                     cntConstant <- cntConstant + 1
                     maxes[constants[cntConstant]] <- extent[[i]]
                 } else {
@@ -65,11 +67,12 @@ graphRuleClass <- R6Class(
 
             return(
                 applyGraphRule(
-                    varRangeClass$new(lapply(seq_len(numIndices),
+                    varRangeClass$new(lapply(seq_along(maxes),
                                              function(i) indexRange(
                                                              substitute(1:MAX, list(MAX = maxes[i])))),
                                      varName = childVar),
                     self))
+            }
         }
             
     )
