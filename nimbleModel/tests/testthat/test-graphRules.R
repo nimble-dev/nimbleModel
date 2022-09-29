@@ -1793,3 +1793,53 @@ test_that("indexRange matrix converted to sequence if appropriate", {
         varRangeClass$new(list(indexRange(quote(3:6)), indexRange(2)), varName = 'y')
     )
 })
+
+
+## TODO: modify this to reflect that getFullRange is a graphRule method
+## include cases where RHS=LHS and where RHS is different
+test_that("getFullRange works correctly", {
+    context_0 <- modelContextClass$new()
+    singleContext1 <-
+        modelSingleContext(forCode = quote(for(i in 2:8){}))
+    context_i <- modelContextClass$new(list(singleContext1))
+    singleContext2 <-
+        modelSingleContext(forCode = quote(for(j in 1:4){}))
+    context_ij <- modelContextClass$new(list(singleContext1, singleContext2))
+
+    LHS <- quote(mu)
+    LHSrule <- nodeRuleClass$new(LHS, 1, context_0)
+    expect_equal(LHSrule$getFullRange(),
+                     varRangeClass$new(list(nimbleModel:::indexRange_none()), varName = 'mu'))
+
+    
+    LHS <- quote(mu[5, 1:3])
+    LHSrule <- nodeRuleClass$new(LHS, 1, context_0)
+    expect_equal(LHSrule$getFullRange(),
+                     varRangeClass$new(list(indexRange(5), indexRange(quote(1:3))), varName = 'mu'))
+
+    LHS <- quote(mu[4:5, 1:3])
+    LHSrule <- nodeRuleClass$new(LHS, 1, context_0)
+    expect_equal(LHSrule$getFullRange(),
+                     varRangeClass$new(list(indexRange(quote(4:5)), indexRange(quote(1:3))), varName = 'mu'))
+    
+    LHS <- quote(mu[4:5, i, 1:3])
+    LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
+    expect_equal(LHSrule$getFullRange(),
+                 varRangeClass$new(list(indexRange(quote(4:5)), indexRange(quote(2:8)), indexRange(quote(1:3))), varName = 'mu'))
+    
+    expr <- quote(mu[4:5, j, i, 3])
+    LHSrule <- nodeRuleClass$new(expr, 1, context_ij)
+    expect_equal(LHSrule$getFullRange(),
+                 varRangeClass$new(list(indexRange(quote(4:5)), indexRange(quote(1:4)),
+                                        indexRange(quote(2:8)), indexRange(quote(3))), varName = 'mu'))
+    
+    LHS <- quote(mu[4:5, i, i, 3])
+    LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
+    expect_equal(LHSrule$getFullRange(),
+                 varRangeClass$new(list(indexRange(quote(4:5)), indexRange(matrix(rep(2:8, 2), ncol = 2)), indexRange(3)), varName = 'mu'))
+
+})
+
+
+
+

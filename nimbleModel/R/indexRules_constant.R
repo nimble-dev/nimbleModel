@@ -41,10 +41,6 @@ indexRuleClass_constant <- R6Class(
                    matrix = apply(setupResults$constant[[1]], 2, max),
                    none = numeric(0),
                    stop("unexpected indexRange type")))
-        },
-
-        get_fullRange = function() {
-            apply_indexRange(NULL)
         }
     )
 )

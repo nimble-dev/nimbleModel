@@ -34,6 +34,14 @@ graphRuleClass <- R6Class(
             childVar <<- output$childVar
         },
         apply = function(fromVarRange) {
+            varName <- getVarName(fromVarRange)
+            if(!is.null(parentVar) && varName != parentVar)
+                return(NULL)
+            if(is.character(fromVarRange)) {
+                if(varName == parentVar && numRHSindices) {
+                    fromVarRange <- getFullRange()   # only varName given
+                } else fromVarRange <- varRangeClass$new(fromVarRange)   # string providing the varRange         
+            }
             applyGraphRule(
                 fromVarRange,
                 self
@@ -41,40 +49,44 @@ graphRuleClass <- R6Class(
         },
 
         getFullRange = function() {
-            return(varRangeClass$new(
-                                     lapply(indexRules, function(rule) rule$get_fullRange()),
-                                     varName = childVar, stoch = stoch))
-            
-            if(FALSE) { ## TODO: remove this after further testing, assessment of getFullRange
-            extent <- lapply(indexRules, function(rule) rule$get_max())
+            ## no indexing
+            if(!length(indexSets$RHSindex2setID)) { 
+                vr <- varRangeClass$new(parentVar)
+            } else {
+                indexed <- maxes != 0
+                maxes <- indexSets$RHSindex2setID
 
-            ## Case of no indexing, e.g. x ~ dnorm(0,1)
-            if(!length(extent[[1]]))
-                return(varRangeClass$new(list(indexRange_none()), varName = childVar, stoch = stoch))
-            
-            maxes <- rep(0, length(indexSets$LHSindex2setID))
-            cnt <- 1
-            cntConstant <- 0
-            constants <- which(indexSets$LHSindex2setID == 0)
-            for(i in seq_along(extent)) {
-                if(is(indexRules[[i]], "indexRuleClass_constant")) {
-                    cntConstant <- cntConstant + 1
-                    maxes[constants[cntConstant]] <- extent[[i]]
-                } else {
-                    maxes[indexSets$LHSindex2setID == i] <- extent[[i]] 
-                }
-            }
+                ## deal with RHS constants
+                maxes[!indexed] <- sapply(constraints, function(x) max(x$constraint))
 
-            return(
-                applyGraphRule(
-                    varRangeClass$new(lapply(seq_along(maxes),
+                if(sum(indexed)) 
+                    for(idx in unique(maxes[indexed])) 
+                        maxes[indexSets$RHSindex2setID == i] <- indexRules[[idx]]$get_max()
+
+                vr <- varRangeClass$new(lapply(seq_along(maxes),
                                              function(i) indexRange(
                                                              substitute(1:MAX, list(MAX = maxes[i])))),
-                                     varName = childVar),
-                    self))
+                                     varName = parentVar) 
             }
-        }
+            return(vr)
+            ## extent <- lapply(indexRules, function(rule) rule$get_max())
+
+            ## ## Case of no indexing, e.g. x ~ dnorm(0,1)
+            ## if(!length(extent[[1]]))
+            ##     return(varRangeClass$new(list(indexRange_none()), varName = childVar, stoch = stoch))
             
+            ## maxes <- rep(0, length(indexSets$RHSindex2setID))
+            ## cnt <- 1
+            ## cntConstant <- 0
+            ## constants <- which(indexSets$RHSindex2setID == 0)
+            ## for(i in seq_along(extent)) {
+            ##     if(is(indexRules[[i]], "indexRuleClass_constant")) {
+            ##         cntConstant <- cntConstant + 1
+            ##         maxes[constants[cntConstant]] <- extent[[i]]
+            ##     } else {
+            ##         maxes[indexSets$RHSindex2setID == i] <- extent[[i]] 
+            ##     }
+            ## }
     )
 )
 
@@ -451,12 +463,6 @@ checkOneConstraint <- function(indexRange, constraint, col = 1) {
 applyGraphRule <- function(fromVarRange,
                                  rule,
                                  varName = NULL) {
-
-    if(is.character(fromVarRange)) {
-        if(!is.null(varName) && fromVarRange != varName)
-            return(NULL)
-        return(rule$getFullRange())
-    }
     
     if(!is(fromVarRange, 'varRangeClass'))
         stop("applyGraphRule: 'fromVarRange' needs to be a varRange object.")

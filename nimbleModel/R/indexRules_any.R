@@ -50,6 +50,10 @@ indexRuleClass_any <- R6Class(
                 stop('an index rule should be applied to an indexRange')
             else
                 apply_indexRange(from, ...)
+        },
+
+        get_max = function() {
+            return(NULL)
         }
     )
 )

@@ -244,13 +244,13 @@ traverseGraph <- function(streamRules, declRules,
     results <- traverseGraphRecurse(streamRules, nodes, down, follow, immediateOnly)
 
     if(self) {
-        chars <- is.character(nodes)
-        selfNodes <- c(nodes[!chars],
-            flatten(lapply(nodes[chars],
+        varNames <- sapply(nodes, getVarName)
+        vars <- nodes == varNames
+        nodesFromVars <- flatten(lapply(nodes[vars],
                                        function(varName)
                                            lapply(declRules[[varName]]$rules,
-                                                  function(rule) rule$getFullRange()))))
-        results <- c(selfNodes, results)
+                                                  function(declRule) declRule$getFullRange())))
+        results <- c(nodes[!vars], nodesFromVars, results)
     }
     
     ## if(stochOnly)
@@ -285,7 +285,7 @@ traverseGraphRecurse <- function(rules, nodes, down, follow = FALSE, immediateOn
         
 
 traverseGraphOne <- function(rules, node) {
-    varName <- ifelse(is.character(node), node, node$varName)
+    varName <- getVarName(node)
     if(varName %in% names(rules)) {
         return(rules[[varName]]$apply(node))
     } else return(NULL)
@@ -337,7 +337,7 @@ getNodes <- function(modelDef, nodes = NULL,
 }
 
 getNodesOne <- function(rules, node) {
-    varName <- ifelse(is.character(node), node, node$varName)
+    varName <- getVarName(node)  # ifelse(is.character(node), node, node$varName)
     if(varName %in% names(rules)) {
         return(rules[[varName]]$apply(node))
     } else return(NULL)

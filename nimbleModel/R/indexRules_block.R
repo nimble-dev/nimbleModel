@@ -55,13 +55,7 @@ indexRuleClass_block <- R6Class(
         
         get_max = function() {
             return(setupResults$from_max + setupResults$offset)
-        },
-
-        get_fullRange = function() {
-            apply_indexRange(indexRange(
-                substitute(1:MAX, list(MAX = setupResults$from_max + setupResults$offset))))
         }
-                
     )
 )
 

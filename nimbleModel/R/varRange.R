@@ -73,6 +73,7 @@ varRangeClass <- R6Class(
                 if(length(indexInfo)==1) {
                     ## The expression is just a name
                     nameFromExpr <- as.character(indexInfo)
+                    indexRanges <<- list(indexRange_none())
                 } else {
                     ## The expression must have some indexing.
                     ## Check that it starts with `[`:               
@@ -320,3 +321,14 @@ evalIndexRange <- function(x, varRange) {
                 envir = parent.frame())
     }
 }
+
+getVarName <- function(x) {
+    if(is(x, 'varRangeClass'))
+        return(x$varName)
+    if(is.character(x)) {
+        expr <- parse(text = x)[[1]]
+        if(length(expr)) return(x) else return(deparse(expr[[2]]))
+    }
+    stop("getVarName: unexpected input.")
+}
+               
