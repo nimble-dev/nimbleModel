@@ -1856,9 +1856,79 @@ test_that("getFromRange", {
                                                              indexRange(quote(1:1))),
                                                             varName = 'y'))
 
-    
-    
- 
-
 })
-    
+
+## TODO: when convert to use of graphRule$apply without direct use of applyGraphRule,
+## reconsider what is tested here and earlier in this file.
+test_that("application of graphRule to varName and character string", {
+       rule <- graphRuleClass$new(LHS = quote(y),
+                          RHS = quote(x[3]),
+                          context = context_0)
+       expect_equal(rule$apply('x'),
+                    varRangeClass$new(list(nimbleModel:::indexRange_none()), varName = 'y'))
+
+       rule <- graphRuleClass$new(LHS = quote(y[i+2]),
+                          RHS = quote(x[i]),
+                          context = context_i)
+       expect_equal(rule$apply('x'),
+                    varRangeClass$new(list(indexRange(quote(3:12))), varName = 'y'))
+                                                       
+
+       rule <- graphRuleClass$new(LHS = quote(y[i+2]),
+                          RHS = quote(x[i]),
+                          context = context_i)
+       expect_equal(rule$apply('x[5:12]'),
+                    varRangeClass$new(list(indexRange(quote(7:12))), varName = 'y'))
+
+       rule <- graphRuleClass$new(LHS = quote(y[i+2]),
+                          RHS = quote(x[i]),
+                          context = context_i)
+       expect_identical(rule$apply('z'), NULL)
+
+
+       rule <- graphRuleClass$new(LHS = quote(y[i+2]),
+                          RHS = quote(x[i]),
+                          context = context_i)
+       expect_identical(rule$apply('z[5:12]'), NULL)
+
+       rule <- graphRuleClass$new(LHS = quote(y[i+2,j]),
+                          RHS = quote(x[i]),
+                          context = context_ij)
+       expect_equal(rule$apply('x'),
+                    varRangeClass$new(list(indexRange(quote(3:12)),
+                                           indexRange(quote(1:4))),
+                                      varName = 'y'))
+       
+       rule <- graphRuleClass$new(LHS = quote(y[k[i]+2]),
+                          RHS = quote(x[i]),
+                          context = context_i_short,
+                          constants = list(k = c(4,2,7)))
+       expect_equal(rule$apply('x'),
+                    varRangeClass$new(list(indexRange(matrix(c(6,4,9)))),
+                                      varName = 'y'))
+
+
+       rule <- graphRuleClass$new(LHS = quote(x[3]),
+                          RHS = quote(y[i+2]),
+                          context = context_i_short)
+       expect_equal(rule$apply('y'),
+                    varRangeClass$new(list(indexRange(3)),
+                                      varName = 'x'))
+
+       rule <- graphRuleClass$new(LHS = quote(x[3]),
+                          RHS = quote(y[i+2]),
+                          context = context_i_short)
+       expect_equal(rule$apply('y[4]'),
+                    varRangeClass$new(list(indexRange(3)),
+                                      varName = 'x'))
+       expect_identical(rule$apply('y[14]'), NULL)
+
+       rule <- graphRuleClass$new(LHS = quote(x[3]),
+                          RHS = quote(y[k[i]+2]),
+                          context = context_i_short,
+                          constants = list(k=c(7,4,2)))
+       expect_equal(rule$apply('y[6]'),
+                    varRangeClass$new(list(indexRange(3)),
+                                      varName = 'x'))
+  
+})

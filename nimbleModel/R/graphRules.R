@@ -38,7 +38,7 @@ graphRuleClass <- R6Class(
             if(!is.null(parentVar) && varName != parentVar)
                 return(NULL)
             if(is.character(fromVarRange)) {
-                if(varName == parentVar && numRHSindices) {
+                if(varName == fromVarRange && numRHSindices) {
                     fromVarRange <- getFromRange()   # only varName given
                 } else fromVarRange <- varRangeClass$new(fromVarRange)   # string providing the varRange         
             }

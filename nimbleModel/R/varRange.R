@@ -89,6 +89,8 @@ varRangeClass <- R6Class(
                     )
                     rangeID_2_indexID <<-
                         as.list(seq_along(indexRanges))
+                    rangeID <- rep(seq_along(rangeID_2_indexID), times = sapply(rangeID_2_indexID, length))
+                    indexID_2_rangeID <<- rangeID[order(unlist(rangeID_2_indexID))]
                 }
                 if(is.null(varName))
                     varName <<- nameFromExpr
@@ -101,10 +103,10 @@ varRangeClass <- R6Class(
                 varName <<- varName
                 setIndexRanges(indexInfo, indexOrders)
             }
-            if(length(rangeID_2_indexID)) { ## no indexing of the variable
+            if(length(rangeID_2_indexID)) { 
                 rangeID <- rep(seq_along(rangeID_2_indexID), times = sapply(rangeID_2_indexID, length))
                 indexID_2_rangeID <<- rangeID[order(unlist(rangeID_2_indexID))]
-            } else indexID_2_rangeID <<- numeric(0)
+            } else indexID_2_rangeID <<- numeric(0) ## no indexing of the variable
         },
         getSingleIndexRange = function(index, ...) {
             ## Iterate over indexRanges rather than indices
@@ -327,7 +329,7 @@ getVarName <- function(x) {
         return(x$varName)
     if(is.character(x)) {
         expr <- parse(text = x)[[1]]
-        if(length(expr)) return(x) else return(deparse(expr[[2]]))
+        if(length(expr) == 1) return(x) else return(deparse(expr[[2]]))
     }
     stop("getVarName: unexpected input.")
 }
