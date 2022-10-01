@@ -54,7 +54,7 @@ indexRuleClass_block <- R6Class(
         },
         
         get_max = function() {
-            return(setupResults$from_max + setupResults$offset)
+            return(setupResults$from_max)
         }
     )
 )

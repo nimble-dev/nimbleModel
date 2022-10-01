@@ -73,8 +73,7 @@ nodeRuleClass <- R6Class(
             if(name != varName)
                 return(NULL)  
             if(is.character(varRange) && name == varRange)
-                varRange <- graphRule$getFullRange()
-            } 
+                varRange <- graphRule$getFromRange()
             if(numExternalRules) {
                 externalRange <- applyGraphRule(varRange, externalRules)
                 if(is.null(externalRange)) return(NULL)
@@ -97,7 +96,7 @@ nodeRuleClass <- R6Class(
         },
 
         getFullRange = function() {
-            return(applyGraphRule(graphRule$getFullRange(), graphRule))
+            return(graphRule$apply(varName))
         }
     )
 )

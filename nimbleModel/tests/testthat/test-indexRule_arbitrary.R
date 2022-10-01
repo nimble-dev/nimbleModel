@@ -509,3 +509,16 @@ test_that("arbitraryIndexRuleClass", {
 
 })
 
+
+test_that("get_max", {
+    rule <- indexRuleClass_arbitrary$new(
+        toIndexExprList = list(
+           t1 = quote(i)),                                  
+        fromIndexExprList = list(
+           f1 = quote(k1[i]+3),
+           f2 = quote(k2[i]-1)),
+        context = context_i_short,
+        constants = list2env(list(k1 = c(1,3,7), k2 = c(9,4,3)))
+    )
+    expect_identical(rule$get_max(), c(10, 8))
+})

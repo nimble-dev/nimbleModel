@@ -68,8 +68,8 @@ indexRuleClass_arbitrary <- R6Class(
         },
 
         get_max = function() {
-            sapply(seq_along(setupResults$iRow2toIndices[[1]]),
-                   function(idx) max(sapply(setupResults$iRow2toIndices, '[', idx)))
+            sapply(setupResults$fromInfo,
+                   function(fromInfo) fromInfo$offset + fromInfo$size)
         }
     )
 )

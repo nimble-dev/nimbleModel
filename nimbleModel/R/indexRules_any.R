@@ -53,7 +53,13 @@ indexRuleClass_any <- R6Class(
         },
 
         get_max = function() {
-            return(NULL)
+            if(setupResults$useArbitrary) {
+                ## Not necessarily the max, but any value will do.
+                return(setupResults$from2indicesFunctions$flatIndex2rawIndex(1))
+            } else {
+                if(exists('from_max', setupResults))
+                    return(setupResults$from_max) else stop("indexRules_any: unexpected form of setupResults in get_max.")
+            }
         }
     )
 )
@@ -165,6 +171,9 @@ indexRule_any_setup_sequence_internal <- function(fromIndexExprList,
     fromSignAndOffset <- getSignAndOffset(fromIndexExpr,
                                           indexVarName,
                                           constants)
+    if(is.null(fromSignAndOffset))
+        return(NULL)
+    
     offset <-
         fromSignAndOffset$offset
     

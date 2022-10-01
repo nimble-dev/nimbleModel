@@ -38,7 +38,7 @@ varRangeClass <- R6Class(
         ## created by indexRange for the indexRangeExprs
         indexRanges = list(),
         rangeID_2_indexID = list(),
-        indexID_2_rangeID = list(),
+        indexID_2_rangeID = numeric(),
         ## a list indexed by order of indexRanges
         ## each element is a vector of the "columns" (indexID)
         ## managed by that index Range.
@@ -128,7 +128,7 @@ varRangeClass <- R6Class(
             ##     indexRange2expr
             ## )
             if(identical(attr(indexRanges[[1]], "rangeType"), "none")) {
-                    self$rangeID_2_indexID <- integer(0)
+                    self$rangeID_2_indexID <- list()
             } else {
                 if(!is.null(indexOrders))
                     self$rangeID_2_indexID <- indexOrders

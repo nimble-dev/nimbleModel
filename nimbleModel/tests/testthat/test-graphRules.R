@@ -1795,51 +1795,70 @@ test_that("indexRange matrix converted to sequence if appropriate", {
 })
 
 
-## TODO: modify this to reflect that getFullRange is a graphRule method
-## include cases where RHS=LHS and where RHS is different
-test_that("getFullRange works correctly", {
-    context_0 <- modelContextClass$new()
-    singleContext1 <-
-        modelSingleContext(forCode = quote(for(i in 2:8){}))
-    context_i <- modelContextClass$new(list(singleContext1))
-    singleContext2 <-
-        modelSingleContext(forCode = quote(for(j in 1:4){}))
-    context_ij <- modelContextClass$new(list(singleContext1, singleContext2))
+test_that("getFromRange", {
+    rule <- graphRuleClass$new(LHS = quote(y[i]),
+                          RHS = quote(x[i+2]),
+                          context = context_i)
+    expect_equal(rule$getFromRange(), varRangeClass$new(list(indexRange(quote(1:12))),
+                                                            varName = 'x'))
 
-    LHS <- quote(mu)
-    LHSrule <- nodeRuleClass$new(LHS, 1, context_0)
-    expect_equal(LHSrule$getFullRange(),
-                     varRangeClass$new(list(nimbleModel:::indexRange_none()), varName = 'mu'))
+    rule <- graphRuleClass$new(LHS = quote(y[i]),
+                          RHS = quote(x[2:3]),
+                          context = context_i)
+    expect_equal(rule$getFromRange(), varRangeClass$new(list(indexRange(quote(1:3))),
+                                                            varName = 'x'))
+
+    rule <- graphRuleClass$new(LHS = quote(y[i]),
+                          RHS = quote(x),
+                          context = context_i)
+    expect_equal(rule$getFromRange(), varRangeClass$new(list(nimbleModel:::indexRange_none()),
+                                                            varName = 'x'))
+
+    rule <- graphRuleClass$new(LHS = quote(y[i]),
+                          RHS = quote(x[k[i]+2]),
+                          context = context_i_short,
+                          constants = list(k = c(4,2,7)))
+    expect_equal(rule$getFromRange(), varRangeClass$new(list(indexRange(quote(1:9))),
+                                                            varName = 'x'))
+
+    rule <- graphRuleClass$new(LHS = quote(y[i,j]),
+                          RHS = quote(x[k[i]+2,j,i]),
+                          context = context_ij_short,
+                          constants = list(k = c(4,2,7)))
+    expect_equal(rule$getFromRange(), varRangeClass$new(list(indexRange(quote(1:9)),
+                                                             indexRange(quote(1:4)),
+                                                             indexRange(quote(1:3))),
+                                                            varName = 'x'))
+
+    ## getParents, all rule cases
+    
+    rule <- graphRuleClass$new(LHS = quote(x[3]),
+                          RHS = quote(y[i+2]),
+                          context = context_i)
+    expect_equal(rule$getFromRange(), varRangeClass$new(list(indexRange(quote(1:12))),
+                                                            varName = 'y'))
+
+    ## 'fullRange' here is just an example from the RHS as that is all that is needed
+    rule <- graphRuleClass$new(LHS = quote(x[3]),
+                          RHS = quote(y[k[i]+2]),
+                          context = context_i_short,
+                          constants = list(k = c(4,2,7)))
+    
+    expect_equal(rule$getFromRange(), varRangeClass$new(list(indexRange(quote(1:4))),
+                                                            varName = 'y'))
+
+ 
+    rule <- graphRuleClass$new(LHS = quote(x[3]),
+                          RHS = quote(y[k1[i],k2[i]]),
+                          context = context_i_short,
+                          constants = list(k1 = c(4,2,7), k2 = c(9,1,4)))
+    expect_equal(rule$getFromRange(), varRangeClass$new(list(indexRange(quote(1:2)),
+                                                             indexRange(quote(1:1))),
+                                                            varName = 'y'))
 
     
-    LHS <- quote(mu[5, 1:3])
-    LHSrule <- nodeRuleClass$new(LHS, 1, context_0)
-    expect_equal(LHSrule$getFullRange(),
-                     varRangeClass$new(list(indexRange(5), indexRange(quote(1:3))), varName = 'mu'))
-
-    LHS <- quote(mu[4:5, 1:3])
-    LHSrule <- nodeRuleClass$new(LHS, 1, context_0)
-    expect_equal(LHSrule$getFullRange(),
-                     varRangeClass$new(list(indexRange(quote(4:5)), indexRange(quote(1:3))), varName = 'mu'))
     
-    LHS <- quote(mu[4:5, i, 1:3])
-    LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
-    expect_equal(LHSrule$getFullRange(),
-                 varRangeClass$new(list(indexRange(quote(4:5)), indexRange(quote(2:8)), indexRange(quote(1:3))), varName = 'mu'))
-    
-    expr <- quote(mu[4:5, j, i, 3])
-    LHSrule <- nodeRuleClass$new(expr, 1, context_ij)
-    expect_equal(LHSrule$getFullRange(),
-                 varRangeClass$new(list(indexRange(quote(4:5)), indexRange(quote(1:4)),
-                                        indexRange(quote(2:8)), indexRange(quote(3))), varName = 'mu'))
-    
-    LHS <- quote(mu[4:5, i, i, 3])
-    LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
-    expect_equal(LHSrule$getFullRange(),
-                 varRangeClass$new(list(indexRange(quote(4:5)), indexRange(matrix(rep(2:8, 2), ncol = 2)), indexRange(3)), varName = 'mu'))
+ 
 
 })
-
-
-
-
+    

@@ -39,7 +39,7 @@ graphRuleClass <- R6Class(
                 return(NULL)
             if(is.character(fromVarRange)) {
                 if(varName == parentVar && numRHSindices) {
-                    fromVarRange <- getFullRange()   # only varName given
+                    fromVarRange <- getFromRange()   # only varName given
                 } else fromVarRange <- varRangeClass$new(fromVarRange)   # string providing the varRange         
             }
             applyGraphRule(
@@ -48,20 +48,20 @@ graphRuleClass <- R6Class(
             )
         },
 
-        getFullRange = function() {
-            ## no indexing
-            if(!length(indexSets$RHSindex2setID)) { 
+        getFromRange = function() {
+            if(!length(indexSets$RHSindex2setID)) { ## no indexing
                 vr <- varRangeClass$new(parentVar)
             } else {
-                indexed <- maxes != 0
                 maxes <- indexSets$RHSindex2setID
-
+                indexed <- maxes != 0
+                
                 ## deal with RHS constants
-                maxes[!indexed] <- sapply(constraints, function(x) max(x$constraint))
+                if(sum(!indexed))
+                    maxes[!indexed] <- sapply(constraints, function(x) max(x$constraint))
 
                 if(sum(indexed)) 
                     for(idx in unique(maxes[indexed])) 
-                        maxes[indexSets$RHSindex2setID == i] <- indexRules[[idx]]$get_max()
+                        maxes[indexSets$RHSindex2setID == idx] <- indexRules[[idx]]$get_max()
 
                 vr <- varRangeClass$new(lapply(seq_along(maxes),
                                              function(i) indexRange(
@@ -87,7 +87,7 @@ graphRuleClass <- R6Class(
             ##         maxes[indexSets$RHSindex2setID == i] <- extent[[i]] 
             ##     }
             ## }
-    )
+        })
 )
 
 

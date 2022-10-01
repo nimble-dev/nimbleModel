@@ -120,3 +120,14 @@ test_that("indexRule_block works",
 
 })
 
+
+
+test_that("get_max", {
+    rule <- nimbleModel:::indexRuleClass_block$new(
+        toIndexExprList = list(
+            t1 = quote(i+3)),
+        fromIndexExprList = list(
+            f1 = quote(i+1)),
+        context = context_i)
+    expect_identical(rule$get_max(), 11)
+})
