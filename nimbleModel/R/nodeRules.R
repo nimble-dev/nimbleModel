@@ -23,6 +23,7 @@ nodeRuleClass <- R6Class(
         varName = character(),
         numIndices = numeric(),
         graphRule = NULL,
+        tmpRule = NULL,  ## TODO: remove
         externalRules = NULL, # indexing for the nodes
         internalRules = NULL, # indexing for components, if multivariate nodes
         numExternalRules = numeric(0),
@@ -42,6 +43,7 @@ nodeRuleClass <- R6Class(
 
             ## We'll use graphRules, though only have a single side of declaration.
             graphRule <<- makeGraphRule(expr, expr, context, constants)
+            tmpRule <<- graphRuleClass$new(expr, expr, context, constants)
             index2setID <<- graphRule$indexSets$LHSindex2setID
             isConstant <- sapply(graphRule$indexRules, is, "indexRuleClass_constant")
             
@@ -96,7 +98,9 @@ nodeRuleClass <- R6Class(
         },
 
         getFullRange = function() {
-            return(graphRule$apply(varName))
+            ## TODO: when graphRule is an instance of graphRuleClass and not a list, change to this:
+            ## return(graphRule$apply(varName))
+            return(tmpRule$apply(varName))
         }
     )
 )

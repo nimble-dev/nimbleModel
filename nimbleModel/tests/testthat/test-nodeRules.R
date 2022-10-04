@@ -1149,6 +1149,11 @@ test_that("getFullRange works correctly", {
     expect_equal(LHSrule$getFullRange(),
                      varRangeClass$new(list(nimbleModel:::indexRange_none()), varName = 'mu'))
 
+    LHS <- quote(mu[i])
+    LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
+    expect_equal(LHSrule$getFullRange(),
+                     varRangeClass$new(list(nimbleModel:::indexRange(quote(2:8))), varName = 'mu'))
+    
     
     LHS <- quote(mu[5, 1:3])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_0)
@@ -1175,6 +1180,13 @@ test_that("getFullRange works correctly", {
     LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
     expect_equal(LHSrule$getFullRange(),
                  varRangeClass$new(list(indexRange(quote(4:5)), indexRange(matrix(rep(2:8, 2), ncol = 2)), indexRange(3)), varName = 'mu'))
+
+    LHS <- quote(mu[4:5, i, 3, i])
+    LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
+    expect_equal(LHSrule$getFullRange(),
+                 varRangeClass$new(list(indexRange(quote(4:5)), indexRange(matrix(rep(2:8, 2), ncol = 2)), indexRange(3)),
+                                   indexOrders = list(1, c(2,4), 3),
+                                   varName = 'mu'))
 
 })
 
