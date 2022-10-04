@@ -331,6 +331,7 @@ getVarName <- function(x) {
         expr <- parse(text = x)[[1]]
         if(length(expr) == 1) return(x) else return(deparse(expr[[2]]))
     }
+    if(is.null(x)) return(NULL)
     stop("getVarName: unexpected input.")
 }
                

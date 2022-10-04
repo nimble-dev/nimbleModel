@@ -71,11 +71,13 @@ nodeRuleClass <- R6Class(
         
         ## Generate nodeRange from a varRange (or another nodeRange)
         apply = function(varRange = NULL) {
+            if(is.null(varRange)) 
+                varRange <- varName                
             name <- getVarName(varRange)
             if(name != varName)
                 return(NULL)  
             if(is.character(varRange) && name == varRange)
-                varRange <- graphRule$getFromRange()
+                varRange <- tmpRule$getFromRange()  ## TODO change to graphRule$getFromRange()
             if(numExternalRules) {
                 externalRange <- applyGraphRule(varRange, externalRules)
                 if(is.null(externalRange)) return(NULL)

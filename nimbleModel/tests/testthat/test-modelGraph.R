@@ -1063,7 +1063,6 @@ test_that("basic check of graph interface", {
     expect_identical(sapply(result, function(node) node$varName),
                      c('theta','mu0','sigma'))
 
-
 })
 
 test_that("getDependencies gives repeated children", {
@@ -1199,30 +1198,41 @@ test_that("basic hierarchical models", {
                list(indexRange(quote(1:10))))
     
     result <- getDependencies(modelDef, 'y', self = FALSE)
-    ## FAILS:
-#    Error in switch(attr(inputIndexRange, "rangeType"), matrix = inputIndexRange,  : 
-#  EXPR must be a length 1 vector
-
-#>     result <- getDependencies(modelDef, 'y[1:3]')
-#Error in items[[1]] : subscript out of bounds
-
+    expect_identical(result[[1]]$indexRanges, 
+               list(indexRange(matrix(k))))
     
+    result <- getDependencies(modelDef, 'y[1:3]', self = FALSE)
+    expect_identical(result[[1]]$indexRanges, 
+               list(indexRange(quote(2:2))))
+
     result <- getDependencies(modelDef, 'sigma', downstream = TRUE)
     expect_identical(sapply(result, function(node) node$varName),
                      c('sigma','mu','y','z'))
 
-    ## FAILS
     result <- getParents(modelDef, 'y')
-    # Error in rule$get_fullRange() : attempt to apply non-function
-
     expect_identical(sapply(result, function(node) node$varName),
                      c('mu','tau'))
 
     result <- getParents(modelDef, 'y', upstream = TRUE)
     expect_identical(sapply(result, function(node) node$varName),
-                     c('mu','tau','mu0','sigma'))
+                     c('mu','tau','mu0','sigma','bnd'))
 
+    result <- getParents(modelDef, 'y[1:5]', upstream = TRUE)
+    expect_identical(sapply(result, function(node) node$varName),
+                     c('mu','tau','mu0','sigma','bnd'))
+    expect_identical(result[[1]]$indexRanges, 
+               list(indexRange(quote(1:5))))
 
+    ## FAILS: Error in if (varName %in% names(rules)) { : argument is of length zero
+    result <- getParents(modelDef, varRangeClass$new(list(indexRange(quote(1:5))), varName = 'y'),
+                         upstream = TRUE)
+    expect_identical(sapply(result, function(node) node$varName),
+                     c('mu','tau','mu0','sigma','bnd'))
+    expect_identical(result[[1]]$indexRanges, 
+               list(indexRange(quote(1:5))))
+
+    ## Add more testing of nodes being y[1:3] format or being varRange
+    
     code <- quote({
         for(i in 1:10) {
             y[i] ~ dnorm(mu[i], tau)
@@ -1243,6 +1253,7 @@ test_that("basic hierarchical models", {
     modelDef$processDecls()
     modelDef$generateGraphInfo()
 
+    ## TODO: add testing
 
     code <- quote({
         for(i in 1:5) {
