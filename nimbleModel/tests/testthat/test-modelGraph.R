@@ -1158,6 +1158,15 @@ test_that("basic hierarchical models", {
     result <- getNodes(modelDef)
     expect_identical(sapply(result, function(node) node$varName),
                      c('y','mu','tau','sigma','z'))
+
+    result <- getNodes(modelDef, c('z[1:5]', 'mu0'))
+    expect_identical(sapply(result, function(node) node$varName),
+                     c('z'))
+
+    result <- getNodes(modelDef, c('z[1:5]', 'mu'))
+    expect_identical(sapply(result, function(node) node$varName),
+                     c('z','mu'))
+
     result <- getNodes(modelDef, topOnly = TRUE)
     expect_identical(sapply(result, function(node) node$varName),
                      c('tau','sigma'))
@@ -1223,7 +1232,6 @@ test_that("basic hierarchical models", {
     expect_identical(result[[1]]$indexRanges, 
                list(indexRange(quote(1:5))))
 
-    ## FAILS: Error in if (varName %in% names(rules)) { : argument is of length zero
     result <- getParents(modelDef, varRangeClass$new(list(indexRange(quote(1:5))), varName = 'y'),
                          upstream = TRUE)
     expect_identical(sapply(result, function(node) node$varName),
@@ -1231,8 +1239,8 @@ test_that("basic hierarchical models", {
     expect_identical(result[[1]]$indexRanges, 
                list(indexRange(quote(1:5))))
 
-    ## Add more testing of nodes being y[1:3] format or being varRange
-    
+    ## testing queries involving parts of nodes
+
     code <- quote({
         for(i in 1:10) {
             y[i] ~ dnorm(mu[i], tau)
@@ -1243,16 +1251,13 @@ test_that("basic hierarchical models", {
         pr[1:10, 1:10] ~ dwish(S[1:10, 1:10], 5)
         tau ~ dunif(0, bnd)
         sigma ~ dunif(0, 1)
-        for(i in 1:3)
-            z[k[i]] ~ dnorm(y[k[i]], 1)
-        
     })
-    k <- c(2,4,7)
-    modelDef <- modelDefClass$new(code, constants = list(k = k)))
+    modelDef <- modelDefClass$new(code))
     modelDef$processModelCode()
     modelDef$processDecls()
     modelDef$generateGraphInfo()
 
+    
     ## TODO: add testing
 
     code <- quote({

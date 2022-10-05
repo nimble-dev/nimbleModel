@@ -241,6 +241,7 @@ traverseGraph <- function(streamRules, declRules,
                             includeData = TRUE, dataOnly = FALSE, 
                             follow = FALSE, immediateOnly = FALSE) {
                           
+    if(is(nodes, 'varRangeClass')) nodes <- list(nodes)  # we use lapply on 'nodes' later
     results <- traverseGraphRecurse(streamRules, nodes, down, follow, immediateOnly)
 
     if(self) {
@@ -336,8 +337,9 @@ getNodes <- function(modelDef, nodes = NULL,
 
 }
 
+## TODO: this is identical to traverseGraphOne
 getNodesOne <- function(rules, node) {
-    varName <- getVarName(node)  # ifelse(is.character(node), node, node$varName)
+    varName <- getVarName(node)  
     if(varName %in% names(rules)) {
         return(rules[[varName]]$apply(node))
     } else return(NULL)
