@@ -1065,7 +1065,7 @@ test_that("basic check of graph interface", {
 
 })
 
-test_that("getDependencies gives repeated children", {
+test_that("getDependencies deals with repeated children", {
     code <- quote({
         y ~ dnorm(mu, tau)
     })
@@ -1077,6 +1077,23 @@ test_that("getDependencies gives repeated children", {
     result <- getDependencies(modelDef, c('tau','mu'))
     expect_identical(sapply(result, function(node) node$varName),
                      c('y'))
+
+})
+
+test_that("getDependencies deals with repeated parents", {
+    code <- quote({
+        y ~ dnorm(mu, tau)
+        z ~ dnorm(mu, 1)
+        w <- z + 3
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
+
+    result <- getParents(modelDef, c('y','z'))
+    expect_identical(sapply(result, function(node) node$varName),
+                     c('mu','tau'))
 
 })
 
@@ -1244,6 +1261,7 @@ test_that("basic hierarchical models", {
     code <- quote({
         for(i in 1:10) {
             y[i] ~ dnorm(mu[i], tau)
+            w[i] <- pr[i, 2]
         }
         mu[1:10] ~ dmnorm(mu0[1:10], pr[1:10,1:10])
         mu0[1:10] <- mu00*z[1:10]
@@ -1252,14 +1270,47 @@ test_that("basic hierarchical models", {
         tau ~ dunif(0, bnd)
         sigma ~ dunif(0, 1)
     })
-    modelDef <- modelDefClass$new(code))
+    modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
     modelDef$generateGraphInfo()
 
+    result <- getNodes(modelDef, 'pr[2,2]')
+    expect_identical(sapply(result, function(node) node$varName),
+                     'pr')
+    expect_identical(result[[1]]$indexRanges, 
+               list(indexRange(quote(1:10)), indexRange(quote(1:10))))
     
-    ## TODO: add testing
+    result <- getNodes(modelDef, varRangeClass$new(list(indexRange(2),indexRange(2)), varName = 'pr'))
+    expect_identical(sapply(result, function(node) node$varName),
+                     'pr')
+    expect_identical(result[[1]]$indexRanges, 
+               list(indexRange(quote(1:10)), indexRange(quote(1:10))))
 
+    result <- getDependencies(modelDef, 'pr[2,2]', self = FALSE)
+    expect_identical(sapply(result, function(node) node$varName),
+                     c('w','mu'))
+    expect_identical(result[[1]]$indexRanges, 
+               list(indexRange(2)))
+    expect_identical(result[[2]]$indexRanges, 
+               list(indexRange(quote(1:10))))
+
+    result <- getDependencies(modelDef, 'pr[2,2]', self = FALSE, downstream = TRUE)
+    expect_identical(sapply(result, function(node) node$varName),
+                     c('w','mu','y'))
+
+    result <- getParents(modelDef, 'pr[2,2]')
+    expect_identical(sapply(result, function(node) node$varName),
+                     'S')
+    expect_identical(result[[1]]$indexRanges, 
+               list(indexRange(quote(1:10)), indexRange(quote(1:10))))
+
+    result <- getParents(modelDef, 'mu[3]')
+    expect_identical(sapply(result, function(node) node$varName),
+                     c('mu0','pr','mu00','z'))
+    expect_identical(result[[2]]$indexRanges, 
+               list(indexRange(quote(1:10)), indexRange(quote(1:10))))
+    
     code <- quote({
         for(i in 1:5) {
             y[i, 1:3] ~ dmnorm(X[1:3, 1:5] %*% beta[1:5], pr[1:3,1:3])
@@ -1274,6 +1325,39 @@ test_that("basic hierarchical models", {
     modelDef$processDecls()
     modelDef$generateGraphInfo()
 
+    result <- getNodes(modelDef, 'y')
+    expect_identical(result[[1]]$indexRanges, 
+               list(indexRange(quote(1:5)), indexRange(quote(1:3))))
+    expect_identical(result[[1]]$boolExternalIndexRanges, c(TRUE,FALSE))
+
+    result <- getNodes(modelDef, 'beta')
+    expect_identical(result[[1]]$indexRanges, 
+               list(indexRange(quote(1:5))))
+
+    result <- getNodes(modelDef, 'beta[2]')
+    expect_identical(result[[1]]$indexRanges, 
+               list(indexRange(quote(2))))
+
+    result <- getDependencies(modelDef, 'beta[2]')
+    expect_identical(sapply(result, function(node) node$varName),
+                     c('beta','y'))
+    expect_identical(result[[1]]$indexRanges, 
+               list(indexRange(2)))
+    expect_identical(result[[2]]$indexRanges, 
+               list(indexRange(quote(1:5)), indexRange(quote(1:3))))
+
+    result <- getParents(modelDef, 'y[1,1:3]')
+    expect_identical(sapply(result, function(node) node$varName),
+                     c('X','beta','pr'))
+
+    result <- getParents(modelDef, 'y[1,2]')
+    expect_identical(sapply(result, function(node) node$varName),
+                     c('X','beta','pr'))
+    
+    result <- getParents(modelDef, c('y[1,2]','y[2,3]'))
+    expect_identical(sapply(result, function(node) node$varName),
+                     c('X','beta','pr'))
+    
 })
 
 ## NEED to check    
@@ -1292,6 +1376,26 @@ test_that("state-space model", {
     modelDef$processDecls()
     modelDef$generateGraphInfo()
 
+    code <- quote({
+        for(i in 2:4)
+        y[i]~dnorm(y[i-1],1)
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
+
+    ## understand parent/child stuff
+    code <- quote({
+        for(i in 1:3)
+            y[i] ~ dmnorm(z[i], 1)
+        z[3] ~ dnorm(0,1)
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    debugonce(modelDef$generateGraphInfo)
+    modelDef$generateGraphInfo()
 })
 
 ## NEED to check    

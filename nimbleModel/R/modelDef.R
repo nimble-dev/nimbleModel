@@ -242,6 +242,9 @@ traverseGraph <- function(streamRules, declRules,
                             follow = FALSE, immediateOnly = FALSE) {
                           
     if(is(nodes, 'varRangeClass')) nodes <- list(nodes)  # we use lapply on 'nodes' later
+    if(!all(is.character(nodes) | sapply(nodes, function(node) is(node, 'varRangeClass'))))
+        stop("getNodes: `nodes` must be variable names or variable ranges.")
+
     results <- traverseGraphRecurse(streamRules, nodes, down, follow, immediateOnly)
 
     if(self) {
@@ -251,7 +254,13 @@ traverseGraph <- function(streamRules, declRules,
                                        function(varName)
                                            lapply(declRules[[varName]]$rules,
                                                   function(declRule) declRule$getFullRange())))
-        results <- c(nodes[!vars], nodesFromVars, results)
+        charRanges <- is.character(nodes) & !vars
+        nodesFromCharRanges <- flatten(lapply(nodes[charRanges],
+                                              function(node) {
+                                                  lapply(declRules[[getVarName(node)]]$rules,
+                                                         function(declRule) declRule$apply(node))
+                                              }))
+        results <- c(nodes[!vars & !charRanges], nodesFromVars, nodesFromCharRanges, results)
     }
     
     ## if(stochOnly)
@@ -309,6 +318,7 @@ getNodes <- function(modelDef, nodes = NULL,
         if(includeRHSonly)
             nodes <- c(nodes, names(modelDef$rhsOnlyRules))
     } else {
+        if(is(nodes, 'varRangeClass')) nodes <- list(nodes) 
         if(!all(is.character(nodes) | sapply(nodes, function(node) is(node, 'varRangeClass'))))
             stop("getNodes: `nodes` must be variable names or variable ranges.")
     }

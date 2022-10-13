@@ -566,7 +566,7 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
 
     if(is.null(fracturingRange))
         return(NULL)
-
+browser()
     if(nodeRange_isEqual(LHSrange, fracturingRange)) {
         if(!is.null(parentRule)) {  # if parent is not RHS
             parentRule$setChildren(LHSrule$ID)
@@ -751,19 +751,28 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
     }
 
     names(result) <- sapply(result, function(rule) rule$ID)
-    
     if(!is.null(parentRule)) {  # if parent is not RHS
-        result[[1]]$setParents(parentRule$ID)
-        parentRule$setChildren(result[[1]]$ID)
-        sapply(result, function(rule) rule$setParents(LHSrule$parents))
-        ## if(stochParent) result[[1]]$set('stochParent')
 
-        ## Update children of parents of the fractured rule
+        if(parentRule$ID != LHSrule$ID) {
+            ## Condition ensures we don't set child-parent pair based on parent itself being
+            ## fractured, as occurs in state-space type cases.
+            
+            ## set fracturingRule and parentRule as child-parent pair
+            result[[1]]$setParents(parentRule$ID)
+            parentRule$setChildren(result[[1]]$ID)
+            ## copy original parents of fractured rule to the fractured results
+            sapply(result, function(rule) rule$setParents(LHSrule$parents))
+            ## if(stochParent) result[[1]]$set('stochParent')
+        }
+        
+        ## Update children of parents of the fractured rule to be
+        ## new fractured results and not fractured rule
         newChildren <- sapply(result, function(x) x$ID)
         names(newChildren) <- NULL
         tmp <- sapply(LHSrule$parents, function(idx)
             currentRules[[idx]]$setChildren(newChildren))
-        tmp <- sapply(LHSrule$parents, function(idx) currentRules[[idx]]$unsetChildren(LHSrule$ID))
+        tmp <- sapply(LHSrule$parents, function(idx)
+            currentRules[[idx]]$unsetChildren(LHSrule$ID))
     }
     ## Remove fractured rule as parent of its children
     ## The new fractured rules will be added in as parents when they are used as fracturers,
