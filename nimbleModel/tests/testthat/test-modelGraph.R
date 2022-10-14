@@ -964,6 +964,50 @@ test_that("graph processing for multiple RHS only cases", {
 })
 
 
+test_that("graph processing for state-space model", {
+
+    ## basic dependence within a variable
+    code <- quote({
+        for(i in 2:4)
+        y[i]~dnorm(y[i-1],1)
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
+
+    expect_identical(length(modelDef$rhsOnlyRules), 1L)
+    expect_identical(length(modelDef$rhsOnlyRules[['y']]$rules), 1L)
+    expect_equal(modelDef$rhsOnlyRules[['y']]$rules[[1]]$getFullRange(),
+                     varRangeClass$new(list(indexRange(1)), varName = 'y'))
+
+    expect_identical(length(modelDef$calcRules), 1L)
+    expect_identical(length(modelDef$calcRules[['y']]$rules), 3L)
+
+    expect_equal(modelDef$calcRules[['y']]$rules[[1]]$getFullRange(),
+                     varRangeClass$new(list(indexRange(4)), varName = 'y'))
+    expect_equal(modelDef$calcRules[['y']]$rules[[2]]$getFullRange(),
+                     varRangeClass$new(list(indexRange(3)), varName = 'y'))
+    expect_equal(modelDef$calcRules[['y']]$rules[[3]]$getFullRange(),
+                     varRangeClass$new(list(indexRange(2)), varName = 'y'))
+
+    ids <- sapply(modelDef$calcRules[['y']]$rules, function(rule) rule$ID)
+    names(ids) <- NULL
+    
+    expect_identical(modelDef$calcRules[['y']]$rules[[1]]$children, numeric(0))
+    expect_identical(modelDef$calcRules[['y']]$rules[[1]]$parents, ids[2])
+    expect_identical(modelDef$calcRules[['y']]$rules[[2]]$children, ids[1])
+    expect_identical(modelDef$calcRules[['y']]$rules[[2]]$parents, ids[3])
+    expect_identical(modelDef$calcRules[['y']]$rules[[3]]$children, ids[2])
+    expect_identical(modelDef$calcRules[['y']]$rules[[3]]$parents, numeric(0))
+    
+    sortID <- sapply(modelDef$calcRules[['y']]$rules, function(rule) rule$sortID)
+    names(sortID) <- NULL
+    expect_identical(sortID, as.numeric(3:1))
+    
+    ## TODO: expand to more complicated?
+})
+
 ## Testing of model graph interface functions: getDependencies, getParents, getNodes
 
 test_that("basic check of graph interface", {
@@ -1362,6 +1406,68 @@ test_that("basic hierarchical models", {
 
 ## NEED to check    
 test_that("state-space model", {
+
+    ## basic dependence within a variable
+    code <- quote({
+        for(i in 2:4)
+        y[i]~dnorm(y[i-1],1)
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
+
+    result <- getNodes(modelDef, 'y')
+    expect_identical(result[[1]]$indexRanges, 
+               list(indexRange(quote(2:4))))
+
+    result <- getNodes(modelDef, 'y', topOnly = TRUE)
+    expect_identical(result[[1]]$indexRanges, 
+               list(indexRange(2)))
+    result <- getNodes(modelDef, 'y', endOnly = TRUE)
+    expect_identical(result[[1]]$indexRanges, 
+               list(indexRange(4)))
+    result <- getNodes(modelDef, 'y', latentOnly = TRUE)
+    expect_identical(result[[1]]$indexRanges, 
+               list(indexRange(3)))
+
+    ## TODO need to clean up either always have 'stoch' set in varRange or remove it
+    result <- getDependencies(modelDef, 'y[1]')
+    expect_length(result, 1)
+    expect_equal(result[[1]],
+                 varRangeClass$new(list(indexRange(2)), varName = 'y', stoch = TRUE))
+    
+    result <- getDependencies(modelDef, 'y[2]')
+    expect_length(result, 2)
+
+    expect_equal(result[[1]],
+                 varRangeClass$new(list(indexRange(2)), varName = 'y', stoch = TRUE))
+    expect_equal(result[[2]],
+                 varRangeClass$new(list(indexRange(3)), varName = 'y', stoch = TRUE))
+
+    result <- getDependencies(modelDef, 'y[2]', downstream = TRUE)
+    expect_length(result, 3)
+    expect_equal(result[[3]],
+                 varRangeClass$new(list(indexRange(4)), varName = 'y', stoch = TRUE))
+
+    result <- getParents(modelDef, 'y[3]')
+    expect_length(result, 1)
+    expect_equal(result[[1]],
+                 varRangeClass$new(list(indexRange(2)), varName = 'y', stoch = TRUE))
+
+    ## HERE: TODO - why is y[1] stoch?
+    
+    result <- getParents(modelDef, 'y[3]', upstream = TRUE)
+    expect_length(result, 2)
+    expect_equal(result[[2]],
+                 varRangeClass$new(list(indexRange(1)), varName = 'y', stoch = TRUE))
+
+    ## check that stoch is set correctly if have
+                                        # y[1] ~ dnorm(y[2],1)
+                                        # y[2] <- mu
+    # getparents(y[1]), where y[2] is deterministic
+    
+    ## HERE
     code <- quote({
         for(i in 1:5)
             y[i] ~ dnorm(z[i], tau)
@@ -1376,14 +1482,6 @@ test_that("state-space model", {
     modelDef$processDecls()
     modelDef$generateGraphInfo()
 
-    code <- quote({
-        for(i in 2:4)
-        y[i]~dnorm(y[i-1],1)
-    })
-    modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$generateGraphInfo()
 
     ## understand parent/child stuff
     code <- quote({
@@ -1398,7 +1496,16 @@ test_that("state-space model", {
     modelDef$generateGraphInfo()
 })
 
-## NEED to check    
+test_that("error trapping for unexpected vars/nodes", {
+# 'x' not in model
+    getNodes('x')
+    getNodes('x[1]')
+    getDeps('x')
+    getDeps('x[1]')
+    ## also bad dimensions but var is in model
+    })
+
+    ## NEED to check    
 test_that("nodes split in various ways", {
 
     code <- quote({

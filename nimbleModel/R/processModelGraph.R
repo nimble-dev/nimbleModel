@@ -138,7 +138,12 @@ generateCalcRules <- function(declRules, rhsOriginalRules, graphRules) {
                         currentID <- currentID + length(result)
                     }
                 }
+                ## If parent rule has been fractured (state-space use case)
+                ## don't continue fracturing, as we'll fracture with the pieces later.
+                if(fracturedRules[pos]) break
             }
+            ## Don't fracture with additional deps either.
+            if(fracturedRules[pos]) break
         }
         pos <- pos + 1
     }

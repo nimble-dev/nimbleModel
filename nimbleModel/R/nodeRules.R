@@ -526,6 +526,10 @@ nodeRangeClass <- R6Class(
             }
             str <- paste0(str, "]")
             return(str)
+        },
+
+        getVarRange = function() {
+            varRangeClass$new(indexRanges, indexOrders = rangeID_2_indexID, varName = varName, stoch = declRule$stoch)
         }
     )
 )
@@ -566,7 +570,7 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
 
     if(is.null(fracturingRange))
         return(NULL)
-browser()
+
     if(nodeRange_isEqual(LHSrange, fracturingRange)) {
         if(!is.null(parentRule)) {  # if parent is not RHS
             parentRule$setChildren(LHSrule$ID)

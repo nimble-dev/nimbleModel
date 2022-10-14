@@ -250,17 +250,22 @@ traverseGraph <- function(streamRules, declRules,
     if(self) {
         varNames <- sapply(nodes, getVarName)
         vars <- nodes == varNames
-        nodesFromVars <- flatten(lapply(nodes[vars],
+        selfRangeFromVars <- flatten(lapply(nodes[vars],
                                        function(varName)
                                            lapply(declRules[[varName]]$rules,
                                                   function(declRule) declRule$getFullRange())))
         charRanges <- is.character(nodes) & !vars
-        nodesFromCharRanges <- flatten(lapply(nodes[charRanges],
+        selfRangeFromCharRanges <- flatten(lapply(nodes[charRanges],
                                               function(node) {
                                                   lapply(declRules[[getVarName(node)]]$rules,
-                                                         function(declRule) declRule$apply(node))
-                                              }))
-        results <- c(nodes[!vars & !charRanges], nodesFromVars, nodesFromCharRanges, results)
+                                                         function(declRule) {
+                                                             tmp <- declRule$apply(node)
+                                                             if(is.null(tmp)) NULL else tmp$getVarRange()
+                                                         })
+                                                  }))
+        if(identical(selfRangeFromCharRanges, list(NULL)))
+            selfRangeFromCharRanges <- NULL
+        results <- c(nodes[!vars & !charRanges], selfRangeFromVars, selfRangeFromCharRanges, results)
     }
     
     ## if(stochOnly)
@@ -359,6 +364,8 @@ getNodesOne <- function(rules, node) {
 flatten <- function(x) {
     result <- do.call(c, x)
     names(result) <- NULL
+    if(identical(result, list(NULL)))
+        return(NULL)
     return(result)
 }
 
