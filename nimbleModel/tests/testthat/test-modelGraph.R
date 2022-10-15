@@ -1080,6 +1080,10 @@ test_that("basic check of graph interface", {
     expect_identical(sapply(result, function(node) node$varName),
                      c('theta'))
 
+    expect_true(modelDef$declRules[['y']]$rules[[1]]$stoch)
+    expect_false(modelDef$declRules[['theta']]$rules[[1]]$stoch)
+    expect_true(modelDef$declRules[['mu0']]$rules[[1]]$stoch)
+
     ## checking downstream/upstream with latent stoch node 
     code <- quote({
         y ~ dnorm(theta, 1)
@@ -1404,7 +1408,7 @@ test_that("basic hierarchical models", {
     
 })
 
-## NEED to check    
+
 test_that("state-space model", {
 
     ## basic dependence within a variable
@@ -1431,43 +1435,35 @@ test_that("state-space model", {
     expect_identical(result[[1]]$indexRanges, 
                list(indexRange(3)))
 
-    ## TODO need to clean up either always have 'stoch' set in varRange or remove it
     result <- getDependencies(modelDef, 'y[1]')
     expect_length(result, 1)
     expect_equal(result[[1]],
-                 varRangeClass$new(list(indexRange(2)), varName = 'y', stoch = TRUE))
+                 varRangeClass$new(list(indexRange(2)), varName = 'y', fromStochRule = TRUE))
     
     result <- getDependencies(modelDef, 'y[2]')
     expect_length(result, 2)
 
     expect_equal(result[[1]],
-                 varRangeClass$new(list(indexRange(2)), varName = 'y', stoch = TRUE))
+                 varRangeClass$new(list(indexRange(2)), varName = 'y', fromStochRule = TRUE))
     expect_equal(result[[2]],
-                 varRangeClass$new(list(indexRange(3)), varName = 'y', stoch = TRUE))
+                 varRangeClass$new(list(indexRange(3)), varName = 'y', fromStochRule = TRUE))
 
     result <- getDependencies(modelDef, 'y[2]', downstream = TRUE)
     expect_length(result, 3)
     expect_equal(result[[3]],
-                 varRangeClass$new(list(indexRange(4)), varName = 'y', stoch = TRUE))
+                 varRangeClass$new(list(indexRange(4)), varName = 'y', fromStochRule = TRUE))
 
     result <- getParents(modelDef, 'y[3]')
     expect_length(result, 1)
     expect_equal(result[[1]],
-                 varRangeClass$new(list(indexRange(2)), varName = 'y', stoch = TRUE))
+                 varRangeClass$new(list(indexRange(2)), varName = 'y', fromStochRule = TRUE))
 
-    ## HERE: TODO - why is y[1] stoch?
-    
     result <- getParents(modelDef, 'y[3]', upstream = TRUE)
     expect_length(result, 2)
     expect_equal(result[[2]],
-                 varRangeClass$new(list(indexRange(1)), varName = 'y', stoch = TRUE))
+                 varRangeClass$new(list(indexRange(1)), varName = 'y', fromStochRule = TRUE))
 
-    ## check that stoch is set correctly if have
-                                        # y[1] ~ dnorm(y[2],1)
-                                        # y[2] <- mu
-    # getparents(y[1]), where y[2] is deterministic
     
-    ## HERE
     code <- quote({
         for(i in 1:5)
             y[i] ~ dnorm(z[i], tau)
@@ -1482,31 +1478,64 @@ test_that("state-space model", {
     modelDef$processDecls()
     modelDef$generateGraphInfo()
 
+    result <- getNodes(modelDef, topOnly = TRUE)
+    expect_length(result, 1)
+    expect_identical(sapply(result, function(node) node$varName),
+                     c('z','tau','sigma'))      
+    expect_identical(result[[1]]$indexRanges, 
+                     list(indexRange(1)))
 
-    ## understand parent/child stuff
+    result <- getNodes(modelDef, latentOnly = TRUE)
+    expect_length(result, 1)
+    expect_identical(sapply(result, function(node) node$varName),
+                     rep('z',4))
+
+    result <- getDependencies(modelDef, 'z')
+    expect_length(result, 3)
+    expect_identical(sapply(result, function(node) node$varName),
+                     c('z','z','y'))
+    expect_identical(result[[1]]$indexRanges, 
+                     list(indexRange(quote(2:5))))
+    expect_identical(result[[2]]$indexRanges, 
+                     list(indexRange(1)))
+
+    
+    result <- getDependencies(modelDef, 'z[3]')
+    expect_length(result, 3)
+    expect_identical(sapply(result, function(node) node$varName),
+                     c('z','z','y'))
+    expect_identical(result[[1]]$indexRanges, 
+                     list(indexRange(quote(3))))
+    expect_identical(result[[2]]$indexRanges, 
+                     list(indexRange(quote(4))))
+    expect_identical(result[[3]]$indexRanges, 
+                     list(indexRange(quote(3))))
+
+    
+})
+
+test_that("error trapping for unexpected vars/nodes", {
+
     code <- quote({
-        for(i in 1:3)
-            y[i] ~ dmnorm(z[i], 1)
-        z[3] ~ dnorm(0,1)
+        for(i in 2:4)
+        y[i]~dnorm(y[i-1],1)
     })
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    debugonce(modelDef$generateGraphInfo)
     modelDef$generateGraphInfo()
+
+    expect_null(getNodes(modelDef, 'x'))
+    expect_null(getNodes(modelDef, 'x[3]'))
+    expect_null(getNodes(modelDef, 'y[20]'))
+    
+    expect_null(getDependencies(modelDef, 'x'))
+    expect_null(getDependencies(modelDef, 'x[1]'))
+    expect_null(getDependencies(modelDef, 'y[20]'))
+
 })
 
-test_that("error trapping for unexpected vars/nodes", {
-# 'x' not in model
-    getNodes('x')
-    getNodes('x[1]')
-    getDeps('x')
-    getDeps('x[1]')
-    ## also bad dimensions but var is in model
-    })
-
-    ## NEED to check    
-test_that("nodes split in various ways", {
+test_that("getNodes handles a split variable", {
 
     code <- quote({
         for(i in 1:4) 
@@ -1514,28 +1543,27 @@ test_that("nodes split in various ways", {
         theta[1] ~ dnorm(0,1)
         theta[2:4] <- z[1:3]
     })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
 
-    code <- quote({
-        for(i in 1:4) 
-            y[i] ~ dnorm(theta[i], 1)
-        z ~ dnorm(y[1], 1)
-        w <- y[3]
-    })
-
-    code <- quote({
-        y[1:4] ~ dmnorm(theta[1:4], pr[1:2,1:2])
-        theta[1] ~ dnorm(0,1)
-        theta[2:4] <- z[1:3]
-    })
-
-    code <- quote({
-        y[1:4] ~ dmnorm(theta[1:4], pr[1:2,1:2])
-        z ~ dnorm(y[1], 1)
-        w <- y[3]
-    })
-
-    ## are mv nodes kept together correctly in getNodes
-    ## is aggregation done?
+    result <- getNodes(modelDef, 'theta[1:3]')
+    expect_length(result, 2)
+    expect_identical(sapply(result, function(node) node$varName),
+                     rep('theta', 2))
+    expect_identical(result[[1]]$indexRanges, 
+                     list(indexRange(1)))
+    expect_identical(result[[2]]$indexRanges, 
+                     list(indexRange(quote(2:4))))
+    
+    result <- getNodes(modelDef, 'theta[3]')
+    expect_length(result, 1)
+    expect_identical(sapply(result, function(node) node$varName),
+                     'theta')
+    expect_identical(result[[1]]$indexRanges, 
+                     list(indexRange(quote(2:4))))
+    
 })
 
 

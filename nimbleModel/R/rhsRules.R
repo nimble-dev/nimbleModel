@@ -36,7 +36,6 @@ rhsRuleClass <- R6Class(
                     context <- modelContextClass$new(newSingleContexts)
                 }
             }
-
             super$initialize(expr, ID, context = context, constants = constants)
 
         }

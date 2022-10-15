@@ -6,9 +6,11 @@ varRuleClass <- R6Class(
     portable = FALSE,
     public = list(
         rules = NULL,
-        varName = character(),
+        ## varName = character(),
         initialize = function(rules = list()) {
             rules <<- rules
+            ##varName <<- rules$varName
+
             ## graphRules don't have varName; not clear if we want to check for consistency anyway.
             ## nm <- unique(sapply(rules), function(rule) rule$varName)
             ## if(length(nm) != 1)

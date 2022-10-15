@@ -29,7 +29,6 @@ nodeRuleClass <- R6Class(
         numExternalRules = numeric(0),
         numInternalRules = numeric(0),
         index2setID = NULL,
-        stoch = logical(),
 
         initialize = function(expr, ID, context = modelContextClass$new(), constants = list()) {
             ## not clear everything will go through if no indexing
@@ -114,7 +113,7 @@ declRuleClass <- R6Class(
     portable = FALSE,
     inherit = nodeRuleClass,
     public = list(
-#        stoch = logical(),
+        stoch = logical(),
         originalIndexingRule = NULL, # determines original indexing (based on context)
         decl = NULL,
         calculate = NULL,  ## generic function for calculation
@@ -529,7 +528,7 @@ nodeRangeClass <- R6Class(
         },
 
         getVarRange = function() {
-            varRangeClass$new(indexRanges, indexOrders = rangeID_2_indexID, varName = varName, stoch = declRule$stoch)
+            varRangeClass$new(indexRanges, indexOrders = rangeID_2_indexID, varName = varName, fromStochRule = declRule$stoch)
         }
     )
 )

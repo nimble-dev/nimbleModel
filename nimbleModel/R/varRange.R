@@ -50,11 +50,11 @@ varRangeClass <- R6Class(
         ## block (1:2) for the second index.
         ## This would have rangeID_2_indexID[[1]]: c(1, 3)
         ##                 rangeID_2_indexID[[2]]: 2
-        stoch = character(),  # when returned as result of graphRule
+        fromStochRule = character(),  # when returned as result of graphRule
         initialize = function(indexInfo,
                               indexOrders = NULL,
                               varName = NULL,
-                              stoch = NULL) {
+                              fromStochRule = NULL) {
             ## initialization from an expression
             ## does not support some of the complicated cases.
             ##
@@ -62,7 +62,7 @@ varRangeClass <- R6Class(
             ## cases returned from graph queries.
             ##
             ## It seems that we can initialize using indexOrders arg to varRangeClass$new()  // CJP
-            stoch <<- stoch
+            fromStochRule <<- fromStochRule
             if(is(indexInfo, "indexRange"))
                 stop("varRange must be initialized from a list of indexRanges not a single indexRange.")
             if(is.character(indexInfo))

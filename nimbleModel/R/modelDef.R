@@ -272,7 +272,8 @@ traverseGraph <- function(streamRules, declRules,
     ##     results <- results[sapply(results, function(varRange) varRange$stoch)]
     ## if(determOnly)
     ##     results <- results[!sapply(results, function(varRange) varRange$stoch)]
-
+    if(!length(results))
+        return(NULL)
     return(removeDuplicates(results))
 }
 
@@ -282,13 +283,13 @@ traverseGraphRecurse <- function(rules, nodes, down, follow = FALSE, immediateOn
         return(results)
     if(!down && !first && !follow) {
         ## stoch/determ needs to be determined from rule in which the range is on LHS
-        stoch <- sapply(results, function(varRange) varRange$stoch)
+        stoch <- sapply(results, function(varRange) varRange$fromStochRule)
         results <- results[!stoch]
     }    
     propagators <- results
     if(!follow && down) {
         ## can only be used for getDeps because type of LHS not relevant for upward traversal
-        stoch <- sapply(propagators, function(varRange) varRange$stoch)
+        stoch <- sapply(propagators, function(varRange) varRange$fromStochRule)
         propagators <- propagators[!stoch]
     }
     if(length(propagators)) {
@@ -366,6 +367,7 @@ flatten <- function(x) {
     names(result) <- NULL
     if(identical(result, list(NULL)))
         return(NULL)
+    result <- result[!sapply(result, is.null)]
     return(result)
 }
 
@@ -383,7 +385,7 @@ removeDuplicatesOne <- function(varRanges) {
     for(id in 1:(mx-1)) {
         equal <- sapply((id+1):mx, function(id2)
             varRange_isEqual(varRanges[[id]], varRanges[[id2]]))
-        dups[(id+1):mx] <- equal
+        dups[(id+1):mx] <- dups[(id+1):mx] | equal
     }
     return(varRanges[!dups])
 }

@@ -776,7 +776,7 @@ applyGraphRule <- function(fromVarRange,
         indexInfo = finalIndexRanges[!repeats],
         indexOrders = finalIndexOrders[!repeats],
         varName = ifelse(is.null(varName), rule$childVar, varName),
-        stoch = rule$stoch
+        fromStochRule = rule$stoch
         )
     if(result$isEmpty()) result <- NULL
     return(result)
