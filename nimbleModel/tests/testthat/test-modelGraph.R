@@ -1566,6 +1566,39 @@ test_that("getNodes handles a split variable", {
     
 })
 
+test_that("complicated input varRange", {
 
+    code <- quote({
+        for(i in 1:4)
+            for(j in 1:3)
+                for(k in 1:5)
+                    y[i+1,j,k] ~ dnorm(theta[i,j,k], 1)
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
 
+    vr <- varRangeClass$new(list(indexRange(quote(2:3)),
+                                 indexRange(matrix(c(2,4,5,1), nrow = 2))),
+                            indexOrders = list(2, c(1,3)),
+                            varName = 'theta')
 
+    result <- getNodes(modelDef, vr, includeRHSonly = TRUE)
+    expect_length(result, 1)
+    expect_identical(sapply(result, function(node) node$varName),
+                     'theta')
+    expect_identical(result[[1]]$indexID_2_rangeID, c(1L,2L,1L))
+    expect_identical(result[[1]]$indexRanges,
+                     vr$indexRanges[c(2,1)])
+    
+    result <- getDependencies(modelDef, vr)
+    expect_length(result, 2)
+    expect_identical(sapply(result, function(node) node$varName),
+                     c('theta','y'))
+    expect_equal(result[[2]],
+                 varRangeClass$new(list(indexRange(matrix(c(3,5,5,1), nrow = 2)),
+                                        indexRange(quote(2:3))),
+                            indexOrders = list(c(1,3), 2),
+                            varName = 'y', fromStochRule = TRUE))
+})
