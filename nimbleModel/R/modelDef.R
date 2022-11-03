@@ -156,7 +156,17 @@ modelDefClass <- R6Class(
             upstreamRules <<- createNestedList(allUpstreamRules, varNames)
 
             allCalcRules <- generateCalcRules(declRules, rhsOriginalRules, downstreamRules)
-            setSortIDs(allCalcRules)  ## do before top/end to catch cycles
+
+            sorted <- setSortIDs(allCalcRules)  ## do before top/end to catch cycles
+            if(!sorted) {  ## SSM case
+                ## TODO: run function to set element-wise sortIDs on all rules with NA as sortID
+                ## think about {z,mu} and {z,mu,x} cases
+                ## check run-time for efficiency
+                ## sorted <- setSortIDs(allCalcRules)
+                if(!sorted)
+                    warning("Cycle found in model graph. NIMBLE does not allow cyclic models.")
+                ## TODO: change to stop()
+            }
             setEndNodes(allCalcRules)
             setTopNodes(allCalcRules)
             ## setLatentNodes(calcRules)

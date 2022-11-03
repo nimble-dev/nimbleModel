@@ -185,7 +185,8 @@ calcRuleClass <- R6Class(
         top = FALSE,
         end = NA,
 
-        sortID = NULL,
+        ## `Inf` is placeholder for 'unresolved'
+        sortID = Inf, # was `NULL` but when setting sortIDs, if have as NULL, causes lists to be created instead of vectors
 
         initialize = function(declRule = NULL, expr = NULL, ID, context, constants = list()) {
             ## If LHS is NULL, just use declRule internalRange
@@ -340,16 +341,30 @@ calcRuleClass <- R6Class(
         setSortID = function(calcRules, ancestors = NULL) {
             ## Bottom-up determination (since want maximal ties amongst potentially most-numerous data nodes)
             ## Easiest here to have bottom-most rules have sortID of 1, since have to start with bottom.
-            if(!length(children)) {
-                sortID <<- 1
-                return(sortID)
+            if(is.infinite(sortID)) {
+                if(!length(children)) {
+                    sortID <<- 1
+                    return(sortID)
+                }
+                if(any(children %in% ancestors)) {
+                    # warning("Cycle found in model graph. NIMBLE does not allow cyclic models.")
+                    sortID <<- as.numeric(NA)
+                    ## This allows NA to propagate into other nodes involved in cycle
+                    tmp <- sapply(children, function(i)
+                        calcRules[[i]]$setSortID(calcRules, c(ancestors, ID)))
+                    return(sortID)
+                }
+                result <- max(sapply(children, function(i)
+                    calcRules[[i]]$setSortID(calcRules, c(ancestors, ID)))) + 1
+                if(!is.na(result))  ## avoid propagating NA upwards, leave as Inf = 'unresolved'
+                    sortID <<- result 
+                ## sortID <<- max(sapply(children, function(i)
+                ##     calcRules[[i]]$setSortID(calcRules, c(ancestors, ID)))) + 1
+
+                ##                calcRules[[i]]$setSortID(calcRules[[i]](calcRules))) + 1)
             }
-            if(any(children %in% ancestors))
-                stop("Cycle found in model graph. NIMBLE does not allow cyclic models.")
-            sortID <<- max(sapply(children, function(i)
-                calcRules[[i]]$setSortID(calcRules, c(ancestors, ID)))) + 1
-##                calcRules[[i]]$setSortID(calcRules[[i]](calcRules))) + 1)
-            return(sortID)
+            if(length(sortID) > 1)
+                return(max(sortID)) else return(sortID)  ## max() accounts for SSM case where have multiple sortIDs
         }
         
     )
@@ -786,3 +801,19 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
 }
 
       
+findLinks <- function(LHSrule, fracturingRange, parentRule) {
+    ## Finds parents and children; used with generated calcRules to fill in additional relationships.
+
+    ## Get full nodeRange of the rule.
+    LHSrange <- LHSrule$apply()
+
+    if(!is(fracturingRange, 'nodeRangeClass'))
+        fracturingRange <- LHSrule$apply(fracturingRange)
+
+    if(!is.null(fracturingRange)) {
+        ## Any intersection means we need to set parent/child relationship.
+        parentRule$setChildren(LHSrule$ID)
+        LHSrule$setParents(parentRule$ID)
+    }
+    invisible(NULL)
+}

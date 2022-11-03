@@ -1602,3 +1602,65 @@ test_that("complicated input varRange", {
                             indexOrders = list(c(1,3), 2),
                             varName = 'y', fromStochRule = TRUE))
 })
+
+
+    code <- quote({
+        for(i in 2:7)
+        z[i]~dnorm(z[i-1],1)
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+debug(nimbleModel:::generateCalcRules)
+modelDef$generateGraphInfo()
+
+
+    code <- quote({
+        for(i in 2:200)
+        z[i]~dnorm(z[i-1],1)
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+system.time(
+modelDef$generateGraphInfo()
+)
+
+## TODO: add testing here that SSM case is handled in terms of (aggregated)
+## calcRules and element-wise sortIDs
+
+system.time(
+m=nimbleModel(code))
+
+library(nimbleModel)
+    code <- quote({
+        for(i in 2:7) {
+            z[i] ~ dnorm(mu[i], sigma)
+            mu[i] <- rho*z[i-1]+beta
+            beta ~ dnorm(0,1)
+            sigma ~ dunif(0,1)
+        }
+            })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+# debug(nimbleModel:::generateCalcRules)
+modelDef$generateGraphInfo()
+
+
+library(nimbleModel)
+    code <- quote({
+        for(i in 2:7) {
+            z[i] ~ dnorm(mu[i], sigma)
+            mu[i] <- rho*x[i]+beta
+            x[i] <- z[i-1]
+            beta ~ dnorm(0,1)
+            sigma ~ dunif(0,1)
+        }
+            })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+# debug(nimbleModel:::generateCalcRules)
+modelDef$generateGraphInfo()
+
