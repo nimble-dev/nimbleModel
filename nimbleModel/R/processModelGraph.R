@@ -205,7 +205,7 @@ setSortIDs <- function(calcRules) {
     ## Now renumber so sortID=1 is first
     sortIDs <- sapply(calcRules, function(rule) rule$sortID)
     if(all(is.finite(sortIDs))) {
-        mx <- max(sapply(calcRules, function(rule) rule$sortID), na.rm = TRUE)
+        mx <- max(sortIDs)
         tmp <- sapply(calcRules, function(rule)
             rule$sortID <- mx - rule$sortID + 1
             )

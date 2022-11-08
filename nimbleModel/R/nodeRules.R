@@ -320,6 +320,7 @@ calcRuleClass <- R6Class(
             if(!length(parents)) {
                 return(unset('stochParent'))
             }
+            if(exists('paciorek')) browser()  # FIX
             ## First check if any parents are stochastic
             stoch <- sapply(parents, function(idx)
                 calcRules[[idx]]$declRule$stoch)

@@ -1664,3 +1664,70 @@ library(nimbleModel)
 # debug(nimbleModel:::generateCalcRules)
 modelDef$generateGraphInfo()
 
+
+library(nimbleModel)
+    code <- quote({
+        for(i in 2:7) {
+            z[i,1:3] ~ dmnorm(mu[2:4,i], sigma[1:3,1:3])
+            mu[2:4,i] <- rho*z[i-1,1:3]+beta[1:3]
+        }
+        for(j in 1:3)
+            beta[j] ~ dnorm(0,1)
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+# debug(nimbleModel:::generateCalcRules)
+modelDef$generateGraphInfo()
+
+
+tmp=getParents(modelDef,'z[7,1:3]',immediateOnly=T)
+parent=tmp[[1]]  # mu[2:4,7] parent
+fracture(modelDef$calcRules[['mu']]$rules[[1]], parent) # just need to determine indexing position in the calcRule
+
+tmp2=getParents(modelDef,parent,immediateOnly=T)
+parent=tmp2[[2]]
+
+
+## multiple indexing
+
+library(nimbleModel)
+code <- quote({
+    for(j in 1:5) {
+        for(i in 2:7) {
+            z[i,1:3,j] ~ dmnorm(mu[2:4,i,j], tau[j]*sigma[1:3,1:3])
+            mu[2:4,i,j] <- rho*z[i-1,1:3,j]+beta[1:3]
+        }
+        tau[j] ~ dunif(0,1)
+    }
+        for(j in 1:3)
+            beta[j] ~ dnorm(0,1)
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+# debug(nimbleModel:::generateCalcRules)
+modelDef$generateGraphInfo()
+
+tmp=getParents(modelDef,'z[7,1:3,1:5]',immediateOnly=T)
+parent=tmp[[1]]  # mu[2:4,7,1:5] parent
+fracture(modelDef$calcRules[['mu']]$rules[[1]], parent) # just need to determine indexing position in the calcRule
+
+tmp2=getParents(modelDef,'mu[2:4,3:7,1:5]',immediateOnly=T)
+parent=tmp2[[2]]
+
+## FIX me: this fails, presumably becasue have mu[i,2:4] and mu[2:4,i]
+library(nimbleModel)
+    code <- quote({
+        for(i in 2:7) {
+            z[i,1:3] ~ dmnorm(mu[2:4,i], sigma[1:3,1:3])
+            mu[i,2:4] <- rho*z[i-1,1:3]+beta[1:3]
+        }
+        for(j in 1:3)
+            beta[j] ~ dnorm(0,1)
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+# debug(nimbleModel:::generateCalcRules)
+modelDef$generateGraphInfo()
