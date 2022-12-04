@@ -1709,12 +1709,96 @@ code <- quote({
 # debug(nimbleModel:::generateCalcRules)
 modelDef$generateGraphInfo()
 
+
+library(nimbleModel)
+code <- quote({
+    for(j in 1:5) {
+        for(i in 1:6) {
+            z[i,1:3,j] ~ dmnorm(mu[2:4,i,j], tau[j]*sigma[1:3,1:3])
+            mu[2:4,i,j] <- rho*z[i+1,1:3,j]+beta[1:3]
+        }
+        tau[j] ~ dunif(0,1)
+    }
+        for(j in 1:3)
+            beta[j] ~ dnorm(0,1)
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+# debug(nimbleModel:::generateCalcRules)
+modelDef$generateGraphInfo()
+
+
+
 tmp=getParents(modelDef,'z[7,1:3,1:5]',immediateOnly=T)
 parent=tmp[[1]]  # mu[2:4,7,1:5] parent
 fracture(modelDef$calcRules[['mu']]$rules[[1]], parent) # just need to determine indexing position in the calcRule
 
 tmp2=getParents(modelDef,'mu[2:4,3:7,1:5]',immediateOnly=T)
 parent=tmp2[[2]]
+
+
+## add data nodes
+library(nimbleModel)
+    code <- quote({
+        for(i in 2:7) {
+            z[i,1:3] ~ dmnorm(mu[2:4,i], sigma[1:3,1:3])
+            mu[2:4,i] <- rho*z[i-1,1:3]+beta[1:3]
+        }
+        for(i in 1:7)
+            y[i] ~ dnorm(z[i,1], 1)
+        for(j in 1:3)
+            beta[j] ~ dnorm(0,1)
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+# debug(nimbleModel:::generateCalcRules)
+modelDef$generateGraphInfo()
+
+
+## 3 levels of indexing
+code <- quote({
+    for(j in 1:5) {
+        for(i in 2:7) {
+            z[i,1:3,j] ~ dmnorm(b[j,2:4,i], tau[j]*sigma[1:3,1:3])
+            b[j,2:4,i] <- mu[2:4, i, j]
+            mu[2:4,i,j] <- rho*z[i-1,1:3,j]+beta[1:3]
+        }
+        tau[j] ~ dunif(0,1)
+    }
+        for(j in 1:3)
+            beta[j] ~ dnorm(0,1)
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+debug(nimbleModel:::processCyclicRules)
+modelDef$generateGraphInfo()
+
+## 3 levels of indexing, with data
+code <- quote({
+    for(j in 1:5) {
+        for(i in 2:7) {
+            z[i,1:3,j] ~ dmnorm(b[j,2:4,i], tau[j]*sigma[1:3,1:3])
+            b[j,2:4,i] <- mu[2:4, i, j]
+            mu[2:4,i,j] <- rho*z[i-1,1:3,j]+beta[1:3]
+        }
+        tau[j] ~ dunif(0,1)
+    }
+        for(j in 1:3)
+            beta[j] ~ dnorm(0,1)
+    for(j in 1:5)
+    for(i in 1:7)
+        y[i,j] ~ dnorm(z[i,1,j], 1)
+    })
+
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+# debug(nimbleModel:::generateCalcRules)
+modelDef$generateGraphInfo()
+
 
 ## FIX me: this fails, presumably becasue have mu[i,2:4] and mu[2:4,i]
 library(nimbleModel)

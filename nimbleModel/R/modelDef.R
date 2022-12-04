@@ -159,26 +159,11 @@ modelDefClass <- R6Class(
 
             sorted <- setSortIDs(allCalcRules)  ## do before top/end to catch cycles
             if(!sorted) {  ## SSM case
-                ## TODO: run function to set element-wise sortIDs on all rules with NA as sortID
-                ## think about {z,mu} and {z,mu,x} cases
                 ## make sure setSortID() works with vector sortIDs on recursive nodes
                 ## check run-time for efficiency (does current handling loop thru nodes? - I think it may vectorized
 
-## need setCyclicSortIDs to handle vectorized and non-vectorized cases
-                
-                ## check this code; move it all into setCyclicSortIDs?
-                sortIDs <- sapply(allCalcRules, function(rule) rule$sortID)
-                
-                cyclicRulesBool <- which(is.na(sortIDs))
-                assignedRulesBool <- which(is.finite(sortIDs))
-                result <- setCyclicSortIDs(allCalcRules, cyclicRulesBool, assignedRulesBool)
-                allCalcRules[cyclicRulesBool] <- result
-                ## need to loop over all assignedRules to walk up and find parents
-                ## have calcRule$getMaxSortID method that returns max?
+                allCalcRules <- processCyclicRules(allCalcRules, self)
 
-                ## line 206 of processModelGraph needs to deal with max()
-                ## line 368 of nodeRules (and entire setSortID method) probably needs to deal with max
-                
                 sorted <- setSortIDs(allCalcRules)
                 if(!sorted)
                     stop("Cycle found in model graph. NIMBLE does not allow cyclic models.")

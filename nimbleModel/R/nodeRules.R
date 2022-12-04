@@ -187,6 +187,7 @@ calcRuleClass <- R6Class(
 
         ## `Inf` is placeholder for 'unresolved'
         sortID = Inf, # was `NULL` but when setting sortIDs, if have as NULL, causes lists to be created instead of vectors
+        multiSortIDindex = NULL,
 
         initialize = function(declRule = NULL, expr = NULL, ID, context, constants = list()) {
             ## If LHS is NULL, just use declRule internalRange
@@ -342,13 +343,13 @@ calcRuleClass <- R6Class(
         setSortID = function(calcRules, ancestors = NULL) {
             ## Bottom-up determination (since want maximal ties amongst potentially most-numerous data nodes)
             ## Easiest here to have bottom-most rules have sortID of 1, since have to start with bottom.
-            if(is.infinite(sortID)) {
+            if(length(sortID) == 1 && is.infinite(sortID)) {
                 if(!length(children)) {
                     sortID <<- 1
                     return(sortID)
                 }
                 if(any(children %in% ancestors)) {
-                    # warning("Cycle found in model graph. NIMBLE does not allow cyclic models.")
+                    ## warning("Cycle found in model graph. NIMBLE does not allow cyclic models.")
                     sortID <<- as.numeric(NA)
                     ## This allows NA to propagate into other nodes involved in cycle
                     tmp <- sapply(children, function(i)
@@ -364,8 +365,8 @@ calcRuleClass <- R6Class(
 
                 ##                calcRules[[i]]$setSortID(calcRules[[i]](calcRules))) + 1)
             }
-            if(length(sortID) > 1)
-                return(max(sortID)) else return(sortID)  ## max() accounts for SSM case where have multiple sortIDs
+            if(length(sortID) == 1 && is.na(sortID))
+                return(NA) else return(max(sortID, na.rm = TRUE))  ## max() accounts for SSM case where have multiple sortIDs
         }
         
     )
