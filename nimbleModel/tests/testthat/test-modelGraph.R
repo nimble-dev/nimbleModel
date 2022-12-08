@@ -1604,6 +1604,20 @@ test_that("complicated input varRange", {
 })
 
 
+## one layer (centered, non-centered)
+## two layer (centered, non-centered)
+## three layer
+
+## case with the lagged indices in different positions
+
+test_that("standard one-lag SSM handled correctly", {
+
+})
+
+
+
+
+
     code <- quote({
         for(i in 2:7)
         z[i]~dnorm(z[i-1],1)
@@ -1800,18 +1814,3 @@ code <- quote({
 modelDef$generateGraphInfo()
 
 
-## FIX me: this fails, presumably becasue have mu[i,2:4] and mu[2:4,i]
-library(nimbleModel)
-    code <- quote({
-        for(i in 2:7) {
-            z[i,1:3] ~ dmnorm(mu[2:4,i], sigma[1:3,1:3])
-            mu[i,2:4] <- rho*z[i-1,1:3]+beta[1:3]
-        }
-        for(j in 1:3)
-            beta[j] ~ dnorm(0,1)
-    })
-    modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-# debug(nimbleModel:::generateCalcRules)
-modelDef$generateGraphInfo()

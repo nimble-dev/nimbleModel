@@ -142,42 +142,54 @@ modelDefClass <- R6Class(
             declRules <<- lapply(declInfo, function(x) x$declRule)
             varNames <<- unique(lapply(declRules, function(rule) rule$varName))
             rhsOriginalRules <- unlist(lapply(declInfo, function(x) x$rhsOriginalRules))
-            rhsOnlyRules <<- createNestedList(
+            rhsOnlyRules <<- createVarRule(
                 generateRHSonlyRules(rhsOriginalRules, declRules))
 
             allDownstreamRules <- unlist(lapply(declInfo, function(x) x$downstreamRules))
             varNames <- sapply(allDownstreamRules, function(rule)
                 rule$parentVar)
-            downstreamRules <<- createNestedList(allDownstreamRules, varNames)
+            downstreamRules <<- createVarRule(allDownstreamRules, varNames)
             
             allUpstreamRules <- unlist(lapply(declInfo, function(x) x$upstreamRules))
             varNames <- sapply(allUpstreamRules, function(rule)
-                rule$parentVar)   ## nomenclature confusing - parent in an upstream rule is child in graph
-            upstreamRules <<- createNestedList(allUpstreamRules, varNames)
+                rule$parentVar)   ## TODO: nomenclature is confusing - parent in an upstream rule is child in graph
+            upstreamRules <<- createVarRule(allUpstreamRules, varNames)
 
             allCalcRules <- generateCalcRules(declRules, rhsOriginalRules, downstreamRules)
 
-            sorted <- setSortIDs(allCalcRules)  ## do before top/end to catch cycles
+            sorted <- setSortIDs(allCalcRules)  ## Do before top/end to catch cycles.
             if(!sorted) {  ## SSM case
-                ## make sure setSortID() works with vector sortIDs on recursive nodes
-                ## check run-time for efficiency (does current handling loop thru nodes? - I think it may vectorized
+                ## TODO: need code that handles SSM in general, albeit computationally-inefficient way of 'unrolling'/fracturing
+                ## the calcRules into scalars. 
 
+                ## Handle standard SSM case of lag +1 or -1, with two or more calcRules in the cycle.
+                ## This inserts vectors of sortIDs for the calcRules in the cycle.
                 allCalcRules <- processCyclicRules(allCalcRules, self)
 
+                ## Now assign remaining sortIDs (i.e., to various parent calcRules that formerly had Inf as sortID.
                 sorted <- setSortIDs(allCalcRules)
-                if(!sorted)
-                    stop("Cycle found in model graph. NIMBLE does not allow cyclic models.")
+                if(!sorted) {
+                    ## new approach:
+                    ## allCalcRules <- unrollCyclicRules(<set of allCallRules with NA sortIDs>)
+                    ## this will create lists of rules with parents,children set
+                    ## X Try again, but do full fracturing.
+                    ## X allCalcRules <- generateCalcRules(declRules, rhsOriginalRules, downstreamRules, full = TRUE)
+                    ## X with full=TRUE, use 'while(pos <= length(calcRules))'
+                    ## Now assign remaining sortIDs (i.e., to various parent calcRules that formerly had Inf as sortID.
+                    ## sorted <- setSortIDs(allCalcRules)
+                    if(!sorted)
+                        stop("Cycle found in model graph. NIMBLE does not allow cyclic models.")
             }
             setEndNodes(allCalcRules)
             setTopNodes(allCalcRules)
             ## setLatentNodes(calcRules)
 
             ## Set up nested lists indexed by varName
-            topRules <<- createNestedList(allCalcRules, type = 'top')
-            endRules <<- createNestedList(allCalcRules, type = 'end')
-            latentRules <<- createNestedList(allCalcRules, type = 'latent')
-            calcRules <<- createNestedList(allCalcRules)
-            declRules <<- createNestedList(declRules)
+            topRules <<- createVarRule(allCalcRules, type = 'top')
+            endRules <<- createVarRule(allCalcRules, type = 'end')
+            latentRules <<- createVarRule(allCalcRules, type = 'latent')
+            calcRules <<- createVarRule(allCalcRules)
+            declRules <<- createVarRule(declRules)
                         
             invisible(0)
         },
@@ -190,15 +202,15 @@ modelDefClass <- R6Class(
     )
 )
 
-## TODO: rename to account for the fact that this creates varRules not lists?
-createNestedList <- function(items, varNames = NULL, type = NULL) {
+## TODO: make this a constructor for varRule class.
+createVarRule <- function(items, varNames = NULL, type = NULL) {
     if(is.null(varNames)) {
         varNames <- sapply(items, function(item) item$varName)
     } else 
         if(length(varNames) != length(items))
-            stop("createNestedList: length of `varNames` must match length of `items`.")
+            stop("createVarRule: length of `varNames` must match length of `items`.")
     if(!is.null(type)) {
-        if(is(items[[1]], 'varRangeClass')) stop("createNestedList: `type` restriction cannot be applied to `varRange`s.")
+        if(is(items[[1]], 'varRangeClass')) stop("createVarRule: `type` restriction cannot be applied to `varRange`s.")
         include <- sapply(items, function(item) item$is_type(type))
     } else include <- rep(TRUE, length(varNames))
     uniqVarNames <- unique(varNames)
@@ -383,7 +395,11 @@ flatten <- function(x) {
 }
 
 removeDuplicates <- function(varRanges) {
-    varRanges <- createNestedList(varRanges)
+    varNames <- sapply(varRanges, function(range) range$varName)
+    uniqVarNames <- unique(varNames)
+    varRanges <- lapply(uniqVarNames, function(nm)
+            items[varNames == nm])
+    names(varRanges) <- uniqVarNames
     flatten(lapply(varRanges, function(vr) removeDuplicatesOne(vr)))
 }
 
