@@ -1604,63 +1604,158 @@ test_that("complicated input varRange", {
 })
 
 
-## one layer (centered, non-centered)
-## two layer (centered, non-centered)
-## three layer
 
-## case with the lagged indices in different positions
+extractRuleElement <- function(vr, nm) {
+    tmp <- sapply(vr$rules, function(rule) rule[[nm]])
+    names(tmp) <- NULL
+    for(i in seq_along(tmp))
+        names(tmp[[i]]) <- NULL
+    return(tmp)
+}
+
+
+test_that("one-lag Markov structure handled correctly", {
+   code <- quote({
+       for(i in 2:5)
+           mu[i] ~ dnorm(rho*mu[i-1], sd = sigma)
+       rho ~ dunif(0, 1)
+       sigma ~ dunif(0, 1)
+   })
+   modelDef <- modelDefClass$new(code)
+   modelDef$processModelCode()
+   modelDef$processDecls()
+   modelDef$generateGraphInfo()
+   sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
+   topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
+   endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
+   expect_identical(sortIDs, list('rho' = 1, 'sigma' = 1, 'mu' = list(5, c(NA, NA, 3, 4), 2)))
+   expect_identical(topRules, list('rho' = TRUE, 'sigma' = TRUE, 'mu' = rep(FALSE, 3)))
+   expect_identical(endRules, list('rho' = FALSE, 'sigma' = FALSE, 'mu' = c(TRUE, FALSE, FALSE)))
+   expect_identical(modelDef$calcRules[['mu']]$rules[[2]]$multiSortIDindex, 1L)
+})
 
 test_that("standard one-lag SSM handled correctly", {
-
+    code <- quote({
+        for(i in 1:5) 
+            y[i] ~ dnorm(mu[i], sd = sigma)
+        for(i in 2:5)
+            mu[i] ~ dnorm(rho*mu[i-1], sd = sigma)
+        mu[1] ~ dnorm(0, 1)
+        rho ~ dunif(0, 1)
+        sigma ~ dunif(0, 1)
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
+    sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
+    topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
+    endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
+    expect_identical(sortIDs, list('mu' = list(1,5,2,c(NA,NA,3,4)), 'rho' = 1, 'sigma' = 1,
+                                   'y' = rep(6, 3)))
+    expect_identical(topRules, list('mu' = c(TRUE, rep(FALSE, 3)), 'rho' = TRUE, 'sigma' = TRUE,
+                                    'y' = rep(FALSE, 3)))
+    expect_identical(endRules, list('mu' = rep(FALSE, 4), 'rho' = FALSE, 'sigma' = FALSE, 
+                                    'y' = rep(TRUE, 3)))
+    expect_identical(modelDef$calcRules[['mu']]$rules[[4]]$multiSortIDindex, 1L)
 })
 
 
-
-
-
+test_that("one-lag Markov structure with intermediate variable handled correctly", {
     code <- quote({
-        for(i in 2:7)
-        z[i]~dnorm(z[i-1],1)
-    })
-    modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-debug(nimbleModel:::generateCalcRules)
-modelDef$generateGraphInfo()
-
-
-    code <- quote({
-        for(i in 2:200)
-        z[i]~dnorm(z[i-1],1)
-    })
-    modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-system.time(
-modelDef$generateGraphInfo()
-)
-
-## TODO: add testing here that SSM case is handled in terms of (aggregated)
-## calcRules and element-wise sortIDs
-
-system.time(
-m=nimbleModel(code))
-
-library(nimbleModel)
-    code <- quote({
-        for(i in 2:7) {
-            z[i] ~ dnorm(mu[i], sigma)
-            mu[i] <- rho*z[i-1]+beta
-            beta ~ dnorm(0,1)
-            sigma ~ dunif(0,1)
+        for(i in 1:5) 
+            y[i] ~ dnorm(mu[i], sd = tau)
+        for(i in 2:5) {
+            mu[i] ~ dnorm(z[i], sd = sigma)
+            z[i] <- rho*mu[i-1]
         }
-            })
+        mu[1] ~ dnorm(0, 1)
+        rho ~ dunif(0, 1)
+        sigma ~ dunif(0, 1)
+        tau ~ dunif(0, 1)
+     })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
+    sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
+    topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
+    endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
+    expect_identical(sortIDs, list('mu' = list(1, c(NA,3,5,7), 9), 'rho' = 1, 'sigma' = 2,
+                                   'tau' = 9, 'y' = rep(10, 3), 'z' = list(2, c(NA,NA,4,6,8))))
+    expect_identical(topRules, list('mu' = c(TRUE, FALSE, FALSE), 'rho' = TRUE, 'sigma' = TRUE,
+                                    'tau' = TRUE, 'y' = rep(FALSE, 3), 'z' = rep(FALSE, 2)))
+    expect_identical(endRules, list('mu' = rep(FALSE, 3), 'rho' = FALSE, 'sigma' = FALSE,
+                                    'tau' = FALSE, 'y' = rep(TRUE, 3), 'z' = rep(FALSE, 2)))
+
+    expect_identical(modelDef$calcRules[['z']]$rules[[2]]$multiSortIDindex, 1L)
+    expect_identical(modelDef$calcRules[['mu']]$rules[[2]]$multiSortIDindex, 1L)
+})
+
+
+test_that("one-lag Markov structure with two intermediate variables, multivariate, and complicated indexing handled correctly", {
+    code <- quote({
+        for(j in 1:3) {
+            for(i in 2:5) {
+                z[i,1:3,j] ~ dmnorm(b[j,2:4,i], tau[j]*sigma[1:3,1:3])
+                b[j,2:4,i] <- mu[2:4, i, j]
+                mu[2:4,i,j] <- rho*z[i-1,1:3,j] + beta[1:3]
+            }
+            tau[j] ~ dunif(0,1)
+        }
+        for(j in 1:3)
+            beta[j] ~ dnorm(0,1)
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
+
+    sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
+    topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
+    endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
+    expect_identical(sortIDs, list('tau' = 3, 'beta' = 1, 'b' = c(NA,3,6,9,12),
+                                   'z' = list(c(NA,4,7,10), 13), mu = list(c(NA,NA,5,8,11), 2)))
+    expect_identical(topRules, list('tau' = TRUE, 'beta' = TRUE, 'b' = FALSE, 'z' = rep(FALSE, 2),
+                                    'mu' = rep(FALSE, 2)))
+    expect_identical(endRules, list('tau' = TRUE, 'beta' = TRUE, 'b' = FALSE, 'z' = c(FALSE, TRUE),
+                                    'mu' = rep(FALSE, 2)))
+    expect_identical(modelDef$calcRules[['mu']]$rules[[1]]$multiSortIDindex, 2L)
+    expect_identical(modelDef$calcRules[['z']]$rules[[1]]$multiSortIDindex, 1L)
+    expect_identical(modelDef$calcRules[['b']]$rules[[1]]$multiSortIDindex, 3L)
+})
+
+
+## weird cases that should trigger unrolling - see todo file
+    
+#### OLD ####
+
+## 3 levels of indexing, with data
+code <- quote({
+    for(j in 1:5) {
+        for(i in 2:7) {
+            z[i,1:3,j] ~ dmnorm(b[j,2:4,i], tau[j]*sigma[1:3,1:3])
+            b[j,2:4,i] <- mu[2:4, i, j]
+            mu[2:4,i,j] <- rho*z[i-1,1:3,j]+beta[1:3]
+        }
+        tau[j] ~ dunif(0,1)
+    }
+        for(j in 1:3)
+            beta[j] ~ dnorm(0,1)
+    for(j in 1:5)
+        for(i in 1:7)
+            y[i,j] ~ dnorm(z[i,1,j], 1)
+})
+
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
 # debug(nimbleModel:::generateCalcRules)
 modelDef$generateGraphInfo()
 
+
+
+# two intermediates
 
 library(nimbleModel)
     code <- quote({
@@ -1678,6 +1773,7 @@ library(nimbleModel)
 # debug(nimbleModel:::generateCalcRules)
 modelDef$generateGraphInfo()
 
+     # mv ok, with focal index changing
 
 library(nimbleModel)
     code <- quote({
@@ -1693,7 +1789,7 @@ library(nimbleModel)
     modelDef$processDecls()
 # debug(nimbleModel:::generateCalcRules)
 modelDef$generateGraphInfo()
-
+## TODO: check multiIDsortIndex is correct
 
 tmp=getParents(modelDef,'z[7,1:3]',immediateOnly=T)
 parent=tmp[[1]]  # mu[2:4,7] parent
@@ -1770,47 +1866,5 @@ library(nimbleModel)
 # debug(nimbleModel:::generateCalcRules)
 modelDef$generateGraphInfo()
 
-
-## 3 levels of indexing
-code <- quote({
-    for(j in 1:5) {
-        for(i in 2:7) {
-            z[i,1:3,j] ~ dmnorm(b[j,2:4,i], tau[j]*sigma[1:3,1:3])
-            b[j,2:4,i] <- mu[2:4, i, j]
-            mu[2:4,i,j] <- rho*z[i-1,1:3,j]+beta[1:3]
-        }
-        tau[j] ~ dunif(0,1)
-    }
-        for(j in 1:3)
-            beta[j] ~ dnorm(0,1)
-    })
-    modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-debug(nimbleModel:::processCyclicRules)
-modelDef$generateGraphInfo()
-
-## 3 levels of indexing, with data
-code <- quote({
-    for(j in 1:5) {
-        for(i in 2:7) {
-            z[i,1:3,j] ~ dmnorm(b[j,2:4,i], tau[j]*sigma[1:3,1:3])
-            b[j,2:4,i] <- mu[2:4, i, j]
-            mu[2:4,i,j] <- rho*z[i-1,1:3,j]+beta[1:3]
-        }
-        tau[j] ~ dunif(0,1)
-    }
-        for(j in 1:3)
-            beta[j] ~ dnorm(0,1)
-    for(j in 1:5)
-    for(i in 1:7)
-        y[i,j] ~ dnorm(z[i,1,j], 1)
-    })
-
-    modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-# debug(nimbleModel:::generateCalcRules)
-modelDef$generateGraphInfo()
 
 

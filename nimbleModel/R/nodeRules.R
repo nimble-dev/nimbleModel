@@ -779,11 +779,12 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
             ## set fracturingRule and parentRule as child-parent pair
             result[[1]]$setParents(parentRule$ID)
             parentRule$setChildren(result[[1]]$ID)
-            ## copy original parents of fractured rule to the fractured results
-            sapply(result, function(rule) rule$setParents(LHSrule$parents))
             ## if(stochParent) result[[1]]$set('stochParent')
         }
         
+        ## Update original parents of fractured rule to be parents of fractured results
+        sapply(result, function(rule) rule$setParents(LHSrule$parents))
+
         ## Update children of parents of the fractured rule to be
         ## new fractured results and not fractured rule
         newChildren <- sapply(result, function(x) x$ID)

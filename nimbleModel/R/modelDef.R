@@ -162,7 +162,7 @@ modelDefClass <- R6Class(
                 ## TODO: need code that handles SSM in general, albeit computationally-inefficient way of 'unrolling'/fracturing
                 ## the calcRules into scalars. 
 
-                ## Handle standard SSM case of lag +1 or -1, with two or more calcRules in the cycle.
+                ## Handle standard SSM case of lag +1 or -1, with one or more calcRules in the cycle.
                 ## This inserts vectors of sortIDs for the calcRules in the cycle.
                 allCalcRules <- processCyclicRules(allCalcRules, self)
 
@@ -179,6 +179,7 @@ modelDefClass <- R6Class(
                     ## sorted <- setSortIDs(allCalcRules)
                     if(!sorted)
                         stop("Cycle found in model graph. NIMBLE does not allow cyclic models.")
+                }
             }
             setEndNodes(allCalcRules)
             setTopNodes(allCalcRules)
