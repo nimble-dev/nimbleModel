@@ -1607,6 +1607,8 @@ test_that("complicated input varRange", {
 
 extractRuleElement <- function(vr, nm) {
     tmp <- sapply(vr$rules, function(rule) rule[[nm]])
+    if(is.matrix(tmp))
+        tmp <- c(tmp)
     names(tmp) <- NULL
     for(i in seq_along(tmp))
         names(tmp[[i]]) <- NULL
@@ -1629,6 +1631,25 @@ test_that("one-lag Markov structure handled correctly", {
    topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
    endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
    expect_identical(sortIDs, list('rho' = 1, 'sigma' = 1, 'mu' = list(5, c(NA, NA, 3, 4), 2)))
+   expect_identical(topRules, list('rho' = TRUE, 'sigma' = TRUE, 'mu' = rep(FALSE, 3)))
+   expect_identical(endRules, list('rho' = FALSE, 'sigma' = FALSE, 'mu' = c(TRUE, FALSE, FALSE)))
+   expect_identical(modelDef$calcRules[['mu']]$rules[[2]]$multiSortIDindex, 1L)
+
+   ## now time in other direction
+   code <- quote({
+       for(i in 1:4)
+           mu[i] ~ dnorm(rho*mu[i+1], sd = sigma)
+       rho ~ dunif(0, 1)
+       sigma ~ dunif(0, 1)
+   })
+   modelDef <- modelDefClass$new(code)
+   modelDef$processModelCode()
+   modelDef$processDecls()
+   modelDef$generateGraphInfo()
+   sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
+   topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
+   endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
+   expect_identical(sortIDs, list('rho' = 1, 'sigma' = 1, 'mu' = list(5, c(NA, 4, 3, NA, NA), 2)))
    expect_identical(topRules, list('rho' = TRUE, 'sigma' = TRUE, 'mu' = rep(FALSE, 3)))
    expect_identical(endRules, list('rho' = FALSE, 'sigma' = FALSE, 'mu' = c(TRUE, FALSE, FALSE)))
    expect_identical(modelDef$calcRules[['mu']]$rules[[2]]$multiSortIDindex, 1L)
@@ -1660,6 +1681,36 @@ test_that("standard one-lag SSM handled correctly", {
     expect_identical(modelDef$calcRules[['mu']]$rules[[4]]$multiSortIDindex, 1L)
 })
 
+test_that("one-lag SSM with complicated dependencies handled correctly", {
+    ## Not clear this is actually testing all that much, since exact mu->y dependencies
+    ## don't matter.
+    code <- quote({
+        for(i in 1:5) 
+            y[i] ~ dnorm(mu[k[i]], sd = tau)
+        for(i in 2:5) {
+            mu[i] ~ dnorm(rho*mu[i-1], sd = sigma)
+        }
+        mu[1] ~ dnorm(0, 1)
+        rho ~ dunif(0, 1)
+        sigma ~ dunif(0, 1)
+        tau ~ dunif(0, 1)
+    })
+    modelDef <- modelDefClass$new(code, constants = list(k = c(5,3,1,2,4)))
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
+    sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
+    topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
+    endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
+    expect_identical(sortIDs, list('mu' = list(1,5,2,c(NA,NA,3,4)), 'rho' = 1, 'sigma' = 1, 'tau' = 5,
+                                   'y' = rep(6, 4)))
+    expect_identical(topRules, list('mu' = c(TRUE, rep(FALSE, 3)), 'rho' = TRUE, 'sigma' = TRUE, 'tau' = TRUE,
+                                    'y' = rep(FALSE, 4)))
+    expect_identical(endRules, list('mu' = rep(FALSE, 4), 'rho' = FALSE, 'sigma' = FALSE, 'tau' = FALSE,
+                                    'y' = rep(TRUE, 4)))
+    expect_identical(modelDef$calcRules[['mu']]$rules[[4]]$multiSortIDindex, 1L)
+    
+})
 
 test_that("one-lag Markov structure with intermediate variable handled correctly", {
     code <- quote({
@@ -1715,156 +1766,103 @@ test_that("one-lag Markov structure with two intermediate variables, multivariat
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
     expect_identical(sortIDs, list('tau' = 3, 'beta' = 1, 'b' = c(NA,3,6,9,12),
-                                   'z' = list(c(NA,4,7,10), 13), mu = list(c(NA,NA,5,8,11), 2)))
+                                   'z' = list(c(NA,4,7,10), 13), 'mu' = list(c(NA,NA,5,8,11), 2)))
     expect_identical(topRules, list('tau' = TRUE, 'beta' = TRUE, 'b' = FALSE, 'z' = rep(FALSE, 2),
                                     'mu' = rep(FALSE, 2)))
-    expect_identical(endRules, list('tau' = TRUE, 'beta' = TRUE, 'b' = FALSE, 'z' = c(FALSE, TRUE),
+    expect_identical(endRules, list('tau' = FALSE, 'beta' = FALSE, 'b' = FALSE, 'z' = c(FALSE, TRUE),
                                     'mu' = rep(FALSE, 2)))
     expect_identical(modelDef$calcRules[['mu']]$rules[[1]]$multiSortIDindex, 2L)
     expect_identical(modelDef$calcRules[['z']]$rules[[1]]$multiSortIDindex, 1L)
     expect_identical(modelDef$calcRules[['b']]$rules[[1]]$multiSortIDindex, 3L)
 })
 
+## cases (some weird) that should trigger unrolling 
 
-## weird cases that should trigger unrolling - see todo file
-    
-#### OLD ####
 
-## 3 levels of indexing, with data
-code <- quote({
-    for(j in 1:5) {
-        for(i in 2:7) {
-            z[i,1:3,j] ~ dmnorm(b[j,2:4,i], tau[j]*sigma[1:3,1:3])
-            b[j,2:4,i] <- mu[2:4, i, j]
-            mu[2:4,i,j] <- rho*z[i-1,1:3,j]+beta[1:3]
+test_that("temporary tests that multiple dependences in SSM style declaration error out", {
+    ## when get multiple focal sets working, check that processing mu then y vs y then mu bot
+    ## give correct result; if one has already been processed then the initialization of sortID
+    ## for it shouldn't run in the cycling through for the other; should walk through what happens
+    code <- quote({
+        for(i in 2:5) {
+            y[i] ~ dnorm(mu[i] + y[i-1], sd = tau)
+            mu[i] ~ dnorm(mu[i-1], sd = sigma)
         }
-        tau[j] ~ dunif(0,1)
-    }
-        for(j in 1:3)
-            beta[j] ~ dnorm(0,1)
-    for(j in 1:5)
-        for(i in 1:7)
-            y[i,j] ~ dnorm(z[i,1,j], 1)
+        y[1] ~ dnorm(mu[1], sd = tau)
+        mu[1] ~ dnorm(0, 1)
+        sigma ~ dunif(0, 1)
+        tau ~ dunif(0, 1)
+     })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    expect_error(modelDef$generateGraphInfo())
+    ## here we don't assign vector of sortIDs to 'y' because only have one focal cycle
+
+    code <- quote({
+        for(i in 3:10)
+            mu[i] ~ dnorm(rho1*mu[i-1] + rho2*mu[i-2], sd = sigma)
+        rho1 ~ dunif(0, 1)
+        rho2 ~ dunif(0, 1)
+        sigma ~ dunif(0, 1)
+        mu[1] ~ dnorm(0,1)
+        mu[2] ~ dnorm(0,1)
+        for(i in 1:10)
+            y[i] ~ dnorm(mu[i],1)
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    expect_error(modelDef$generateGraphInfo())
+    ## this fails because of two parentVars in processCyclicRules - good; up through processCyclicRules, it looks correct
+    ## AR(2) with i in 3:5 actually fully unrolls because of quirk of RHSoriginal rules with short sequence
+
+    code <- quote({
+        for(i in 2:5) {
+            mu[i] ~ dnorm(rho*mu[i-1], sd = sigma)
+            theta[i] ~ dnorm(rho*theta[i-1], sd = sigma)
+        }
+        rho ~ dunif(0, 1)
+        sigma ~ dunif(0, 1)
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    expect_error(modelDef$generateGraphInfo())
+     
+    ## handling this efficiently would probably be a pain because of multiple vectors of sortIDs; probably just unroll
+    code <- quote({
+        for(j in 1:5) {
+            y[1,j] ~ dnorm(mu[1,j], sd = tau)
+            for(i in 2:5) {
+                y[i,j] ~ dnorm(mu[i,j] + y[i-1,j], sd = tau)
+            }
+        }
+        for(j in 2:5) {
+            for(i in 1:5) {
+                mu[i,j] ~ dnorm(mu[i,j-1], sd = sigma)
+            }}
+        sigma ~ dunif(0, 1)
+        tau ~ dunif(0, 1)
+     })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    expect_error(modelDef$generateGraphInfo())
+
+    ## this should be handled by unrolling
+    code <- quote({
+        for(i in 1:5) 
+            mu[i] ~ dnorm(mu[k[i]], sd = tau)
+        mu[6] ~ dnorm(0, 1)
+        tau ~ dunif(0, 1)
+    })
+    modelDef <- modelDefClass$new(code, constants = list(k = c(2,3,4,5,6)))
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    expect_error(modelDef$generateGraphInfo())
+
 })
-
-    modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-# debug(nimbleModel:::generateCalcRules)
-modelDef$generateGraphInfo()
-
-
-
-# two intermediates
-
-library(nimbleModel)
-    code <- quote({
-        for(i in 2:7) {
-            z[i] ~ dnorm(mu[i], sigma)
-            mu[i] <- rho*x[i]+beta
-            x[i] <- z[i-1]
-            beta ~ dnorm(0,1)
-            sigma ~ dunif(0,1)
-        }
-            })
-    modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-# debug(nimbleModel:::generateCalcRules)
-modelDef$generateGraphInfo()
-
-     # mv ok, with focal index changing
-
-library(nimbleModel)
-    code <- quote({
-        for(i in 2:7) {
-            z[i,1:3] ~ dmnorm(mu[2:4,i], sigma[1:3,1:3])
-            mu[2:4,i] <- rho*z[i-1,1:3]+beta[1:3]
-        }
-        for(j in 1:3)
-            beta[j] ~ dnorm(0,1)
-    })
-    modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-# debug(nimbleModel:::generateCalcRules)
-modelDef$generateGraphInfo()
-## TODO: check multiIDsortIndex is correct
-
-tmp=getParents(modelDef,'z[7,1:3]',immediateOnly=T)
-parent=tmp[[1]]  # mu[2:4,7] parent
-fracture(modelDef$calcRules[['mu']]$rules[[1]], parent) # just need to determine indexing position in the calcRule
-
-tmp2=getParents(modelDef,parent,immediateOnly=T)
-parent=tmp2[[2]]
-
-
-## multiple indexing
-
-library(nimbleModel)
-code <- quote({
-    for(j in 1:5) {
-        for(i in 2:7) {
-            z[i,1:3,j] ~ dmnorm(mu[2:4,i,j], tau[j]*sigma[1:3,1:3])
-            mu[2:4,i,j] <- rho*z[i-1,1:3,j]+beta[1:3]
-        }
-        tau[j] ~ dunif(0,1)
-    }
-        for(j in 1:3)
-            beta[j] ~ dnorm(0,1)
-    })
-    modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-# debug(nimbleModel:::generateCalcRules)
-modelDef$generateGraphInfo()
-
-
-library(nimbleModel)
-code <- quote({
-    for(j in 1:5) {
-        for(i in 1:6) {
-            z[i,1:3,j] ~ dmnorm(mu[2:4,i,j], tau[j]*sigma[1:3,1:3])
-            mu[2:4,i,j] <- rho*z[i+1,1:3,j]+beta[1:3]
-        }
-        tau[j] ~ dunif(0,1)
-    }
-        for(j in 1:3)
-            beta[j] ~ dnorm(0,1)
-    })
-    modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-# debug(nimbleModel:::generateCalcRules)
-modelDef$generateGraphInfo()
-
-
-
-tmp=getParents(modelDef,'z[7,1:3,1:5]',immediateOnly=T)
-parent=tmp[[1]]  # mu[2:4,7,1:5] parent
-fracture(modelDef$calcRules[['mu']]$rules[[1]], parent) # just need to determine indexing position in the calcRule
-
-tmp2=getParents(modelDef,'mu[2:4,3:7,1:5]',immediateOnly=T)
-parent=tmp2[[2]]
-
-
-## add data nodes
-library(nimbleModel)
-    code <- quote({
-        for(i in 2:7) {
-            z[i,1:3] ~ dmnorm(mu[2:4,i], sigma[1:3,1:3])
-            mu[2:4,i] <- rho*z[i-1,1:3]+beta[1:3]
-        }
-        for(i in 1:7)
-            y[i] ~ dnorm(z[i,1], 1)
-        for(j in 1:3)
-            beta[j] ~ dnorm(0,1)
-    })
-    modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-# debug(nimbleModel:::generateCalcRules)
-modelDef$generateGraphInfo()
 
 
 

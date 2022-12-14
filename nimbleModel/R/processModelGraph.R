@@ -67,6 +67,7 @@ generateCalcRules <- function(declRules, rhsOriginalRules, graphRules) {
     ## Step 2: fracture LHS based on same-var deps of other LHS 
     ## e.g., y[i] ~ dnorm(z[i], 1); z[j] ~ dnorm(0,1)
     ## Fracture based on pieces of var potentially having different parents.
+
     numRHSrules <- length(rhsOriginalRules)
     
     originalCalcRules <- lapply(declRules, function(rule)
@@ -245,6 +246,9 @@ processCyclicRules <- function(allCalcRules, modelDef) {
     ## It needs to be the identified rule because only for that rule do we know the relevant index.
     ## Relevant indices for other calcRules in cycle need to be determined from the identified rule.
     ## Fill in sortID vals for extent of the calcRule (not extent of the upstream rule)
+
+    ## Need to find indexRule corresponding to the focalIndex
+    focalIndexRule <- allCalcRules[[currentCyclicRule]]$graphRule$indexSets$LHSindex2setID[focalIndex]
     if(!inherits(allCalcRules[[currentCyclicRule]]$graphRule$indexRules[[focalIndexRule]], 'indexRuleClass_block'))
         stop("new nimbleModel processing reached unexpected structure in cycle processing.")
     setup <- allCalcRules[[currentCyclicRule]]$graphRule$indexRules[[focalIndexRule]]$setupResults
