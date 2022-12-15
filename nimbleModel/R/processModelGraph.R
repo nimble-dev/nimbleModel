@@ -340,8 +340,9 @@ processCyclicRules <- function(allCalcRules, modelDef) {
         wh[is.na(wh)] <- FALSE
         wh[!indicesToUpdate] <- FALSE
         allCalcRules[[currentCyclicRule]]$sortID[currentIndices][wh] <- sortIDvals[wh]
-            
-        touched[currentCyclicRule] <- TRUE
+
+        if(!sum(wh))   ## only complete cycle if get back to a calcRule and don't need to modify it
+            touched[currentCyclicRule] <- TRUE
     }
 
 
