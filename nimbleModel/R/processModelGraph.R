@@ -266,10 +266,9 @@ processCyclicRules <- function(allCalcRules, modelDef) {
     allCalcRules[[currentCyclicRule]]$sortID[indices] <- sortIDvals
     
     ## Walk through parent calcRules involved in cycle and assign sortID based on upstream graphRule.    
-    done <- FALSE
     touched <- rep(FALSE, length(allCalcRules))
     
-    while(!done) {
+    while(TRUE) {
         ## focalIndex for the child calcRule.
         childSortID <- allCalcRules[[currentCyclicRule]]$sortID
 
@@ -279,10 +278,12 @@ processCyclicRules <- function(allCalcRules, modelDef) {
         idx <- which(parentVars %in% varNames[cyclicRulesSet])
         parentVar <- parentVars[idx]
         if(length(idx) != 1) stop("new nimbleModel processing reached unexpected structure in cycle processing.")
-        upstreamGraphRule <- modelDef$upstreamRules[[varNames[currentCyclicRule]]]$rules[[idx]]
 
+        upstreamGraphRule <- modelDef$upstreamRules[[varNames[currentCyclicRule]]]$rules[[idx]]
         ## Determine the calcRule under consideration, and focalIndex for that calcRule.
         currentCyclicRule <- cyclicRulesSet[varNames[cyclicRulesSet] == parentVar]
+        if(touched[currentCyclicRule]) break
+
         focalIndexRule <- upstreamGraphRule$indexSets$RHSindex2setID[focalIndex]
         focalIndex <- which(upstreamGraphRule$indexSets$LHSindex2setID == focalIndexRule)
         ## The graphRule should only involve one index.
@@ -320,38 +321,29 @@ processCyclicRules <- function(allCalcRules, modelDef) {
         sortIDvals <- childSortID[childIndices] + eps
         currentIndices <- childIndices + as.integer(setup$offset)  # as.integer() because of identical() below
         
-        if(touched[currentCyclicRule]) {
-            ## When we get back around to a calcRule whose sortID was not previously modified,
-            ## no further updating should be done.
-            if(any(sortIDvals > currentSortID[currentIndices], na.rm = TRUE))
-                stop("new nimbleModel processing reached unexpected structure in cycle processing.")
-            done <- TRUE
-        } else {
-            focalIndexRule <- allCalcRules[[currentCyclicRule]]$index2setID[focalIndex]
-            setup <- allCalcRules[[currentCyclicRule]]$graphRule$indexRules[[focalIndexRule]]$setupResults
-            currentCalcRuleIndices <- setup$from_min:setup$from_max
+        focalIndexRule <- allCalcRules[[currentCyclicRule]]$index2setID[focalIndex]
+        if(!inherits(allCalcRules[[currentCyclicRule]]$graphRule$indexRules[[focalIndexRule]], 'indexRuleClass_block'))
+            stop("new nimbleModel processing reached unexpected structure in cycle processing.")
+
+        setup <- allCalcRules[[currentCyclicRule]]$graphRule$indexRules[[focalIndexRule]]$setupResults
+        currentCalcRuleIndices <- setup$from_min:setup$from_max
+        
+        ## currentIndices may include indices not in the calcRule, if the rule has been fractured,
+        ## so do not update sortID for elements not in the calcRule, using setup info for the calcRule.
+        indicesToUpdate <- currentIndices %in% currentCalcRuleIndices
+        
+        ## If new sortID values based on graph are higher than previously assigned,
+        ## or current sortID is NA, update the sortID values.
+        wh <- (is.na(allCalcRules[[currentCyclicRule]]$sortID[currentIndices]) &
+               !is.na(sortIDvals)) |
+            allCalcRules[[currentCyclicRule]]$sortID[currentIndices] < sortIDvals
+        wh[is.na(wh)] <- FALSE
+        wh[!indicesToUpdate] <- FALSE
+        allCalcRules[[currentCyclicRule]]$sortID[currentIndices][wh] <- sortIDvals[wh]
             
-            ## currentIndices may include indices not in the calcRule, if the rule has been fractured,
-            ## so do not update sortID for elements not in the calcRule, using setup info for the calcRule.
-            indicesToUpdate <- currentIndices %in% currentCalcRuleIndices
-            
-            ## If new sortID values based on graph are higher than previously assigned,
-            ## or current sortID is NA, update the sortID values.
-            wh <- (is.na(allCalcRules[[currentCyclicRule]]$sortID[currentIndices]) &
-                   !is.na(sortIDvals)) |
-                allCalcRules[[currentCyclicRule]]$sortID[currentIndices] < sortIDvals
-            wh[is.na(wh)] <- FALSE
-            wh[!indicesToUpdate] <- FALSE
-            allCalcRules[[currentCyclicRule]]$sortID[currentIndices][wh] <- sortIDvals[wh]
-            
-            ## Flag case where no updating done so can stop when next reach it again.
-            if(!sum(wh))
-                touched[currentCyclicRule] <- TRUE
-            
-            if(!inherits(allCalcRules[[currentCyclicRule]]$graphRule$indexRules[[focalIndexRule]], 'indexRuleClass_block'))
-                stop("new nimbleModel processing reached unexpected structure in cycle processing.")
-        }
+        touched[currentCyclicRule] <- TRUE
     }
+
 
     ## Set up actual integer-valued sortIDs.
     cyclicRules <- allCalcRules[cyclicRulesSet]
