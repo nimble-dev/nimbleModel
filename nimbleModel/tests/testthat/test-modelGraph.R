@@ -1776,6 +1776,33 @@ test_that("one-lag Markov structure with two intermediate variables, multivariat
     expect_identical(modelDef$calcRules[['b']]$rules[[1]]$multiSortIDindex, 3L)
 })
 
+
+## test AR(2) case
+
+## HERE - debug - calcRules is NULL!
+    code <- quote({
+        for(i in 3:10)
+            mu[i] ~ dnorm(rho1*mu[i-1] + rho2*mu[i-2], sd = sigma)
+        rho1 ~ dunif(0, 1)
+        rho2 ~ dunif(0, 1)
+        sigma ~ dunif(0, 1)
+        mu[1] ~ dnorm(0,1)
+        mu[2] ~ dnorm(0,1)
+        for(i in 1:10)
+            y[i] ~ dnorm(mu[i],1)
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
+    sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
+    topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
+    endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
+
+## test separate focalRule case
+
+## then try to relax and have complicated cases B,C
+
 ## cases (some weird) that should trigger unrolling 
 
 
