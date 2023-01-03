@@ -1793,18 +1793,30 @@ test_that("one-lag Markov structure with two intermediate variables, multivariat
     })
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
-    modelDef$processDecls()
+modelDef$processDecls()
+                                        #debugonce(modelDef$generateGraphInfo)
+debugonce(nimbleModel:::generateCalcRules)
     modelDef$generateGraphInfo()
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
+
+
+   code <- quote({
+       y ~ dnorm(mu, mu)
+       mu ~ dnorm(0,1)
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+modelDef$processDecls()
+    modelDef$generateGraphInfo()
+
 
 ## test separate focalRule case
 
 ## then try to relax and have complicated cases B,C
 
 ## cases (some weird) that should trigger unrolling 
-
 
 test_that("temporary tests that multiple dependences in SSM style declaration error out", {
     ## when get multiple focal sets working, check that processing mu then y vs y then mu bot

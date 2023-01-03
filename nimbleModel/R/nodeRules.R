@@ -326,7 +326,7 @@ calcRuleClass <- R6Class(
                 calcRules[[idx]]$declRule$stoch)
             if(any(stoch)) {
                 return(set('stochParent'))
-            } else {   ## If necessary check if deterministic children have stoch dependents
+            } else {   ## If necessary check if deterministic parents have stoch parents
                 idx <- 1
                 while(idx <= length(stoch)) {
                     ## Walk up the tree as needed.
