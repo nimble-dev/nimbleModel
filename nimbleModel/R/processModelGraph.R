@@ -123,55 +123,60 @@ generateCalcRules <- function(declRules, rhsOriginalRules, graphRules) {
 
     numOrigCalcRules <- length(calcRules)
     while(pos <= numOrigCalcRules) {  ## originally `length(calcRules)` but that leads to very slow SSM processing
-        varName <- calcRules[[pos]]$varName
-        deps <- getChildren(
-            calcRules[[pos]]$getFullRange(),
-            graphRules[[varName]]$rules)
-        if(!is.null(deps)) {
-            ## TODO: don't try to fracture singletons (how could I detect this?)
-            ## TODO: precompute the relevant rules to loop over to avoid if() checking
-            for(d in seq_along(deps)) {
-                ## Try to fracture all remaining rules by looping over non-top rules.
-                for(i in start:length(calcRules)) {
-                    if(!fracturedRules[i] && !is.null(deps[[d]]) && deps[[d]]$varName == calcRules[[i]]$varName) {
-                        result <- fracture(calcRules[[i]], deps[[d]], currentID = currentID,
-                                           parentRule = calcRules[[pos]], currentRules = calcRules)
-                        
-                        ## NULL result indicates complete overlap or no overlap, so leave as is.
-                        ## If fracturing has occurred, add nodes to end.
-                        if(!is.null(result)) {
-                            calcRules <- c(calcRules, result)
-                            fracturedRules[i] <- TRUE
-                            fracturedRules <- c(fracturedRules, rep(FALSE, length(result)))
-                            currentID <- currentID + length(result)
+        if(!fracturedRules[pos]) {
+            varName <- calcRules[[pos]]$varName
+            deps <- getChildren(
+                calcRules[[pos]]$getFullRange(),
+                graphRules[[varName]]$rules)
+            if(!is.null(deps)) {
+                deps <- deps[!sapply(deps, is.null)]
+                ## TODO: don't try to fracture singletons (how could I detect this?)
+                ## TODO: precompute the relevant rules to loop over to avoid if() checking
+                for(d in seq_along(deps)) {
+                    ## Try to fracture all remaining rules by looping over non-top rules.
+                    for(i in start:length(calcRules)) {
+                        if(!fracturedRules[i] && !is.null(deps[[d]]) && deps[[d]]$varName == calcRules[[i]]$varName) {
+                            result <- fracture(calcRules[[i]], deps[[d]], currentID = currentID,
+                                               parentRule = calcRules[[pos]], currentRules = calcRules)
+                            
+                            ## NULL result indicates complete overlap or no overlap, so leave as is.
+                            ## If fracturing has occurred, add nodes to end.
+                            if(!is.null(result)) {
+                                calcRules <- c(calcRules, result)
+                                fracturedRules[i] <- TRUE
+                                fracturedRules <- c(fracturedRules, rep(FALSE, length(result)))
+                                currentID <- currentID + length(result)
+                            }
                         }
+                        ## If parent rule has been fractured (state-space use case)
+                        ## don't continue fracturing, as we'll fracture with the pieces later.
+                        if(fracturedRules[pos]) break
                     }
-                    ## If parent rule has been fractured (state-space use case)
-                    ## don't continue fracturing, as we'll fracture with the pieces later.
+                    ## Don't fracture with additional deps either.
                     if(fracturedRules[pos]) break
                 }
-                ## Don't fracture with additional deps either.
-                if(fracturedRules[pos]) break
             }
         }
         pos <- pos + 1
-        # start <- max(c(start, pos))  # this prevents SSM with intervening det nodes from working correctly
+        ## start <- max(c(start, pos))  # this prevents SSM with intervening det nodes from working correctly
     }
 
     ## Find additional parent/children links (will this only be needed for SSM cases?)
     numCalcRules <- length(calcRules)
     if(numCalcRules > numOrigCalcRules)   # set children/parents for new rules
         for(pos in (numOrigCalcRules + 1):numCalcRules) {
-            varName <- calcRules[[pos]]$varName
-            deps <- getChildren(
-                calcRules[[pos]]$getFullRange(),
-                graphRules[[varName]]$rules)
-            if(!is.null(deps)) 
-                for(d in seq_along(deps)) 
-                    ## Find additional parent/children relationships.
-                    for(i in seq_len(numCalcRules)) 
-                        if(!fracturedRules[i] && !is.null(deps[[d]]) && deps[[d]]$varName == calcRules[[i]]$varName) 
-                            findLinks(calcRules[[i]], deps[[d]], parentRule = calcRules[[pos]])
+            if(!fracturedRules[pos]) {
+                varName <- calcRules[[pos]]$varName
+                deps <- getChildren(
+                    calcRules[[pos]]$getFullRange(),
+                    graphRules[[varName]]$rules)
+                if(!is.null(deps)) 
+                    for(d in seq_along(deps)) 
+                        ## Find additional parent/children relationships.
+                        for(i in seq_len(numCalcRules)) 
+                            if(!fracturedRules[i] && !is.null(deps[[d]]) && deps[[d]]$varName == calcRules[[i]]$varName) 
+                                findLinks(calcRules[[i]], deps[[d]], parentRule = calcRules[[pos]])
+            }
         }
      
     return(calcRules[!fracturedRules])
