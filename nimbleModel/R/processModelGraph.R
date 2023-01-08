@@ -247,7 +247,7 @@ processCyclicRules <- function(allCalcRules, modelDef) {
         if(sum(sapply(focalIndexRules, length))) {
             thisFocalIndices <- sapply(seq_along(focalIndexRules), function(i)
                 which(upstreamGraphRules[[i]]$indexSets$RHSindex2setID == focalIndexRules[[i]]))
-            focalIndex <- unique(thisFocalIndices)
+            focalIndex <- unique(unlist(thisFocalIndices))  # unlist() deals with AR(p) case where there might be a non-block rule
             if(length(focalIndex) > 1)
                 stop("new nimbleModel processing reached unexpected structure in cycle processing.")
             allCalcRules[[currentCyclicRule]]$multiSortIDindex <- focalIndex
@@ -280,13 +280,17 @@ processCyclicRules <- function(allCalcRules, modelDef) {
         if(!inherits(allCalcRules[[currentCyclicRule]]$graphRule$indexRules[[focalIndexRule]], 'indexRuleClass_block'))
             stop("new nimbleModel processing reached unexpected structure in cycle processing.")
         setup <- allCalcRules[[currentCyclicRule]]$graphRule$indexRules[[focalIndexRule]]$setupResults
+
+        ## TODO: extract out initial assignment as a function, since also done in `followUpstream`
         if(all(is.na(allCalcRules[[currentCyclicRule]]$sortID))) {
             childSortIDs <- sortIDs[allCalcRules[[currentCyclicRule]]$children]
+            if(any(is.infinite(childSortIDs))) ## Another cycle downstream; can't handle this.
+                stop("new nimbleModel processing reached unexpected structure in cycle processing.")
             if(any(is.finite(childSortIDs)))
                 maxSortID <- max(childSortIDs[is.finite(childSortIDs)]) else maxSortID <- fullMaxSortID
             
-            sortIDvals <- seq(from = maxSortID + eps,
-                              to = maxSortID + eps + setup$from_max - setup$from_min,
+            sortIDvals <- eps + seq(from = maxSortID,
+                              to = maxSortID + setup$from_max - setup$from_min,
                               by = 1)
             ## Adjust for 'direction' of 'time'.
             if(directions[i] < 0)
@@ -315,9 +319,19 @@ processCyclicRules <- function(allCalcRules, modelDef) {
     tmpSortIDs <- unlist(lapply(cyclicRules,
                                 function(rule) rule$sortID))
     NAsortIDs <- is.na(tmpSortIDs)
-    tmpSortIDs <- fullMaxSortID + rank(tmpSortIDs)
-    tmpSortIDs[NAsortIDs] <- NA
+    ## Can have ties if have distinct unrelated cycles. Use of `'first'` ensures no gaps in the sortIDs.
+    rk <- rank(tmpSortIDs, ties.method = 'min')
+    ## Remove gaps from duplicated ranks
+    if(any(duplicated(rk))) {
+        uniqs <- sort(unique(rk))
+        lookup <- rep(NA, max(uniqs))
+        lookup[uniqs] <- 1:length(uniqs)
+        rk <- lookup[rk]
+    }
     
+    tmpSortIDs <- fullMaxSortID + rk
+    tmpSortIDs[NAsortIDs] <- NA
+
     tmp <- sapply(seq_along(numSortIDs), function(i) {
         if(i == 1) {
             cyclicRules[[i]]$sortID <- tmpSortIDs[1:numSortIDs[1]]
@@ -347,74 +361,88 @@ setSortIDs <- function(calcRules) {
 
 followUpstream <- function(upstreamGraphRule, upstreamRules, childSortID, focalIndex, allCalcRules, cyclicRulesSet, varNames, sortIDs, fullMaxSortID, direction, eps) {
     parentVar <- upstreamGraphRule$childVar
-    currentCyclicRule <- cyclicRulesSet[varNames[cyclicRulesSet] == parentVar]
+
+    ## There could be multiple rules if model has two cycles involving a single variable.
+    currentCyclicRules <- cyclicRulesSet[varNames[cyclicRulesSet] == parentVar]
 
     focalIndexRule <- upstreamGraphRule$indexSets$RHSindex2setID[focalIndex]
+    if(focalIndexRule == 0)  # non-block rule, nothing to follow
+        return(NULL)
     focalIndex <- which(upstreamGraphRule$indexSets$LHSindex2setID == focalIndexRule)
     ## The upstreamGraphRule should only involve one index.
     if(length(focalIndex) != 1) stop("new nimbleModel processing reached unexpected structure in cycle processing.")
 
-    currentSortID <- allCalcRules[[currentCyclicRule]]$sortID
-    initialized <- FALSE
-    if(all(is.na(currentSortID))) {
-        setup <- allCalcRules[[currentCyclicRule]]$graphRule$indexRules[[focalIndexRule]]$setupResults
-        childSortIDs <- sortIDs[allCalcRules[[currentCyclicRule]]$children]
-        if(any(is.finite(childSortIDs)))
-            maxSortID <- max(childSortIDs[is.finite(childSortIDs)]) else maxSortID <- fullMaxSortID
-        
-        sortIDvals <- seq(from = maxSortID + eps,
-                          to = maxSortID + eps + setup$from_max - setup$from_min,
-                          by = 1)
-        ## Adjust for 'direction' of 'time'.
-        if(direction < 0)
-            sortIDvals <- rev(sortIDvals)
-        indices <- setup$from_min:setup$from_max
-        allCalcRules[[currentCyclicRule]]$sortID[indices] <- sortIDvals
+    for(currentCyclicRule in currentCyclicRules) {
         currentSortID <- allCalcRules[[currentCyclicRule]]$sortID
-        allCalcRules[[currentCyclicRule]]$multiSortIDindex <- focalIndex
-        initialized <- TRUE
-    }
-    
-    ## Determine sortID incrementing based on graphRule.
-    setup <- upstreamGraphRule$indexRules[[focalIndexRule]]$setupResults
-    if(!inherits(upstreamGraphRule$indexRules[[focalIndexRule]], 'indexRuleClass_block'))
-        stop("new nimbleModel processing reached unexpected structure in cycle processing.")
-    childIndices <- setup$from_min:setup$from_max
-    sortIDvals <- childSortID[childIndices] + eps
-    currentIndices <- childIndices + as.integer(setup$offset)  # as.integer() because of identical() below
-    
-    focalIndexRule <- allCalcRules[[currentCyclicRule]]$index2setID[focalIndex]
-    if(!inherits(allCalcRules[[currentCyclicRule]]$graphRule$indexRules[[focalIndexRule]], 'indexRuleClass_block'))
-        stop("new nimbleModel processing reached unexpected structure in cycle processing.")
-    
-    setup <- allCalcRules[[currentCyclicRule]]$graphRule$indexRules[[focalIndexRule]]$setupResults
-    currentCalcRuleIndices <- setup$from_min:setup$from_max
-    
-    ## currentIndices may include indices not in the calcRule, if the rule has been fractured,
-    ## so do not update sortID for elements not in the calcRule, using setup info for the calcRule.
-    indicesToUpdate <- currentIndices %in% currentCalcRuleIndices
-    
-    ## If new sortID values based on graph are higher than previously assigned,
-    ## or current sortID is NA, update the sortID values.
-    wh <- (is.na(allCalcRules[[currentCyclicRule]]$sortID[currentIndices]) &
-           !is.na(sortIDvals)) |
-        allCalcRules[[currentCyclicRule]]$sortID[currentIndices] < sortIDvals
-    wh[is.na(wh)] <- FALSE
-    wh[!indicesToUpdate] <- FALSE
-    allCalcRules[[currentCyclicRule]]$sortID[currentIndices][wh] <- sortIDvals[wh]
-    
-    if(!sum(wh) && !initialized)   ## only complete cycle if get back to a calcRule and don't need to modify it
-        return(NULL)
-    
-    childSortID <- allCalcRules[[currentCyclicRule]]$sortID
-
-    ## Determine the graphRule involved in getting next upstream calcRule.
-    parentVars <- sapply(upstreamRules[[varNames[currentCyclicRule]]]$rules,
-                         function(rule) rule$childVar)
-    idx <- which(parentVars %in% varNames[cyclicRulesSet])
+        initialized <- FALSE
+        if(all(is.na(currentSortID))) {
+            setup <- allCalcRules[[currentCyclicRule]]$graphRule$indexRules[[focalIndexRule]]$setupResults
+            childSortIDs <- sortIDs[allCalcRules[[currentCyclicRule]]$children]
+            if(any(is.infinite(childSortIDs))) ## Another cycle downstream; can't handle this.
+                stop("new nimbleModel processing reached unexpected structure in cycle processing.")
+            if(any(is.finite(childSortIDs)))
+                maxSortID <- max(childSortIDs[is.finite(childSortIDs)]) else maxSortID <- fullMaxSortID
             
-    upstreamGraphRules <- upstreamRules[[varNames[currentCyclicRule]]]$rules[idx]
-    sapply(upstreamGraphRules, followUpstream, upstreamRules, childSortID, focalIndex, allCalcRules,
-           cyclicRulesSet, varNames, sortIDs, fullMaxSortID, direction, eps)
+            sortIDvals <- eps + seq(from = maxSortID,
+                              to = maxSortID + setup$from_max - setup$from_min,
+                              by = 1)
+            ## Adjust for 'direction' of 'time'.
+            if(direction < 0)
+                sortIDvals <- rev(sortIDvals)
+            indices <- setup$from_min:setup$from_max
+            allCalcRules[[currentCyclicRule]]$sortID[indices] <- sortIDvals
+            currentSortID <- allCalcRules[[currentCyclicRule]]$sortID
+            allCalcRules[[currentCyclicRule]]$multiSortIDindex <- focalIndex
+            initialized <- TRUE
+        }
+        
+        ## Determine sortID incrementing based on graphRule.
+        setup <- upstreamGraphRule$indexRules[[focalIndexRule]]$setupResults
+        if(!inherits(upstreamGraphRule$indexRules[[focalIndexRule]], 'indexRuleClass_block'))
+            stop("new nimbleModel processing reached unexpected structure in cycle processing.")
+        childIndices <- setup$from_min:setup$from_max
+        sortIDvals <- childSortID[childIndices] + eps
+        currentIndices <- childIndices + as.integer(setup$offset)  # as.integer() because of identical() below
+        
+        focalIndexRule <- allCalcRules[[currentCyclicRule]]$index2setID[focalIndex]
+        if(!inherits(allCalcRules[[currentCyclicRule]]$graphRule$indexRules[[focalIndexRule]], 'indexRuleClass_block'))
+            stop("new nimbleModel processing reached unexpected structure in cycle processing.")
+        
+        setup <- allCalcRules[[currentCyclicRule]]$graphRule$indexRules[[focalIndexRule]]$setupResults
+        currentCalcRuleIndices <- setup$from_min:setup$from_max
+        
+        ## currentIndices may include indices not in the calcRule, if the rule has been fractured,
+        ## so do not update sortID for elements not in the calcRule, using setup info for the calcRule.
+        indicesToUpdate <- currentIndices %in% currentCalcRuleIndices
+        
+        ## If new sortID values based on graph are higher than previously assigned,
+        ## or current sortID is NA, update the sortID values.
+        wh <- (is.na(allCalcRules[[currentCyclicRule]]$sortID[currentIndices]) &
+               !is.na(sortIDvals)) |
+            allCalcRules[[currentCyclicRule]]$sortID[currentIndices] < sortIDvals
+        wh[is.na(wh)] <- FALSE
+        wh[!indicesToUpdate] <- FALSE
+        if(any(wh))
+            allCalcRules[[currentCyclicRule]]$sortID[currentIndices][wh] <- sortIDvals[wh]
+        
+        if(!sum(wh) && !initialized)   ## only complete cycle if get back to a calcRule and don't need to modify it
+            next # return(NULL)
+
+        ## If no indices to update, we have disjoint indices so don't continue upstream.
+        if(!sum(indicesToUpdate, na.rm = TRUE))
+            next
+        
+        childSortID <- allCalcRules[[currentCyclicRule]]$sortID
+
+        ## Determine the graphRule involved in getting next upstream calcRule.
+        parentVars <- sapply(upstreamRules[[varNames[currentCyclicRule]]]$rules,
+                             function(rule) rule$childVar)
+        idx <- which(parentVars %in% varNames[cyclicRulesSet])
+        
+        upstreamGraphRules <- upstreamRules[[varNames[currentCyclicRule]]]$rules[idx]
+        sapply(upstreamGraphRules, followUpstream, upstreamRules, childSortID, focalIndex, allCalcRules,
+               cyclicRulesSet, varNames, sortIDs, fullMaxSortID, direction, eps)
+        next # return(NULL)
+    }
     return(NULL)
 }

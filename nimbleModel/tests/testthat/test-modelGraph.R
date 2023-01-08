@@ -1777,9 +1777,7 @@ test_that("one-lag Markov structure with two intermediate variables, multivariat
 })
 
 
-## test AR(2) case
-
-## HERE - debug - calcRules is NULL!
+test_that("AR(p) cases", {
     code <- quote({
         for(i in 3:10)
             mu[i] ~ dnorm(rho1*mu[i-1] + rho2*mu[i-2], sd = sigma)
@@ -1793,41 +1791,190 @@ test_that("one-lag Markov structure with two intermediate variables, multivariat
     })
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
-modelDef$processDecls()
-                                        #debugonce(modelDef$generateGraphInfo)
-debugonce(nimbleModel:::generateCalcRules)
+    modelDef$processDecls()
     modelDef$generateGraphInfo()
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
+    expect_identical(sortIDs, list('rho1' = 1, 'rho2' = 1, 'sigma' = 1,
+                                   'mu' = list(1,1,9,8,2,3, c(rep(as.numeric(NA),4), 4:7, NA)),
+                                   'y' = rep(10, 5)))
+    expect_identical(topRules, list('rho1' = TRUE, 'rho2' = TRUE, 'sigma' = TRUE,
+                                    'mu' = c(rep(TRUE, 2), rep(FALSE, 5)),
+                                    'y' = rep(FALSE, 5)))
+    expect_identical(endRules, list('rho1' = FALSE, 'rho2' = FALSE, 'sigma' = FALSE,
+                                    'mu' = c(rep(FALSE, 7)),
+                                    'y' = rep(TRUE, 5)))
 
-
-   code <- quote({
-       y ~ dnorm(mu, mu)
-       mu ~ dnorm(0,1)
+    code <- quote({
+        for(i in 3:10)
+            mu[i] ~ dnorm(rho1*mu[i-1] + rho2*mu[i-2], sd = sigma)
+        rho1 ~ dunif(0, 1)
+        rho2 ~ dunif(0, 1)
+        sigma ~ dunif(0, 1)
+        mu[1] ~ dnorm(0, sd = sigma)
+        mu[2] ~ dnorm(rho1*mu[1], sd = sigma)
+        for(i in 1:10)
+            y[i] ~ dnorm(mu[i],1)
     })
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
-modelDef$processDecls()
+    modelDef$processDecls()
     modelDef$generateGraphInfo()
+    sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
+    topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
+    endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
+    expect_identical(sortIDs, list('rho1' = 2, 'rho2' = 3, 'sigma' = 1,
+                                   'mu' = list(2,3,11,10,4,5, c(rep(as.numeric(NA),4), 6:9, NA)),
+                                   'y' = rep(12, 5)))
+    expect_identical(topRules, list('rho1' = TRUE, 'rho2' = TRUE, 'sigma' = TRUE,
+                                    'mu' = rep(FALSE, 7),
+                                    'y' = rep(FALSE, 5)))
+    expect_identical(endRules, list('rho1' = FALSE, 'rho2' = FALSE, 'sigma' = FALSE,
+                                    'mu' = c(rep(FALSE, 7)),
+                                    'y' = rep(TRUE, 5)))
+
+    ## Now with a block rule for starting value
+    code <- quote({
+        for(i in 3:10)
+            mu[i] ~ dnorm(rho1*mu[i-1] + rho2*mu[i-2], sd = sigma)
+        rho1 ~ dunif(0, 1)
+        rho2 ~ dunif(0, 1)
+        sigma ~ dunif(0, 1)
+        mu[1] ~ dnorm(0, sd = sigma)
+        for(i in 2:2)
+        mu[i] ~ dnorm(rho1*mu[i-1], sd = sigma)
+        for(i in 1:10)
+            y[i] ~ dnorm(mu[i],1)
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
+    sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
+    topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
+    endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
+    expect_identical(sortIDs, list('rho1' = 2, 'rho2' = 3, 'sigma' = 1,
+                                   'mu' = list(2,3,11,10,4,5, c(rep(as.numeric(NA),4), 6:9, NA)),
+                                   'y' = rep(12, 5)))
+    expect_identical(topRules, list('rho1' = TRUE, 'rho2' = TRUE, 'sigma' = TRUE,
+                                    'mu' = rep(FALSE, 7),
+                                    'y' = rep(FALSE, 5)))
+    expect_identical(endRules, list('rho1' = FALSE, 'rho2' = FALSE, 'sigma' = FALSE,
+                                    'mu' = c(rep(FALSE, 7)),
+                                    'y' = rep(TRUE, 5)))
+
+})
+
+test_that("only two-lag SSM", {
+    ## Note that for this case, the sortIDs are valid, but there are more unique sortIDs than needed.
+    code <- quote({
+        for(i in 1:10) 
+            y[i] ~ dnorm(mu[i], sd = sigma)
+        for(i in 3:10)
+            mu[i] ~ dnorm(rho*mu[i-2], sd = sigma)
+        mu[1] ~ dnorm(0, 1)
+        mu[2] ~ dnorm(0, 1)
+        rho ~ dunif(0, 1)
+        sigma ~ dunif(0, 1)
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
+    sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
+    topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
+    endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
+    expect_identical(sortIDs, list('mu' = list(1,1,7,2,2,c(rep(as.numeric(NA), 4), 3:6)), 'rho' = 1, 'sigma' = 1,
+                                   'y' = rep(8, 4)))
+    expect_identical(topRules, list('mu' = c(TRUE, TRUE, rep(FALSE, 4)), 'rho' = TRUE, 'sigma' = TRUE,
+                                    'y' = rep(FALSE, 4)))
+    expect_identical(endRules, list('mu' = rep(FALSE, 6), 'rho' = FALSE, 'sigma' = FALSE, 
+                                    'y' = rep(TRUE, 4)))
+})
 
 
-## test separate focalRule case
+test_that("standard one-lag SSM with two parts (two focalRules but on one variable)", {
+    code <- quote({
+        for(i in 1:5) 
+            y[i] ~ dnorm(mu[i], sd = sigma)
+        for(i in 2:5)
+            mu[i] ~ dnorm(rho*mu[i-1], sd = sigma)
+        mu[1] ~ dnorm(0, 1)
+        rho ~ dunif(0, 1)
+        sigma ~ dunif(0, 1)
+        for(i in 101:105)
+            mu[i] ~ dnorm(mu[i-1], 1)
+        mu[100] ~ dnorm(0, 1)
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
+    sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
+    topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
+    endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
+    expect_identical(sortIDs, list('mu' = list(1,1,6,7,2,
+                                               c(rep(as.numeric(NA),2),3:4),
+                                               2, c(rep(as.numeric(NA),101),3:5)),
+                                               'rho' = 1, 'sigma' = 1,
+                                   'y' = rep(7, 3)))
+    expect_identical(topRules, list('mu' = c(rep(TRUE, 2), rep(FALSE, 6)), 'rho' = TRUE, 'sigma' = TRUE,
+                                    'y' = rep(FALSE, 3)))
+    expect_identical(endRules, list('mu' = c(rep(FALSE, 3), TRUE, rep(FALSE, 4)), 'rho' = FALSE, 'sigma' = FALSE, 
+                                    'y' = rep(TRUE, 3)))
+})
 
-## then try to relax and have complicated cases B,C
+extractRuleElement <- function(vr, nm) {
+    tmp <- sapply(vr$rules, function(rule) rule[[nm]])
+    if(is.matrix(tmp))
+        tmp <- c(tmp)
+    names(tmp) <- NULL
+    for(i in seq_along(tmp))
+        names(tmp[[i]]) <- NULL
+    return(tmp)
+}
 
-## cases (some weird) that should trigger unrolling 
+## TODO:
+
+## Case D: two focalRules
+## mu[i] <- mu[i-1]
+## sigma[i] <- sigma[i-1]
+
+## then try to relax and have complicated cases B,C (these are error-trapped below)
+## they should trigger unrolling
+
+## Can't handle this because the two parts are connected.
+test_that("standard one-lag SSM with two parts (two focalRules but on one variable)", {
+    code <- quote({
+        for(i in 1:5) 
+            y[i] ~ dnorm(mu[i], sd = sigma)
+        for(i in 2:5)
+            mu[i] ~ dnorm(rho*mu[i-1], sd = sigma)
+        mu[1] ~ dnorm(0, 1)
+        rho ~ dunif(0, 1)
+        sigma ~ dunif(0, 1)
+        for(i in 6:10)
+            mu[i] ~ dnorm(mu[i-1], 1)
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    expect_error(modelDef$generateGraphInfo(), "reached unexpected structure")
+})
 
 test_that("temporary tests that multiple dependences in SSM style declaration error out", {
     ## when get multiple focal sets working, check that processing mu then y vs y then mu bot
     ## give correct result; if one has already been processed then the initialization of sortID
     ## for it shouldn't run in the cycling through for the other; should walk through what happens
+
+    ## Case C
     code <- quote({
         for(i in 2:5) {
-            y[i] ~ dnorm(mu[i] + y[i-1], sd = tau)
+            z[i] ~ dnorm(mu[i] + z[i-1], sd = tau)
             mu[i] ~ dnorm(mu[i-1], sd = sigma)
         }
-        y[1] ~ dnorm(mu[1], sd = tau)
+        z[1] ~ dnorm(mu[1], sd = tau)
         mu[1] ~ dnorm(0, 1)
         sigma ~ dunif(0, 1)
         tau ~ dunif(0, 1)
@@ -1838,23 +1985,21 @@ test_that("temporary tests that multiple dependences in SSM style declaration er
     expect_error(modelDef$generateGraphInfo())
     ## here we don't assign vector of sortIDs to 'y' because only have one focal cycle
 
+    ## Case B
     code <- quote({
-        for(i in 3:10)
-            mu[i] ~ dnorm(rho1*mu[i-1] + rho2*mu[i-2], sd = sigma)
-        rho1 ~ dunif(0, 1)
-        rho2 ~ dunif(0, 1)
+        for(i in 2:5) {
+            z[i] ~ dnorm(mu[i] + z[i-1], sd = tau)
+            mu[i] ~ dnorm(z[i-1], sd = sigma)
+        }
+        y[1] ~ dnorm(mu[1], sd = tau)
+        mu[1] ~ dnorm(0, 1)
         sigma ~ dunif(0, 1)
-        mu[1] ~ dnorm(0,1)
-        mu[2] ~ dnorm(0,1)
-        for(i in 1:10)
-            y[i] ~ dnorm(mu[i],1)
-    })
+        tau ~ dunif(0, 1)
+     })
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
     expect_error(modelDef$generateGraphInfo())
-    ## this fails because of two parentVars in processCyclicRules - good; up through processCyclicRules, it looks correct
-    ## AR(2) with i in 3:5 actually fully unrolls because of quirk of RHSoriginal rules with short sequence
 
     code <- quote({
         for(i in 2:5) {
