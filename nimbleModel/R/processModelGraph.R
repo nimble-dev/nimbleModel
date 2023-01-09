@@ -227,10 +227,12 @@ processCyclicRules <- function(allCalcRules, modelDef) {
         parentVars <- sapply(modelDef$upstreamRules[[varNames[currentCyclicRule]]]$rules, function(rule)
             rule$childVar)
         idx <- which(parentVars %in% varNames[cyclicRulesSet])
+
         if(length(idx) != 1) 
             if(length(unique(parentVars[idx])) > 1)  ## e.g. mu[i] <- mu[i-1] + z[i], with z[i] also in a cycle
                 stop("new nimbleModel processing reached unexpected structure in cycle processing.")
         ## might be able to handle this if restrict to direction being same mu[i] <- mu[i-1]+z[i] (can't be z[i+1])
+
         ## Multiple graphRules can result from AR(p) structure for p>1.
         upstreamGraphRules <- modelDef$upstreamRules[[varNames[currentCyclicRule]]]$rules[idx]
         offsets <- lapply(upstreamGraphRules, function(graphRule) sapply(graphRule$indexRules, function(rule) 

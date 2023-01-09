@@ -1925,24 +1925,37 @@ test_that("standard one-lag SSM with two parts (two focalRules but on one variab
                                     'y' = rep(TRUE, 3)))
 })
 
-extractRuleElement <- function(vr, nm) {
-    tmp <- sapply(vr$rules, function(rule) rule[[nm]])
-    if(is.matrix(tmp))
-        tmp <- c(tmp)
-    names(tmp) <- NULL
-    for(i in seq_along(tmp))
-        names(tmp[[i]]) <- NULL
-    return(tmp)
-}
 
-## TODO:
+test_that("two unrelated cycles", {
+    ## Note that for this case, the sortIDs are valid, but there are more unique sortIDs than needed.
+    code <- quote({
+        for(i in 1:10) 
+            y[i] ~ dnorm(mu[i], sd = exp(log_sigma[i]))
+        for(i in 2:10) {
+            mu[i] ~ dnorm(rho*mu[i-1], 1)
+            log_sigma[i] ~ dnorm(rho*log_sigma[i-1], 1)
+        }
+        mu[1] ~ dnorm(0, 1)
+        rho ~ dunif(0, 1)
+        log_sigma[1] ~ dnorm(0, 1)
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
+    sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
+    topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
+    endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
+    expect_identical(sortIDs, list('mu' = list(1,10,2,c(rep(as.numeric(NA),2),3:9)),
+                                   'rho' = 1,
+                                   'log_sigma' = list(1,10,2,c(rep(as.numeric(NA),2),3:9)),
+                                   'y' = rep(11, 3)))
+    expect_identical(topRules, list('mu' = c(TRUE, rep(FALSE, 3)), 'rho' = TRUE,
+                                    'log_sigma' = c(TRUE, rep(FALSE, 3)), 'y' = rep(FALSE, 3)))
+    expect_identical(endRules, list('mu' = rep(FALSE, 4), 'rho' = FALSE,
+                                    'log_sigma' = rep(FALSE, 4), 'y' = rep(TRUE, 3)))
+})
 
-## Case D: two focalRules
-## mu[i] <- mu[i-1]
-## sigma[i] <- sigma[i-1]
-
-## then try to relax and have complicated cases B,C (these are error-trapped below)
-## they should trigger unrolling
 
 ## Can't handle this because the two parts are connected.
 test_that("standard one-lag SSM with two parts (two focalRules but on one variable)", {
@@ -2001,19 +2014,6 @@ test_that("temporary tests that multiple dependences in SSM style declaration er
     modelDef$processDecls()
     expect_error(modelDef$generateGraphInfo())
 
-    code <- quote({
-        for(i in 2:5) {
-            mu[i] ~ dnorm(rho*mu[i-1], sd = sigma)
-            theta[i] ~ dnorm(rho*theta[i-1], sd = sigma)
-        }
-        rho ~ dunif(0, 1)
-        sigma ~ dunif(0, 1)
-    })
-    modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    expect_error(modelDef$generateGraphInfo())
-     
     ## handling this efficiently would probably be a pain because of multiple vectors of sortIDs; probably just unroll
     code <- quote({
         for(j in 1:5) {
