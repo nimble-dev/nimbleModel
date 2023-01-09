@@ -59,7 +59,7 @@ getChildren <- function(varRange, graphRules) {
     return(result)
 }
 
-generateCalcRules <- function(declRules, rhsOriginalRules, graphRules) {
+generateCalcRules <- function(declRules, rhsOriginalRules, graphRules, recurseFracturing = FALSE) {
     ## Step 1: fracture LHS with rhsOriginalRules of same var
     ## e.g., mu[i] ~ dnorm(z[i], 1); y[2:3] <- mu[2:3]
     ## Fracture based on pieces of var potentially having different children.
@@ -122,7 +122,10 @@ generateCalcRules <- function(declRules, rhsOriginalRules, graphRules) {
     fracturedRules <- rep(FALSE, length(calcRules))
 
     numOrigCalcRules <- length(calcRules)
-    while(pos <= numOrigCalcRules) {  ## originally `length(calcRules)` but that leads to very slow SSM processing
+##     while(pos <= numOrigCalcRules) {  ## originally `length(calcRules)` but that leads to very slow SSM processing
+    while(pos <= length(calcRules)) {  ## originally `length(calcRules)` but that leads to very slow SSM processing
+        if(!recurseFracturing && pos > numOrigCalcRules)
+            break
         if(!fracturedRules[pos]) {
             varName <- calcRules[[pos]]$varName
             deps <- getChildren(
@@ -228,7 +231,7 @@ processCyclicRules <- function(allCalcRules, modelDef) {
             rule$childVar)
         idx <- which(parentVars %in% varNames[cyclicRulesSet])
 
-        if(length(idx) != 1) 
+        if(FALSE && length(idx) != 1) 
             if(length(unique(parentVars[idx])) > 1)  ## e.g. mu[i] <- mu[i-1] + z[i], with z[i] also in a cycle
                 stop("new nimbleModel processing reached unexpected structure in cycle processing.")
         ## might be able to handle this if restrict to direction being same mu[i] <- mu[i-1]+z[i] (can't be z[i+1])

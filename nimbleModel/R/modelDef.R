@@ -168,15 +168,11 @@ modelDefClass <- R6Class(
 
                 ## Now assign remaining sortIDs (i.e., to various parent calcRules that formerly had Inf as sortID.
                 sorted <- setSortIDs(allCalcRules)
-                if(!sorted) {
-                    ## new approach:
-                    ## allCalcRules <- unrollCyclicRules(<set of allCallRules with NA sortIDs>)
-                    ## this will create lists of rules with parents,children set
-                    ## X Try again, but do full fracturing.
-                    ## X allCalcRules <- generateCalcRules(declRules, rhsOriginalRules, downstreamRules, full = TRUE)
-                    ## X with full=TRUE, use 'while(pos <= length(calcRules))'
-                    ## Now assign remaining sortIDs (i.e., to various parent calcRules that formerly had Inf as sortID.
-                    ## sorted <- setSortIDs(allCalcRules)
+                if(!sorted) {  # Complicated SSM-type cases or true cycles
+                    ## Fully fracture to try to handle complicated SSM cases.
+                    allCalcRules <- generateCalcRules(declRules, rhsOriginalRules, downstreamRules,
+                                                      recurseFracturing = TRUE)
+                    sorted <- setSortIDs(allCalcRules)
                     if(!sorted)
                         stop("Cycle found in model graph. NIMBLE does not allow cyclic models.")
                 }

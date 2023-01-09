@@ -1649,7 +1649,7 @@ test_that("one-lag Markov structure handled correctly", {
    sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
    topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
    endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
-   expect_identical(sortIDs, list('rho' = 1, 'sigma' = 1, 'mu' = list(5, c(NA, 4, 3, NA, NA), 2)))
+   expect_identical(sortIDs, list('rho' = 1, 'sigma' = 1, 'mu' = list(5, c(NA, 4, 3), 2)))
    expect_identical(topRules, list('rho' = TRUE, 'sigma' = TRUE, 'mu' = rep(FALSE, 3)))
    expect_identical(endRules, list('rho' = FALSE, 'sigma' = FALSE, 'mu' = c(TRUE, FALSE, FALSE)))
    expect_identical(modelDef$calcRules[['mu']]$rules[[2]]$multiSortIDindex, 1L)
@@ -1797,7 +1797,7 @@ test_that("AR(p) cases", {
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
     expect_identical(sortIDs, list('rho1' = 1, 'rho2' = 1, 'sigma' = 1,
-                                   'mu' = list(1,1,9,8,2,3, c(rep(as.numeric(NA),4), 4:7, NA)),
+                                   'mu' = list(1,1,9,8,2,3, c(rep(as.numeric(NA),4), 4:7)),
                                    'y' = rep(10, 5)))
     expect_identical(topRules, list('rho1' = TRUE, 'rho2' = TRUE, 'sigma' = TRUE,
                                     'mu' = c(rep(TRUE, 2), rep(FALSE, 5)),
@@ -1825,7 +1825,7 @@ test_that("AR(p) cases", {
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
     expect_identical(sortIDs, list('rho1' = 2, 'rho2' = 3, 'sigma' = 1,
-                                   'mu' = list(2,3,11,10,4,5, c(rep(as.numeric(NA),4), 6:9, NA)),
+                                   'mu' = list(2,3,11,10,4,5, c(rep(as.numeric(NA),4), 6:9)),
                                    'y' = rep(12, 5)))
     expect_identical(topRules, list('rho1' = TRUE, 'rho2' = TRUE, 'sigma' = TRUE,
                                     'mu' = rep(FALSE, 7),
@@ -1855,7 +1855,7 @@ test_that("AR(p) cases", {
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
     expect_identical(sortIDs, list('rho1' = 2, 'rho2' = 3, 'sigma' = 1,
-                                   'mu' = list(2,3,11,10,4,5, c(rep(as.numeric(NA),4), 6:9, NA)),
+                                   'mu' = list(2,3,11,10,4,5, c(rep(as.numeric(NA),4), 6:9)),
                                    'y' = rep(12, 5)))
     expect_identical(topRules, list('rho1' = TRUE, 'rho2' = TRUE, 'sigma' = TRUE,
                                     'mu' = rep(FALSE, 7),
@@ -1976,11 +1976,7 @@ test_that("standard one-lag SSM with two parts (two focalRules but on one variab
     expect_error(modelDef$generateGraphInfo(), "reached unexpected structure")
 })
 
-test_that("temporary tests that multiple dependences in SSM style declaration error out", {
-    ## when get multiple focal sets working, check that processing mu then y vs y then mu bot
-    ## give correct result; if one has already been processed then the initialization of sortID
-    ## for it shouldn't run in the cycling through for the other; should walk through what happens
-
+test_that("complicated cyclic dependency", {
     ## Case C
     code <- quote({
         for(i in 2:5) {
@@ -1995,16 +1991,27 @@ test_that("temporary tests that multiple dependences in SSM style declaration er
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    expect_error(modelDef$generateGraphInfo())
-    ## here we don't assign vector of sortIDs to 'y' because only have one focal cycle
+    modelDef$generateGraphInfo()
 
-    ## Case B
+    sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
+    topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
+    endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
+    expect_identical(sortIDs, list('mu' = list(1,6,2, c(rep(as.numeric(NA), 2), 3, 4)),
+                                   'sigma' = 1, 'tau' = 1,
+                                   'z' = list(2,7,3, c(rep(as.numeric(NA),2),4,5))))
+    expect_identical(topRules, list('mu' = c(TRUE, rep(FALSE, 3)), 'sigma' = TRUE, 'tau' = TRUE,
+                                    'z' = rep(FALSE, 4)))
+    expect_identical(endRules, list('mu' = rep(FALSE, 4), 'sigma' = FALSE, 'tau' = FALSE,
+                                    'z' = c(FALSE, TRUE, rep(FALSE ,2))))
+
+    ## Case C, with cycles processed in different order
     code <- quote({
         for(i in 2:5) {
+            ## reverse definition order
+            mu[i] ~ dnorm(mu[i-1], sd = sigma)
             z[i] ~ dnorm(mu[i] + z[i-1], sd = tau)
-            mu[i] ~ dnorm(z[i-1], sd = sigma)
         }
-        y[1] ~ dnorm(mu[1], sd = tau)
+        z[1] ~ dnorm(mu[1], sd = tau)
         mu[1] ~ dnorm(0, 1)
         sigma ~ dunif(0, 1)
         tau ~ dunif(0, 1)
@@ -2012,7 +2019,77 @@ test_that("temporary tests that multiple dependences in SSM style declaration er
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    expect_error(modelDef$generateGraphInfo())
+    modelDef$generateGraphInfo()
+
+    sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
+    topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
+    endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
+    expect_identical(sortIDs, list('mu' = list(1,6,2, c(rep(as.numeric(NA), 2), 3, 4)),
+                                   'sigma' = 1, 'tau' = 1,
+                                   'z' = list(2,7,3, c(rep(as.numeric(NA),2),4,5))))
+    expect_identical(topRules, list('mu' = c(TRUE, rep(FALSE, 3)), 'sigma' = TRUE, 'tau' = TRUE,
+                                    'z' = rep(FALSE, 4)))
+    expect_identical(endRules, list('mu' = rep(FALSE, 4), 'sigma' = FALSE, 'tau' = FALSE,
+                                    'z' = c(FALSE, TRUE, rep(FALSE ,2))))
+
+    ## Case B
+    code <- quote({
+        for(i in 2:5) {
+            z[i] ~ dnorm(mu[i] + z[i-1], sd = tau)
+            mu[i] ~ dnorm(z[i-1], sd = sigma)
+        }
+        mu[1] ~ dnorm(0, 1)
+        z[1] ~ dnorm(mu[1], 1)
+        sigma ~ dunif(0, 1)
+        tau ~ dunif(0, 1)
+     })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
+    sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
+    topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
+    endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
+    expect_identical(sortIDs, list('mu' = list(1,3, c(rep(as.numeric(NA),2),5,7,9)),
+                                   'sigma' = 2, 'tau' = 3,
+                                   'z' = list(2,10,4, c(rep(as.numeric(NA),2),6,8))))
+    expect_identical(topRules, list('mu' = c(TRUE, rep(FALSE, 2)), 'sigma' = TRUE, 'tau' = TRUE,
+                                    'z' = rep(FALSE, 4)))
+    expect_identical(endRules, list('mu' = rep(FALSE, 3), 'sigma' = FALSE, 'tau' = FALSE,
+                                    'z' = c(FALSE, TRUE, rep(FALSE , 2))))
+
+
+    ## Case B, with cycles processed in different order
+    code <- quote({
+        for(i in 2:5) {
+            ## mu and z defined in reverse order
+            mu[i] ~ dnorm(z[i-1], sd = sigma)
+            z[i] ~ dnorm(mu[i] + z[i-1], sd = tau)
+        }
+        mu[1] ~ dnorm(0, 1)
+        z[1] ~ dnorm(mu[1], 1)
+        sigma ~ dunif(0, 1)
+        tau ~ dunif(0, 1)
+     })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
+    sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
+    topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
+    endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
+    expect_identical(sortIDs, list('mu' = list(1,3, c(rep(as.numeric(NA),2),5,7,9)),
+                                   'sigma' = 2, 'tau' = 3,
+                                   'z' = list(2,10,4, c(rep(as.numeric(NA),2),6,8))))
+    expect_identical(topRules, list('mu' = c(TRUE, rep(FALSE, 2)), 'sigma' = TRUE, 'tau' = TRUE,
+                                    'z' = rep(FALSE, 4)))
+    expect_identical(endRules, list('mu' = rep(FALSE, 3), 'sigma' = FALSE, 'tau' = FALSE,
+                                    'z' = c(FALSE, TRUE, rep(FALSE , 2))))
+
+})
+
+
+test_that("temporary tests that multiple dependences in SSM style declaration error out", {
 
     ## handling this efficiently would probably be a pain because of multiple vectors of sortIDs; probably just unroll
     code <- quote({
