@@ -2087,7 +2087,7 @@ test_that("fully unrolled cases", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    expect_warning(modelDef$generateGraphInfo(), "Detected cycle or state-space type structure")
 
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
@@ -2110,8 +2110,7 @@ test_that("fully unrolled cases", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
-    ## TODO: add tests?
+    expect_warning(modelDef$generateGraphInfo(), "Detected cycle or state-space type structure")
 
     ## This unrolls because don't know what to set as sign for mu rule
     code <- quote({
@@ -2123,8 +2122,7 @@ test_that("fully unrolled cases", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
-    ## TODO: add tests?
+    expect_warning(modelDef$generateGraphInfo(), "Detected cycle or state-space type structure")
 
     code <- quote({
         for(j in 1:5) {
@@ -2142,7 +2140,7 @@ test_that("fully unrolled cases", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    expect_warning(modelDef$generateGraphInfo(), "Detected cycle or state-space type structure")
 
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')

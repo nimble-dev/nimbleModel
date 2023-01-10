@@ -171,6 +171,7 @@ modelDefClass <- R6Class(
                 if(!sorted) {  # Complicated SSM-type cases or true cycles
                     ## Fully fracture to try to handle complicated SSM cases.
                     ## TODO: perhaps warn user this may be slow.
+                    warning("Detected cycle or state-space type structure in model graph. Attempting to determine graph structure. This may take some time. You may wish to alert the development team of your use case so that handling of such cases can be improved.")
                     allCalcRules <- generateCalcRules(declRules, rhsOriginalRules, downstreamRules,
                                                       recurseFracturing = TRUE)
                     sorted <- setSortIDs(allCalcRules)
