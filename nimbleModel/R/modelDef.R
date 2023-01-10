@@ -170,6 +170,7 @@ modelDefClass <- R6Class(
                 sorted <- setSortIDs(allCalcRules)
                 if(!sorted) {  # Complicated SSM-type cases or true cycles
                     ## Fully fracture to try to handle complicated SSM cases.
+                    ## TODO: perhaps warn user this may be slow.
                     allCalcRules <- generateCalcRules(declRules, rhsOriginalRules, downstreamRules,
                                                       recurseFracturing = TRUE)
                     sorted <- setSortIDs(allCalcRules)

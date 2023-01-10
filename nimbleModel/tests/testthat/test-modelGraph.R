@@ -1957,24 +1957,6 @@ test_that("two unrelated cycles", {
 })
 
 
-## Can't handle this because the two parts are connected.
-test_that("standard one-lag SSM with two parts (two focalRules but on one variable)", {
-    code <- quote({
-        for(i in 1:5) 
-            y[i] ~ dnorm(mu[i], sd = sigma)
-        for(i in 2:5)
-            mu[i] ~ dnorm(rho*mu[i-1], sd = sigma)
-        mu[1] ~ dnorm(0, 1)
-        rho ~ dunif(0, 1)
-        sigma ~ dunif(0, 1)
-        for(i in 6:10)
-            mu[i] ~ dnorm(mu[i-1], 1)
-    })
-    modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    expect_error(modelDef$generateGraphInfo(), "reached unexpected structure")
-})
 
 test_that("complicated cyclic dependency", {
     ## Case C
@@ -2089,9 +2071,146 @@ test_that("complicated cyclic dependency", {
 })
 
 
-test_that("temporary tests that multiple dependences in SSM style declaration error out", {
 
-    ## handling this efficiently would probably be a pain because of multiple vectors of sortIDs; probably just unroll
+
+## Does full unrolling because the two parts are connected.
+test_that("standard one-lag SSM with two parts (two focalRules but on one variable)", {
+    code <- quote({
+        for(i in 1:5) 
+            y[i] ~ dnorm(mu[i], sd = sigma)
+        for(i in 2:5)
+            mu[i] ~ dnorm(rho*mu[i-1], sd = sigma)
+        mu[1] ~ dnorm(0, 1)
+        rho ~ dunif(0, 1)
+        sigma ~ dunif(0, 1)
+        for(i in 6:10)
+            mu[i] ~ dnorm(mu[i-1], 1)
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
+
+    sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
+    topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
+    endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
+    expect_identical(sortIDs, list('mu' = c(1,5,10,2,6,3,4,7:9),
+                                               'rho' = 1, 'sigma' = 1,
+                                   'y' = rep(10, 5)))
+    expect_identical(topRules, list('mu' = c(TRUE, rep(FALSE, 9)), 'rho' = TRUE, 'sigma' = TRUE,
+                                    'y' = rep(FALSE, 5)))
+    expect_identical(endRules, list('mu' = c(rep(FALSE, 2), TRUE, rep(FALSE, 7)), 'rho' = FALSE, 'sigma' = FALSE, 
+                                    'y' = rep(TRUE, 5)))
+
+    ## This unrolls because mu[2] has sortID of Inf and it is child of z[3:6]
+    code <- quote({
+        for(i in 2:7) {
+            z[i] ~ dnorm(z[i+1], 1)
+            mu[i] ~ dnorm(mu[i-1] + z[i],1)
+        }
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
+    ## TODO: add tests?
+
+    ## This unrolls because don't know what to set as sign for mu rule
+    code <- quote({
+        for(i in 2:7) {
+            z[i] ~ dnorm(z[i-1], 1)
+            mu[i] ~ dnorm(mu[i-1] + z[i+1],1)
+        }
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
+    ## TODO: add tests?
+})
+
+
+
+test_that("SSM using arbitrary indexing", {
+    ## this should be handled by unrolling
+    code <- quote({
+        for(i in 1:5) 
+            mu[i] ~ dnorm(mu[k[i]], sd = tau)
+        mu[6] ~ dnorm(0, 1)
+        tau ~ dunif(0, 1)
+    })
+    modelDef <- modelDefClass$new(code, constants = list(k = c(2,3,4,5,6)))
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
+    sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
+    topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
+    endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
+    expect_identical(sortIDs, list('mu' = c(1,6,2:5),
+                                               'tau' = 1))
+    expect_identical(topRules, list('mu' = c(TRUE, rep(FALSE, 5)), 'tau' = TRUE))
+    expect_identical(endRules, list('mu' = c(FALSE, TRUE, rep(FALSE, 4)), 'tau' = FALSE))
+
+})
+
+## TODO: is there a way to determine the sign without unrolling?
+test_that("SSM cases that are unrolled becauses of alternating index signs", {
+    ## should I modify code so this doesn't unroll?
+
+        ## why does this unroll?
+})
+
+
+test_that("actual cycle is trapped", {
+    code <- quote({
+        mu[1] ~ dnorm(mu[2], 1)
+        mu[2] ~ dnorm(mu[1], 1)
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    expect_error(modelDef$generateGraphInfo(), "Cycle found")
+
+    code <- quote({
+        for(i in 2:5) 
+            y[i] ~ dnorm(mu[i], 1)
+        for(i in 2:5)
+            mu[i] ~ dnorm(mu[i-1], 1)
+        mu[1] ~ dnorm(mu[5], 1)
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    expect_error(modelDef$generateGraphInfo(), "Cycle found")
+  
+    code <- quote({
+        for(i in 2:5)
+            y[i] ~ dnorm(mu[i-1], 1)
+        for(i in 1:4)
+            mu[i] ~ dnorm(y[i+1], 1)
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    expect_error(modelDef$generateGraphInfo(), "Cycle found")
+ })
+
+    
+    
+extractRuleElement <- function(vr, nm) {
+    tmp <- sapply(vr$rules, function(rule) rule[[nm]])
+    if(is.matrix(tmp))
+        tmp <- c(tmp)
+    names(tmp) <- NULL
+    for(i in seq_along(tmp))
+        names(tmp[[i]]) <- NULL
+    return(tmp)
+}
+
+## HERE: this is messed up
+
+## handling this efficiently would probably be a pain because of multiple vectors of sortIDs;
+    ## just unrolled
     code <- quote({
         for(j in 1:5) {
             y[1,j] ~ dnorm(mu[1,j], sd = tau)
@@ -2109,21 +2228,10 @@ test_that("temporary tests that multiple dependences in SSM style declaration er
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    expect_error(modelDef$generateGraphInfo())
-
-    ## this should be handled by unrolling
-    code <- quote({
-        for(i in 1:5) 
-            mu[i] ~ dnorm(mu[k[i]], sd = tau)
-        mu[6] ~ dnorm(0, 1)
-        tau ~ dunif(0, 1)
-    })
-    modelDef <- modelDefClass$new(code, constants = list(k = c(2,3,4,5,6)))
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    expect_error(modelDef$generateGraphInfo())
-
-})
-
-
+    modelDef$generateGraphInfo()
+    sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
+    topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
+    endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
+    ## HERE
+    
 
