@@ -607,7 +607,18 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
     
     expr <- LHSrule$expr
     singleContexts <- LHSrule$context$singleContexts
-  
+
+    ## Make sure we use a unique name for new indexing variable, otherwise
+    ## have incorrect results if first fracture on one dimension and later on a different dimension,
+    ## as you'd end up with `mu[.newidx, .newidx]`.
+    newIdxName <- ".newidx1"
+    i <- 1
+    while(newIdxName %in% all.vars(expr)) {
+        i <- i+1
+        newIdxName <- paste0(".newidx", i)
+    }
+    parsedIdxName <- parse(text = newIdxName)[[1]]
+    
     if(length(nonIdenticalIndices) == 1) {
         ## Handle simple cases where need only fracture one index
         LHS <- LHSrange$indexRanges[[LHSrange$indexID_2_rangeID[nonIdenticalIndices]]]
@@ -641,14 +652,14 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
             newSingleContexts2 <- singleContexts[!focalContext]
 
             newSingleContexts1[[length(newSingleContexts1)+1]] <- modelSingleContext(
-                               indexVarExpr = quote(.newidx),
+                               indexVarExpr = parsedIdxName,
                 indexRangeExpr = substitute(1:L, list(L = length(valsLHS))))
 
             newSingleContexts2[[length(newSingleContexts2)+1]] <- modelSingleContext(
-                               indexVarExpr = quote(.newidx),
+                               indexVarExpr = parsedIdxName,
                 indexRangeExpr = substitute(1:L, list(L = length(valsFrac))))
 
-            newcode <- paste0(".idx", nonIdenticalIndices, "[.newidx]") 
+            newcode <- paste0(".idx", nonIdenticalIndices, "[", newIdxName, "]")
             expr[[nonIdenticalIndices+2]] <- parse(text = newcode[1])[[1]]
          
             ## Replace any constants related to a previously processed index.
@@ -680,11 +691,11 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
                 newSingleContexts2 <- singleContexts[!focalContext]
 
                 newSingleContexts1[[length(newSingleContexts1)+1]] <- modelSingleContext(
-                    indexVarExpr = quote(.newidx),
+                    indexVarExpr = parsedIdxName,
                     indexRangeExpr = substitute(A:B, list(A = LHS[[1]][[1]], B = LHS[[1]][[2]])))
 
                 newSingleContexts2[[length(newSingleContexts2)+1]] <- modelSingleContext(
-                    indexVarExpr = quote(.newidx),
+                    indexVarExpr = parsedIdxName,
                     indexRangeExpr = substitute(A:B, list(A = frac[[1]][[1]], B = frac[[1]][[2]])))
 
                 expr[[nonIdenticalIndices+2]] <- newSingleContexts1[[length(newSingleContexts1)]]$indexVarExpr
@@ -701,17 +712,17 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
 
                 expr1 <- expr2 <- expr3 <- expr
                 newSingleContexts1[[length(newSingleContexts1)+1]] <- modelSingleContext(
-                    indexVarExpr = quote(.newidx),
+                    indexVarExpr = parsedIdxName,
                     indexRangeExpr = substitute(A:B, list(A = frac[[1]][[1]], B = frac[[1]][[2]])))
                 expr1[[nonIdenticalIndices+2]] <- newSingleContexts1[[length(newSingleContexts1)]]$indexVarExpr
 
                 newSingleContexts2[[length(newSingleContexts2)+1]] <- modelSingleContext(
-                    indexVarExpr = quote(.newidx),
+                    indexVarExpr = parsedIdxName,
                     indexRangeExpr = substitute(A:B, list(A = LHS[[1]][[1]], B = frac[[1]][[1]]-1)))
                 expr2[[nonIdenticalIndices+2]] <- newSingleContexts2[[length(newSingleContexts2)]]$indexVarExpr
 
                 newSingleContexts3[[length(newSingleContexts3)+1]] <- modelSingleContext(
-                    indexVarExpr = quote(.newidx),
+                    indexVarExpr = parsedIdxName,
                     indexRangeExpr = substitute(A:B, list(A = frac[[1]][[2]]+1, B = LHS[[1]][[2]])))
                 expr3[[nonIdenticalIndices+2]] <- newSingleContexts3[[length(newSingleContexts3)]]$indexVarExpr
                
@@ -742,14 +753,14 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
         } else newSingleContexts1 <- newSingleContexts2 <- list()
 
         newSingleContexts1[[length(newSingleContexts1) + 1]] <- modelSingleContext(
-                               indexVarExpr = quote(.newidx),
+                               indexVarExpr = parsedIdxName,
             indexRangeExpr = substitute(1:L, list(L = nrow(mat1))))
 
         newSingleContexts2[[length(newSingleContexts2) + 1]] <- modelSingleContext(
-                               indexVarExpr = quote(.newidx),
+                               indexVarExpr = parsedIdxName,
             indexRangeExpr = substitute(1:L, list(L = nrow(mat2))))
 
-        newcode <- paste0(".idx", nonIdenticalIndices, "[.newidx]")
+        newcode <- paste0(".idx", nonIdenticalIndices, "[", newIdxName, "]")
         for(i in seq_along(nonIdenticalIndices)) 
             expr[[nonIdenticalIndices[i]+2]] <- parse(text = newcode[i])[[1]]
         

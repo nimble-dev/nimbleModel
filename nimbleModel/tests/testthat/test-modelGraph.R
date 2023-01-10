@@ -2071,10 +2071,8 @@ test_that("complicated cyclic dependency", {
 })
 
 
-
-
-## Does full unrolling because the two parts are connected.
-test_that("standard one-lag SSM with two parts (two focalRules but on one variable)", {
+test_that("fully unrolled cases", {
+    ## standard one-lag SSM with two parts (two focalRules but on one variable
     code <- quote({
         for(i in 1:5) 
             y[i] ~ dnorm(mu[i], sd = sigma)
@@ -2127,6 +2125,36 @@ test_that("standard one-lag SSM with two parts (two focalRules but on one variab
     modelDef$processDecls()
     modelDef$generateGraphInfo()
     ## TODO: add tests?
+
+    code <- quote({
+        for(j in 1:5) {
+            y[1,j] ~ dnorm(mu[1,j], sd = tau)
+            for(i in 2:5) {
+                y[i,j] ~ dnorm(mu[i,j] + y[i-1,j], sd = tau)
+            }
+        }
+        for(j in 2:5) {
+            for(i in 1:5) {
+                mu[i,j] ~ dnorm(mu[i,j-1], sd = 1)
+            }}
+        tau ~ dunif(0, 1)
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
+
+    sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
+    topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
+    endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
+    expect_identical(sortIDs, list('tau' = 4, 'mu' = c(4,5,1,2,3,2,4,3),
+                                     'y' = c(5,5,9,9,6,6,5,7,8,7,8,9,6,7,8,5,5,9,9,6,6,7,7,8,8)))
+    expect_identical(topRules, list('tau' = TRUE, 'mu' = c(rep(FALSE, 2), rep(TRUE, 2), rep(FALSE, 4)),
+                                    'y' = rep(FALSE, 25)))
+    expect_identical(endRules, list('tau' = FALSE, 'mu' = c(rep(FALSE, 8)),
+                                    'y' = c(rep(FALSE, 2), rep(TRUE, 2), rep(FALSE, 7), TRUE,
+                                            rep(FALSE, 5), rep(TRUE, 2), rep(FALSE, 6))))
+
 })
 
 
@@ -2151,13 +2179,6 @@ test_that("SSM using arbitrary indexing", {
     expect_identical(topRules, list('mu' = c(TRUE, rep(FALSE, 5)), 'tau' = TRUE))
     expect_identical(endRules, list('mu' = c(FALSE, TRUE, rep(FALSE, 4)), 'tau' = FALSE))
 
-})
-
-## TODO: is there a way to determine the sign without unrolling?
-test_that("SSM cases that are unrolled becauses of alternating index signs", {
-    ## should I modify code so this doesn't unroll?
-
-        ## why does this unroll?
 })
 
 
@@ -2196,42 +2217,3 @@ test_that("actual cycle is trapped", {
  })
 
     
-    
-extractRuleElement <- function(vr, nm) {
-    tmp <- sapply(vr$rules, function(rule) rule[[nm]])
-    if(is.matrix(tmp))
-        tmp <- c(tmp)
-    names(tmp) <- NULL
-    for(i in seq_along(tmp))
-        names(tmp[[i]]) <- NULL
-    return(tmp)
-}
-
-## HERE: this is messed up
-
-## handling this efficiently would probably be a pain because of multiple vectors of sortIDs;
-    ## just unrolled
-    code <- quote({
-        for(j in 1:5) {
-            y[1,j] ~ dnorm(mu[1,j], sd = tau)
-            for(i in 2:5) {
-                y[i,j] ~ dnorm(mu[i,j] + y[i-1,j], sd = tau)
-            }
-        }
-        for(j in 2:5) {
-            for(i in 1:5) {
-                mu[i,j] ~ dnorm(mu[i,j-1], sd = sigma)
-            }}
-        sigma ~ dunif(0, 1)
-        tau ~ dunif(0, 1)
-     })
-    modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$generateGraphInfo()
-    sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
-    topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
-    endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
-    ## HERE
-    
-
