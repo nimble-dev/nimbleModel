@@ -227,7 +227,7 @@ calcRuleClass <- R6Class(
             indexingRange <- declRule$originalIndexingRule$apply(inputRange, varName)
             if(is.null(indexingRange))
                 return(NULL)
-            result <- calcRangeClass$new(varName, indexingRange, declRule$calculate, sortID)
+            result <- calcRangeClass$new(varName, indexingRange, declRule$calculate, sortID, multiSortIDindex)
             return(result)
         },
 
@@ -378,11 +378,12 @@ calcRangeClass <- R6Class(
         varName = NULL,
         indexingRange = NULL,
         sortID = NULL,
-        initialize = function(varName, indexingRange, calcFun, sortID) {
+        initialize = function(varName, indexingRange, calcFun, sortID, multiSortIDindex) {
             varName <<- varName
             indexingRange <<- indexingRange
             calcFun <<- calcFun  ## note that calcFun itself is not vectorized
             sortID <<- sortID
+            multiSortIDindex <<- multiSortIDindex
         },
 
         ## Generic calculate function that crosses the indexRanges in the indexingRange (a varRange)
@@ -398,7 +399,6 @@ calcRangeClass <- R6Class(
 
         calculate = function() {
             numRanges <- length(indexingRange$indexRanges)
-            index <- numeric(length(indexingRange$indexID_2_rangeID))  ## vector to hold the original index values
             indexRange_lengths <- sapply(indexingRange$indexRanges, indexRange_numRows)
             indexPositions <- indexingRange$rangeID_2_indexID
             len <- prod(indexRange_lengths)
@@ -408,33 +408,51 @@ calcRangeClass <- R6Class(
                 result <- calcFun(NULL)
             } else {
             
+                ## TODO: This is a placeholder so we can test numerical results
+                ## once fuller workflow is in place, remove this and assignment of output of calcFun()
+                result <- rep(0, len)
+
                 delay <- 1
                 for(irIndex in rev(seq_len(numRanges))) {
                     indexingRange$indexRanges[[irIndex]] <- indexRange_init(indexingRange$indexRanges[[irIndex]], delay)
                     delay <- delay * indexingRange$indexRanges[[irIndex]]$length
                 }
-                
-                ## TODO: This is a placeholder so we can test numerical results
-                ## once fuller workflow is in place, remove this and assignment of output of calcFun()
-                result <- rep(0, len)
-                
-                for(item in seq_len(len)) {
-                    for(irIndex in seq_len(numRanges)) {
-                        ## Determine nested indexing from unrolled indexing
-                        ## if(irIndex == seq_len(numRanges)) {
-                        ##     elementIdx <- 1 + (item-1) %% indexRange_lengths[irIndex]
-                        ## } else {
-                        ##     elementIdx <- 1 + (item-1) %/% nestedLengths[irIndex]
-                        ##}
-                        
-                        ## TODO: remove kludge when indexRanges are proper R6 classes
-                        tmp <- indexRange_getItem(indexingRange$indexRanges[[irIndex]])
-                        index[indexPositions[[irIndex]]] <- tmp$result
-                        indexingRange$indexRanges[[irIndex]] <- tmp$range
+
+                if(length(sortID) == 1) {
+                    index <- numeric(length(indexingRange$indexID_2_rangeID))  ## vector to hold the original index values
+                    for(item in seq_len(len)) {
+                        for(irIndex in seq_len(numRanges)) {
+                            ## Determine nested indexing from unrolled indexing
+                            ## if(irIndex == seq_len(numRanges)) {
+                            ##     elementIdx <- 1 + (item-1) %% indexRange_lengths[irIndex]
+                            ## } else {
+                            ##     elementIdx <- 1 + (item-1) %/% nestedLengths[irIndex]
+                            ##}
+                            
+                            ## TODO: remove kludge when indexRanges are proper R6 classes
+                            tmp <- indexRange_getItem(indexingRange$indexRanges[[irIndex]])
+                            index[indexPositions[[irIndex]]] <- tmp$result
+                            ## Need this to capture updated internal indexing
+                            indexingRange$indexRanges[[irIndex]] <- tmp$range 
+                        }
+                        result[item] <- calcFun(index)  ## scalar calculation
                     }
-                    result[item] <- calcFun(index)  ## scalar calculation
+                } else {
+                    index <- matrix(0, len, length(indexingRange$indexID_2_rangeID))  ## vector to hold the original index values
+                    sortIDvals <- rep(0, len)
+                    for(item in seq_len(len)) {
+                        for(irIndex in seq_len(numRanges)) {
+                            tmp <- indexRange_getItem(indexingRange$indexRanges[[irIndex]])
+                            index[item, indexPositions[[irIndex]]] <- tmp$result
+                            indexingRange$indexRanges[[irIndex]] <- tmp$range
+                        }
+                        sortIDvals[item] <- sortID[index[item, multiSortIDindex]]
+                    }
+                    for(item in order(sortIDvals))
+                        result[item] <- calcFun(index[item, ])
                 }
             }
+                
             return(result)
 
         }

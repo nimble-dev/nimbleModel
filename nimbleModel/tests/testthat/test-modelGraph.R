@@ -2212,21 +2212,35 @@ test_that("actual cycle is trapped", {
     modelDef$processModelCode()
     modelDef$processDecls()
     expect_error(modelDef$generateGraphInfo(), "Cycle found")
- })
+})
 
-    
 
 code <- quote({
-    for(i in 1:5)
-        y[i] ~ dnorm(mu[i], 1)
+    for(j in 1:3)
+        for(i in 1:5)
+            y[j, i] ~ dnorm(y[j, i+1], 1)
 })
 modelDef <- modelDefClass$new(code)
 modelDef$processModelCode()
 modelDef$processDecls()
 modelDef$generateGraphInfo()
-calcRange <- modelDef$calcRules[['y']]$rules[[1]]$generate_calcRange(varRangeClass$new(list(indexRange(quote(1:3)))))
-calcRange$calculate
-calcRange$indexingRange
-
-calcRange <- modelDef$calcRules[['y']]$rules[[1]]$generate_calcRange(varRangeClass$new(list(indexRange(2))))
+calcRange <- modelDef$calcRules[['y']]$rules[[2]]$generate_calcRange(varRangeClass$new(
+                               list(indexRange(c(3,1)), indexRange(quote(3:4)))))
+# debug(calcRange$calculate)
 calcRange$calculate()
+y <- matrix(rnorm(3*6),3,6)
+## compare to correct result
+dnorm(y[,1:5], y[,2:6], 1)
+dnorm(y[,1:5], y[,2:6], 1)[matrix(c(3,3,1,1,3,4,3,4),ncol=2)]
+
+
+## FIX: bug with recursion for deterministic case
+code <- quote({
+    for(i in 2:5)
+        y[i] <- y[i-1] + 1.5
+})
+modelDef <- modelDefClass$new(code)
+modelDef$processModelCode()
+modelDef$processDecls()
+modelDef$generateGraphInfo()
+y <- rep(0,10)
