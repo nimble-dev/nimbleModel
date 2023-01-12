@@ -214,7 +214,9 @@ indexRange_matrix2sequence <- function(inputIndexRange) {
         return(inputIndexRange)
     mn <- min(inputIndexRange[[1]])
     mx <- max(inputIndexRange[[1]])
-    if(length(inputIndexRange[[1]]) == mx - mn + 1)
+    ## Convert sequential indexing to sequence.
+    if(length(inputIndexRange[[1]]) == mx - mn + 1 &&
+       identical(diff(inputIndexRange[[1]]), rep(1, length(inputIndexRange[[1]]) - 1)))
        return(indexRange_sequence(list(mn,mx))) else return(inputIndexRange)
 }
 
@@ -297,6 +299,7 @@ indexRange_getItem <- function(inputIndexRange) {
     result <- switch(attr(inputIndexRange, 'rangeType'),
            matrix = inputIndexRange[[1]][item, ],
            sequence = inputIndexRange[[1]][[1]] + item - 1,
+           scalar = inputIndexRange[[1]],
            stop("In inputRange_getItem: invalid type of inputIndexRange.")
            )
     return(list(result = result, range = inputIndexRange))

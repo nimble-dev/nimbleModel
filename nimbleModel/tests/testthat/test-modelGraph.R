@@ -2215,3 +2215,18 @@ test_that("actual cycle is trapped", {
  })
 
     
+
+code <- quote({
+    for(i in 1:5)
+        y[i] ~ dnorm(mu[i], 1)
+})
+modelDef <- modelDefClass$new(code)
+modelDef$processModelCode()
+modelDef$processDecls()
+modelDef$generateGraphInfo()
+calcRange <- modelDef$calcRules[['y']]$rules[[1]]$generate_calcRange(varRangeClass$new(list(indexRange(quote(1:3)))))
+calcRange$calculate
+calcRange$indexingRange
+
+calcRange <- modelDef$calcRules[['y']]$rules[[1]]$generate_calcRange(varRangeClass$new(list(indexRange(2))))
+calcRange$calculate()
