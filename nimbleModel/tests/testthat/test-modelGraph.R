@@ -2180,6 +2180,24 @@ test_that("SSM using arbitrary indexing", {
 })
 
 
+test_that("top/end nodes for SSM with deterministic relationships", {
+    code <- quote({
+        for(i in 1:5) 
+            y[i] <- y[i+1]
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
+    topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
+    endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
+    expect_identical(topRules, list('y' = rep(TRUE, 3)))
+    expect_identical(endRules, list('y' = rep(TRUE, 3)))
+
+})
+
+
+
 test_that("actual cycle is trapped", {
     code <- quote({
         mu[1] ~ dnorm(mu[2], 1)

@@ -336,7 +336,7 @@ calcRuleClass <- R6Class(
                 idx <- 1
                 while(idx <= length(stoch)) {
                     ## Walk up the tree as needed.
-                    if(children[idx] != ID && calcRules[[parents[idx]]]$setStochParent(calcRules)) {
+                    if(parents[idx] != ID && calcRules[[parents[idx]]]$setStochParent(calcRules)) {
                         return(set('stochParent'))
                     }
                     idx <- idx + 1
