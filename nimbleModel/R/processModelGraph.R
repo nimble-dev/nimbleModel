@@ -350,13 +350,15 @@ processCyclicRules <- function(allCalcRules, modelDef) {
 }
 
 setSortIDs <- function(calcRules) {
-    tmp <- sapply(calcRules, function(rule)
-        rule$setSortID(calcRules))
-    ## Now renumber so sortID=1 is first
     sortIDs <- sapply(calcRules, function(rule)
-        if(length(rule$sortID) == 1 && is.na(rule$sortID)) {
-            return(NA)
-        } else return(max(rule$sortID, na.rm = TRUE)))
+        rule$setSortID(calcRules))
+
+    ## TODO: remove as this seems redundant
+    ## sortIDs <- sapply(calcRules, function(rule)
+    ##    if(length(rule$sortID) == 1 && is.na(rule$sortID)) {
+    ##        return(NA)
+    ##    } else return(max(rule$sortID, na.rm = TRUE)))
+    ## Now renumber so sortID=1 is first
     if(all(is.finite(sortIDs))) {
         mx <- max(sortIDs)
         tmp <- sapply(calcRules, function(rule)

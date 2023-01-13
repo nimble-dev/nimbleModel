@@ -1932,3 +1932,13 @@ test_that("application of graphRule to varName and character string", {
                                       varName = 'x'))
   
 })
+
+# fix recursion
+   code <- quote({
+        for(i in 1:5)
+            test[i] <- test[i+1] + 1.5
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()

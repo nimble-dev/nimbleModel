@@ -117,7 +117,9 @@ declRuleClass <- R6Class(
         originalIndexingRule = NULL, # determines original indexing (based on context)
         decl = NULL,
         calculate = NULL,  ## generic function for calculation
-
+        ## TODO: remove this:
+        test = rep(0, 10),  ## test element used for testing calculation while modelDef doesn't have acccess to a model
+        test2 = matrix(0, 3, 5),
         initialize = function(decl, ID, context = modelContextClass$new(), constants = list()) {
             ## Set up rules that operate on the indexing of the nodes and on
             ## the internal indexing of the elements of a node.
@@ -131,6 +133,10 @@ declRuleClass <- R6Class(
 
         genCalcFun = function(decl, context) {
             newDecl <- decl
+            if(newDecl[[1]] == '<-') {
+                newDecl  <- quote(A <<- B)
+                newDecl[2:3] <- decl[2:3]
+            }
             replacements <- sapply(seq_along(context$singleContexts),
                                    function(i) parse(text = paste0('idx[',i,']'))[[1]])
             names(replacements) <- context$indexVarNames
@@ -140,7 +146,7 @@ declRuleClass <- R6Class(
 
             ## Insert 'logProb_' and change to assignment
             if(stoch) {
-                finalDecl <- quote(A <- B)
+                finalDecl <- quote(A <<- B)
                 finalDecl[[3]] <- newDecl[[3]]
                 replacements <- list(parse(text = paste0('logProb_', varName))[[1]])
                 names(replacements) <- varName
@@ -305,8 +311,8 @@ calcRuleClass <- R6Class(
             } else {   ## If necessary check if deterministic children have stoch dependents
                 idx <- 1
                 while(idx <= length(stoch)) {
-                    ## Walk down the tree as needed.
-                    if(calcRules[[children[[idx]]]]$setStochDep(calcRules)) {
+                    ## Walk down the tree as needed, avoiding infinitely looping over calcRule itself.
+                    if(children[idx] != ID && calcRules[[children[idx]]]$setStochDep(calcRules)) {
                         return(set('stochDep'))
                     }
                     idx <- idx + 1
@@ -330,7 +336,7 @@ calcRuleClass <- R6Class(
                 idx <- 1
                 while(idx <= length(stoch)) {
                     ## Walk up the tree as needed.
-                    if(calcRules[[parents[idx]]]$setStochParent(calcRules)) {
+                    if(children[idx] != ID && calcRules[[parents[idx]]]$setStochParent(calcRules)) {
                         return(set('stochParent'))
                     }
                     idx <- idx + 1
@@ -358,7 +364,7 @@ calcRuleClass <- R6Class(
                 result <- max(sapply(children, function(i)
                     calcRules[[i]]$setSortID(calcRules, c(ancestors, ID)))) + 1
                 if(!is.na(result))  ## avoid propagating NA upwards, leave as Inf = 'unresolved'
-                    sortID <<- result 
+                    sortID <<- result
                 ## sortID <<- max(sapply(children, function(i)
                 ##     calcRules[[i]]$setSortID(calcRules, c(ancestors, ID)))) + 1
 
@@ -418,7 +424,7 @@ calcRangeClass <- R6Class(
                     delay <- delay * indexingRange$indexRanges[[irIndex]]$length
                 }
 
-                if(length(sortID) == 1) {
+                if(length(sortID) == 1 || len == 1) {
                     index <- numeric(length(indexingRange$indexID_2_rangeID))  ## vector to hold the original index values
                     for(item in seq_len(len)) {
                         for(irIndex in seq_len(numRanges)) {

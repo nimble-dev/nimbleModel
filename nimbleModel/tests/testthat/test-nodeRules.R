@@ -1135,6 +1135,44 @@ test_that("calculate works correctly", {
 })
 
 
+test_that("calculate works correctly for SSM recursion", {
+    ## var name needs to be 'test' to match hard-coded variable in the declRule
+    code <- quote({
+        for(i in 1:5)
+            test[i] <- test[i+1] + 1.5
+        test[6] <- 0
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
+    calcRange <- modelDef$calcRules[['test']]$rules[[4]]$generate_calcRange(
+                 varRangeClass$new(list(indexRange(quote(2:3)))))
+    ## 'test' is hard coded into declRule class as rep(0,10)
+    expect_identical(calcRange$calculate(), c(3, 1.5))
+
+    ## var name needs to be 'test2' to match hard-coded variable in the declRule
+    code <- quote({
+        for(j in 1:3) {
+            for(i in 1:5)
+                test2[j, i] <- test2[j, i+1] + j*1.5
+            test2[j, 6] <- 0
+        }
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
+    calcRange <- modelDef$calcRules[['test2']]$rules[[4]]$generate_calcRange(
+                                        varRangeClass$new(list(
+                                        indexRange(c(3,1)), indexRange(quote(3:4)))))
+    ## 'test2' is hard coded into declRule class as matrix(0,3,5)
+    expect_identical(calcRange$calculate(), c(9,4.5,3,1.5))    
+    
+
+})
+
+
 test_that("getFullRange works correctly", {
     context_0 <- modelContextClass$new()
     singleContext1 <-
