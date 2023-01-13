@@ -2193,7 +2193,6 @@ test_that("top/end nodes for SSM with deterministic relationships", {
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
     expect_identical(topRules, list('y' = rep(TRUE, 3)))
     expect_identical(endRules, list('y' = rep(TRUE, 3)))
-
 })
 
 
