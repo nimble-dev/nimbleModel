@@ -200,7 +200,7 @@ test_that("graphRuleClass works", {
     )
 
     expect_equal(
-        rule$apply(varRangeClass$new(list(indexRange(quote(2:3))))),
+        rule$apply(varRangeClass$new(list(indexRange(quote(2:3))), varName = 'x')),
         varRangeClass$new(list(indexRange(quote(1:2))), varName = 'y')
     )
 })

@@ -34,6 +34,8 @@ graphRuleClass <- R6Class(
             childVar <<- output$childVar
         },
         apply = function(fromVarRange) {
+            if(!is(fromVarRange, 'varRangeClass'))
+                stop("graphRule$apply: 'fromVarRange' needs to be a varRange object.")
             varName <- getVarName(fromVarRange)
             if(!is.null(parentVar) && varName != parentVar)
                 return(NULL)
