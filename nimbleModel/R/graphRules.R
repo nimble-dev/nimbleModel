@@ -34,16 +34,13 @@ graphRuleClass <- R6Class(
             childVar <<- output$childVar
         },
         apply = function(fromVarRange) {
-            if(!is(fromVarRange, 'varRangeClass'))
-                stop("graphRule$apply: 'fromVarRange' needs to be a varRange object.")
-            varName <- getVarName(fromVarRange)
-            if(!is.null(parentVar) && varName != parentVar)
-                return(NULL)
             if(is.character(fromVarRange)) {
-                if(varName == fromVarRange && numRHSindices) {
+                if(parentVar == fromVarRange && numRHSindices) {
                     fromVarRange <- getFromRange()   # only varName given
                 } else fromVarRange <- varRangeClass$new(fromVarRange)   # string providing the varRange         
             }
+            if(!is.null(parentVar) && is(fromVarRange, 'varRangeClass') && getVarName(fromVarRange) != parentVar)
+                return(NULL)
             applyGraphRule(
                 fromVarRange,
                 self

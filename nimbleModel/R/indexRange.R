@@ -216,7 +216,8 @@ indexRange_matrix2sequence <- function(inputIndexRange) {
     mx <- max(inputIndexRange[[1]])
     ## Convert sequential indexing to sequence.
     if(length(inputIndexRange[[1]]) == mx - mn + 1 &&
-       identical(diff(inputIndexRange[[1]]), rep(1, length(inputIndexRange[[1]]) - 1)))
+       identical(as.numeric(diff(inputIndexRange[[1]][,1])),
+                 rep(1, length(inputIndexRange[[1]]) - 1)))
        return(indexRange_sequence(list(mn,mx))) else return(inputIndexRange)
 }
 

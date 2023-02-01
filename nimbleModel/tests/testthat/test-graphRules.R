@@ -1785,12 +1785,15 @@ test_that("indexRange matrix converted to sequence if appropriate", {
     rule <- makeGraphRule(LHS = quote(y[i+1,j]),
                                  RHS = quote(x[k[i-1],j]),
                                  context = context_ij,
-                                 constants = list(k = k))
+                          constants = list(k = k))
+
+    ## This gives 3,5,4,6; but `indexRange_matrix2sequence` does not sort
+    ## (to avoid usually unneeded computation), hence result is still a matrix.
     expect_equal(
         applyGraphRule(
             varRangeClass$new(list(indexRange(quote(2:5)),
                                    indexRange(2))),rule),
-        varRangeClass$new(list(indexRange(quote(3:6)), indexRange(2)), varName = 'y')
+        varRangeClass$new(list(indexRange(c(3,5,4,6)), indexRange(2)), varName = 'y')
     )
 })
 
