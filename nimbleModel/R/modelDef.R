@@ -397,7 +397,7 @@ removeDuplicates <- function(varRanges) {
     varNames <- sapply(varRanges, function(range) range$varName)
     uniqVarNames <- unique(varNames)
     varRanges <- lapply(uniqVarNames, function(nm)
-            items[varNames == nm])
+            varRanges[varNames == nm])
     names(varRanges) <- uniqVarNames
     flatten(lapply(varRanges, function(vr) removeDuplicatesOne(vr)))
 }

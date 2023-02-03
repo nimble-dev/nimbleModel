@@ -32,13 +32,13 @@ test_that("nodeRule creation and application works", {
     expect_identical(LHSrule$index2setID, 1)
     expect_identical(is(LHSrule$externalRules$indexRules[[1]], 'indexRuleClass_block'), TRUE)
                      
-    result <- LHSrule$apply(varRangeClass$new(list(indexRange(3))))
+    result <- LHSrule$apply(varRangeClass$new(list(indexRange(3)), varName = 'mu'))
     expect_identical(result$boolExternalIndexRanges, TRUE)
     expect_identical(result$numExternalIndexRanges, 1L)
     expect_identical(result$indexID_2_rangeID, 1L)
     expect_identical(result$indexRanges[[1]], indexRange(3))
 
-    result <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(6:11)))))
+    result <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(6:11))),varName = 'mu'))
     expect_identical(result$boolExternalIndexRanges, TRUE)
     expect_identical(result$numExternalIndexRanges, 1L)
     expect_identical(result$indexID_2_rangeID, 1L)
@@ -54,7 +54,7 @@ test_that("nodeRule creation and application works", {
     expect_identical(is(LHSrule$internalRules$indexRules[[1]], 'indexRuleClass_constant'), TRUE)
 
     result <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(1:3)),
-                                                   indexRange(quote(4:9)))))
+                                                   indexRange(quote(4:9))), varName = 'mu'))
 
     expect_identical(result$boolExternalIndexRanges, c(TRUE, FALSE))
     expect_identical(result$numExternalIndexRanges, 1L)
@@ -64,7 +64,7 @@ test_that("nodeRule creation and application works", {
 
     ## input of part of the internal block resolves to full internal block
     result <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(1:2)),
-                                                   indexRange(quote(4:9)))))
+                                                   indexRange(quote(4:9))), varName = 'mu'))
     expect_identical(result$boolExternalIndexRanges, c(TRUE, FALSE))
     expect_identical(result$numExternalIndexRanges, 1L)
     expect_identical(result$indexID_2_rangeID, c(2L, 1L))
@@ -85,13 +85,13 @@ test_that("nodeRule creation and application works", {
     result <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(1:2)),
                                                       indexRange(quote(4:6)),
                                                       indexRange(matrix(c(1,9,4,6,5))),
-                                                      indexRange(2))))
+                                                      indexRange(2)), varName = 'mu'))
 
     expect_identical(result$boolExternalIndexRanges, c(TRUE,TRUE,FALSE,FALSE))
     expect_identical(result$numExternalIndexRanges, 2L)
     expect_identical(result$indexID_2_rangeID, c(3L,1L,2L,4L))
     expect_identical(result$indexRanges[[1]], indexRange(quote(4:5)))
-    expect_identical(result$indexRanges[[2]], indexRange(quote(4:6)))
+    expect_identical(result$indexRanges[[2]], indexRange(matrix(c(4,6,5))))
     expect_identical(result$indexRanges[[3]], indexRange(quote(1:3)))
     expect_identical(result$indexRanges[[4]], indexRange(2))
 
@@ -99,14 +99,14 @@ test_that("nodeRule creation and application works", {
     result <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(1:2)),
                                                       indexRange(35),
                                                       indexRange(matrix(c(1,9,4,6,5))),
-                                                   indexRange(2))))
+                                                   indexRange(2)), varName = 'mu'))
     expect_identical(result, NULL)
     
     ## invalid internal range 
     result <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(1:2)),
                                                       indexRange(quote(4:6)),
                                                       indexRange(matrix(c(1,9,4,6,5))),
-                                                   indexRange(4))))
+                                                   indexRange(4)), varName = 'mu'))
     expect_identical(result, NULL)
 
     ## with varRange matrix covering two columns that go across internal and external
@@ -115,7 +115,7 @@ test_that("nodeRule creation and application works", {
     result <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(1:2)),
                                                    indexRange(quote(4:6)),
                                                    indexRange(matrix(c(5,3,12,12,6,2,4,2,4,2),
-                                                                     ncol = 2)))))
+                                                                     ncol = 2))), varName = 'mu'))
 
     expect_identical(result$boolExternalIndexRanges, c(TRUE,TRUE,FALSE,FALSE))
     expect_identical(result$numExternalIndexRanges, 2L)
@@ -128,14 +128,15 @@ test_that("nodeRule creation and application works", {
     ## all pairs of input indexRange invalid
     result <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(1:2)),
                                                    indexRange(4:6),
-                                                   indexRange(matrix(c(3,12,4,2), ncol = 2)))))
+                                                   indexRange(matrix(c(3,12,4,2), ncol = 2))),
+                                              varName = 'mu'))
     expect_identical(result, NULL)
     
     ## Apply nodeRule to nodeRange (modified so that output is not same as input)
     LHS <- quote(mu[1:3,i])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
     nodeRange <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(1:3)),
-                                                   indexRange(quote(4:9)))))
+                                                   indexRange(quote(4:9))), varName = 'mu'))
     result <- LHSrule$apply(nodeRange)
     expect_equal(result, nodeRange)
 
@@ -151,12 +152,12 @@ test_that("nodeRule creation and application works", {
     context_0 <- modelContextClass$new()
     LHSrule <- nodeRuleClass$new(quote(mu), 1, context_0)
     
-    vrNone <- varRangeClass$new(list(nimbleModel:::indexRange_none()))
+    vrNone <- varRangeClass$new(list(nimbleModel:::indexRange_none()), varName = 'mu')
 
     result <- LHSrule$apply(vrNone)
     expect_identical(result$indexRanges[[1]], nimbleModel:::indexRange_none())
 
-    expect_error(LHSrule$apply(varRangeClass$new(list(indexRange(3)))),
+    expect_error(LHSrule$apply(varRangeClass$new(list(indexRange(3)), varName = 'mu')),
                  "incorrect number of input indices")
     
 })
@@ -167,12 +168,12 @@ test_that("rhsRule creation and application works", {
     context_0 <- modelContextClass$new()
     RHSrule <- rhsRuleClass$new(quote(sigma), 1, context_0)
 
-    vrNone <- varRangeClass$new(list(nimbleModel:::indexRange_none()))
+    vrNone <- varRangeClass$new(list(nimbleModel:::indexRange_none()), varName = 'sigma')
 
     result <- RHSrule$apply(vrNone)
     expect_identical(result$indexRanges[[1]], nimbleModel:::indexRange_none())
 
-    expect_error(RHSrule$apply(varRangeClass$new(list(indexRange(3)))),
+    expect_error(RHSrule$apply(varRangeClass$new(list(indexRange(3)), varName = 'sigma')),
                  "incorrect number of input indices")
                             
 
@@ -193,7 +194,7 @@ test_that("rhsRule creation and application works", {
     expect_identical(RHSrule$index2setID, 1)
     expect_identical(is(RHSrule$externalRules$indexRules[[1]], 'indexRuleClass_block'), TRUE)
 
-    result <- RHSrule$apply(varRangeClass$new(list(indexRange(quote(5:12)))))
+    result <- RHSrule$apply(varRangeClass$new(list(indexRange(quote(5:12))), varName = 'mu'))
     expect_identical(result$numExternalIndexRanges, 1L)
     expect_identical(result$indexID_2_rangeID, 1L)
     expect_equal(result$indexRanges[[1]], indexRange(quote(5:9)))
@@ -209,7 +210,7 @@ test_that("rhsRule creation and application works", {
 
     result <- RHSrule$apply(varRangeClass$new(list(
                                               indexRange(quote(5:12)),
-                                              indexRange(3))))
+                                              indexRange(3)), varName = 'mu'))
     expect_identical(result$numExternalIndexRanges, 2L)
     expect_identical(result$indexID_2_rangeID, c(1L, 2L))
     expect_equal(result$indexRanges[[1]], indexRange(quote(5:9)))
@@ -217,7 +218,7 @@ test_that("rhsRule creation and application works", {
 
     result <- RHSrule$apply(varRangeClass$new(list(
                                               indexRange(quote(5:12)),
-                                              indexRange(quote(2:4)))))
+                                              indexRange(quote(2:4))), varName = 'mu'))
     expect_identical(result$numExternalIndexRanges, 2L)
     expect_identical(result$indexID_2_rangeID, c(1L, 2L))
     expect_equal(result$indexRanges[[1]], indexRange(quote(5:9)))
@@ -239,7 +240,7 @@ test_that("calcRanges are generated correctly", {
 
     declRule <- declRuleClass$new(quote(y ~ dnorm(mu, sigma)), 1, context_0)
     calcRule <- calcRuleClass$new(declRule, NULL, NULL, context_0)
-    result <- calcRule$apply(varRangeClass$new(list(nimbleModel:::indexRange_none())))
+    result <- calcRule$apply(varRangeClass$new(list(nimbleModel:::indexRange_none()), varName = 'y'))
     expect_identical(result$numExternalIndexRanges, 0L)
     expect_identical(result$indexRanges[[1]], nimbleModel:::indexRange_none())
     
@@ -248,7 +249,7 @@ test_that("calcRanges are generated correctly", {
     calcRule <- calcRuleClass$new(declRule_i, NULL, NULL, context_i)
 
     ## Basic nodeRule style apply
-    result <- calcRule$apply(varRangeClass$new(list(indexRange(quote(3:5)))))
+    result <- calcRule$apply(varRangeClass$new(list(indexRange(quote(3:5))), varName = 'y'))
     expect_identical(result$boolExternalIndexRanges, TRUE)
     expect_identical(result$numExternalIndexRanges, 1L)
     expect_identical(result$indexID_2_rangeID, 1L)
@@ -299,7 +300,7 @@ test_that("calcRanges are generated correctly", {
     LHS <- quote(y[7:9, i+1])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
     nodeRange <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(7:9)),
-                                                   indexRange(quote(5:9)))))
+                                                   indexRange(quote(5:9))), varName = 'y'))
     calcRange <- calcRule$generate_calcRange(nodeRange)
     expect_equal(calcRange$indexingRange,
                  varRangeClass$new(list(indexRange(quote(4:8))), varName = 'y'))
@@ -395,7 +396,7 @@ test_that("calcRule fracturing works", {
     LHS <- quote(mu)
     LHSrule <- nodeRuleClass$new(LHS, 1, context_0)
     ## fracture with mu itself
-    fracRange <- LHSrule$apply(varRangeClass$new(list(nimbleModel:::indexRange_none())))
+    fracRange <- LHSrule$apply(varRangeClass$new(list(nimbleModel:::indexRange_none()), varName = 'mu'))
     result <- fracture(LHSrule, fracRange)
     expect_identical(result, NULL)
     
@@ -403,7 +404,7 @@ test_that("calcRule fracturing works", {
     LHS <- quote(mu[i+1])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
     ## fracture with mu[3]
-    fracRange <- LHSrule$apply(varRangeClass$new(list(indexRange(3))))
+    fracRange <- LHSrule$apply(varRangeClass$new(list(indexRange(3)), varName = 'mu'))
     
     result <- fracture(LHSrule, fracRange)
 
@@ -422,7 +423,7 @@ test_that("calcRule fracturing works", {
     LHS <- quote(mu[i+1])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
     ## fracture with mu[3:4]
-    fracRange <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(3:4)))))
+    fracRange <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(3:4))), varName = 'mu'))
     
     result <- fracture(LHSrule, fracRange)
 
@@ -441,7 +442,7 @@ test_that("calcRule fracturing works", {
     LHS <- quote(mu[i+1])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
     ## fracture with mu[4:5]
-    fracRange <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(4:5)))))
+    fracRange <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(4:5))), varName = 'mu'))
     
     result <- fracture(LHSrule, fracRange)
 
@@ -466,7 +467,7 @@ test_that("calcRule fracturing works", {
     LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
     ## fracture with matrix
     idx <- c(3,6,9)
-    fracRange <- LHSrule$apply(varRangeClass$new(list(indexRange(matrix(idx)))))
+    fracRange <- LHSrule$apply(varRangeClass$new(list(indexRange(matrix(idx))), varName = 'mu'))
     
     result <- fracture(LHSrule, fracRange)
 
@@ -486,7 +487,7 @@ test_that("calcRule fracturing works", {
     LHS <- quote(mu[1:3,i])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
     fracRange <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(1:3)),
-                                                      indexRange(quote(2:3)))))
+                                                      indexRange(quote(2:3))), varName = 'mu'))
     
     result <- fracture(LHSrule, fracRange)
 
@@ -510,7 +511,7 @@ test_that("calcRule fracturing works", {
     fracRange <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(1:3)),
                                                       indexRange(quote(1:4)),
                                                       indexRange(matrix(c(2,4))),
-                                                      indexRange(2))))
+                                                      indexRange(2)), varName = 'mu'))
     
     result <- fracture(LHSrule, fracRange)
     
@@ -544,7 +545,7 @@ test_that("calcRule fracturing works", {
     fracRange <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(1:3)),
                                                       indexRange(quote(1:4)),
                                                       indexRange(matrix(c(2,4))),
-                                                      indexRange(2))))
+                                                      indexRange(2)), varName = 'mu'))
     
     result <- fracture(LHSrule, fracRange)
 
@@ -566,7 +567,7 @@ test_that("calcRule fracturing works", {
     fracRange <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(1:3)),
                                                       indexRange(quote(2:3)),
                                                       indexRange(quote(2:3)),
-                                                      indexRange(2))))
+                                                      indexRange(2)), varName = 'mu'))
     
     result <- fracture(LHSrule, fracRange)
 
@@ -600,7 +601,7 @@ test_that("calcRule fracturing works", {
     
     fracRange <- LHSrule$apply(varRangeClass$new(list(indexRange(quote(1:3)),
                                                       indexRange(matrix(c(2,3,3,7), ncol = 2)),
-                                                      indexRange(2))))
+                                                      indexRange(2)), varName = 'mu'))
 
     result <- fracture(LHSrule, fracRange)
 
@@ -1034,27 +1035,28 @@ test_that("declaration-specific calculate generated correctly", {
 
     context_0 <- modelContextClass$new()
     rule <- declRuleClass$new(quote(y ~ dnorm(mu, sigma)), 1, context_0)
-    expect_identical(body(rule$calculate), quote(logProb_y <- dnorm(y, mu, sigma)))
+    expect_identical(body(rule$calculate), quote(logProb_y <<- dnorm(y, mu, sigma)))
    
    
     rule <- declRuleClass$new(quote(y[j,i] ~ dnorm(x[i], 1)), 1, context_ij)
-    expect_identical(body(rule$calculate), quote(logProb_y[idx[2], idx[1]] <- dnorm(y[idx[2], idx[1]], x[idx[1]], 1)))
+    expect_identical(body(rule$calculate), quote(logProb_y[idx[2], idx[1]] <<- dnorm(y[idx[2], idx[1]], x[idx[1]], 1)))
     
 })
 
 
 test_that("calculate works correctly", {
     ## NOTE: until nodeFun generation and model building are integrated, this testing relies on
-    ## inserting logProb_y as hard-coded initialization in the declRule$calculate. 
+    ## having logProb_y be in GlobalEnv
     context_0 <- modelContextClass$new()
     y <- rnorm(1)
     assign('y', y, pos = .GlobalEnv)
-    logProb_y <- dnorm(y, 0, 1)
+    true_logProb_y <- dnorm(y, 0, 1)
     
     declRule <- declRuleClass$new(quote(y ~ dnorm(0, 1)), 1, context_0)
     calcRule <- calcRuleClass$new(declRule, NULL, NULL, context_0)
     calcRange <- calcRule$generate_calcRange(varRangeClass$new(list(nimbleModel:::indexRange_none())))
-    expect_identical(calcRange$calculate(), logProb_y)
+    expect_identical(calcRange$calculate(), true_logProb_y)
+    expect_identical(get('logProb_y', .GlobalEnv), true_logProb_y)
 
     singleContext1 <-
         modelSingleContext(forCode = quote(for(i in 2:6){}))
@@ -1062,15 +1064,19 @@ test_that("calculate works correctly", {
     declRule <- declRuleClass$new(quote(y[i] ~ dnorm(0, 1)), 1, context_i)
 
     y <- rnorm(6)
+    logProb_y <- rep(0, 6)
     assign('y', y, pos = .GlobalEnv)
-    logProb_y <- dnorm(y, 0, 1)
+    assign('logProb_y', y, pos = .GlobalEnv)
+    true_logProb_y <- dnorm(y, 0, 1)
     
     calcRule <- calcRuleClass$new(declRule, NULL, NULL, context_i)
     calcRange <- calcRule$generate_calcRange(varRangeClass$new(list(indexRange(quote(3:5)))))
-    expect_identical(calcRange$calculate(), logProb_y[3:5])
+    expect_identical(calcRange$calculate(), true_logProb_y[3:5])
+    expect_identical(get('logProb_y', .GlobalEnv)[3:5], true_logProb_y[3:5])
 
     calcRange <- calcRule$generate_calcRange(varRangeClass$new(list(indexRange(matrix(c(3,5))))))
-    expect_identical(calcRange$calculate(), logProb_y[c(3,5)])
+    expect_identical(calcRange$calculate(), true_logProb_y[c(3,5)])
+    expect_identical(get('logProb_y', .GlobalEnv)[c(3,5)], true_logProb_y[c(3,5)])
 
     ## also test with 1e6 dnorms once have indexRange as proper R6 class to see if faster (avoid current list copies)
     ## current nimble 1e5 dnorms is 34 sec. (compare to vec dnorm in R of .02 f0r 1e6 and for loop of 0.88 sec for 1e6)
@@ -1086,17 +1092,22 @@ test_that("calculate works correctly", {
     x <- rep(0, 6)
     assign('y', y, pos = .GlobalEnv)
     assign('x', x, pos = .GlobalEnv)
-    logProb_y <- dnorm(y, 0, 1)
+    logProb_y <- y
+    assign('logProb_y', y, pos = .GlobalEnv)
+    
+    true_logProb_y <- dnorm(y, 0, 1)
 
     calcRule <- calcRuleClass$new(declRule, NULL, NULL, context_ij)
     calcRange <- calcRule$generate_calcRange(varRangeClass$new(
                         list(indexRange(matrix(c(6,2,5,4,7,5), ncol = 2)))))
-    expect_identical(calcRange$calculate(), logProb_y[matrix(c(6,5,4,5), ncol = 2)])
+    expect_identical(calcRange$calculate(), true_logProb_y[matrix(c(6,5,4,5), ncol = 2)])
+    expect_identical(get('logProb_y', .GlobalEnv)[matrix(c(6,5,4,5), ncol = 2)], true_logProb_y[matrix(c(6,5,4,5), ncol = 2)])
 
     calcRange <- calcRule$generate_calcRange(varRangeClass$new(
                         list(indexRange(quote(8:9)), indexRange(quote(2:3)))))
                                              
-    expect_identical(calcRange$calculate(), c(logProb_y[8:9,2:3]))
+    expect_identical(calcRange$calculate(), c(true_logProb_y[8:9,2:3]))
+    expect_identical(get('logProb_y', .GlobalEnv)[8:9,2:3], true_logProb_y[8:9,2:3])
 
     ## internal block and deterministic
     y <- array(0, c(6,3,9))
@@ -1109,7 +1120,7 @@ test_that("calculate works correctly", {
     calcRange <- calcRule$generate_calcRange(varRangeClass$new(
                         list(indexRange(matrix(c(3,2,4,3,3,4,5,2,5,5,3,5), byrow = TRUE, ncol = 3)))))
     expect_identical(calcRange$calculate(), x[matrix(c(3,4,3,4,5,5,5,5), byrow = TRUE, ncol = 2)])
-
+    expect_identical(get('y', .GlobalEnv)[matrix(c(3,2,4,3,3,4,5,2,5,5,3,5), byrow = TRUE, ncol = 3)], x[matrix(c(3,4,3,4,5,5,5,5), byrow = TRUE, ncol = 2)])
 
     singleContext1 <-
         modelSingleContext(forCode = quote(for(i in 1:2){}))
@@ -1120,15 +1131,19 @@ test_that("calculate works correctly", {
     context_ijk <- modelContextClass$new(list(singleContext1, singleContext2, singleContext3))
 
     y <- array(rnorm(2*3*4), c(2,3,4))
+    logProb_y <- y
     assign('y', y, pos = .GlobalEnv)
-    logProb_y  <- dnorm(y, 0, 1)
+    assign('logProb_y', y, pos = .GlobalEnv)
+    true_logProb_y  <- dnorm(y, 0, 1)
     declRule <- declRuleClass$new(quote(y[i,j,k] ~ dnorm(0,1)), 1, context_ijk)
     calcRule <- calcRuleClass$new(declRule, NULL, NULL, context_ijk)
     calcRange <- calcRule$generate_calcRange(varRangeClass$new(
                                                                list(indexRange(matrix(c(2,1,3,1), ncol = 2)),
                                                                     indexRange(quote(2:3))),
                                                                indexOrders = list(c(1,3), 2)))
-    expect_identical(calcRange$calculate(), logProb_y[matrix(c(2,2,3,2,3,3,1,2,1,1,3,1), ncol = 3, byrow = TRUE)])
+    expect_identical(calcRange$calculate(), true_logProb_y[matrix(c(2,2,3,2,3,3,1,2,1,1,3,1), ncol = 3, byrow = TRUE)])
+    expect_identical(get('logProb_y', .GlobalEnv)[matrix(c(2,2,3,2,3,3,1,2,1,1,3,1), ncol = 3, byrow = TRUE)],
+                     true_logProb_y[matrix(c(2,2,3,2,3,3,1,2,1,1,3,1), ncol = 3, byrow = TRUE)])
 
     ## TODO: add tests with mv nodes
 

@@ -28,7 +28,7 @@ test_that('varStoreClass initialization with single value', {
     expect_identical(length(x$value), 1L, info = 'length when allEqual is 1 for array')
     expect_true(x$allEqual, info = 'single input as array is allEqual')
 
-}
+})
 
 test_that('varStoreClass initialization with duplicated values', {
     x <- varStoreClass$new(rep(3.3, 3))
@@ -45,7 +45,7 @@ test_that('varStoreClass initialization with duplicated values', {
     expect_identical(x$dim, c(2L,3L,4L), info = 'dimension of array input')
     expect_identical(length(x$value), 1L, info = 'length when allEqual is 1 for array')
     expect_true(x$allEqual, info = 'duplicated input as array is allEqual')
-}
+})
 
 test_that('varStoreClass initialization with heterogeneous values', {
     x <- varStoreClass$new(c(1,2,3))
@@ -62,7 +62,7 @@ test_that('varStoreClass initialization with heterogeneous values', {
     expect_identical(x$dim, c(2L, 3L, 4L), info = 'dimension of array input')
     expect_identical(dim(x$value), c(2L, 3L, 4L), info = 'dimension of value of array input')
     expect_false(x$allEqual, info = 'heterogeneous input as array is not allEqual')
-}
+})
 
 test_that('varStoreClass initialization with inconsistent dimension', {
     expect_warning(x <- varStoreClass$new(rep(3.3, 3), dim = 4),
@@ -72,14 +72,14 @@ test_that('varStoreClass initialization with inconsistent dimension', {
     ## we do not coerce dimensions
     expect_warning(x <- varStoreClass$new(1:6, dim = c(2,3)),
                    'dimension of input not consistent')
-}
+})
 
     
 test_that('varStoreClass scalar subsetting', {
     x <- varStoreClass$new(3.3, dim = 0)
     expect_error(x[1], 'subscript out of bounds')
     expect_error(x[], 'subscript out of bounds')
-}
+})
 
 
 test_that('varStoreClass vector subsetting', {
@@ -96,7 +96,7 @@ test_that('varStoreClass vector subsetting', {
     expect_identical(x[1:2], 1:2)
     expect_identical(x[1:2, expand = TRUE], 1:2)
     expect_identical(x[c(1,3)], c(1L, 3L))
-}
+})
 
 test_that('varStoreClass matrix subsetting', {
     x <- varStoreClass$new(3.3, dim = c(2,3))
@@ -116,7 +116,7 @@ test_that('varStoreClass matrix subsetting', {
     expect_identical(x[2, c(1,3), expand = TRUE], c(2L, 6L))
     expect_identical(x[1:2, 1:2], matrix(1:4, 2, 2))
     expect_identical(x[1, ], c(1L, 3L, 5L))
-}
+})
 
 test_that('varStoreClass array subsetting', {
     x <- varStoreClass$new(3.3, dim = c(2,3, 4))
@@ -138,7 +138,7 @@ test_that('varStoreClass array subsetting', {
     expect_identical(x[2, c(1,3), 4, expand = TRUE], c(20L, 24L))
     expect_identical(x[1:2, 1:2, 1], matrix(1:4, 2, 2))
     expect_identical(x[ , 2:3, ], arr[, 2:3, ])
-}
+})
 
 test_that('varStoreClass vector subset assignment', {
     x <- varStoreClass$new(3.3, dim = 3)
@@ -167,7 +167,7 @@ test_that('varStoreClass vector subset assignment', {
     expect_identical(x$value[1:2], rep(1, 2))
     expect_warning(x[1:3] <- c(1,2), 'not a multiple of replacement length')
     expect_warning(x[1:2] <- c(1,2,3), 'not a multiple of replacement length')
-}
+})
 
 test_that('varStoreClass matrix subset assignment', {
     x <- varStoreClass$new(matrix(rnorm(6), c(2,3)))
@@ -188,4 +188,4 @@ test_that('varStoreClass matrix subset assignment', {
     expect_error(x[ , 3] <- c(1,2,3), 'not a multiple of replacement')
     expect_error(x[ , 3] <- c(1,2,3,4), 'not a multiple of replacement')
     expect_error(x[1, ] <- c(1,2), 'not a multiple of replacement')
-}
+})

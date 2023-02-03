@@ -155,13 +155,15 @@ declRuleClass <- R6Class(
                 if(len > 1)
                     finalDecl[[3]][3:(len+1)] <- finalDecl[[3]][2:len]
                 finalDecl[[3]][[2]] <- newDecl[[2]]
-
-                nvals <- length(newDecl[[2]])-2 ## placeholder
-                if(nvals < 1) nvals <- 1        ## placeholder
+                ## Former placeholder to create local logProb_ variable to assign into.
+                ## With global assignment and use of .GlobalEnv in testing, this shouldn't be needed anymore.
+                ## nvals <- length(newDecl[[2]])-2 ## placeholder
+                ## if(nvals < 1) nvals <- 1        ## placeholder
                 calculate <<- function(idx) {
-                    logProb_y <- array(0, rep(100, nvals))  # TODO: placeholder so logProb storage exists for testing
+                    ## logProb_y <- array(0, rep(100, nvals))  # TODO: placeholder so logProb storage exists for testing
                 }
-                body(calculate)[[length(body(calculate))+1]] <<- finalDecl
+                ## body(calculate)[[length(body(calculate))+1]] <<- finalDecl
+                body(calculate) <<- finalDecl
             } else {
                 calculate <<- function(idx) {}
                 body(calculate) <<- newDecl

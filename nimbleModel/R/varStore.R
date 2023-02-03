@@ -1,3 +1,5 @@
+## TODO: do we plan to use this?
+
 ## Basic class for storing information about variables, such as sortID, isData, etc.
 ## The idea is to expand functionality so this can store 'sparse' information
 ## of various sorts values are repeated in various patterns (e.g., blocks or

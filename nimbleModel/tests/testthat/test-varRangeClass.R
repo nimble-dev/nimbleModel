@@ -1,18 +1,12 @@
-library(R6)
-library(testthat)
-
-## source('varRange.R')
-## source('indexRange.R')
-
 test_that("matrix_expand_grid",
 {
     expect_equal(
-        matrix_expand_grid(matrix(1:3, ncol = 1)),
+        nimbleModel:::matrix_expand_grid(matrix(1:3, ncol = 1)),
         matrix(1:3, ncol = 1)
     )
 
     expect_equal(
-        matrix_expand_grid(matrix(1:4, ncol = 1),
+        nimbleModel:::matrix_expand_grid(matrix(1:4, ncol = 1),
                            matrix(c(11:13, 21:23),
                                   ncol =2)
                            )
@@ -27,7 +21,7 @@ test_that("matrix_expand_grid",
     )
 
     expect_equal(
-        matrix_expand_grid(matrix(c(105:109, 115:119),
+        nimbleModel:::matrix_expand_grid(matrix(c(105:109, 115:119),
                                   ncol =2),
                            matrix(c(11:13, 21:23),
                                   ncol =2)
@@ -192,6 +186,9 @@ test_that('varRangeClass initialized from expr', {
 
 
 test_that("varRange initialized with matrix indexRange(s)",{
+    expect_silent(xVar <- varRangeClass$new(list(indexRange(matrix(c(2,3,5))), indexRange(matrix(c(3, 7)))),
+                                            varName = 'x'))
+    ## TODO: flesh out what we want here
     
 })
 

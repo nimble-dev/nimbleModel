@@ -248,6 +248,7 @@ getSignAndOffset <- function(indexExpr,
         offsetExpr[[2]] <- 0
         offset <- eval(offsetExpr, envir = constantsEnv)
     }
-    if(indexNameInExpr != indexVarName) return(NULL)
+    if(indexNameInExpr != indexVarName)
+        return(NULL)
     list(sign = indexSign, offset = offset)
 }

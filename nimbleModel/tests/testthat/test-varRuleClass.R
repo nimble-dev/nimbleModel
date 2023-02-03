@@ -27,8 +27,8 @@ test_that("varRules works for 2 1D sequence rules", {
             list(
                 indexRange(
                     quote(3:12)
-                ))))
-       ,
+                )), varName = 'x')
+            ),
         test2 <- list(
             varRangeClass$new(
                 list(

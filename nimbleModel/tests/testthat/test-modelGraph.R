@@ -1479,16 +1479,16 @@ test_that("state-space model", {
     modelDef$generateGraphInfo()
 
     result <- getNodes(modelDef, topOnly = TRUE)
-    expect_length(result, 1)
+    expect_length(result, 3)
     expect_identical(sapply(result, function(node) node$varName),
                      c('z','tau','sigma'))      
     expect_identical(result[[1]]$indexRanges, 
                      list(indexRange(1)))
 
     result <- getNodes(modelDef, latentOnly = TRUE)
-    expect_length(result, 1)
+    expect_length(result, 3)
     expect_identical(sapply(result, function(node) node$varName),
-                     rep('z',4))
+                     rep('z',3))
 
     result <- getDependencies(modelDef, 'z')
     expect_length(result, 3)

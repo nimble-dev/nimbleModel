@@ -278,6 +278,7 @@ varRange2char <- function(VR) {
 ## expression.  This inverts the initialize function of varRangeClass for
 ## an expression input.
 ## Example: varRange2expr(varRangeClass$new(quote(x[1:1]))) ==> "x[1:10]"
+## TODO: fix / error trap for matrix indexRanges
 varRange2expr <- function(VR) {
     do.call("call",
             c(list("[",
@@ -313,6 +314,7 @@ numIndices <- function(VR) {
 ##          To do so: evalIndexRange(xIndices, varRangeClass$new(quote(x[2:3, 3:5]))
 ##
 ## This will not work if varRange has any matrix indexRanges
+## TODO: is this used? If so, keep and error trap matrix indexRange situation.
 evalIndexRange <- function(x, varRange) {
     xExpr = substitute(x)
     if(length(varRange$indexRanges)==0)

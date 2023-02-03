@@ -511,6 +511,11 @@ test_that("arbitraryIndexRuleClass", {
 
 
 test_that("get_max", {
+    singleContext1 <-
+        modelSingleContext(forCode = quote(for(i in 1:3){}))
+    
+    context_i_short <- modelContextClass$new(list(singleContext1))
+
     rule <- indexRuleClass_arbitrary$new(
         toIndexExprList = list(
            t1 = quote(i)),                                  
