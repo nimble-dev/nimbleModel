@@ -500,8 +500,8 @@ applyGraphRule <- function(fromVarRange,
             stop('fromVarRange has no indexRanges')
         if(numIndexRanges == 1)
             message('implement simpler handling for 1 indexRange')
-        rangeLengths <- unlist(lapply(fromVarRange$indexRanges,
-                                      indexRange_numRows))
+        rangeLengths <- sapply(fromVarRange$indexRanges,
+                               function(x) x$numElements)
         
         for(i in 1:numIndexRanges) {
             thisTimes <- if(i < numIndexRanges)
@@ -657,14 +657,16 @@ applyGraphRule <- function(fromVarRange,
             if(length(sets) > 1) {  # Multiple rules operate on the indexRange.
                 if(any(sapply(ansIndexRanges[ sets ],
                               function(x) identical(attr(x, 'rangeType'), 'empty')))) {
-                    finalIndexRanges[[iAns]] <- indexRange_empty()
+                    finalIndexRanges[[iAns]] <- indexRangeEmptyClass$new()
                 } else {
                     ## Combine results from multiple rules (which are in matrixList form, because result for an input row can have arbitrary output rows)
                     ## into multi-column matrix indexRange.
+
+                    ## TODO: rename this given these are indexRanges?
                     indexRangeExpandedMatrices <-
-                        ansIndexRanges[ sets ]
+                        ansIndexRanges[sets]
                     finalIndexRanges[[iAns]] <-
-                        collapse_indexRangeMatrices(indexRangeExpandedMatrices)
+                        indexRangeMatrixListsToMatrix(indexRangeExpandedMatrices)
                 }
                 ## Sort the columns of the result based on ordering of indices of LHS..
                 finalIndexOrders[[iAns]] <-
@@ -676,7 +678,7 @@ applyGraphRule <- function(fromVarRange,
                         finalIndexOrders[[iAns]][sortedIndexOrders]
                     if(!identical(attr(finalIndexRanges[[iAns]], 'rangeType'), 'empty'))
                         finalIndexRanges[[iAns]] <-
-                            indexRange_matrix(
+                            indexRangeMatrixClass$new(
                                 finalIndexRanges[[iAns]][[1]][, sortedIndexOrders, drop = FALSE])
                 }
             } else {  # Only one rule operates on the indexRange.
@@ -686,8 +688,7 @@ applyGraphRule <- function(fromVarRange,
                     attr(finalIndexRanges[[iAns]], 'rangeType'),
                     'matrixList'
                 ))  ## Simplify to a matrix indexRange.
-                    finalIndexRanges[[iAns]] <-
-                        indexRange2matrix(finalIndexRanges[[iAns]])
+                    finalIndexRanges[[iAns]] <-finalIndexRanges[[iAns]]$toMatrix()
                 finalIndexOrders[[iAns]] <-
                     ansIndexOrders[[ sets ]]
             }
@@ -718,7 +719,7 @@ applyGraphRule <- function(fromVarRange,
             NArows <- apply(finalIndexRanges[[iRange]][[1]], 1,
                             function(x) any(is.na(x)))
             if(all(NArows)) {
-                finalIndexRanges[[iRange]] <- indexRange_empty()
+                finalIndexRanges[[iRange]] <- indexRangeEmptyClass$new()
             } else finalIndexRanges[[iRange]][[1]] <- finalIndexRanges[[iRange]][[1]][!NArows, , drop = FALSE]
         }
 
@@ -726,7 +727,7 @@ applyGraphRule <- function(fromVarRange,
     ## (e.g., to more efficiently handle y[i] <- x[k[i]] cases where all y's included
     for(iRange in seq_along(finalIndexRanges)) 
         if(identical(attr(finalIndexRanges[[iRange]], 'rangeType'), 'matrix'))
-           finalIndexRanges[[iRange]] <- indexRange_matrix2sequence(finalIndexRanges[[iRange]])
+           finalIndexRanges[[iRange]] <- finalIndexRanges[[iRange]]$toSequence()
     
 
     ## Add in results from 'any' rules, as these have no RHS index used in the rule (i.e., blank or constant RHS, e.g., x[] or x[2])

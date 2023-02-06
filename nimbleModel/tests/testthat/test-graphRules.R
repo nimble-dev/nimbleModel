@@ -18,11 +18,11 @@ bruteForceNestedIndexing <- function(indexVector, indexQuery) {
 
 ## This is not allowed in current nimble: y[i] <- sum(x[c(1,3,5)])
 
-irEmpty <- nimbleModel:::indexRange_empty()
+irEmpty <- nimbleModel:::indexRangeEmptyClass$new()
 ## vrEmpty <- varRangeClass$new(list(irEmpty))
 ## vrEmpty_mat2 <- varRangeClass$new(list(irEmpty), list(1:2))  ## single indexRange, two indices
 ## vrEmpty2 <- varRangeClass$new(list(irEmpty, irEmpty))
-irNone <- nimbleModel:::indexRange_none()
+irNone <- nimbleModel:::indexRangeNoneClass$new()
 vrNone <- varRangeClass$new(list(irNone))
 
 singleContext1 <-

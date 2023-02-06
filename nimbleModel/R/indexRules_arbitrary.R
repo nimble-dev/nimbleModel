@@ -46,7 +46,7 @@ indexRuleClass_arbitrary <- R6Class(
         ## },
         apply_indexRange = function(fromIndexRange,
                                     collapse = TRUE) {
-            fromIndicesMatrix <- indexRange2matrix(fromIndexRange)[[1]]
+            fromIndicesMatrix <- fromIndexRange$toMatrix()$values
             toIndices <-
                 indexRule_arbitrary_apply_matrix(
                     fromIndicesMatrix,
@@ -55,9 +55,9 @@ indexRuleClass_arbitrary <- R6Class(
                     collapse = collapse
                 )
             if(!length(toIndices))
-                return(indexRange_empty())
+                return(indexRangeEmptyClass$new())
             if(collapse)
-                return(indexRange_matrix(toIndices)) else return(indexRange_matrixList(toIndices))
+                return(indexRangeMatrixClass$new(toIndices)) else return(indexRangeMatrixListClass$new(toIndices))
         },
         apply = function(from, ...) {
             if(inherits(from, 'varRangeClass'))

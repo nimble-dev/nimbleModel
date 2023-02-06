@@ -407,7 +407,8 @@ calcRangeClass <- R6Class(
 
         calculate = function() {
             numRanges <- length(indexingRange$indexRanges)
-            indexRange_lengths <- sapply(indexingRange$indexRanges, indexRange_numRows)
+            indexRange_lengths <- sapply(indexingRange$indexRanges,
+                                         function(x) x$numElements)
             indexPositions <- indexingRange$rangeID_2_indexID
             len <- prod(indexRange_lengths)
             ## nestedLengths <- sapply(seq_len(numRanges), function(i) prod(indexRange_lengths[(i+1):numRanges]))
@@ -422,8 +423,8 @@ calcRangeClass <- R6Class(
 
                 delay <- 1
                 for(irIndex in rev(seq_len(numRanges))) {
-                    indexingRange$indexRanges[[irIndex]] <- indexRange_init(indexingRange$indexRanges[[irIndex]], delay)
-                    delay <- delay * indexingRange$indexRanges[[irIndex]]$length
+                    indexingRange$indexRanges[[irIndex]]$setDelay(delay)
+                    delay <- delay * indexingRange$indexRanges[[irIndex]]$numElements
                 }
 
                 if(length(sortID) == 1 || len == 1) {
@@ -438,7 +439,7 @@ calcRangeClass <- R6Class(
                             ##}
                             
                             ## TODO: remove kludge when indexRanges are proper R6 classes
-                            tmp <- indexRange_getItem(indexingRange$indexRanges[[irIndex]])
+                            tmp <- indexingRange$indexRanges[[irIndex]]$getNext()
                             index[indexPositions[[irIndex]]] <- tmp$result
                             ## Need this to capture updated internal indexing
                             indexingRange$indexRanges[[irIndex]] <- tmp$range 
@@ -450,7 +451,7 @@ calcRangeClass <- R6Class(
                     sortIDvals <- rep(0, len)
                     for(item in seq_len(len)) {
                         for(irIndex in seq_len(numRanges)) {
-                            tmp <- indexRange_getItem(indexingRange$indexRanges[[irIndex]])
+                            tmp <- indexingRange$indexRanges[[irIndex]]$getNext()
                             index[item, indexPositions[[irIndex]]] <- tmp$result
                             indexingRange$indexRanges[[irIndex]] <- tmp$range
                         }

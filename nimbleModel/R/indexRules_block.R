@@ -46,7 +46,7 @@ indexRuleClass_block <- R6Class(
             )
         },
         apply = function(from, ...) {
-            if(inherits(from, 'varRangeClass'))
+            if(!is(from, 'indexRuleClass'))
                 ##apply_varRange(from, ...)
                 stop('an index rule should be applied to an indexRange')
             else
@@ -68,10 +68,10 @@ indexRule_block_apply_single <- function(fromIndices,
     ## a matrix indexRange rather than a scalar indexRange with a matrix value in it.
     if(fromIndices < setupResults$from_min |
        fromIndices > setupResults$from_max)
-        return(indexRange_empty())
+        return(indexRangeEmptyClass$new())
     toIndices <- fromIndices + setupResults$offset
     if(make.matrix) toIndices <- as.matrix(toIndices)
-    return(indexRange_scalar(toIndices))
+    return(indexRangeScalarClass$new(toIndices))
 }
 
 indexRule_block_apply_matrix <- function(fromIndices,
@@ -84,9 +84,9 @@ indexRule_block_apply_matrix <- function(fromIndices,
     toIndices <- fromIndices + setupResults$offset
     toIndices[!valid] <- NA
     if(collapse)
-        indexRange_matrix(as.matrix(toIndices))
+        indexRangeMatrixClass$new(as.matrix(toIndices))
     else  
-        indexRange_matrixList(lapply(toIndices, as.matrix))
+        indexRangeMatrixListClass$new(lapply(toIndices, as.matrix))
 }
 
 indexRule_block_apply_sequence <- function(fromIR,
@@ -99,7 +99,7 @@ indexRule_block_apply_sequence <- function(fromIR,
     if(start > end |
        start > setupResults$from_max |
        end < setupResults$from_min)
-        return(indexRange_empty())
+        return(indexRangeEmptyClass())
 
     startAns <- if(start < setupResults$from_min)
                     setupResults$from_min + setupResults$offset
@@ -112,13 +112,10 @@ indexRule_block_apply_sequence <- function(fromIR,
                   end + setupResults$offset
 
     if(startAns == endAns) {
-        return(indexRange_scalar(startAns))
+        return(indexRangeScalarClass$new(startAns))
     }
     
-    return(
-        indexRange_sequence(
-            list(startAns, endAns)
-        ))
+    return(indexRangeSequenceClass$new(startAns, endAns))
 }
 
 indexRule_block_apply <- function(fromIR,
@@ -128,18 +125,19 @@ indexRule_block_apply <- function(fromIR,
     ## fromIR should be an indexRange.
     ## This is essentially dispatching on types,
     ## which often a class hierarchy would manage.
-    ## In this case it makes sense to do via switch().
-    switch(attr(fromIR, "rangeType"),
-           scalar = indexRule_block_apply_single(fromIR[[1]],
+    ## In this case it makes sense to do via switch(),
+    ## because we are crossing `indexRule` types with `indexRange` types.
+    switch(class(fromIR)[1],
+           indexRangeClassScalar = indexRule_block_apply_single(fromIR$value,
                                             setupResults,
                                             collapse = collapse,
                                             ...
                                             ),
-           sequence = indexRule_block_apply_sequence(fromIR,
+           indexRangeClassSequence = indexRule_block_apply_sequence(fromIR$start, fromIR$end,
                                                setupResults,
                                                collapse = collapse,
                                                ...),
-           matrix = indexRule_block_apply_matrix(fromIR[[1]],
+           indexRangeClassMatrix = indexRule_block_apply_matrix(fromIR$values,
                                                       setupResults,
                                                       collapse = collapse,
                                                       ...)

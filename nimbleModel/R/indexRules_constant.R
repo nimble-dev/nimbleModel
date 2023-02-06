@@ -27,7 +27,7 @@ indexRuleClass_constant <- R6Class(
             return(setupResults$constant)
         },
         apply = function(from, ...) {
-            if(inherits(from, 'varRangeClass'))
+            if(!is(from, 'indexRangeClass'))
                 ##apply_varRange(from, ...)
                 stop('an index rule should be applied to an indexRange')
             else
@@ -59,11 +59,11 @@ indexRule_constant_setup <- function(toIndexExprList,
         toIndexExpr <- toIndexExprList[[1]]
         
         if(length(toIndexExpr) == 3 && toIndexExpr[[1]] == ':') {
-            toConstant <- indexRange_sequence(list(eval(toIndexExpr[[2]], envir = constants),
-                                                eval(toIndexExpr[[3]], envir = constants)))
+            toConstant <- indexRangeSequenceClass$new(eval(toIndexExpr[[2]], envir = constants),
+                                                eval(toIndexExpr[[3]], envir = constants))
                                         # resultExpr <- substitute(A:B, list(A = input_range[1], B = input_range[2]))
         } else if(length(toIndexExpr) == 1) {
-            toConstant <- indexRange_scalar(eval(toIndexExpr, envir = constants))
+            toConstant <- indexRangeScalarClass$new(eval(toIndexExpr, envir = constants))
         } else stop("indexRule_constant_setup: input error in ", deparse(toIndexExprList))
     }
     return(list(constant = toConstant))

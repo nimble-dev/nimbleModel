@@ -11,7 +11,7 @@ test_that("indexRule_block works",
                                           list(quote(i + 3)),
                                           context_i)
 
-    irEmpty <- nimbleModel:::indexRange_empty()
+    irEmpty <- nimbleModel:::indexRangeEmptyClass$new()
 
     ## Direct use of the methods
 

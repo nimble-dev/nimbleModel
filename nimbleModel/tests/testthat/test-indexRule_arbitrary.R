@@ -233,20 +233,20 @@ test_that("arbitraryIndexRuleClass", {
     )
 
     expect_equal(
-        rule$apply(indexRange_matrix(matrix(c(5, 3, 6, 3),
+        rule$apply(indexRangeMatrixClass$new(matrix(c(5, 3, 6, 3),
                                                        byrow = TRUE,
                                                        nrow = 2))),
-                      indexRange_matrix(
+                      indexRangeMatrixClass$new(
                           matrix(c(4, 1, 5, 1),
                                  byrow = TRUE,
                                  nrow = 2))
     )
 
     expect_equal(
-        rule$apply(indexRange_matrix(matrix(c(15, 3, 16, 3),
+        rule$apply(indexRangeMatrixClass$new(matrix(c(15, 3, 16, 3),
                                                 byrow = TRUE,
                                             nrow = 2))),
-        nimbleModel:::indexRange_empty()
+        nimbleModel:::indexRangeEmptyClass$new()
     )
 
     ## RHS single index a function of multiple contexts

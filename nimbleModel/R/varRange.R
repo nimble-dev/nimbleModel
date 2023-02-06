@@ -139,7 +139,7 @@ varRangeClass <- R6Class(
                     self$rangeID_2_indexID <-
                         lapply(indexRanges,
                                function(x) {
-                                   numCols <- indexRange_numCols(x)
+                                   numCols <- x$numColumns
                                    if(!numCols) numCols <- 1  # empty IR - this handling might need to be modified
                                    ans <- nextID-1 + (1:numCols)
                                    nextID <<- nextID + numCols
@@ -151,10 +151,11 @@ varRangeClass <- R6Class(
         },
         isEmpty = function() {
             return(any(sapply(self$indexRanges,
-                              function(x) identical(attr(x, 'rangeType'), 'empty'))))
+                              function(x) is(x, "indexRangeEmptyClass"))))
         },
         isNone = function() {
-            return(length(indexRanges) == 1 && identical(indexRanges[[1]], indexRange_none()))
+            return(length(indexRanges) == 1 &&
+                   is(indexRanges[[1]], "indexRangeNoneClass"))
         }
         
     )
@@ -192,9 +193,7 @@ varRange_getSingleIndexRange <- function(varRange,
         boolIndex <- index == varRange$rangeID_2_indexID[[iRange]]
         if(any(boolIndex)) {
             innerIndex <- which(boolIndex)
-            result <- indexRange_getCols(
-                varRange$indexRanges[[iRange]],
-                innerIndex)
+            result <- varRange$indexRanges[[iRange]]$getIndices(innerIndex)
             usedRanges <- append(usedRanges, iRange) 
             done <- TRUE
         }
@@ -226,16 +225,14 @@ varRange_getIndexRangeMatrix <- function(varRange,
         if(any(boolIndex)) {
             innerIndices <- which(boolIndex)
             indexRangeResults[[iResult]] <-
-                indexRange_getCols(
-                    varRange$indexRanges[[iRange]],
-                    innerIndices)
+                varRange$indexRanges[[iRange]]$getColumns(innerIndices)
             iResult <- iResult + 1
             usedRanges <- append(usedRanges, iRange)
         }
         iRange <- iRange + 1
         if(iRange > length(varRange$indexRanges)) done <- TRUE
     }
-    result <- indexRangeList2matrix(indexRangeResults)
+    result <- crossIndexRanges(indexRangeResults)
     ## Extract requested indices in correct order.
     result[[1]] <- result[[1]][ , match(indices, usedIndices), drop = FALSE]
     if(!details)
@@ -279,6 +276,8 @@ varRange2char <- function(VR) {
 ## an expression input.
 ## Example: varRange2expr(varRangeClass$new(quote(x[1:1]))) ==> "x[1:10]"
 ## TODO: fix / error trap for matrix indexRanges
+## TODO: what about varRange formed internally via apply();
+## presumably need to call out to indexRange$toExpr.
 varRange2expr <- function(VR) {
     do.call("call",
             c(list("[",

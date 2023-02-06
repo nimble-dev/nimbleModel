@@ -45,7 +45,7 @@ indexRuleClass_any <- R6Class(
             )
         },
         apply = function(from, ...) {
-            if(inherits(from, 'varRangeClass'))
+            if(!is(from, 'indexRangeClass'))
                 ##apply_varRange(from, ...)
                 stop('an index rule should be applied to an indexRange')
             else
@@ -97,12 +97,7 @@ indexRule_any_apply_matrix <- function(fromIndices,
     }
 }
 
-indexRule_any_apply_sequence <- function(fromIR,
-                                        setupResults,
-                                        ...) {
-    ## fromIR should be an indexRange
-    start <- fromIR[[1]][[1]]
-    end <- fromIR[[1]][[2]]
+indexRule_any_apply_sequence <- function(start, end, setupResults, ...) {
     if(setupResults$useArbitrary) {
         from_flat <- setupResults$from2indicesFunctions$rawIndex2flatIndex_multi(matrix(start:end, ncol = 1))
         return(any(sapply(from_flat, function(x) length(x) &&
@@ -121,16 +116,17 @@ indexRule_any_apply <- function(fromIR,
     ## fromIR should be an indexRange.
     ## This is essentially dispatching on types,
     ## which often a class hierarchy would manage.
-    ## In this case it makes sense to do via switch().
-    switch(attr(fromIR, "rangeType"),
-           scalar = indexRule_any_apply_single(fromIR[[1]],
+    ## In this case it makes sense to do via switch(),
+    ## because we are crossing `indexRule` types with `indexRange` types.
+    switch(class(fromIR)[1],
+           indexRangeClassScalar = indexRule_any_apply_single(fromIR$value,
                                             setupResults,
                                             ...
                                             ),
-           sequence = indexRule_any_apply_sequence(fromIR,
+           indexRangeClassSequence = indexRule_any_apply_sequence(fromIR$start, fromIR$end,
                                                setupResults,
                                                ...),
-           matrix = indexRule_any_apply_matrix(fromIR[[1]],
+           indexRangeClassMatrix = indexRule_any_apply_matrix(fromIR$values,
                                                       setupResults,
                                                       ...)
            )

@@ -1,241 +1,337 @@
-## This is a global object for the "blank" index in x[].
-## We save an instance of it because coding it is very finicky
-globalIndexBlank <- quote(x[])[3]
-## Here is how to check for it:
-## identical(globalIndexBlank, as.call(indexRange(quote(x[])[[3]])))
-isBlank <- function(expr) {
-    identical(globalIndexBlank, as.call(list(expr)))
+## CHECK: do we want to handle blank cases: y[], y[,].
+
+## CHECK: do we need a print() or will that always be done at varRange level? 
+
+## NOTE: this uses subclass specific variables for storing index information.
+## Previously we did this with a list for each type of `indexRange`.
+
+intToNumeric <- function(x) {
+    if(is.integer(x)) {
+        dm <- dim(x)
+        x <- as.numeric(x)
+        dim(x) <- dm
+    }
+    return(x)
 }
 
-## indexRange converts one index component into a
-## list of information.  The component could be blank, scalar,
-## an arbitrary vector, or a block indicated using ':'
-##
-## expr: a call containing one index component such as 1:5, 1, or blank
-## return:
-##   if it is a blank (from x[]): list()
-##   if it is a single index: list(1)
-##   if it is a sequence: list(list(1, 5))
-##   if it is a matrix: list(<matrix>)
-## In every case there is an extra list() layer that may
-## be useful in the future for packing additional information.
-## It seems useful to have the result be a list,
-## even when it only has one element
+##### `indexRange` constructor #####
+
+## Function to create `indexRange` objects of particular subclasses.
+## This needs to be a function as we can't initialize a subclass from
+## the constructor of the base class, and we want to be able to
+## dispatch `indexRange` creation based on form of input expression or value.
 indexRange <- function(expr) {
-    ## if expr is simply a number,
-    ## it will get treated as a scalar, not a 1-row matrix
+    ## Note that we do various checking and  conversion to numeric here,
+    ## as calls to class-specific `initialize` will be done repeatedly and
+    ## with only internal values (which should be guaranteed valid).
     if(length(expr) > 1) {
         ## input expr is not just a name or number
-        if(identical(expr[[1]], as.name(":")))
-            ## index expr is a:b
-            structure(list(as.list(expr[-1])),
-                      class = "indexRange",
-                      rangeType = "sequence")
-        else
-            ## index expr must be something like c(2, 4, 6)
-            ## or matrix(...)
-            ## An expression that returns a vector
-            ## is assumed to be a set of 1D indices.
-            ## An expression that returns a matrix is assumed to
-            ## be a rows of indices (1D or higher-dimensional).
-            ## Creating a single row of indices for nDim > 1
-            ## requires an expression that returns a 1-row matrix.
-            structure(list(as.matrix(eval(expr))),
-                      class = "indexRange",
-                      rangeType = "matrix")
-            ## structure(list(eval(expr)),
-            ##           class = "indexRange",
-            ##           rangeType = "vector")
+        if(identical(expr[[1]], as.name(":"))) {
+            start <- intToNumeric(expr[[2]])
+            end <- intToNumeric(expr[[3]])
+            if(is.numeric(start) && is.numeric(end) &&
+               length(start) == 1 && length(end) == 1 &&
+               end >= start && start >= 1 && 
+               identical(start, round(start)) && identical(end, round(end))) {
+                return(indexRangeSequenceClass$new(start, end))
+            } else 
+                stop("indexRange: an indexRange sequence must involve two positive, non-decreasing, integer-valued endpoints.")
+        } else {
+            ## An expression like c(2,4,6) or matrix(...).
 
-        ## Note: "vector" is the only type that might need
-        ## to handle multiple dimensions.  Thus it might be a matrix,
-        ## representing a vector of index vectors.
+            ## Notes:
+            ## (1) An expression that returns a vector is assumed to be a set of 1D indices.
+            ## (2) An expression that returns a matrix is assumed to be a rows of indices
+            ## (1D or higher-dimensional).
+            ## (3) Creating a single row of indices for nDim > 1
+            ## requires an expression that returns a 1-row matrix.
+            mat <- intToNumeric(as.matrix(eval(expr)))
+            vals <- c(mat)
+            vals <- vals[!is.na(mat)]
+            if(isTRUE(all(vals >= 1)) && identical(vals, round(vals))) {
+                dimnames(mat) <- NULL
+                return(indexRangeMatrixClass$new(mat))
+            } else
+                stop("indexRange: an indexRange matrix must involve positive, integer-valued indices.")
+        }
     } else {
-        ## input expr is a single name, number, or blank
-        
-        ## Not clear we need blank indexRange type
-        ## Not currently used internally and when would a user provide it in querying model structure?
-        if(isBlank(expr))   
-            structure(list(expr),
-                      class = "indexRange",
-                      rangeType = "blank")
-        else {
-            if(is.matrix(expr)) {
-                structure(list(expr),
-                          class = "indexRange",
-                          rangeType = "matrix")
-            } else {
-                if(length(expr)) {
-                    structure(list(expr),
-                              class = "indexRange",
-                              rangeType = "scalar")
-                } else
-                    indexRange_none()
-            }
+        if(length(expr)) {
+            expr <- intToNumeric(expr)
+            if(is.numeric(expr) && expr >= 1 && identical(expr, round(expr))) {
+                if(is.null(dim(expr))) {
+                    names(expr) <- NULL
+                    return(indexRangeScalarClass$new(expr))
+                }
+                ## 1x1 matrix - not clear we need to handle this case and/or might convert to scalar.
+                if(length(dim(expr)) == 2) {
+                    dimnames(expr) <- NULL
+                    return(indexRangeMatrixClass$new(expr))
+                }
+                stop("indexRange: an indexRange cannot be an array.")
+            } else
+                stop("indexRange: an indexRange with a single index must be a positive, integer-valued number.")
+        } else {
+            return(indexRangeNoneClass$new())
         }
     }
 }
 
-## kludge until we make indexRanges proper R6 classes.
-indexRange_init <- function(indexRange, delay = 0) {
-    indexRange$current <- 1
-    indexRange$local <- 1
-    indexRange$length <- indexRange_numRows(indexRange)
-    indexRange$delay <- delay
-    return(indexRange)
+##### `indexRange` base class and subclasses #####
+
+indexRangeClass <- R6Class(
+    classname = 'indexRangeClass',
+    portable = FALSE,
+    public = list(
+        numElements = numeric(),
+        numColumns = numeric(),
+        current = numeric(),
+        local = numeric(),
+        delay = numeric(),
+        
+        setDelay = function(delay = 0) {
+            current <<- 1
+            local <<- 1
+            delay <<- delay
+        },
+        
+        getNext = function() {
+            item <- current
+            ## Increment internal indexing
+            if(local < delay) {
+                local <- local + 1
+            } else {
+                local <- 1
+                current <- current + 1
+                if(current > numElements)
+                    current <- 1
+            }
+            
+            ## Return original index values
+            return(self$getItem(item))
+        }, 
+        
+        getColumns = function() {
+            stop("getColumns: not valid for '", class(self)[1], "' objects.")
+        },
+
+        toSequence = function() {
+            stop("toSequence: not valid for '", class(self)[1], "' objects.")
+        },
+
+        toMatrix = function() {
+            stop("toMatrix: not valid for '", class(self)[1], "' objects.")
+        },
+
+        toMatrixList = function() {
+            stop("toMatrixList: not valid for '", class(self)[1], "' objects.")
+        },
+
+        toExpr = function() {
+            stop("toExpr: not valid for '", class(self)[1], "' objects.")
+        },
+
+        getItem = function(item) {
+            stop("getItem: not valid for '", class(self)[1], "' objects.")
+        }
+    )
+)
+
+
+## A class representing no elements.
+indexRangeEmptyClass <- R6Class(
+    classname = 'indexRangeEmptyClass',
+    inherit = indexRangeClass,
+    portable = FALSE,
+    public = list(
+        numElements = NULL,
+        numColumns = NULL
+    )
+)
+
+## A class representing non-indexed ranges, e.g., the (single, placeholder) `indexRange` for `y`.
+## CHECK: we might also handle this case by a varRange with no indexRanges or some special varRange type. 
+indexRangeNoneClass <- R6Class(
+    classname = 'indexRangeNoneClass',
+    inherit = indexRangeClass,
+    portable = FALSE,
+    public = list(
+        numElements = 1,
+        numColumns = 0
+    )
+)
+
+## A class representing a single 'constant' index value, e.g., the `2` in `y[2,i]`.
+indexRangeScalarClass <- R6Class(
+    classname = 'indexRangeScalarClass',
+    inherit = indexRangeClass,
+    portable = FALSE,
+
+    public = list(
+        numElements = 1,
+        numColumns = 1,
+        value = numeric(),
+
+        initialize = function(value) {
+            value <<- value
+        },
+
+        getItem = function(item) {
+            return(value)
+        },
+        
+        toMatrix = function() {
+            return(indexRangeMatrixClass$new(matrix(value)))
+        },
+
+        toExpr = function() {
+            return(value)
+        }
+    )
+)
+
+## A class representing a full sequence, e.g., the `2:5` in `y[2:5,i]`.
+indexRangeSequenceClass <- R6Class(
+    classname = 'indexRangeSequenceClass',
+    inherit = indexRangeClass,
+    portable = FALSE,
+    public = list(
+        start = numeric(),
+        end = numeric(),
+        numColumns = 1,
+        
+        initialize = function(start, end) {
+            ## CHECK: any need to check start <= end?
+            start <<- start
+            end <<- end
+            numElements <<- end - start + 1
+        },
+
+        getItem = function(item) {
+            return(start + item - 1)
+        },
+
+        toMatrix = function() {
+            return(indexRangeMatrixClass$new(matrix(seq.int(start, end))))
+        },
+
+        toMatrixList = function() {
+            return(indexRangeMatrixListClass$new(
+                lapply(seq.int(start, end), matrix)))
+        },
+
+        toExpr = function() {
+            return(substitute(A:B, list(A = start, B = end)))
+        }
+    )
+)
+
+## A class representing an arbitrary number of one or more indices.
+## E.g., (2,4,5) for the second index of y[2,i], y[4,i], y[5,i]
+## or ((2,3), (3,4), (7,8)) for the first and third indices of y[i, 3, i+1]
+indexRangeMatrixClass <- R6Class(
+    classname = 'indexRangeMatrixClass',
+    inherit = indexRangeClass,
+    portable = FALSE,
+    public = list(
+        values = numeric(),
+        
+        initialize = function(values) {
+            values <<- values
+            numElements <<- nrow(values)
+            numColumns <<- ncol(values)
+        },
+
+        getItem = function(item) {
+            return(values[item, ])
+        },
+
+        getColumns = function(columns = NULL) {
+            if(is.null(columns)) {
+                return(.self)
+            } else
+                return(indexRangeMatrixClass$new(values[ , columns, drop = FALSE]))
+        },
+
+        toMatrix = function() {
+            return(self)
+        },
+
+        ## Convert sequential indexing to sequence class.
+        toSequence = function() {
+            if(numColumns == 1) {
+                rg <- range(values)
+                if(length(values) == mx - mn + 1 &&
+                   all(diff(values) == 1))
+                    return(indexRangeSequenceClass$new(rg[1], rg[2]))
+            }
+            return(self)
+        },
+
+        toExpr = function() {
+            return(values)
+        }
+    )
+)
+
+## A class representing a list of matrices.
+indexRangeMatrixListClass <- R6Class(
+    classname = 'indexRangeMatrixListClass',
+    inherit = indexRangeClass,
+    portable = FALSE,
+    public = list(
+        rangeList = list(),
+        
+        initialize = function(rangeList) {
+            if(!all(sapply(rangeList, is.matrix)))
+                stop("indexRangeMatrixList: input must be a list of matrices.")
+            rangeList <<- rangeList
+        },
+
+        toMatrix = function() {
+            ## TODO: check if called
+            stop("toMatrix: not valid for '", class(self)[1], "' objects.")
+            return(indexRangeMatrixClass$new(do.call("rbind", rangeList)))
+        }
+
+    )
+)
+
+##### Additional functions #####
+
+## Take a list of `indexRange`s and cross (expand) to give fully-expanded
+## `indexRangeMatrix`. E.g. c(3,5) with 1:3 to give (3,1),(3,2),(3,3),(5,1),(5,2),(5,3).
+crossIndexRanges <- function(indexRangesList) {
+    return(indexRange(matrixExpandGrid(lapply(indexRangesList, function(x) x$toMatrix()$values))))
 }
 
+
+## Take a list of `indexRangeMatrixList`s (possibly including `indexRangeSequence`s),
+## cross by element, and then collapse to a single `indexRangeMatrix`.
+indexRangeMatrixListsToMatrix <- function(indexRangesList) {    
+    ## Convert any sequences to matrixLists and extract the `rangeList` list of indices.
+    rangeListsList <- lapply(indexRangesList,
+                  function(x) 
+                      if(is(x, "indexRangeSequenceClass")) x$toMatrixList()$rangeList else x$rangeList
+                  )
+
+    lens <- sapply(rangeListsList, function(x) length(x))
+    if(length(unique(lens)) > 1)
+        stop("indexRangeMatrixListsToMatrix: Inconsistent number of elements in matrixLists to be collapsed to a single matrix.")
     
-## Notes:
-##
-## We may need to distinguish vector from matrix
-##
-
-## "Nothing" type returned when result of applying a rule is empty.
-indexRange_empty <- function() {
-    structure(list(numeric(0)),
-    class = "indexRange",
-    rangeType = "empty")
+    ## Cross each element of the matrixLists with corresponding elements of other matrixList(s)
+    ## and then collapse via `rbind` to produce a single `indexRangeMatrix`.
+    result <- indexRange(
+                do.call("rbind",
+                        lapply(seq_len(lens[1]), function(i)
+                            matrixExpandGrid(lapply(rangeListsList, function(x) x[[i]])))
+                )
+    )
+    return(result)
 }
 
-## No indexing on a variable, e.g., 'y'.
-indexRange_none <- function() {
-    structure(list(numeric(0)),
-    class = "indexRange",
-    rangeType = "none")
-}
-
-
-indexRange_scalar <- function(rangeList) {
-    structure(if(is.list(rangeList))
-                  rangeList
-              else
-                  list(rangeList),
-              class = "indexRange",
-              rangeType = "scalar")
-}
-
-indexRange_sequence <- function(rangeList) {
-    ## Need to check if rangeList is a list or nested list
-    if(!is.list(rangeList))
-        stop("rangeList must be a list for rangeType sequence")
-    if(!is.list(rangeList[[1]]))
-        rangeList <- list(rangeList)
-    structure(rangeList,
-              class = "indexRange",
-              rangeType = "sequence")
-}
-
-indexRange_matrix <- function(rangeList) {
-    structure(if(is.list(rangeList))
-                  rangeList
-              else
-                  list(rangeList),
-              class = "indexRange",
-              rangeType = "matrix")
-}
-
-indexRange_matrixList <- function(rangeList) {
-    structure(if(is.list(rangeList))
-                  rangeList
-              else
-                  list(rangeList),
-              class = "indexRange",
-              rangeType = "matrixList")
-}
-
-indexRange_numCols <- function(inputIndexRange) {
-   switch(attr(inputIndexRange, 'rangeType'),
-           matrix = ncol(inputIndexRange[[1]])
-          ,
-           sequence = 1,
-           scalar = 1,
-           blank = 1,
-           empty = 0,
-           none = 0,
-           stop("In inputRange_numCols: invalid type of inputIndexRange.")
-          )
-}
-
-indexRange_numRows <- function(inputIndexRange,
-                                 indices = NULL) {
-    switch(attr(inputIndexRange, 'rangeType'),
-           matrix = nrow(inputIndexRange[[1]])
-          ,
-           sequence = inputIndexRange[[1]][[2]] - inputIndexRange[[1]][[1]] + 1,
-           scalar = 1,
-           blank = NA,
-           none = 0,
-           stop("In inputRange_numRows: invalid type of inputIndexRange.")
-           )
-}
-
-indexRange_getCols <- function(inputIndexRange,
-                              indices = NULL) {
-    switch(attr(inputIndexRange, 'rangeType'),
-           matrix = 
-               if(is.null(indices))
-                   inputIndexRange
-               else
-                   indexRange_matrix(
-                       list(inputIndexRange[[1]][, indices, drop = FALSE])
-                   )
-          ,
-           sequence = inputIndexRange,
-           scalar = inputIndexRange,
-           blank = inputIndexRange,
-           stop("In inputRange_getCols: invalid type of inputIndexRange.")
-           )
-}
-
-indexRange2matrix <- function(inputIndexRange) {
-    switch(attr(inputIndexRange, 'rangeType'),
-           matrix = inputIndexRange,
-           sequence = indexRange_matrix(
-               list(matrix(seq.int(inputIndexRange[[1]][[1]],
-                                   inputIndexRange[[1]][[2]])))
-           ),
-           scalar = indexRange_matrix(
-               list(matrix(inputIndexRange[[1]]))
-           ),
-           matrixList = indexRange_matrix(
-               do.call("rbind",
-                       inputIndexRange)
-           ),
-           blank = stop("Can't convert from a blank indexRange to a matrix."),
-           stop(paste0("Converting from ",
-                       inputIndexRange$rangetype,
-                       " to matrix is not supported."))
-           )
-}
-
-indexRange_matrix2sequence <- function(inputIndexRange) {
-    if(ncol(inputIndexRange[[1]]) > 1)
-        return(inputIndexRange)
-    mn <- min(inputIndexRange[[1]])
-    mx <- max(inputIndexRange[[1]])
-    ## Convert sequential indexing to sequence.
-    if(length(inputIndexRange[[1]]) == mx - mn + 1 &&
-       identical(as.numeric(diff(inputIndexRange[[1]][,1])),
-                 rep(1, length(inputIndexRange[[1]]) - 1)))
-       return(indexRange_sequence(list(mn,mx))) else return(inputIndexRange)
-}
-
-expandIndexRangeMatrices <- function(inputIndexRange) {
-    switch(attr(inputIndexRange, 'rangeType'),
-           matrix = stop('expandIndexRangeMatrices on a matrix indexRange not expected'),
-           matrixList = inputIndexRange,
-           sequence = lapply(seq.int(inputIndexRange[[1]][[1]],
-                                  inputIndexRange[[1]][[2]]),
-                          matrix)
-           )
-}
-
-matrix_expand_grid <- function(...) {
-    matrixList <- list(...)
-    indexVectors <- lapply(matrixList, 
-                           function(x) seq_len(nrow(x))
-                           )
+## Cross elements of two or more matrices of indexes, returning a matrix of indices.
+matrixExpandGrid <- function(matrixList) {
+    indexVectors <- lapply(matrixList, function(x) seq_len(nrow(x)))
     indexGrid <- as.list(do.call("expand.grid",
                                  c(indexVectors,
                                    list(KEEP.OUT.ATTRS = FALSE))))
@@ -246,98 +342,7 @@ matrix_expand_grid <- function(...) {
         SIMPLIFY = FALSE,
         USE.NAMES = FALSE
     )
-    result <- do.call("cbind", unfoldedMatrices)
-    result
+    return(do.call("cbind", unfoldedMatrices))
 }
 
-indexRangeList2matrix <- function(indexRangeList) {
-    ## For use in applyGraphRules for getMatrixIndexRange output to be consistent with output of
-    ## getSingleIndexRange and for output to be consistent with indexRange2matrix,
-    ## I think we want output to be an indexRange_matrix, not a matrix // CP
-    indexRange_matrix(
-        do.call("matrix_expand_grid",
-            lapply(indexRangeList,
-                   function(x) indexRange2matrix(x)[[1]]))
-    )
-}
-
-collapse_indexRangeMatrices <- function(indexRangeMatrices) {
-    expandedMatrices <- lapply(indexRangeMatrices,
-                               expandIndexRangeMatrices)
-    ## empty <- which(sapply(expandedMatrices, is.null))
-    ## for(i in seq_along(empty))
-    ##    expandedMatrices[[i]] <- indexRange_matrixList(matrix(0))
-    if(length(unique(sapply(indexRangeMatrices, length))) > 1)
-        warning("collapse_indexRangeMatrices: Inconsistent number of entries in components of indexRangeMatrices.")
-    result <- indexRange_matrix(
-        do.call("rbind",
-                do.call("mapply", c(list(as.name("matrix_expand_grid")),
-                                    expandedMatrices,
-                                    list(SIMPLIFY = FALSE,
-                                         USE.NAMES = FALSE)
-                                    )
-                        )
-                )
-    )
-    return(result)
-}
-
-indexRange_getItem <- function(inputIndexRange) {
-    item <- inputIndexRange$current
-
-    ## Increment internal indexing
-    if(inputIndexRange$local < inputIndexRange$delay) {
-        inputIndexRange$local <- inputIndexRange$local + 1
-    } else {
-        inputIndexRange$local <- 1
-        inputIndexRange$current <- inputIndexRange$current + 1
-        if(inputIndexRange$current > inputIndexRange$length)
-            inputIndexRange$current <- 1
-    }
-
-    ## Return original index values
-    ## TODO remove kludge that has to return modified indexRange as well
-    result <- switch(attr(inputIndexRange, 'rangeType'),
-           matrix = inputIndexRange[[1]][item, ],
-           sequence = inputIndexRange[[1]][[1]] + item - 1,
-           scalar = inputIndexRange[[1]],
-           stop("In inputRange_getItem: invalid type of inputIndexRange.")
-           )
-    return(list(result = result, range = inputIndexRange))
-}
-
-getRangeType <- function(IRL) {
-    attr(IRL, 'rangeType')
-}
-
-indexRange_isSequence <- function(IRL) {
-     attr(indexRange, 'rangeType') == "sequence"
-}
-
-indexRange_isBlank <- function(IRL) {
-    attr(indexRange, 'rangeType') == "blank"
-}
-
-indexRange_isMatrix <- function(IRL) {
-    attr(indexRange, 'rangeType') == "matrix"
-}
-
-indexRange_isScalar <- function(IRL) {
-    attr(indexRange, 'rangeType') == "scalar"
-}
-
-## indexRange2expr is the inverse of indexRange
-## Note that if the original expr was say c(2, 4, 6)
-## then indexRange2expr( indexRange( quote(c(2, 4, 6))))
-##  returns the *evaluated* vector, not the expression for the vector
-indexRange2expr <- function(IRL) {
-    ## length(IRL) > 2 should be impossible
-    switch(getRangeType(IRL),
-           sequence = substitute(A:B,
-                              list(A = IRL[[1]][[1]],
-                                   B = IRL[[1]][[2]])),
-           matrix = IRL[[1]],
-           blank = IRL[[1]],
-           scalar = IRL[[1]],
-           stop("Unknown indexRange list"))
-}
+    
