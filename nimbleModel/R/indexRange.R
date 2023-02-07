@@ -237,8 +237,8 @@ indexRangeMatrixClass <- R6Class(
         
         initialize = function(values) {
             values <<- values
-            numElements <<- nrow(values)
-            numColumns <<- ncol(values)
+            numElements <<- as.numeric(nrow(values))
+            numColumns <<- as.numeric(ncol(values))
         },
 
         getItem = function(item) {
@@ -260,7 +260,7 @@ indexRangeMatrixClass <- R6Class(
         toSequence = function() {
             if(numColumns == 1) {
                 rg <- range(values)
-                if(length(values) == mx - mn + 1 &&
+                if(length(values) == rg[2] - rg[1] + 1 &&
                    all(diff(values) == 1))
                     return(indexRangeSequenceClass$new(rg[1], rg[2]))
             }
@@ -314,19 +314,15 @@ indexRangeMatrixListsToMatrix <- function(indexRangesList) {
                       if(is(x, "indexRangeSequenceClass")) x$toMatrixList()$rangeList else x$rangeList
                   )
 
-    lens <- sapply(rangeListsList, function(x) length(x))
-    if(length(unique(lens)) > 1)
+    lengths <- sapply(rangeListsList, function(x) length(x))
+    if(length(unique(lengths)) > 1)
         stop("indexRangeMatrixListsToMatrix: Inconsistent number of elements in matrixLists to be collapsed to a single matrix.")
     
-    ## Cross each element of the matrixLists with corresponding elements of other matrixList(s)
-    ## and then collapse via `rbind` to produce a single `indexRangeMatrix`.
-    result <- indexRange(
-                do.call("rbind",
-                        lapply(seq_len(lens[1]), function(i)
-                            matrixExpandGrid(lapply(rangeListsList, function(x) x[[i]])))
-                )
-    )
-    return(result)
+    ## Cross each element of the rangeLists with corresponding elements of other rangeList(s).
+    result <- lapply(seq_len(lengths[1]), function(i)
+        matrixExpandGrid(lapply(rangeListsList, function(x) x[[i]])))
+    ## Collapse via `rbind` to produce a single `indexRangeMatrix`.
+    return(indexRange(do.call("rbind", result)))
 }
 
 ## Cross elements of two or more matrices of indexes, returning a matrix of indices.
