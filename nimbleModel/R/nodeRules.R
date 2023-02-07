@@ -524,6 +524,10 @@ nodeRangeClass <- R6Class(
 
         },
         
+## TODO: Rework nodeRangeClass$expandNames(),
+## allowing user to request compact or expanded representations and element vs block,
+## e.g., y[1:5,2] vs. y[i,2] for i=1,...5 vs y[1],y[2],y[3],y[4],y[5]
+## or y[i] for i=c(3,5,7,9,12) vs. y[i] for i=c(3,5,...,12) vs y[3],y[5],y[7],y[9],y[12]
         expandNames = function() {
             ## Expand externalRange into full matrix (crossed if necessary), keeping full internal
             ## indexing for each individual node.
@@ -678,11 +682,11 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
             newSingleContexts1 <- singleContexts[!focalContext]
             newSingleContexts2 <- singleContexts[!focalContext]
 
-            newSingleContexts1[[length(newSingleContexts1)+1]] <- modelSingleContext(
+            newSingleContexts1[[length(newSingleContexts1)+1]] <- singleContextClass$new(
                                indexVarExpr = parsedIdxName,
                 indexRangeExpr = substitute(1:L, list(L = length(valsLHS))))
 
-            newSingleContexts2[[length(newSingleContexts2)+1]] <- modelSingleContext(
+            newSingleContexts2[[length(newSingleContexts2)+1]] <- singleContextClass$new(
                                indexVarExpr = parsedIdxName,
                 indexRangeExpr = substitute(1:L, list(L = length(valsFrac))))
 
@@ -717,11 +721,11 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
                 newSingleContexts1 <- singleContexts[!focalContext]
                 newSingleContexts2 <- singleContexts[!focalContext]
 
-                newSingleContexts1[[length(newSingleContexts1)+1]] <- modelSingleContext(
+                newSingleContexts1[[length(newSingleContexts1)+1]] <- singleContextClass$new(
                     indexVarExpr = parsedIdxName,
                     indexRangeExpr = substitute(A:B, list(A = LHS[[1]][[1]], B = LHS[[1]][[2]])))
 
-                newSingleContexts2[[length(newSingleContexts2)+1]] <- modelSingleContext(
+                newSingleContexts2[[length(newSingleContexts2)+1]] <- singleContextClass$new(
                     indexVarExpr = parsedIdxName,
                     indexRangeExpr = substitute(A:B, list(A = frac[[1]][[1]], B = frac[[1]][[2]])))
 
@@ -738,17 +742,17 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
                 newSingleContexts3 <- singleContexts[!focalContext]
 
                 expr1 <- expr2 <- expr3 <- expr
-                newSingleContexts1[[length(newSingleContexts1)+1]] <- modelSingleContext(
+                newSingleContexts1[[length(newSingleContexts1)+1]] <- singleContextClass$new(
                     indexVarExpr = parsedIdxName,
                     indexRangeExpr = substitute(A:B, list(A = frac[[1]][[1]], B = frac[[1]][[2]])))
                 expr1[[nonIdenticalIndices+2]] <- newSingleContexts1[[length(newSingleContexts1)]]$indexVarExpr
 
-                newSingleContexts2[[length(newSingleContexts2)+1]] <- modelSingleContext(
+                newSingleContexts2[[length(newSingleContexts2)+1]] <- singleContextClass$new(
                     indexVarExpr = parsedIdxName,
                     indexRangeExpr = substitute(A:B, list(A = LHS[[1]][[1]], B = frac[[1]][[1]]-1)))
                 expr2[[nonIdenticalIndices+2]] <- newSingleContexts2[[length(newSingleContexts2)]]$indexVarExpr
 
-                newSingleContexts3[[length(newSingleContexts3)+1]] <- modelSingleContext(
+                newSingleContexts3[[length(newSingleContexts3)+1]] <- singleContextClass$new(
                     indexVarExpr = parsedIdxName,
                     indexRangeExpr = substitute(A:B, list(A = frac[[1]][[2]]+1, B = LHS[[1]][[2]])))
                 expr3[[nonIdenticalIndices+2]] <- newSingleContexts3[[length(newSingleContexts3)]]$indexVarExpr
@@ -779,11 +783,11 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
             newSingleContexts2 <- singleContexts[!focalContext]
         } else newSingleContexts1 <- newSingleContexts2 <- list()
 
-        newSingleContexts1[[length(newSingleContexts1) + 1]] <- modelSingleContext(
+        newSingleContexts1[[length(newSingleContexts1) + 1]] <- singleContextClass$new(
                                indexVarExpr = parsedIdxName,
             indexRangeExpr = substitute(1:L, list(L = nrow(mat1))))
 
-        newSingleContexts2[[length(newSingleContexts2) + 1]] <- modelSingleContext(
+        newSingleContexts2[[length(newSingleContexts2) + 1]] <- singleContextClass$new(
                                indexVarExpr = parsedIdxName,
             indexRangeExpr = substitute(1:L, list(L = nrow(mat2))))
 

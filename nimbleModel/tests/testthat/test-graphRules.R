@@ -26,30 +26,30 @@ irNone <- nimbleModel:::indexRangeNoneClass$new()
 vrNone <- varRangeClass$new(list(irNone))
 
 singleContext1 <-
-    modelSingleContext(forCode = quote(for(i in 1:10){}))
+    singleContextClass$new(forCode = quote(for(i in 1:10){}))
 
 singleContext1_short <-
-    modelSingleContext(forCode = quote(for(i in 1:3){}))
+    singleContextClass$new(forCode = quote(for(i in 1:3){}))
 
 ## used to be j in 1:5
 singleContext2 <-
-    modelSingleContext(forCode = quote(for(j in 1:4){}))
+    singleContextClass$new(forCode = quote(for(j in 1:4){}))
 
 singleContext3 <-
-    modelSingleContext(forCode = quote(for(k in 1:3){}))
+    singleContextClass$new(forCode = quote(for(k in 1:3){}))
 
 ## alternative way to specific a single context
 singleContext2ni <-
-    modelSingleContext(indexVarExpr = quote(j),
+    singleContextClass$new(indexVarExpr = quote(j),
                        indexRangeExpr = quote(1:n[i]),
                        )
 
 singleContext3ni <-
-    modelSingleContext(forCode = quote(for(k in 1:mi[i]){}))                          
+    singleContextClass$new(forCode = quote(for(k in 1:mi[i]){}))                          
 singleContext3nj <-
-    modelSingleContext(forCode = quote(for(k in 1:mj[j]){}))                          
+    singleContextClass$new(forCode = quote(for(k in 1:mj[j]){}))                          
 singleContext3nij <-
-    modelSingleContext(forCode = quote(for(k in 1:mij[i,j]){}))                          
+    singleContextClass$new(forCode = quote(for(k in 1:mij[i,j]){}))                          
 
 context_0 <- modelContextClass$new()
 
@@ -1775,9 +1775,9 @@ test_that("Correct indexRule is used for various cases", {
 test_that("indexRange matrix converted to sequence if appropriate", {
     
     singleContext1 <-
-        modelSingleContext(forCode = quote(for(i in 2:5){}))
+        singleContextClass$new(forCode = quote(for(i in 2:5){}))
     singleContext2 <-
-        modelSingleContext(forCode = quote(for(j in 1:3){}))
+        singleContextClass$new(forCode = quote(for(j in 1:3){}))
     
     context_ij <- modelContextClass$new(list(singleContext1, singleContext2))
     

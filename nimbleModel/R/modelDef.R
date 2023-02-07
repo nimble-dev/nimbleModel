@@ -84,7 +84,7 @@ modelDefClass <- R6Class(
                     singleContexts <- c(
                         if(contextID == 1) NULL
                         else contexts[[contextID]]$singleContexts,
-                        list(modelSingleContext(
+                        list(singleContextClass$new(
                             indexVarExpr = indexVarExpr,       ## Add the new context
                             indexRangeExpr = indexRangeExpr,
                             forCode = forCode)

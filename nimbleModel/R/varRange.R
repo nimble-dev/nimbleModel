@@ -1,29 +1,25 @@
-## A varRangeClass object represents a variable with some set of indices.
+## A varRangeClass object represents a variable with some set of indices,
+## for the purpose of graph queries.
+
 ## It does not represent the *values* of the variable.  Instead it symbolically
 ## represents some subset of the variable to be manipulated and passed.
 
-## Eventually this will all be in C++ for performance.
-## R implementation is just to refine concepts.
-
-## see test-varRangeClass.R
-
-
-## varRangeClass is nimble's canonical representation of a variable
-## and a set of indices for purposes of graph queries.
-##
 ## It can represent
 ## -  entire variables: x
 ## -  variable blocks: x[1:6, 2:5]
 ## -  arbitrary single-index subsets in each index:
-##         x[ c(2, 4, 6), c(3, 5, 7)]
+##         x[c(2, 4, 6), c(3, 5, 7)]
 ## -  combinations of index blocks and single-index subsets:
-##         x[ c(2, 4, 6), 3:7 ]
+##         x[c(2, 4, 6), 3:7]
 ## -  arbitrary indices given as rows of a matrix:
 ##         x[ matrix(c(1, 2, 10, 12, 5, 2), ncol = 2) ]
 ## -  combinations of matrices, index blocks, and single-index subsets
 ##         x[ matrix(...), c(2, 4, 6), 3:5 ]
 ## Internally, it manages multiple representations of the indices that are
 ## useful in different ways.
+
+## TODO: 'varName' -> name?
+
 varRangeClass <- R6Class(
     'varRangeClass',
     portable = FALSE,
@@ -87,6 +83,7 @@ varRangeClass <- R6Class(
                         indexRangeExprs,
                         indexRange
                     )
+                    ## TODO: check for too-long matrices and truncate.
                     rangeID_2_indexID <<-
                         as.list(seq_along(indexRanges))
                     rangeID <- rep(seq_along(rangeID_2_indexID), times = sapply(rangeID_2_indexID, length))
@@ -102,6 +99,7 @@ varRangeClass <- R6Class(
             if(is.list(indexInfo)) {
                 varName <<- varName
                 setIndexRanges(indexInfo, indexOrders)
+                indexRangeExprs <<- lapply(indexRanges, function(x) x$toExpr())
             }
             if(length(rangeID_2_indexID)) { 
                 rangeID <- rep(seq_along(rangeID_2_indexID), times = sapply(rangeID_2_indexID, length))
@@ -168,18 +166,6 @@ varRange_isEqual <- function(vr1, vr2) {
         identical(vr1$indexRanges, vr2$indexRanges)
 }
 
-## 2022-07-25: this is apparently never used.
-invertIndexList <- function(indexList) {
-    browser()
-    inputLengths <- lapply(indexList, length)
-    inputEntries <- unlist(indexList)
-    inputLabels <- rep(seq_along(indexList), times = inputLengths)
-    s <- split(inputLabels, inputEntries)
-    indices <- as.integer(names(s))
-    ans <- vector('list', length = max(indices))
-    ans[indices] <- s
-    ans
-}
 
 ## extract an indexRange for a single column of a varRange
 varRange_getSingleIndexRange <- function(varRange,
@@ -242,88 +228,33 @@ varRange_getIndexRangeMatrix <- function(varRange,
              usedRanges = usedRanges)
 }
 
-## extract multiple columns of a varRange, keeping
-## indexRanges intact.  This is returned as a new varRange.
-varRange_getIndexRangeColumns <- function(varRange,
-                                          indices) {
-
-}
-
 ## The following could sensibly be class methods, but
 ## we are going to try to keep classes small.
 
-
-## TODO: varRange2{char,expr} only work if varRange created
-## using an expression. If created with a list of indexRanges, it
-## doesn't show the indexing.
-## Rework this in conjunction with nodeRangeClass$expandNames(),
-## allowing user to request compact or expanded representations and element vs block,
-## e.g., y[1:5,2] vs. y[i,2] for i=1,...5 vs y[1],y[2],y[3],y[4],y[5]
-## or y[i] for i=c(3,5,7,9,12) vs. y[i] for i=c(3,5,...,12) vs y[3],y[5],y[7],y[9],y[12]
+## TODO: make methods?
 
 ## varRange2char takes a varRange object and returns the corresponding
-## character string of the original expression.
-## This inverts the initialize function of varRangeClass for
-## character input.
-## Example: varRange2expr(varRangeClass$new("x[1:10]"))) ==> "x[1:10]"
-
+## character string of the original expression (or the imputed expression
+## when initialized from a list of `indexRange`s.
 varRange2char <- function(VR) {
     deparse(varRange2expr(VR))
 }
 
-## varRange2expr takes a varRange object and returns the corresponding
-## expression.  This inverts the initialize function of varRangeClass for
-## an expression input.
-## Example: varRange2expr(varRangeClass$new(quote(x[1:1]))) ==> "x[1:10]"
-## TODO: fix / error trap for matrix indexRanges
-## TODO: what about varRange formed internally via apply();
-## presumably need to call out to indexRange$toExpr.
+## `varRange2expr` takes a `varRange` object and returns the corresponding
+## expression.  This inverts the initialize function of `varRangeClass` for
+## an expression input and imputes the index values in the case of a
+## a `varRange` initialized from a list of `indexRange`s.
+## Example 1: varRange2expr(varRangeClass$new(quote(x[1:10]))) ==> "x[1:10]"
+## EXample 2: varRange2expr(varRangeClass$new(list(indexRange(quote(1:10), varName = 'x'))))
+##  ==> "x[1:10]"
 varRange2expr <- function(VR) {
     do.call("call",
             c(list("[",
                    as.name(VR$varName)),
-              VR$indexRangeExprs),
+              VR$indexRangeExprs[VR$indexID_2_rangeID]),
             quote = TRUE)
 }
 
-## How many indices are there in a varRange?
-numIndices <- function(VR) {
-    length(VR$indexRanges)
-}
-
-## ## need to deal with each kind of combination
-## mergeVarRanges <- function(VR1, VR2) {
-##     ## This won't work for arbitrary index rows
-##     if(length(VR1$indexRangeExprs) != length(VR2$indexRangeExprs))
-##         stop( paste0(printVarRange(VR1),
-##                      ' has different number of dimensions than ',
-##                      printVarRange(VR2)),
-##              call. = FALSE)
-##     if(length(VR1$indexRangeExprs) == 0) return(VR1)
-## }
-
-## eval range extracts from one variable the indices
-## of a varRangeClass object
-##
-## Example: x may be a model variabe that is a 5x10 matrix
-##          A graph query may involve x[2:3, 3:5]
-##          The x[2:3, 3:5] is represented as a varRangeClass object
-##          One may need to look up indices or IDs from a matrix
-##                  with the same shape as x, say xIndices.
-##          To do so: evalIndexRange(xIndices, varRangeClass$new(quote(x[2:3, 3:5]))
-##
-## This will not work if varRange has any matrix indexRanges
-## TODO: is this used? If so, keep and error trap matrix indexRange situation.
-evalIndexRange <- function(x, varRange) {
-    xExpr = substitute(x)
-    if(length(varRange$indexRanges)==0)
-        x
-    else {
-        do.call("[", c(list(xExpr),
-                       varRange$indexRangeExprs),
-                envir = parent.frame())
-    }
-}
 
 getVarName <- function(x) {
     if(is(x, 'varRangeClass'))

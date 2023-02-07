@@ -18,7 +18,7 @@ rhsRuleClass <- R6Class(
                     if(any(scalarConstants)) {
                        for(idx in which(scalarConstants)) {
                            cnt <- cnt + 1
-                           newSingleContexts[[cnt]] <- modelSingleContext(
+                           newSingleContexts[[cnt]] <- singleContextClass$new(
                                indexVarExpr = parse(text=paste0(".block", cnt))[[1]],
                                indexRangeExpr = substitute(A:A, list(A = expr[[idx+2]])))
                            expr[[idx+2]] <- newSingleContexts[[cnt]]$indexVarExpr
@@ -27,7 +27,7 @@ rhsRuleClass <- R6Class(
                     if(any(blockConstants)) {
                        for(idx in which(blockConstants)) {
                            cnt <- cnt + 1
-                           newSingleContexts[[cnt]] <- modelSingleContext(
+                           newSingleContexts[[cnt]] <- singleContextClass$new(
                                indexVarExpr = parse(text=paste0(".block", cnt))[[1]],
                                indexRangeExpr = expr[[idx+2]])
                            expr[[idx+2]] <- newSingleContexts[[cnt]]$indexVarExpr
@@ -102,7 +102,7 @@ exclude <- function(RHSrule, LHSrule) {
 
             ## Modify RHSrule expr and context to insert vector of relevant values.
             newSingleContexts <- singleContexts[!focalContext]
-            newSingleContexts[[length(newSingleContexts)+1]] <- modelSingleContext(
+            newSingleContexts[[length(newSingleContexts)+1]] <- singleContextClass$new(
                                indexVarExpr = quote(.newidx),
                 indexRangeExpr = substitute(1:L, list(L = length(valsRHS))))
 
@@ -130,7 +130,7 @@ exclude <- function(RHSrule, LHSrule) {
                     RHS[[1]][[1]] <- int[[1]][[2]]+1 else RHS[[1]][[2]] <- int[[1]][[1]]-1
 
                 newSingleContexts <- singleContexts[!focalContext]
-                newSingleContexts[[length(newSingleContexts)+1]] <- modelSingleContext(
+                newSingleContexts[[length(newSingleContexts)+1]] <- singleContextClass$new(
                     indexVarExpr = quote(.newidx),
                     indexRangeExpr = substitute(A:B, list(A = RHS[[1]][[1]], B = RHS[[1]][[2]])))
                 expr[[nonIdenticalIndices+2]] <- newSingleContexts[[length(newSingleContexts)]]$indexVarExpr
@@ -143,12 +143,12 @@ exclude <- function(RHSrule, LHSrule) {
                 newSingleContexts2 <- singleContexts[!focalContext]
 
                 expr1 <- expr2 <- expr
-                newSingleContexts1[[length(newSingleContexts1)+1]] <- modelSingleContext(
+                newSingleContexts1[[length(newSingleContexts1)+1]] <- singleContextClass$new(
                     indexVarExpr = quote(.newidx),
                     indexRangeExpr = substitute(A:B, list(A = RHS[[1]][[1]], B = int[[1]][[1]]-1)))
                 expr1[[nonIdenticalIndices+2]] <- newSingleContexts1[[length(newSingleContexts1)]]$indexVarExpr
 
-                newSingleContexts2[[length(newSingleContexts2)+1]] <- modelSingleContext(
+                newSingleContexts2[[length(newSingleContexts2)+1]] <- singleContextClass$new(
                     indexVarExpr = quote(.newidx),
                     indexRangeExpr = substitute(A:B, list(A = int[[1]][[2]]+1, B = RHS[[1]][[2]])))
                 expr2[[nonIdenticalIndices+2]] <- newSingleContexts2[[length(newSingleContexts2)]]$indexVarExpr
@@ -175,7 +175,7 @@ exclude <- function(RHSrule, LHSrule) {
             newSingleContexts <- singleContexts[!focalContext]
         } else newSingleContexts <- list()
 
-        newSingleContexts[[length(newSingleContexts) + 1]] <- modelSingleContext(
+        newSingleContexts[[length(newSingleContexts) + 1]] <- singleContextClass$new(
                                indexVarExpr = quote(.newidx),
             indexRangeExpr = substitute(1:L, list(L = nrow(mat))))
 

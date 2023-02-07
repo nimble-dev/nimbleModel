@@ -194,3 +194,25 @@ test_that("getIndexRangeMatrix", {
     mat <- vr$getIndexRangeMatrix(inds)
     expect_identical(mat, indexRange(unique(full_result[ , inds, drop = FALSE])))
 })
+
+## check for addtional tests
+## TODO: test varRange2expr
+
+    xVar <- varRangeClass$new('x[2:10,1:3]')
+ xVar <- varRangeClass$new('x[2:10,c(2,4)]')
+xVar <- varRangeClass$new(list(indexRange(quote(2:10)),
+                               indexRange(matrix(c(2,4)))), varName = 'x')
+varRange2expr(xVar)
+xVar <- varRangeClass$new(list(indexRange(quote(2:10)),
+                               indexRange(matrix(c(2,4,7,9,10)))), varName = 'x')
+varRange2expr(xVar)
+
+xVar <- varRangeClass$new(list(indexRange(matrix(1:4,ncol=2))), varName = 'x')
+varRange2expr(xVar)
+
+xVar <- varRangeClass$new(list(indexRange(matrix(1:4,ncol=2))), varName = 'x')
+varRange2expr(xVar)
+
+xVar <- varRangeClass$new(list(indexRange(matrix(1:4,ncol=2)),
+                               indexRange(quote(1:3))), indexOrders = list(c(1,3),2), varName = 'x')
+varRange2expr(xVar)

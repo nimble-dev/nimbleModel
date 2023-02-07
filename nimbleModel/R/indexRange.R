@@ -2,8 +2,17 @@
 
 ## CHECK: do we need a print() or will that always be done at varRange level? 
 
-## NOTE: this uses subclass specific variables for storing index information.
-## Previously we did this with a list for each type of `indexRange`.
+## An indexRange stores the indices for one or more index positions of a variable.
+## When multiple positions are included, the indexRange type is necessarily
+## an `indexRangeMatrix`, which keeps the index values that are tied together
+## as individual rows.
+
+## Indices that can be crossed, e.g. `y[1:3, 1:4]` has all pairs of first
+## and second indices, will generally be stored as two single index
+## indexRanges (two `indexRangeSequence`s in this case).
+
+## NOTE: this uses subclass-specific variables for storing index information.
+## Previously we did this with a list for each kind of `indexRange`.
 
 intToNumeric <- function(x) {
     if(is.integer(x)) {
@@ -62,7 +71,8 @@ indexRange <- function(expr) {
                     names(expr) <- NULL
                     return(indexRangeScalarClass$new(expr))
                 }
-                ## 1x1 matrix - not clear we need to handle this case and/or might convert to scalar.
+                ## 1x1 matrix
+                ## FUTURE: not clear we need to handle this case and/or might convert to scalar.
                 if(length(dim(expr)) == 2) {
                     dimnames(expr) <- NULL
                     return(indexRangeMatrixClass$new(expr))
@@ -267,8 +277,20 @@ indexRangeMatrixClass <- R6Class(
             return(self)
         },
 
-        toExpr = function() {
-            return(values)
+        toExpr = function(maxPrint = 3) {
+            if(numColumns > 1) {
+                expr <- quote(c(...))
+                return(expr[[2]])
+            }
+            if(numElements > maxPrint) {
+                expr <- quote(c(0,0,...,0))
+                expr[2:3] <- values[1:2]
+                expr[5] <- values[numElements]
+                return(expr)
+            }
+            expr <- quote(c(0))
+            expr[2:(length(values)+1)] <- values
+            return(expr)
         }
     )
 )
