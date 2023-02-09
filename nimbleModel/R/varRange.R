@@ -121,24 +121,25 @@ varRangeClass <- R6Class(
 
         ## Extract one or more columns of a varRange.
         ## If multiple columns, result is expanded as a matrix of indices.
-        extractIndexRange = function(varRange,
-                                               indices,
-                                               returnUsedRanges = FALSE) {
+        extractIndexRange = function(indices, returnUsedRanges = FALSE) {
             
             usedIndices <- lapply(rangeID_2_indexID, function(x) x %in% indices)
             usedRanges <- which(sapply(usedIndices, any))
-            
-            indexRangesList <- lapply(usedRanges, function(i) {
-                innerIndices <- which(usedIndices[[i]])
-                return(indexRanges[[i]]$getColumns(innerIndices))
-            })
-            
-            if(length(indexRangesList == 1)) {
-                indexRangeResult <- indexRangesList[[1]]
-            } else {
-                indexRangeResult <- crossIndexRanges(indexRangesList, order = match(indices, usedIndices))  ## result is an indexRangeMatrix
+
+            if(!length(usedRanges)) {
+                indexRangeResult <-indexRange(NULL)
+            } else {            
+                indexRangesList <- lapply(usedRanges, function(i) {
+                    innerIndices <- which(usedIndices[[i]])
+                    return(indexRanges[[i]]$getColumns(innerIndices))
+                })
+                
+                if(length(indexRangesList == 1)) {
+                    indexRangeResult <- indexRangesList[[1]]
+                } else {
+                    indexRangeResult <- crossIndexRanges(indexRangesList, order = match(indices, usedIndices))  ## result is an indexRangeMatrix
+                }
             }
-            
             if(!returnUsedRanges) {
                 return(indexRangeResult)
             } else return(list(indexRange = indexRange, usedRanges = usedRanges))
@@ -162,11 +163,14 @@ varRangeClass <- R6Class(
         ## EXample 2: varRange2expr(varRangeClass$new(list(indexRange(quote(1:10), varName = 'x'))))
         ##  ==> "x[1:10]"
         toExpr = function() {
-            do.call("call",
-                    c(list("[",
-                           as.name(varName)),
-                      indexRangeExprs[indexID_2_rangeID]),
-                    quote = TRUE)
+            if(isNone()) {
+                return(as.name(varName))
+            } else 
+                do.call("call",
+                        c(list("[",
+                               as.name(varName)),
+                          indexRangeExprs[indexID_2_rangeID]),
+                        quote = TRUE)
         },
 
         ## `toChar` takes a varRange object and returns the corresponding

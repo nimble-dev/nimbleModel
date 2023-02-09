@@ -1,246 +1,159 @@
 ## check indexID_2 and rangeID_2 are ints
 
-## include 2-col matrix
-## mix of 2-col matrix and seq  (1,3), 2
-## weird ordernig 2, (1,3)
-
-test_that('varRangeClass initialized from expr', {
-
-    ## initalize from expr and from indexRanges
-    ## compare to each other (use varRange_isEqual) and to expected rangeID_, indexID_, indexRanges
+test_that('varRangeClass', {
 
     ## 0D
     xVar1 <- varRangeClass$new('x')
     xVar2 <- varRangeClass$new(list(indexRange(NULL)), varName = 'x')
     expect_true(varRange_isEqual(xVar1, xVar2))
+    expect_true(xVar1$isNone())
     expect_true(is(xVar1$indexRanges[[1]], "indexRangeNoneClass"))
+    expect_identical(xVar1$toExpr, quote(x))
     
     ## 1D
-    y <- 101:110
-    xVar <- varRangeClass$new('x[3]')
-    ans <- evalIndexRange(y, xVar)
-    expect_identical(ans, y[3])
 
-    expect_identical(
-        varRange_getSingleIndexRange(xVar, 1),
-        xVar$indexRanges[[1]]
-    )
+    expr <- quote(x[2])
+    xVar1 <- varRangeClass$new(as.character(expr))
+    xVar2 <- varRangeClass$new(list(indexRange(expr[[3]])), varName = as.name(expr[[2]])
+    expect_true(varRange_isEqual(xVar1, xVar2))
+    expect_identical(sapply(xVar1$indexRanges, function(x) class(x)[1]),
+                     'indexRangeScalarClass')
+    expect_identical(rangeID_2_indexID, list(1L))
+    expect_identical(indexID_2_rangeID, 1L)
+    expect_identical(xvar2$toExpr(), expr)
     
-    xVar <- varRangeClass$new('x[2:10]')
-    ans <- evalIndexRange(y, xVar)
-    expect_identical(ans, y[2:10])
+    expr <- quote(x[2:4])
+    xVar1 <- varRangeClass$new(as.character(expr))
+    xVar2 <- varRangeClass$new(list(indexRange(expr[[3]])), varName = as.name(expr[[2]])
+    expect_true(varRange_isEqual(xVar1, xVar2))
+    expect_identical(sapply(xVar1$indexRanges, function(x) class(x)[1]),
+                     'indexRangeSequenceClass')
+    expect_identical(rangeID_2_indexID, list(1L))
+    expect_identical(indexID_2_rangeID, 1L)
+    expect_identical(xvar2$toExpr(), expr)
+    
+    expr <- quote(x[c(2,3,5)])
+    xVar1 <- varRangeClass$new(as.character(expr))
+    xVar2 <- varRangeClass$new(list(indexRange(matrix(expr[[3]]))), varName = as.name(expr[[2]])
+    expect_true(varRange_isEqual(xVar1, xVar2))
+    expect_identical(sapply(xVar1$indexRanges, function(x) class(x)[1]),
+                     'indexRangeSequenceClass')
+    expect_identical(rangeID_2_indexID, list(1L))
+    expect_identical(indexID_2_rangeID, 1L)
+    expect_identical(xvar2$toExpr(), expr)
 
-    expect_identical(
-        varRange_getSingleIndexRange(xVar, 1),
-        xVar$indexRanges[[1]]
-    )
-    
-    xVar <- varRangeClass$new('x[]')
-    ans <- evalIndexRange(y, xVar)
-    expect_identical(ans, y[])
+    expr <- quote(x[c(2,3,5,7,9)])
+    xVar <- varRangeClass$new(as.character(expr))
+    expectedExpr <- quote(x[2,3,5,9])
+    expectedExpr[[5]] <- quote(...)
+    expect_identical(xvar$toExpr(), expectedExpr)
 
     ## 2D
-    y <- matrix(101:200, nrow = 10)    
-
-    xVar <- varRangeClass$new('x[3, 4]')
-    ans <- evalIndexRange(y, xVar)
-    expect_identical(ans, y[3, 4])
-
-    expect_identical(
-        varRange_getSingleIndexRange(xVar, 1),
-        xVar$indexRanges[[1]]
-    )
-
-    expect_identical(
-        varRange_getSingleIndexRange(xVar, 2),
-        xVar$indexRanges[[2]]
-    )
     
-    xVar <- varRangeClass$new('x[3, 2:4]')
-    ans <- evalIndexRange(y, xVar)
-    expect_identical(ans, y[3, 2:4])
-
-    expect_identical(
-        varRange_getSingleIndexRange(xVar, 1),
-        xVar$indexRanges[[1]]
-    )
-
-    expect_identical(
-        varRange_getSingleIndexRange(xVar, 2),
-        xVar$indexRanges[[2]]
-    )
-
-    expect_equal(
-        varRange_getIndexRangeMatrix(xVar, c(1, 2)),
-        indexRange(matrix(c(rep(3, 3), 2:4), ncol = 2))
-    )
-
-    expect_equal(
-        varRange_getIndexRangeMatrix(xVar, c(1))
-        ,
-        indexRange(matrix(3))
-    )
-
-    expect_equal(
-        varRange_getIndexRangeMatrix(xVar, c(2))
-        ,
-        indexRange(matrix(2:4, ncol = 1))
-    )
+    expr <- quote(x[2:4, 3:5])
+    xVar1 <- varRangeClass$new(as.character(expr))
+    xVar2 <- varRangeClass$new(list(indexRange(expr[[3]]), indexRange(expr[[4]])), varName = as.name(expr[[2]])
+    expect_true(varRange_isEqual(xVar1, xVar2))
+    expect_identical(sapply(xVar1$indexRanges, function(x) class(x)[1]),
+                     rep('indexRangeSequenceClass', 2))
+    expect_identical(rangeID_2_indexID, list(1:2))
+    expect_identical(indexID_2_rangeID, 1:2)
+    expect_identical(xvar2$toExpr(), expr)
     
-    xVar <- varRangeClass$new('x[3:5, 6]')
-    ans <- evalIndexRange(y, xVar)
-    expect_identical(ans, y[3:5, 6])
+    expr <- quote(x[c(2,3,5), c(1,4)])
+    xVar1 <- varRangeClass$new(as.character(expr))
+    xVar2 <- varRangeClass$new(list(indexRange(expr[[3]]),indexRange(expr[[4]])),
+                               varName = as.name(expr[[2]])
+    expect_true(varRange_isEqual(xVar1, xVar2))
+    expect_identical(sapply(xVar1$indexRanges, function(x) class(x)[1]),
+                     rep('indexRangeMatrixClass', 2))
+    expect_identical(rangeID_2_indexID, list(1:2))
+    expect_identical(indexID_2_rangeID, 1:2)
+    expect_identical(xvar2$toExpr(), expr)
 
-    xVar <- varRangeClass$new('x[2:10, 3:5]')
-    ans <- evalIndexRange(y, xVar)
-    expect_identical(ans, y[2:10, 3:5])
+    xVar2 <- varRangeClass$new(list(indexRange(matrix(c(2,3,5,1,2,4), ncol = 2))), varName = 'x')
+    expect_identical(sapply(xVar1$indexRanges, function(x) class(x)[1]),
+                     'indexRangeMatrixClass')
+    expect_identical(rangeID_2_indexID, list(1:2))
+    expect_identical(indexID_2_rangeID, rep(1L,2))
+    expr <- quote(x[1,1])
+    expr[[3]] <- expr[[4]] <- quote(...)
+    expect_identical(xvar2$toExpr(), expr)
 
-    expect_equal(
-        varRange_getIndexRangeMatrix(xVar, c(1, 2))
-       ,
-        indexRange(structure(
-            as.matrix(
-                expand.grid(2:10, 3:5)
-            ),
-            dimnames = NULL))
-    )
+    ## 3D
     
-    xVar <- varRangeClass$new('x[, 3:5]')
-    ans <- evalIndexRange(y, xVar)
-    expect_identical(ans, y[, 3:5])
+    xVar2 <- varRangeClass$new(list(indexRange(matrix(c(2,3,5,1,2,4), ncol = 2)),
+                                    indexRange(quote(2:3)),
+                                    varName = 'x'))
+    expect_identical(sapply(xVar1$indexRanges, function(x) class(x)[1]),
+                     c('indexRangeMatrixClass', 'indexRangeSequenceClass'))
+    expect_identical(rangeID_2_indexID, list(1:2, 3))
+    expect_identical(indexID_2_rangeID, c(1L, 1L, 2L))
+    expr <- quote(x[1,1,2:3])
+    expr[[3]] <- expr[[4]] <- quote(...)
+    expect_identical(xvar2$toExpr(), expr)
 
-    xVar <- varRangeClass$new('x[2:5, ]')
-    ans <- evalIndexRange(y, xVar)
-    expect_identical(ans, y[2:5, ])
-
-    xVar <- varRangeClass$new('x[, ]')
-    ans <- evalIndexRange(y, xVar)
-    expect_identical(ans, y[, ])
+    xVar2 <- varRangeClass$new(list(indexRange(matrix(c(2,3,5,1,2,4), ncol = 2)),
+                                    indexRange(quote(2:3)), indexOrders = list(c(3,1),2)
+                                    varName = 'x'))
+    expect_identical(sapply(xVar1$indexRanges, function(x) class(x)[1]),
+                     c('indexRangeMatrixClass', 'indexRangeSequenceClass'))
+    expect_identical(rangeID_2_indexID, list(c(3L,1L), 2L))
+    expect_identical(indexID_2_rangeID, c(1L, 2L, 1L))
+    expr <- quote(x[1,1,2:3])
+    expr[[3]] <- expr[[5]] <- quote(...)
+    expect_identical(xvar2$toExpr(), expr)
 
 })
-
-
-test_that("varRange initialized with matrix indexRange(s)",{
-    expect_silent(xVar <- varRangeClass$new(list(indexRange(matrix(c(2,3,5))), indexRange(matrix(c(3, 7)))),
-                                            varName = 'x'))
-    ## TODO: flesh out what we want here
-    
-})
-
-## switch to `toExpr`
-test_that("varRange expr, char, and indexRange replacement", {
-    input <- quote(x[3])
-    expect_identical(
-        varRange2expr( varRangeClass$new(input)),
-        input
-    )
-
-    input <- quote(x[3, 4:6])
-    expect_identical(
-        varRange2expr( varRangeClass$new(input)),
-        input
-    )
-
-    input <- quote(x[3, c(3, 5, 7)])
-    expect_identical(
-        varRange2expr( varRangeClass$new(input)),
-        input
-    )
-
-    input <- quote(x[3, 4:6])
-    VR <- varRangeClass$new(input)
-    VRnew <-  varRangeClass$new(quote(x[c(2, 4, 6), 5])) ## "x" is arbitrary here
-    VR$setIndexRanges( VRnew$indexRanges )
-    ## equal because the arbitrary index range is evaluated
-    ## the replaced case.
-    expect_identical(
-        VR$indexRanges,
-        VRnew$indexRanges
-    )
-    ## It doesn't appear we can keep indexRangeExprs identical
-    expect_identical(VR$indexRangeExprs, list())
-    
-})
-
-## update this
-
-## extract seq from 1D
-## extract seq from 2D
-## extract 1 col of 2-col matrix
-## extract cross of 1 col of 2-col matrix and a seq (or 1 col mat)
-## extract cross of 2 cols of 3-col matrix and a seq (or 1col mat)
 
 
 test_that("extractIndexRange", {
-    ## full indices, checking that ordering is correct
-    vr <- varRangeClass$new(list(
-               indexRange(matrix(c(2,3,1,2), ncol = 2)),
-               indexRange(quote(2:3))), indexOrders = list(c(1,3), 2))
-
-    full_result <- matrix(c(2,3,2,3,2,2,3,3,1,2,1,2), ncol = 3)
-
-    inds <- 1:3
-    mat <- vr$getIndexRangeMatrix(inds)
-    expect_identical(mat, indexRange(full_result[ , inds]))
-
-    ## different order
-    inds <- 3:1
-    mat <- vr$getIndexRangeMatrix(inds)
-    expect_identical(mat, indexRange(full_result[ , inds]))
     
-    ## partial indices, not breaking up an indexRange
+    xVar <- varRangeClass$new("x[2:4]")
+
+    result <- xVar$extractIndexRange(2)
+    expect_identical(result, indexRange(NULL))
+
+    result <- xVar$extractIndexRange(1)
+    expect_equal(result, indexRange(quote(2:4)))
+    
+    expr <- quote(x[c(2,3,5), 3:4])
+    xVar <- varRangeClass$new(as.character(expr))
+    result <- xVar$extractIndexRange(2)
+    expect_equal(result, indexRange(expr[[3]]))
+    
+    result <- xVar$extractIndexRange(1:2)
+    expect_equal(result, indexRange(as.matrix(expand.grid(eval(expr[[3]]), eval(expr[[4]])))))
+
+    vals <- matrix(c(2,3,5,1,2,4), ncol = 2)
+    xVar <- varRangeClass$new(list(indexRange(vals),
+                                   indexRange(quote(2:3)), indexOrders = list(c(3,1),2)
+                                   varName = 'x'))
+    fullResult <- xVar$extractIndexRange(1:3)
+    fullExpected <- indexRange(matrix(expand.grid(vals, 2:3))[ , c(2,3,1)])
+
+    expect_equal(fullResult, fullExpected)
+
+    ## various orderings and breaking up matrix range
+    inds <- c(3,1,2)
+    result <- xVar$extractIndexRange(c(1,3))
+    expect_equal(result, indexRange(fullExpected$values[ , inds]))
+
     inds <- c(1,3)
-    mat <- vr$getIndexRangeMatrix(inds)
-    expect_identical(mat, indexRange(unique(full_result[ , inds])))
+    result <- xVar$extractIndexRange(c(1,3))
+    expect_equal(result, indexRange(fullExpected$values[ , inds]))
 
-    ## partial indices, not breaking up an indexRange, out of order
     inds <- c(3,1)
-    mat <- vr$getIndexRangeMatrix(inds)
-    expect_identical(mat, indexRange(unique(full_result[ , inds])))
+    result <- xVar$extractIndexRange(c(1,3))
+    expect_equal(result, indexRange(fullExpected$values[ , inds]))
+    
+    inds <- c(2,3)
+    result <- xVar$extractIndexRange(c(1,3))
+    expect_equal(result, indexRange(fullExpected$values[ , inds]))
 
-    ## partial indices, breaking up an indexRange
-    inds <- 2:3
-    mat <- vr$getIndexRangeMatrix(inds)
-    expect_identical(mat, indexRange(full_result[ , inds]))
-
-    ## partial indices, out of order
-    inds <- 3:2
-    mat <- vr$getIndexRangeMatrix(inds)
-    expect_identical(mat, indexRange(full_result[ , inds]))
-
-    ## single index
-    inds <- 3
-    mat <- vr$getIndexRangeMatrix(inds)
-    expect_identical(mat, indexRange(unique(full_result[ , inds, drop = FALSE])))
+    inds <- c(3,2)
+    result <- xVar$extractIndexRange(c(1,3))
+    expect_equal(result, indexRange(fullExpected$values[ , inds]))    
 })
 
-## check for addtional tests
-## TODO: test varRange2expr
 
-## TODO: check printing
-
-test_that("varRange2expr", {
-## TODO: make into tests
-    xVar <- varRangeClass$new('x[2:10,1:3]')
- xVar <- varRangeClass$new('x[2:10,c(2,4)]')
-
-## check truncation of matrix range
-xVar <- varRangeClass$new('x[2:10,c(2,4,7,9,11)]')
-
-
- xVar <- varRangeClass$new(list(indexRange(quote(2:10)),
-                               indexRange(matrix(c(2,4)))), varName = 'x')
-varRange2expr(xVar)
-xVar <- varRangeClass$new(list(indexRange(quote(2:10)),
-                               indexRange(matrix(c(2,4,7,9,10)))), varName = 'x')
-varRange2expr(xVar)
-
-xVar <- varRangeClass$new(list(indexRange(matrix(1:4,ncol=2))), varName = 'x')
-varRange2expr(xVar)
-
-xVar <- varRangeClass$new(list(indexRange(matrix(1:4,ncol=2))), varName = 'x')
-varRange2expr(xVar)
-
-xVar <- varRangeClass$new(list(indexRange(matrix(1:4,ncol=2)),
-                               indexRange(quote(1:3))), indexOrders = list(c(1,3),2), varName = 'x')
-varRange2expr(xVar)
