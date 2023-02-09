@@ -160,8 +160,8 @@ exclude <- function(RHSrule, LHSrule) {
         }
     } else { ## not simple setting of a single non-identical scalar index that needs to be considered
         ## unroll, exclude, create new arbitrary RHSrule by creating a complicated context, crossed with any indices that are identical
-        unrolledRHS <- RHSrange$getIndexRangeMatrix(nonIdenticalIndices)
-        unrolledIntersection <- intersection$getIndexRangeMatrix(nonIdenticalIndices)
+        unrolledRHS <- RHSrange$extractIndexRange(nonIdenticalIndices)
+        unrolledIntersection <- intersection$extractIndexRange(nonIdenticalIndices)
 
         rhsAsChar <- do.call(paste, as.data.frame(unrolledRHS[[1]]))
         intAsChar <- do.call(paste, as.data.frame(unrolledIntersection[[1]]))

@@ -765,8 +765,8 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
             }
         }
     } else {     ## unroll, exclude, create new arbitrary rule based on all non-identical indices
-        unrolledLHS <- LHSrange$getIndexRangeMatrix(nonIdenticalIndices)
-        unrolledFrac <- fracturingRange$getIndexRangeMatrix(nonIdenticalIndices)
+        unrolledLHS <- LHSrange$extractIndexRange(nonIdenticalIndices)
+        unrolledFrac <- fracturingRange$extractIndexRange(nonIdenticalIndices)
 
         lhsAsChar <- do.call(paste, as.data.frame(unrolledLHS[[1]]))
         fracAsChar <- do.call(paste, as.data.frame(unrolledFrac[[1]]))

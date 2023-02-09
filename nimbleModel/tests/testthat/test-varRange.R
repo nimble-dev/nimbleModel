@@ -1,3 +1,5 @@
+## check indexID_2 and rangeID_2 are ints
+
 
 test_that('varRangeClass initialized from expr', {
 
@@ -152,6 +154,7 @@ test_that("varRange expr, char, and indexRange replacement", {
     
 })
 
+## update this
 test_that("getIndexRangeMatrix", {
     ## full indices, checking that ordering is correct
     vr <- varRangeClass$new(list(
@@ -198,9 +201,18 @@ test_that("getIndexRangeMatrix", {
 ## check for addtional tests
 ## TODO: test varRange2expr
 
+## TODO: check printing
+
+test_that("varRange2expr", {
+## TODO: make into tests
     xVar <- varRangeClass$new('x[2:10,1:3]')
  xVar <- varRangeClass$new('x[2:10,c(2,4)]')
-xVar <- varRangeClass$new(list(indexRange(quote(2:10)),
+
+## check truncation of matrix range
+xVar <- varRangeClass$new('x[2:10,c(2,4,7,9,11)]')
+
+
+ xVar <- varRangeClass$new(list(indexRange(quote(2:10)),
                                indexRange(matrix(c(2,4)))), varName = 'x')
 varRange2expr(xVar)
 xVar <- varRangeClass$new(list(indexRange(quote(2:10)),

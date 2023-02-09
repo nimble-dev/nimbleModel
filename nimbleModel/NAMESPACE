@@ -58,8 +58,6 @@ export(makeSeparableIndexSets)
 export(exclude)
 export(fracture)
 
-export(varRange2char)
-export(varRange2expr)
 export(varRange_getSingleIndexRange)
 export(varRange_getIndexRangeMatrix)
 

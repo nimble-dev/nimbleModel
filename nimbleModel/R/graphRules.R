@@ -553,9 +553,8 @@ applyGraphRule <- function(fromVarRange,
     if(complicatedCrossing) {
         warning("Detected that not all indices in an indexRange are used in an indexRule that uses that indexRange, so fully crossing all inputs.")        
         fromIndicesInfoFullyCrossed <-
-            fromVarRange$getIndexRangeMatrix(seq_len(numRHSindices),
-                                             details = TRUE)
-        if(!identical(attr(fromIndicesInfoFullyCrossed$result, 'rangeType'), 'matrix'))
+            fromVarRange$extractIndexRange(seq_len(numRHSindices), returnUsedRanges = TRUE)
+        if(!is(fromIndicesInfoFullyCrossed$indexRange, 'indexRangeMatrixClass'))
             stop("applyGraphRule: expecting a matrix indexRange.")
     }
 
@@ -563,7 +562,7 @@ applyGraphRule <- function(fromVarRange,
     
     ## Returns a list indicating the valid rows for each input indexRange (for matrices) or scalars for non-matrix indexRanges.
     if(complicatedCrossing) {
-        RHSconstraints <- checkConstraints(varRangeClass$new(list(fromIndicesInfoFullyCrossed$result)), rule$constraints)
+        RHSconstraints <- checkConstraints(varRangeClass$new(list(fromIndicesInfoFullyCrossed$indexRange)), rule$constraints)
     } else {
         RHSconstraints <- checkConstraints(fromVarRange, rule$constraints)
     }
@@ -576,19 +575,13 @@ applyGraphRule <- function(fromVarRange,
         
         if(length(thisRHSindices)) {
             if(!complicatedCrossing) {
-                fromIndicesInfo <-
-                    if(length(thisRHSindices) == 1)
-                        fromVarRange$getSingleIndexRange(thisRHSindices,
-                                                         details = TRUE)
-                    else
-                        fromVarRange$getIndexRangeMatrix(thisRHSindices,
-                                                         details = TRUE)
-                fromIndices <- fromIndicesInfo$result
+                fromIndicesInfo <- fromVarRange$extractIndexRange(thisRHSindices, returnUsedRanges = TRUE)
+                fromIndices <- fromIndicesInfo$indexRange
             } else {
                 ## Extract relevant RHS columns from fully-crossed inputs.
                 fromIndicesInfo <- fromIndicesInfoFullyCrossed
-                fromIndicesInfo$result[[1]] <- fromIndicesInfo$result[[1]][ , thisRHSindices, drop = FALSE]
-                fromIndices <- fromIndicesInfo$result
+                fromIndicesInfo$indexRanges[[1]] <- fromIndicesInfo$indexRanges[[1]][ , thisRHSindices, drop = FALSE]
+                fromIndices <- fromIndicesInfo$indexRange
             }
             ## usedRanges is a vector of rangeIDs from RHS from which
             ## fromIndicesInfo were extracted

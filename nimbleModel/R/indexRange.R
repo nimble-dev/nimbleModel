@@ -120,8 +120,8 @@ indexRangeClass <- R6Class(
             return(self$getItem(item))
         }, 
         
-        getColumns = function() {
-            stop("getColumns: not valid for '", class(self)[1], "' objects.")
+        getColumns = function(indices) {
+            return(self)
         },
 
         toSequence = function() {
@@ -255,11 +255,11 @@ indexRangeMatrixClass <- R6Class(
             return(values[item, ])
         },
 
-        getColumns = function(columns = NULL) {
-            if(is.null(columns)) {
+        getColumns = function(indices = NULL) {
+            if(is.null(indices)) {
                 return(.self)
             } else
-                return(indexRangeMatrixClass$new(values[ , columns, drop = FALSE]))
+                return(indexRangeMatrixClass$new(values[ , indices, drop = FALSE]))
         },
 
         toMatrix = function() {
@@ -322,8 +322,11 @@ indexRangeMatrixListClass <- R6Class(
 
 ## Take a list of `indexRange`s and cross (expand) to give fully-expanded
 ## `indexRangeMatrix`. E.g. c(3,5) with 1:3 to give (3,1),(3,2),(3,3),(5,1),(5,2),(5,3).
-crossIndexRanges <- function(indexRangesList) {
-    return(indexRange(matrixExpandGrid(lapply(indexRangesList, function(x) x$toMatrix()$values))))
+crossIndexRanges <- function(indexRangesList, order = NULL) {
+    matrixResult <- matrixExpandGrid(lapply(indexRangesList, function(x) x$toMatrix()$values))
+    if(order)
+        matrixResult <- matrixResult[order, , drop = FALSE]
+    return(indexRange(matrixResult))
 }
 
 
