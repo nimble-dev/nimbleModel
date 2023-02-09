@@ -1,15 +1,22 @@
 ## check indexID_2 and rangeID_2 are ints
 
+## include 2-col matrix
+## mix of 2-col matrix and seq  (1,3), 2
+## weird ordernig 2, (1,3)
 
 test_that('varRangeClass initialized from expr', {
 
-    ## 1D:
-    y <- 101:110
-    
-    xVar <- varRangeClass$new('x')
-    ans <- evalIndexRange(y, xVar)
-    expect_identical(ans, y)
+    ## initalize from expr and from indexRanges
+    ## compare to each other (use varRange_isEqual) and to expected rangeID_, indexID_, indexRanges
 
+    ## 0D
+    xVar1 <- varRangeClass$new('x')
+    xVar2 <- varRangeClass$new(list(indexRange(NULL)), varName = 'x')
+    expect_true(varRange_isEqual(xVar1, xVar2))
+    expect_true(is(xVar1$indexRanges[[1]], "indexRangeNoneClass"))
+    
+    ## 1D
+    y <- 101:110
     xVar <- varRangeClass$new('x[3]')
     ans <- evalIndexRange(y, xVar)
     expect_identical(ans, y[3])
@@ -120,6 +127,7 @@ test_that("varRange initialized with matrix indexRange(s)",{
     
 })
 
+## switch to `toExpr`
 test_that("varRange expr, char, and indexRange replacement", {
     input <- quote(x[3])
     expect_identical(
@@ -155,7 +163,15 @@ test_that("varRange expr, char, and indexRange replacement", {
 })
 
 ## update this
-test_that("getIndexRangeMatrix", {
+
+## extract seq from 1D
+## extract seq from 2D
+## extract 1 col of 2-col matrix
+## extract cross of 1 col of 2-col matrix and a seq (or 1 col mat)
+## extract cross of 2 cols of 3-col matrix and a seq (or 1col mat)
+
+
+test_that("extractIndexRange", {
     ## full indices, checking that ordering is correct
     vr <- varRangeClass$new(list(
                indexRange(matrix(c(2,3,1,2), ncol = 2)),

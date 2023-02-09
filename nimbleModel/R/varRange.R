@@ -121,7 +121,7 @@ varRangeClass <- R6Class(
 
         ## Extract one or more columns of a varRange.
         ## If multiple columns, result is expanded as a matrix of indices.
-        varRange_extractIndexRange <- function(varRange,
+        extractIndexRange = function(varRange,
                                                indices,
                                                returnUsedRanges = FALSE) {
             
