@@ -2,6 +2,8 @@
 ## the indexRules list to be elements of the graphRuleClass,
 ## with makeGraphRule a method that populates those.
 
+## TODO: rane finalIndexOrders and the like to sound more like rangeToIndex?
+
 graphRuleClass <- R6Class(
     classname = "graphRuleClass",
     portable = FALSE,
@@ -767,7 +769,7 @@ applyGraphRule <- function(fromVarRange,
 
     result <- varRangeClass$new(
         indexInfo = finalIndexRanges[!repeats],
-        indexOrders = finalIndexOrders[!repeats],
+        rangeToIndex = finalIndexOrders[!repeats],
         varName = ifelse(is.null(varName), rule$childVar, varName),
         fromStochRule = rule$stoch
         )

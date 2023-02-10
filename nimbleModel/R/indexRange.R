@@ -166,7 +166,10 @@ indexRangeNoneClass <- R6Class(
     portable = FALSE,
     public = list(
         numElements = 1,
-        numColumns = 0
+        numColumns = 0,
+        toExpr = function() {
+            return(NULL)
+        }
     )
 )
 
@@ -322,10 +325,10 @@ indexRangeMatrixListClass <- R6Class(
 
 ## Take a list of `indexRange`s and cross (expand) to give fully-expanded
 ## `indexRangeMatrix`. E.g. c(3,5) with 1:3 to give (3,1),(3,2),(3,3),(5,1),(5,2),(5,3).
-crossIndexRanges <- function(indexRangesList, order = NULL) {
+crossIndexRanges <- function(indexRangesList, order) {
     matrixResult <- matrixExpandGrid(lapply(indexRangesList, function(x) x$toMatrix()$values))
-    if(order)
-        matrixResult <- matrixResult[order, , drop = FALSE]
+    if(!missing(order))
+        matrixResult <- matrixResult[ , order, drop = FALSE]
     return(indexRange(matrixResult))
 }
 

@@ -90,10 +90,10 @@ nodeRuleClass <- R6Class(
             ## if((!is.null(externalRange) && externalRange$isEmpty()) || (!is.null(internalRange) &&  internalRange$isEmpty())) {
             ##     if(!is.null(externalRange))
             ##         externalRange <- varRangeClass$new(lapply(seq_len(numExternalRules), function(i) indexRange_empty()),
-            ##                                            indexOrders = externalRange$rangeID_2_indexID)
+            ##                                            rangeToIndex = externalRange$rangeID_2_indexID)
             ##     if(!is.null(internalRange))
             ##         internalRange <- varRangeClass$new(lapply(seq_len(numInternalRules), function(i) indexRange_empty()),
-            ##                                            indexOrders = internalRange$rangeID_2_indexID)
+            ##                                            rangeToIndex = internalRange$rangeID_2_indexID)
             ## }
             result <- nodeRangeClass$new(varName, externalRange, internalRange,
                                                 index2setID, self)
@@ -515,7 +515,7 @@ nodeRangeClass <- R6Class(
                                              function(x) which(indexID_2_rangeID == x))
             } else rangeID_2_indexID <- list()
             super$initialize(indexInfo = c(externalRange$indexRanges, internalRange$indexRanges),
-                             indexOrders = rangeID_2_indexID,
+                             rangeToIndex = rangeID_2_indexID,
                              varName = varName)
             boolExternalIndexRanges <<- c(rep(TRUE, numExternalIndexRanges),
                                           rep(FALSE, length(internalRange$indexRanges)))
@@ -575,7 +575,7 @@ nodeRangeClass <- R6Class(
         },
 
         getVarRange = function() {
-            varRangeClass$new(indexRanges, indexOrders = rangeID_2_indexID, varName = varName, fromStochRule = declRule$stoch)
+            varRangeClass$new(indexRanges, rangeToIndex = rangeID_2_indexID, varName = varName, fromStochRule = declRule$stoch)
         }
     )
 )

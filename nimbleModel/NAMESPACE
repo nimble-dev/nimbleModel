@@ -58,9 +58,6 @@ export(makeSeparableIndexSets)
 export(exclude)
 export(fracture)
 
-export(varRange_getSingleIndexRange)
-export(varRange_getIndexRangeMatrix)
-
 export(`[.varStoreClass`)
 export(`[<-.varStoreClass`)
 

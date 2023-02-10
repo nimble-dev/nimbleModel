@@ -37,7 +37,7 @@ varRangeClass <- R6Class(
         indexID_2_rangeID = integer(),  # e.g., c(1,2,1)
 
         initialize = function(indexInfo,
-                              indexOrders = NULL,
+                              rangeToIndex = NULL,
                               varName = NULL,
                               fromStochRule = NULL) {
 
@@ -82,8 +82,9 @@ varRangeClass <- R6Class(
                     if(!all(sapply(indexInfo, function(x) is(x, "indexRangeClass"))))
                         stop("varRange: `indexInfo` should be a list of `indexRange`s.")
                     varName <<- varName
-                    setIndexRanges(indexInfo, indexOrders)
-                    indexRangeExprs <<- lapply(indexRanges, function(x) x$toExpr())
+                    setIndexRanges(indexInfo, rangeToIndex)
+                    if(!isNone())                         
+                        indexRangeExprs <<- lapply(indexRanges, function(x) x$toExpr())
                 } else stop("varRange: unexpected input.")
             }
             if(length(rangeID_2_indexID)) { 
@@ -92,16 +93,16 @@ varRangeClass <- R6Class(
             } else indexID_2_rangeID <<- integer(0) ## no indexing of the variable
         },
 
-        setIndexRanges = function(indexRanges, indexOrders = NULL) {
+        setIndexRanges = function(indexRanges, rangeID_2_indexID = NULL) {
             ## Helper method for `initialize` to set `indexRanges` and `rangeID_2_indexID`
             ## based on list input, each element as returned by `indexRange` and possibly
-            ## an `indexOrders` list relating each `indexRange` to one or more index positions.
+            ## an `rangeID_2_indexID` list relating each `indexRange` to one or more index positions.
             indexRanges <<- indexRanges
             if(is(indexRanges[[1]], "indexRangeNoneClass")) {
                 rangeID_2_indexID <<- list()
             } else {
-                if(!is.null(indexOrders))
-                    rangeID_2_indexID <<- lapply(indexOrders, as.integer)
+                if(!is.null(rangeID_2_indexID))
+                    rangeID_2_indexID <<- lapply(rangeID_2_indexID, as.integer)
                 else {
                     ## Assign elements of `rangeID_2_indexID` sequentially based on number of columns.
                     nextID <- 1
@@ -123,19 +124,23 @@ varRangeClass <- R6Class(
         ## If multiple columns, result is expanded as a matrix of indices.
         extractIndexRange = function(indices, returnUsedRanges = FALSE) {
             
-            usedIndices <- lapply(rangeID_2_indexID, function(x) x %in% indices)
-            usedRanges <- which(sapply(usedIndices, any))
-
+            usedIndices <- unlist(lapply(rangeID_2_indexID, function(x) x[x %in% indices]))
+            usedIndicesBool <- lapply(rangeID_2_indexID, function(x) x %in% indices)
+            usedRanges <- which(sapply(usedIndicesBool, any))
+            
             if(!length(usedRanges)) {
                 indexRangeResult <-indexRange(NULL)
             } else {            
                 indexRangesList <- lapply(usedRanges, function(i) {
-                    innerIndices <- which(usedIndices[[i]])
+                    innerIndices <- which(usedIndicesBool[[i]])
                     return(indexRanges[[i]]$getColumns(innerIndices))
                 })
                 
-                if(length(indexRangesList == 1)) {
-                    indexRangeResult <- indexRangesList[[1]]
+                if(length(indexRangesList) == 1) {
+                    if(is(indexRangesList[[1]], "indexRangeMatrixClass") &&
+                       indexRangesList[[1]]$numColumns > 1) {
+                        indexRangeResult <- indexRange(indexRangesList[[1]]$values[ , match(indices, usedIndices)])
+                    } else indexRangeResult <- indexRangesList[[1]]
                 } else {
                     indexRangeResult <- crossIndexRanges(indexRangesList, order = match(indices, usedIndices))  ## result is an indexRangeMatrix
                 }
@@ -175,7 +180,7 @@ varRangeClass <- R6Class(
 
         ## `toChar` takes a varRange object and returns the corresponding
         ## character string of the original expression (or the imputed expression
-        ## when initialized from a list of `indexRange`s.
+        ## when initialized from a list of `indexRange`s).
         toChar = function() {
             deparse(toExpr())
         },
@@ -191,7 +196,7 @@ varRangeClass <- R6Class(
 varRange_isEqual <- function(vr1, vr2) {
     identical(vr1$indexID_2_rangeID, vr2$indexID_2_rangeID) &&
         identical(vr1$rangeID_2_indexID, vr2$rangeID_2_indexID) &&
-        identical(vr1$indexRanges, vr2$indexRanges)
+        all.equal(vr1$indexRanges, vr2$indexRanges)
 }
 
 getVarName <- function(x) {
