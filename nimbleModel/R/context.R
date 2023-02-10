@@ -61,21 +61,22 @@ modelContextClass <- R6Class(
             
             ## Sets all fields, which never change.
             initialize = function(singleContexts) {
-                singleContexts <- lapply(singleContexts,
-                                         function(x)
-                                             if(is.call(x)) {
-                                                 singleContextClass$new(forCode = x)
-                                             } else if(is(x, "singleContextClass")) {
-                                                 x
-                                             } else stop("modelContextClass: `singleContexts` must be a list of `singleContextClass` objects or a list of for-loop code.")
-                                         )
-                singleContexts <<- singleContexts
-                indexVarExprs <<- lapply(singleContexts,
-                                         function(x) x$indexVarExpr)
-                indexVarNames <<- if(length(indexVarExprs))
-                                      unlist(lapply(indexVarExprs, as.character))
-                                  else character(0)
-                names(singleContexts) <<- indexVarNames
+                if(!missing(singleContexts)) {
+                    singleContexts <<- lapply(singleContexts,
+                                              function(x)
+                                                  if(is.call(x)) {
+                                                      singleContextClass$new(forCode = x)
+                                                  } else if(is(x, "singleContextClass")) {
+                                                      x
+                                                  } else stop("modelContextClass: `singleContexts` must be a list of `singleContextClass` objects or a list of for-loop code.")
+                                              )
+                    indexVarExprs <<- lapply(singleContexts,
+                                             function(x) x$indexVarExpr)
+                    indexVarNames <<- if(length(indexVarExprs))
+                                          unlist(lapply(indexVarExprs, as.character))
+                                      else character(0)
+                    names(singleContexts) <<- indexVarNames
+                }
             },
             genIndexVarValues = function(constantsEnvCopy) {
                 genIndexVarValues_recurse(singleContexts, constantsEnvCopy)

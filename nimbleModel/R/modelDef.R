@@ -90,8 +90,7 @@ modelDefClass <- R6Class(
                             forCode = forCode)
                             )
                     )
-                    modelContextClassObject <- modelContextClass$new()
-                    modelContextClassObject$setup(singleContexts = singleContexts)
+                    modelContextClassObject <- modelContextClass$new(singleContexts = singleContexts)
                     contexts[[nextContextID]] <<- modelContextClassObject
                     if(length(code[[i]][[4]])==1) {
                         stop(paste0('Error, not sure what to do with ',
@@ -194,34 +193,11 @@ modelDefClass <- R6Class(
         },
         initializeContexts = function() {
             contextClassObject <- modelContextClass$new()
-            contextClassObject$setup(singleContexts = list())
             contexts[[1]] <<- contextClassObject
             invisible(0)
         }
     )
 )
-
-## TODO: make this a constructor for varRule class.
-createVarRule <- function(items, varNames = NULL, type = NULL) {
-    if(is.null(varNames)) {
-        varNames <- sapply(items, function(item) item$varName)
-    } else 
-        if(length(varNames) != length(items))
-            stop("createVarRule: length of `varNames` must match length of `items`.")
-    if(!is.null(type)) {
-        if(is(items[[1]], 'varRangeClass')) stop("createVarRule: `type` restriction cannot be applied to `varRange`s.")
-        include <- sapply(items, function(item) item$is_type(type))
-    } else include <- rep(TRUE, length(varNames))
-    uniqVarNames <- unique(varNames)
-    if(is(items[[1]], 'varRangeClass')) {
-        result <- lapply(uniqVarNames, function(nm)
-            items[varNames == nm & include])
-    } else  # some sort of rule
-        result <- lapply(uniqVarNames, function(nm)
-            varRuleClass$new(items[varNames == nm & include]))
-    names(result) <- uniqVarNames
-    return(result)
-}
 
 
 ## Graph and node querying -- standalone functions for now, but presumably will become

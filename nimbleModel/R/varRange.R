@@ -147,7 +147,7 @@ varRangeClass <- R6Class(
             }
             if(!returnUsedRanges) {
                 return(indexRangeResult)
-            } else return(list(indexRange = indexRange, usedRanges = usedRanges))
+            } else return(list(indexRange = indexRangeResult, usedRanges = usedRanges))
         },
 
         isEmpty = function() {

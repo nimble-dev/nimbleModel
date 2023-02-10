@@ -119,14 +119,14 @@ indexRule_any_apply <- function(fromIR,
     ## In this case it makes sense to do via switch(),
     ## because we are crossing `indexRule` types with `indexRange` types.
     switch(class(fromIR)[1],
-           indexRangeClassScalar = indexRule_any_apply_single(fromIR$value,
+           indexRangeScalarClass = indexRule_any_apply_single(fromIR$value,
                                             setupResults,
                                             ...
                                             ),
-           indexRangeClassSequence = indexRule_any_apply_sequence(fromIR$start, fromIR$end,
+           indexRangeSequenceClass = indexRule_any_apply_sequence(fromIR$start, fromIR$end,
                                                setupResults,
                                                ...),
-           indexRangeClassMatrix = indexRule_any_apply_matrix(fromIR$values,
+           indexRangeMatrixClass = indexRule_any_apply_matrix(fromIR$values,
                                                       setupResults,
                                                       ...)
            )

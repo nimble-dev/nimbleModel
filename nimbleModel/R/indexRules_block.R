@@ -46,7 +46,7 @@ indexRuleClass_block <- R6Class(
             )
         },
         apply = function(from, ...) {
-            if(!is(from, 'indexRuleClass'))
+            if(!is(from, 'indexRangeClass'))
                 ##apply_varRange(from, ...)
                 stop('an index rule should be applied to an indexRange')
             else
@@ -89,13 +89,10 @@ indexRule_block_apply_matrix <- function(fromIndices,
         indexRangeMatrixListClass$new(lapply(toIndices, as.matrix))
 }
 
-indexRule_block_apply_sequence <- function(fromIR,
+indexRule_block_apply_sequence <- function(start, end,
                                         setupResults,
                                         collapse = TRUE,
                                         ...) {
-    ## fromIR should be an indexRange
-    start <- fromIR[[1]][[1]]
-    end <- fromIR[[1]][[2]]
     if(start > end |
        start > setupResults$from_max |
        end < setupResults$from_min)
@@ -128,16 +125,16 @@ indexRule_block_apply <- function(fromIR,
     ## In this case it makes sense to do via switch(),
     ## because we are crossing `indexRule` types with `indexRange` types.
     switch(class(fromIR)[1],
-           indexRangeClassScalar = indexRule_block_apply_single(fromIR$value,
+           indexRangeScalarClass = indexRule_block_apply_single(fromIR$value,
                                             setupResults,
                                             collapse = collapse,
                                             ...
                                             ),
-           indexRangeClassSequence = indexRule_block_apply_sequence(fromIR$start, fromIR$end,
+           indexRangeSequenceClass = indexRule_block_apply_sequence(fromIR$start, fromIR$end,
                                                setupResults,
                                                collapse = collapse,
                                                ...),
-           indexRangeClassMatrix = indexRule_block_apply_matrix(fromIR$values,
+           indexRangeMatrixClass = indexRule_block_apply_matrix(fromIR$values,
                                                       setupResults,
                                                       collapse = collapse,
                                                       ...)

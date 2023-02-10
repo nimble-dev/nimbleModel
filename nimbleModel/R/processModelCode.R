@@ -76,8 +76,7 @@ processModelCode_impl <- function(modelDef = modelDefClass$new(),
                     forCode = forCode)
                     )
             )
-            modelContextClassObject <- modelContextClass$new()
-            modelContextClassObject$setup(singleContexts = singleContexts)
+            modelContextClassObject <- modelContextClass$new(singleContexts = singleContexts)
             modelDef$contexts[[nextContextID]] <<- modelContextClassObject
             if(length(code[[i]][[4]])==1) {
                 stop(paste0('Error, not sure what to do with ',
