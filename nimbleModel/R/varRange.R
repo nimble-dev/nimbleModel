@@ -129,7 +129,7 @@ varRangeClass <- R6Class(
             usedRanges <- which(sapply(usedIndicesBool, any))
             
             if(!length(usedRanges)) {
-                indexRangeResult <-indexRange(NULL)
+                indexRangeResult <- newIndexRange(NULL)
             } else {            
                 indexRangesList <- lapply(usedRanges, function(i) {
                     innerIndices <- which(usedIndicesBool[[i]])
@@ -139,7 +139,7 @@ varRangeClass <- R6Class(
                 if(length(indexRangesList) == 1) {
                     if(is(indexRangesList[[1]], "indexRangeMatrixClass") &&
                        indexRangesList[[1]]$numColumns > 1) {
-                        indexRangeResult <- indexRange(indexRangesList[[1]]$values[ , match(indices, usedIndices)])
+                        indexRangeResult <- newIndexRange(indexRangesList[[1]]$values[ , match(indices, usedIndices)])
                     } else indexRangeResult <- indexRangesList[[1]]
                 } else {
                     indexRangeResult <- crossIndexRanges(indexRangesList, order = match(indices, usedIndices))  ## result is an indexRangeMatrix

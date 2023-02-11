@@ -710,7 +710,7 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
             result <- list(fracturingRule, resultRule)
         } else {  # seq+seq or seq+scalar
             if(typeFrac == "scalar")   # process as a sequence
-                frac <- indexRange(substitute(A:A, list(A = frac[[1]])))
+                frac <- newIndexRange(substitute(A:A, list(A = frac[[1]])))
             if(typeLHS == "scalar") stop("Not expecting LHS to be a scalar")  ## scalar LHS either fully intersected or not intersected
           
             if(frac[[1]][1] == LHS[[1]][[1]] || frac[[1]][[2]] == LHS[[1]][[2]]) {

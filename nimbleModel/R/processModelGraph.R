@@ -298,12 +298,12 @@ processCyclicRules <- function(allCalcRules, modelDef) {
                 maxSortID <- max(childSortIDs[is.finite(childSortIDs)]) else maxSortID <- fullMaxSortID
             
             sortIDvals <- eps + seq(from = maxSortID,
-                              to = maxSortID + setup$from_max - setup$from_min,
+                              to = maxSortID + setup$fromMax - setup$fromMin,
                               by = 1)
             ## Adjust for 'direction' of 'time'.
             if(directions[i] < 0)
                 sortIDvals <- rev(sortIDvals)
-            indices <- setup$from_min:setup$from_max
+            indices <- setup$fromMin:setup$fromMax
             allCalcRules[[currentCyclicRule]]$sortID[indices] <- sortIDvals
         }
         
@@ -402,12 +402,12 @@ followUpstream <- function(upstreamGraphRule, upstreamRules, childSortID, focalI
                 maxSortID <- max(childSortIDs[is.finite(childSortIDs)]) else maxSortID <- fullMaxSortID
             
             sortIDvals <- eps + seq(from = maxSortID,
-                              to = maxSortID + setup$from_max - setup$from_min,
+                              to = maxSortID + setup$fromMax - setup$fromMin,
                               by = 1)
             ## Adjust for 'direction' of 'time'.
             if(direction < 0)
                 sortIDvals <- rev(sortIDvals)
-            indices <- setup$from_min:setup$from_max
+            indices <- setup$fromMin:setup$fromMax
             allCalcRules[[currentCyclicRule]]$sortID[indices] <- sortIDvals
             currentSortID <- allCalcRules[[currentCyclicRule]]$sortID
             allCalcRules[[currentCyclicRule]]$multiSortIDindex <- focalIndex
@@ -418,7 +418,7 @@ followUpstream <- function(upstreamGraphRule, upstreamRules, childSortID, focalI
         setup <- upstreamGraphRule$indexRules[[focalIndexRule]]$setupResults
         if(!inherits(upstreamGraphRule$indexRules[[focalIndexRule]], 'indexRuleClass_block'))
             return(NULL) # stop("new nimbleModel processing reached unexpected structure in cycle processing.")
-        childIndices <- setup$from_min:setup$from_max
+        childIndices <- setup$fromMin:setup$fromMax
         sortIDvals <- childSortID[childIndices] + eps
         currentIndices <- childIndices + as.integer(setup$offset)  # as.integer() because of identical() below
         
@@ -427,7 +427,7 @@ followUpstream <- function(upstreamGraphRule, upstreamRules, childSortID, focalI
             return(NULL) # stop("new nimbleModel processing reached unexpected structure in cycle processing.")
         
         setup <- allCalcRules[[currentCyclicRule]]$graphRule$indexRules[[focalIndexRule]]$setupResults
-        currentCalcRuleIndices <- setup$from_min:setup$from_max
+        currentCalcRuleIndices <- setup$fromMin:setup$fromMax
         
         ## currentIndices may include indices not in the calcRule, if the rule has been fractured,
         ## so do not update sortID for elements not in the calcRule, using setup info for the calcRule.

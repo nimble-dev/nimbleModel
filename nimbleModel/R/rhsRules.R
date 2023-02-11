@@ -120,7 +120,7 @@ exclude <- function(RHSrule, LHSrule) {
             return(list(resultRule))
         } else {  # seq+seq or seq+scalar
             if(typeInt == "scalar")
-                int <- indexRange(substitute(A:A, list(A = int[[1]])))
+                int <- newIndexRange(substitute(A:A, list(A = int[[1]])))
             ## now process two seqs
             if(typeRHS == "scalar") stop("Not expecting RHS to be a scalar")  ## scalar RHS either fully intersected or not intersected
           

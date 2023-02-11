@@ -62,10 +62,10 @@ graphRuleClass <- R6Class(
 
                 if(sum(indexed)) 
                     for(idx in unique(maxes[indexed])) 
-                        maxes[indexSets$RHSindex2setID == idx] <- indexRules[[idx]]$get_max()
+                        maxes[indexSets$RHSindex2setID == idx] <- indexRules[[idx]]$getMax()
 
                 vr <- varRangeClass$new(lapply(seq_along(maxes),
-                                             function(i) indexRange(
+                                             function(i) newIndexRange(
                                                              substitute(1:MAX, list(MAX = maxes[i])))),
                                      varName = parentVar) 
             }
@@ -595,10 +595,7 @@ applyGraphRule <- function(fromVarRange,
         }
 
         ## Apply the rule.
-        thisLHSresult <-
-            indexRules[[iSet]]$apply(fromIndices,
-                                     collapse = FALSE
-                                     )
+        thisLHSresult <-indexRules[[iSet]]$apply(fromIndices, collapse = FALSE)
 
         ## Result could be a regular indexRange or a RHSonly constraint rule result (getParents situation, e.g., y[i] -> x[2].
         if(indexSets$RHSonly[iSet]) {

@@ -29,7 +29,7 @@ intToNumeric <- function(x) {
 ## This needs to be a function as we can't initialize a subclass from
 ## the constructor of the base class, and we want to be able to
 ## dispatch `indexRange` creation based on form of input expression or value.
-indexRange <- function(expr) {
+newIndexRange <- function(expr) {
     ## Note that we do various checking and  conversion to numeric here,
     ## as calls to class-specific `initialize` will be done repeatedly and
     ## with only internal values (which should be guaranteed valid).
@@ -329,7 +329,7 @@ crossIndexRanges <- function(indexRangesList, order) {
     matrixResult <- matrixExpandGrid(lapply(indexRangesList, function(x) x$toMatrix()$values))
     if(!missing(order))
         matrixResult <- matrixResult[ , order, drop = FALSE]
-    return(indexRange(matrixResult))
+    return(newIndexRange(matrixResult))
 }
 
 
@@ -350,7 +350,7 @@ indexRangeMatrixListsToMatrix <- function(indexRangesList) {
     result <- lapply(seq_len(lengths[1]), function(i)
         matrixExpandGrid(lapply(rangeListsList, function(x) x[[i]])))
     ## Collapse via `rbind` to produce a single `indexRangeMatrix`.
-    return(indexRange(do.call("rbind", result)))
+    return(newIndexRange(do.call("rbind", result)))
 }
 
 ## Cross elements of two or more matrices of indexes, returning a matrix of indices.

@@ -15,7 +15,7 @@ Collate:
     distributions_inputList.R
     distributions_processInputList.R
     indexRange.R
-    indexRules.R
+    indexRule.R
     indexRules_all.R
     indexRules_any.R
     indexRules_arbitrary.R

@@ -73,7 +73,7 @@ modelContextClass <- R6Class(
                     indexVarExprs <<- lapply(singleContexts,
                                              function(x) x$indexVarExpr)
                     indexVarNames <<- if(length(indexVarExprs))
-                                          unlist(lapply(indexVarExprs, as.character))
+                                          sapply(indexVarExprs, as.character)
                                       else character(0)
                     names(singleContexts) <<- indexVarNames
                 }
@@ -182,6 +182,7 @@ genIndexVarValues_recurse <- function(singleContexts, constantsEnvCopy) {
     return(indexVarValues)
 }
 
+## Evaluate loops in context to determine unrolled index information.
 expandContextAndReplacements <- function(allReplacements, allReplacementNameExprs, context, constantsEnv) {
     ## `allReplacements` is a list like `list(i = i, i_plus_1 = i+1, mean_x_1to5 = mean(x[1:5]))`
     ## `context` is a `modelContextClass` object

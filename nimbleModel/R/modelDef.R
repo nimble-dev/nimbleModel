@@ -141,18 +141,18 @@ modelDefClass <- R6Class(
             declRules <<- lapply(declInfo, function(x) x$declRule)
             varNames <<- unique(lapply(declRules, function(rule) rule$varName))
             rhsOriginalRules <- unlist(lapply(declInfo, function(x) x$rhsOriginalRules))
-            rhsOnlyRules <<- createVarRule(
+            rhsOnlyRules <<- newVarRule(
                 generateRHSonlyRules(rhsOriginalRules, declRules))
 
             allDownstreamRules <- unlist(lapply(declInfo, function(x) x$downstreamRules))
             varNames <- sapply(allDownstreamRules, function(rule)
                 rule$parentVar)
-            downstreamRules <<- createVarRule(allDownstreamRules, varNames)
+            downstreamRules <<- newVarRule(allDownstreamRules, varNames)
             
             allUpstreamRules <- unlist(lapply(declInfo, function(x) x$upstreamRules))
             varNames <- sapply(allUpstreamRules, function(rule)
                 rule$parentVar)   ## TODO: nomenclature is confusing - parent in an upstream rule is child in graph
-            upstreamRules <<- createVarRule(allUpstreamRules, varNames)
+            upstreamRules <<- newVarRule(allUpstreamRules, varNames)
 
             allCalcRules <- generateCalcRules(declRules, rhsOriginalRules, downstreamRules)
 
@@ -183,11 +183,11 @@ modelDefClass <- R6Class(
             ## setLatentNodes(calcRules)
 
             ## Set up nested lists indexed by varName
-            topRules <<- createVarRule(allCalcRules, type = 'top')
-            endRules <<- createVarRule(allCalcRules, type = 'end')
-            latentRules <<- createVarRule(allCalcRules, type = 'latent')
-            calcRules <<- createVarRule(allCalcRules)
-            declRules <<- createVarRule(declRules)
+            topRules <<- newVarRule(allCalcRules, type = 'top')
+            endRules <<- newVarRule(allCalcRules, type = 'end')
+            latentRules <<- newVarRule(allCalcRules, type = 'latent')
+            calcRules <<- newVarRule(allCalcRules)
+            declRules <<- newVarRule(declRules)
                         
             invisible(0)
         },

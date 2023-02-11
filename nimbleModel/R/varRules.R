@@ -26,14 +26,14 @@ varRuleClass <- R6Class(
 )
 
 ## Take a flat list of `nodeRule`s and divide up into one `varRule` per variable.
-createVarRule <- function(items, varNames = NULL, type = NULL) {
+newVarRule <- function(items, varNames = NULL, type = NULL) {
     if(!all(sapply(items, function(x) is(x, "nodeRuleClass"))))
-        stop("createVarRule: all elements of `items` must be `nodeRule`s.")
+        stop("newVarRule: all elements of `items` must be `nodeRule`s.")
     if(is.null(varNames)) {
         varNames <- sapply(items, function(item) item$varName)
     } else 
         if(length(varNames) != length(items))
-            stop("createVarRule: length of `varNames` must match length of `items`.")
+            stop("newVarRule: length of `varNames` must match length of `items`.")
     if(!is.null(type)) {
         include <- sapply(items, function(item) item$is_type(type))
     } else include <- rep(TRUE, length(items))
