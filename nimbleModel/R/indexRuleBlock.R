@@ -84,7 +84,7 @@ indexRuleBlock_setup <- function(toIndexExprList,
 }
 
 
-indexRuleBlock_applyScalar <- function(fromValue,
+indexRuleBlock_applyToScalar <- function(fromValue,
                                        setupResults,
                                        ...) {
     if(fromValue < setupResults$fromMin || fromValue > setupResults$fromMax)
@@ -93,7 +93,7 @@ indexRuleBlock_applyScalar <- function(fromValue,
     return(indexRangeScalarClass$new(toValue))
 }
 
-indexRuleBlock_applyMatrix <- function(fromValues,
+indexRuleBlock_applyToMatrix <- function(fromValues,
                                        setupResults,
                                        collapse = TRUE) {
     if(ncol(fromValues) != 1)
@@ -113,7 +113,7 @@ indexRuleBlock_applyMatrix <- function(fromValues,
     ## fromValues seemingly should always be from a single matrix.
 }
 
-indexRuleBlock_applySequence <- function(fromStart, fromEnd,
+indexRuleBlock_applyToSequence <- function(fromStart, fromEnd,
                                         setupResults,
                                         collapse = TRUE) {
     if(fromStart > fromEnd ||
