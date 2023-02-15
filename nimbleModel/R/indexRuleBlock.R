@@ -27,12 +27,10 @@ indexRuleBlockClass <- R6Class(
                                                                         setupResults),
                    indexRangeSequenceClass = indexRuleBlock_applyToSequence(indexRange$start, indexRange$end,
                                                                             setupResults,
-                                                                            collapse = collapse,
-                                                                            ...),
+                                                                            collapse = collapse),
                    indexRangeMatrixClass = indexRuleBlock_applyToMatrix(indexRange$values,
                                                                         setupResults,
-                                                                        collapse = collapse,
-                                                                        ...),
+                                                                        collapse = collapse),
                    stop('indexRuleBlockClass$apply: an index rule must be applied to an `indexRange`.')
                    
         },
@@ -85,8 +83,7 @@ indexRuleBlock_setup <- function(toIndexExprList,
 
 
 indexRuleBlock_applyToScalar <- function(fromValue,
-                                       setupResults,
-                                       ...) {
+                                       setupResults) {
     if(fromValue < setupResults$fromMin || fromValue > setupResults$fromMax)
         return(indexRangeEmptyClass$new())
     toValue <- fromValue + setupResults$offset
@@ -105,12 +102,18 @@ indexRuleBlock_applyToMatrix <- function(fromValues,
 
     ## CHECK: Presumably NAs needed to preserve input length when combining results later.
     toValues[!valid] <- NA
-    if(collapse)
+
+    ## `applyGraphRules` will use `collapse = FALSE` because
+    ## one could have something like `y[i,j] <- x[k[i],j]` applied to an input
+    ## indexRangeMatrix with two columns. In that case the `i` rule can
+    ## produce variable number of outputs for each input index, and these
+    ## need to be crossed with the output of the `j` rule, and it's easiest to
+    ## do that if the output of the `j` rule is also a list.
+    ## CHECK: check this reasoning
+    if(collapse)  
         return(indexRangeMatrixClass$new(toValues))
     else  
         return(indexRangeMatrixListClass$new(toValues))
-    ## CHECK: why in graphRules do we have collapse=FALSE?
-    ## fromValues seemingly should always be from a single matrix.
 }
 
 indexRuleBlock_applyToSequence <- function(fromStart, fromEnd,

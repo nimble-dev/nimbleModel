@@ -443,6 +443,9 @@ checkOneConstraint <- function(indexRange, constraint, col = 1) {
         return(FALSE) else return(TRUE)
 }
 
+## TODO: look into collapse=TRUE argument to indexRule$apply.
+## I think collapse=F makes sense for arbitrary rule but what about block rule?
+
 ## fromVarRange will have indexRanges that may be sequences, matrices, blanks, or scalars.
 ##
 ## We need to extract the relevant components of fromVarRange for each rule, apply the rule,

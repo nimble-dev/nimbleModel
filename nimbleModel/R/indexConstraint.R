@@ -227,9 +227,9 @@ generateIndicesMatrix <- function(fromIndexExprs, context, constants) {
         stop("Missing values found in setting up arbitrary indexRule: are constants the correct size?")
     unrolledSize <- unrolledIndicesEnv$outputSize
 
-    from_allScalar <- all(unlist(
-        lapply(fromUnrolledResults,
-               isScalarIndex)))
+    from_allScalar <- all(
+        sapply(fromUnrolledResults,
+               function(x) !is.list(x)))
 
     if(to_allScalar) {
         allIndices <- do.call("cbind",
@@ -237,7 +237,7 @@ generateIndicesMatrix <- function(fromIndexExprs, context, constants) {
         iRow2toIndices <- split(allIndices,
                                 1:unrolledSize) ## makes it a list
     } else {
-        ## mapply(expand.grid, ...) will return a list in the right form.
+        ## This will return a list in the right form.
         allIndicesList <- do.call("mapply",
                                   c(list(as.name("expand.grid")),
                                     toUnrolledResults,
