@@ -46,9 +46,9 @@ indexConstraintScalarClass <- R6Class(
             switch(class(indexRange)[1],
                    indexRangeScalarClass = indexRange$value == value,
                    indexRangeSequenceClass =
-                       indexRangeStart <= value & value <= indexRange$end,
+                       indexRange$start <= value & indexRange$end >= value,
                    indexRangeMatrixClass =
-                       indexRange$values == value
+                       c(indexRange$values == value)
                    )                   
         }
     )
@@ -96,11 +96,11 @@ indexConstraintMatrix1dClass <- R6Class(
         },
 
         ## CHECK: this assumes a one-column matrix; can't think of cases where
-        ## a constraint could be specified
+        ## a constraint could be specified.
         check = function(indexRange) {
             switch(class(indexRange)[1],
                    indexRangeScalarClass = indexRange$value %in% values,
-                   indexRangeSequenceClass = any(indexRange$start <= values & indexRange$end >= values)
+                   indexRangeSequenceClass = any(indexRange$start <= values & indexRange$end >= values),
                    indexRangeMatrixClass = indexRange$values %in% values
                    )                   
         }
@@ -120,8 +120,7 @@ indexConstraintMatrixClass <- R6Class(
             slots <<- slots
             numColumns <<- ncol(values)
         },
-        ## TODO: probably need in some cases to return which are matches
-        ## create ID column for indexRange$values before merge
+
         check = function(indexRange) {
             switch(class(indexRange)[1],
                    indexRangeMatrixClass = checkFunction(indexRange),
@@ -129,7 +128,7 @@ indexConstraintMatrixClass <- R6Class(
                    )                   
         },
 
-        ## Determine rows of input that satisfy constraint. (`%in%` doesn't work for matrix rows).
+        ## Determine rows of input that satisfy constraint. (`%in%` doesn't work for matrix rows)
         checkFunction = function(indexRange) {
             mat1 <- cbind(indexRange$values, seq_len(nrow(indexRange$values)))
             mat2 <- cbind(values, rep(1, nrow(values)))
@@ -141,7 +140,7 @@ indexConstraintMatrixClass <- R6Class(
     )
 )
 
-    
+## Create an `indexConstraint` for simple expressions, such as `x[2]`, `x[2:4]`.    
 newIndexConstraint_fromSimple <- function(expr, slot, constants) {
     if(is.call(expr) && expr[[1]] == ":") {   ## sequence case, e.g., `x[2:4]`
         return(indexConstraintSequence$class$new(eval(expr[[2]], envir = constants),
@@ -156,6 +155,7 @@ newIndexConstraint_fromSimple <- function(expr, slot, constants) {
     }
 }
 
+## Create an `indexConstraint` from eval'ing loop(s).
 newIndexConstraint_fromUnrolling <- function(fromIndexExprs, slots, context, constants) {
     values <- generateIndicesMatrix(fromIndexExprs, context, constants)
     if(ncol(values) == 1) {
@@ -163,7 +163,8 @@ newIndexConstraint_fromUnrolling <- function(fromIndexExprs, slots, context, con
     } else
         return(indexConstraintMatrixClass$new(values), slots)
 }
-               
+
+
 checkIndexConstraints <- function(varRange, indexConstraints) {
     result <- list(); length(result) <- length(fromVarRange$indexRanges)    
     if(length(indexConstraints))
@@ -208,7 +209,9 @@ checkIndexConstraints <- function(varRange, indexConstraints) {
     return(result)
 }
 
-## Code copied from indexRuleArbitrary. Might see what could be factored out
+## Unroll loop(s) to generate indexing information in arbitrary cases.
+
+## FUTURE: Code copied from `indexRuleArbitrary`. Might see what could be factored out
 ## as a single function to avoid code duplication.
 generateIndicesMatrix <- function(fromIndexExprs, context, constants) {
     fromIndexNames <- lapply(names(fromIndexExprs),

@@ -10,14 +10,14 @@ indexRuleClass <- R6Class(
     )
 )
 
-## Look for index value +/- offset.
+## `getOffset` looks for index value +/- offset.
 
 ## FUTURE: we might be able to use some old code to partially evaluate
 ## more complicated expressions, or possibly use Ryacas.
 ## However, it is not clear what more complicated expressions we
 ## want to handle. Perhaps something like `i+3+7`.
 ## Something like i*3 could possibly be handled to avoid
-## full unrolling, but result can't be handled except as indexRangeMatrix anyway.
+## full unrolling, but result can't be handled except as indexRangeMatrix anyway
 
 getOffset <- function(indexExpr,
                       indexVarName,

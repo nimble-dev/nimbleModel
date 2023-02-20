@@ -19,20 +19,19 @@ indexRuleBlockClass <- R6Class(
                                      )
         },
         
-        apply = function(indexRange) {
+        apply = function(indexRange, collapse = TRUE) {
             ## A bit awkward to use `switch` but otherwise hard to dispatch on input type,
             ## given we need to cross the indexRule type with the input indexRange type.
             switch(class(indexRange)[1],
                    indexRangeScalarClass = indexRuleBlock_applyToScalar(indexRange$value,
                                                                         setupResults),
                    indexRangeSequenceClass = indexRuleBlock_applyToSequence(indexRange$start, indexRange$end,
-                                                                            setupResults,
-                                                                            collapse = collapse),
+                                                                            setupResults),
                    indexRangeMatrixClass = indexRuleBlock_applyToMatrix(indexRange$values,
                                                                         setupResults,
                                                                         collapse = collapse),
                    stop('indexRuleBlockClass$apply: an index rule must be applied to an `indexRange`.')
-                   
+                   )
         },
         
         getMax = function() {
@@ -117,8 +116,7 @@ indexRuleBlock_applyToMatrix <- function(fromValues,
 }
 
 indexRuleBlock_applyToSequence <- function(fromStart, fromEnd,
-                                        setupResults,
-                                        collapse = TRUE) {
+                                        setupResults) {
     if(fromStart > fromEnd ||
        fromStart > setupResults$fromMax ||
        fromEnd < setupResults$fromMin)

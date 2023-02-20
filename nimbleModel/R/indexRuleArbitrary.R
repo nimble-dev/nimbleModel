@@ -12,7 +12,7 @@ indexRuleArbitraryClass <- R6Class(
                               constants = list()
                               ) {
            setupResults <<-
-                indexRule_arbitrary_setup(toIndexExprList,
+                indexRuleArbitrary_setup(toIndexExprList,
                                           fromIndexExprList,
                                           context,
                                           constants)
@@ -21,8 +21,7 @@ indexRuleArbitraryClass <- R6Class(
         apply = function(indexRange, collapse = TRUE) {
             if(!is(indexRange, 'indexRangeClass'))
                 stop("indexRuleArbitraryClass$apply: an index rule must be applied to an `indexRange`.")
-            indexRangeMatrix <- indexRange$toMatrix()
-            indexRuleArbitrary_applyMatrix(indexRangeMatrix, setupResults, collapse = collapse)
+            indexRuleArbitrary_applyMatrix(indexRange$toMatrix(), setupResults, collapse = collapse)
         },
  
         getMax = function() {
@@ -63,7 +62,6 @@ indexRuleArbitrary_setup <- function(toIndexExprList,
     toUnrolledResults <-
         lapply(names(toIndexExprList),
                function(x) unrolledIndicesEnv[[x]])
-    
     fromUnrolledResults <-
         lapply(names(fromIndexExprList),
                function(x) unrolledIndicesEnv[[x]])
@@ -77,9 +75,9 @@ indexRuleArbitrary_setup <- function(toIndexExprList,
         !is.list(unrolledResult)
     }
     
-    from_allScalar <- all(sapply(fromUnrolledResults, isScalarIndex)))
-    to_allScalar <- all(sapply(toUnrolledResults, isScalarIndex)))
-    
+    from_allScalar <- all(sapply(fromUnrolledResults, isScalarIndex))
+    to_allScalar <- all(sapply(toUnrolledResults, isScalarIndex))
+
     
     fromInfo <-lapply(names(fromIndexExprList), makeInfo, unrolledIndicesEnv)
     from_flatMax <- prod(unlist(lapply(fromInfo, `[[`, 'size')))
@@ -89,28 +87,28 @@ indexRuleArbitrary_setup <- function(toIndexExprList,
     from2indicesFunctions <- make2IndicesFunctions(fromInfo)
     to2indicesFunctions <- make2IndicesFunctions(toInfo)
 
-    ## Set up from_flat2iRow
-    ## iRow refers to the "row" of the unrolledIndicesEnv
+    ## Set up `from_flat2iRow`.
+    ## iRow refers to the "row" of the unrolledIndicesEnv.
     ## It is a cumulative index of all for-loop unrolling.
-    ## from_flat2iRow will be a list.  The ith element of the
-    ## list gives the iRow values for which flat index i of the
+    ## The output of `from_flat2iRow` will be a list.  The ith element of the
+    ## list gives the `iRow` values for which flat index i of the
     ## "from" variable is involved.
+
     ## Example:
     ## for(i in 1:5)
     ##   for(j in 1:3)
     ##      y[i, j] <- foo(x[j+1, i+2]
-    ##
+    
     ## The flat indices for x will be for x[2:4, 3:7],
     ## starting at x[2, 3].
-    ## So x[2,5] will have flat index 7, e.g.
+    ## So x[2,5] will have flat index 7.
     ## from_flat2iRow[[7]] will have 11, because the 11th iteration
     ## of the nested for loops will touch x[2,5].
     ## There can be multiple iterations that touch x[2,5] if one
     ## of the indices is sub-indexed.
     if(from_allScalar) {
-        ## Case of all scalar indices can be handled more efficiently
-        allIndices <- do.call("cbind",
-                              fromUnrolledResults)
+        ## Case of all scalar indices can be handled more efficiently.
+        allIndices <- do.call("cbind", fromUnrolledResults)
         from_flat <- from2indicesFunctions$rawIndex2flatIndex_multi(allIndices)
         ## split() works when there is no raggedness to the declarations
         ## from_flat2iRow <- split(1:unrolledSize, from_flat)
@@ -128,9 +126,7 @@ indexRuleArbitrary_setup <- function(toIndexExprList,
                                     fromUnrolledResults,
                                     list(SIMPLIFY = FALSE))
                                   )
-        iRows <- rep(1:unrolledSize,
-                     times = unlist(lapply(allIndicesList, nrow))
-                     )
+        iRows <- rep(1:unrolledSize, times = unlist(lapply(allIndicesList, nrow)))
         allIndices <- do.call("rbind", allIndicesList)
         from_flat <- from2indicesFunctions$rawIndex2flatIndex_multi(allIndices)
         ## Again, split() would work if there is no raggedness in the the loop ranges.
@@ -143,29 +139,28 @@ indexRuleArbitrary_setup <- function(toIndexExprList,
         }
     }
 
-    ## set up iRow2toIndices:
-    ## iRow2toIndices is a list whose ith element
+    ## Set up iRow2toIndices.
+    ## `iRow2toIndices` is a list whose ith element
     ## gives the indices (as a matrix) of the "to" variable
-    ## touched by unrolled iRow=i.
-    ##
+    ## touched by unrolled `iRow=i`.
+
     ## Example:
     ##    for(i in 1:5)
     ##     x[i+1, 1:3] <- foo(y[i])
     ##
-    ## iRow2toIndices[[2]] will be the matrix
+    ## `iRow2toIndices[[2]]` will be the matrix
     ##   3 1
     ##   3 2
     ##   3 3
     ## because the 2nd iteration of the loop unrolling
     ## creates x[3, 1:3].
-    ## N.B. (We aim for this example to be handled more efficiently,
-    ##   by a separate index inverter, but the current one should
-    ##   handle any case.)
+    
+    ## N.B. We aim for this example to be handled more efficiently,
+    ## by a separate index inverter, but the current one should
+    ## handle any case.
     if(to_allScalar) {
-        allIndices <- do.call("cbind",
-                              toUnrolledResults)
-        iRow2toIndices <- split(allIndices,
-                                1:unrolledSize) ## makes it a list
+        allIndices <- do.call("cbind", toUnrolledResults)
+        iRow2toIndices <- split(allIndices, 1:unrolledSize) ## Result is a list
     } else {
         ## This returns a list in the right form.
         allIndicesList <- do.call("mapply",
@@ -173,24 +168,22 @@ indexRuleArbitrary_setup <- function(toIndexExprList,
                                     toUnrolledResults,
                                     list(SIMPLIFY = FALSE))
                                   )
-        iRows <- rep(1:unrolledSize,
-                     times = unlist(lapply(allIndicesList, nrow)))
+        iRows <- rep(1:unrolledSize, times = unlist(lapply(allIndicesList, nrow)))
         allIndices <- do.call("rbind", allIndicesList)
-        iRow2toIndices <- split(allIndices,
-                                iRows)
+        iRow2toIndices <- split(allIndices, iRows)
     }
     
     names(iRow2toIndices) <- NULL
     
     return(list(from2indicesFunctions = from2indicesFunctions,
-         to2indicesFunctions = to2indicesFunctions,
-         from_flat2iRow = from_flat2iRow,
-         iRow2toIndices = iRow2toIndices,
-         fromInfo = fromInfo,
-         toInfo = toInfo,
-         unrolledSize = unrolledSize,
-         from_flatMax = from_flatMax
-         ))
+                to2indicesFunctions = to2indicesFunctions,
+                from_flat2iRow = from_flat2iRow,
+                iRow2toIndices = iRow2toIndices,
+                fromInfo = fromInfo,
+                toInfo = toInfo,
+                unrolledSize = unrolledSize,
+                from_flatMax = from_flatMax
+                ))
 }
 
 ## A helper function to extract range, offset and size information
@@ -203,8 +196,7 @@ makeInfo <- function(indexName, unrolledIndicesEnv) {
     frange <- range(indexValues)
     foffset <- frange[1]-1
     fsize <- diff(frange)+1
-    list(offset = foffset,
-         size = fsize)
+    return(list(offset = foffset, size = fsize))
 }
 
 ## A helper function that returns functions for converting from a set of
@@ -216,15 +208,16 @@ make2IndicesFunctions <- function(info) {
     totSize <- prod(sizes)
     strides <- c(1, cumprod(sizes[-length(sizes)]))
     offsets <- unlist(lapply(info, `[[`, 'offset'))
-    convertSingle <- function(F) {
-        shiftedF <- F-offsets
+    convertSingle <- function(Fval) {
+        shiftedF <- Fval - offsets
         valid <- all(shiftedF >= 1 & shiftedF <= sizes)
         if(!valid) {
-            matrix(data = numeric(),
-                   nrow = 0, ncol = length(sizes))
+            return(matrix(data = numeric(),
+                   nrow = 0, ncol = length(sizes)))
         } else
-            1 + (sum((shiftedF - 1) * strides))
+            return(1 + (sum((shiftedF - 1) * strides)))
     }
+    
     invertSingle <- function(flat) {
         flat <- flat - 1
         shiftedF <- integer()
@@ -237,46 +230,47 @@ make2IndicesFunctions <- function(info) {
                 flat <- flat - thisIndex*strides[i]
             }
         }
-        shiftedF + offsets
+        return(shiftedF + offsets)
     }
-    convertMany <- function(F) {
-        apply(F, 1, convertSingle)
+    convertMany <- function(Fval) {
+        apply(Fval, 1, convertSingle)
     }
-    list(rawIndex2flatIndex = convertSingle,
-         rawIndex2flatIndex_multi = convertMany,
-         flatIndex2rawIndex = invertSingle)
+    
+    return(list(rawIndex2flatIndex = convertSingle,
+                rawIndex2flatIndex_multi = convertMany,
+                flatIndex2rawIndex = invertSingle))
 }
 
 indexRuleArbitrary_applyMatrix <- function(indexRange,
-                                             setupResults,
-                                             collapse = TRUE) {
+                                           setupResults,
+                                           collapse = TRUE) {
 
-    ## fromFlat is the flat index of each row of "from" indices
+    ## fromFlat is the flat index of each row of "from" indices.
     fromFlat <- setupResults$from2indicesFunctions$rawIndex2flatIndex_multi(indexRange$values)
-    ## deal with invalid from indices - need information retained for later collapsing with other columns
+    ## Deal with invalid from indices - need information retained for later collapsing with other columns.
     invalid <- sapply(fromFlat, function(x) length(x) == 0)
     if(length(invalid))
         fromFlat[invalid] <- NA
     fromFlat <- unlist(fromFlat)
     
-    ## iRowsList has the declaration iRows for each fromFlat
+    ## iRowsList has the declaration iRows for each fromFlat.
     iRowsList <- setupResults$from_flat2iRow[fromFlat]
 
     ## CHECK: unique???
-    ## toIndicesList has the matrix of "to" indices for each fromFlat
+    ## `toIndicesList` has the matrix of "to" indices for each fromFlat
     ## need NAs in places where input matches no output to be able to
-    ## collapse via collapse_indexRangeMatrices
+    ## collapse via `collapse_indexRangeMatrices`.
     NAs <- matrix(rep(as.numeric(NA), length(setupResults$iRow2toIndices[[1]])), nrow = 1)
     toIndicesList <<- lapply(iRowsList,
                              function(x) {
-                                 tmp <- do.call('rbind',
-                                                setpResults$iRow2toIndices[x])
-                                 if(is.null(tmp)) {
+                                 result <- do.call('rbind',
+                                                setupResults$iRow2toIndices[x])
+                                 if(is.null(result)) {
                                      return(NAs)
                                  } else {
-                                     tmp <- as.matrix(tmp)
-                                     dimnames(tmp) <- NULL
-                                     return(tmp)
+                                     result <- as.matrix(result)
+                                     dimnames(result) <- NULL
+                                     return(result)
                                  }})
 
     ## `applyGraphRules` will use `collapse=FALSE`, as we need to maintain correspondence
@@ -286,16 +280,16 @@ indexRuleArbitrary_applyMatrix <- function(indexRange,
     ## e.g., if `k1[1:3] = c(2,2,4)` then x[2,] -> y[c(1,2),].
     ## Or even  `y[i,j] <- x[k1[i],j]` which needs to cross with the result of the `j` block rule.
     if(collapse) {
-       
         ## Do we want to strip out NA cases and duplicates?
         if(!length(toIndicesList))
             return(indexRangeEmptyClass$new())
         else {
             toIndicesList <-
                 toIndicesList[!unlist(lapply(toIndicesList, is.null))]
-            result <- indexRangeMatricClass$new(do.call('rbind', toIndicesList))
+            result <- indexRangeMatrixClass$new(do.call('rbind', toIndicesList))
             return(result)
         }
     }
-    else return(indexRangeMatrixListClass$new(toIndicesList))
+    else
+        return(indexRangeMatrixListClass$new(toIndicesList))
 }

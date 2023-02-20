@@ -1,9 +1,9 @@
-context("indexRule_arbitrary tests")
+context("indexRuleArbitrary")
 
 ## This function takes the inputs for an arbitrary index rule
 ## and compares the rule behavior to a brute force evaluation
 ## done by for-loop execution.
-test_arbitraryIndexRule <- function(LHS,
+test_indexRuleArbitrary <- function(LHS,
                                     RHS,
                                     context,
                                     constants = list(),
@@ -27,7 +27,7 @@ test_arbitraryIndexRule <- function(LHS,
 
     constantsEnv <- list2env(constants)
     
-    setupResults <- indexRule_arbitrary_setup(
+    rule <- indexRuleArbitraryClass$new(
         toIndexExprList = toIndexExprList,
         fromIndexExprList = fromIndexExprList,
         context = context,
@@ -69,7 +69,7 @@ test_arbitraryIndexRule <- function(LHS,
                        list(LHS = LHS,
                             RHS = RHS))
         codeInForLoop <-
-            nimbleModel:::contextClass_embedCodeInForLoop(
+            nimbleModel:::modelContextClass_embedCodeInForLoop(
                 context$singleContexts,
                 innerLoopCode)
 
@@ -98,20 +98,21 @@ test_arbitraryIndexRule <- function(LHS,
                                  RHS,
                                  context,
                                  constantsEnv,
-                                 setupResults$fromInfo,
-                                 setupResults$toInfo)
+                                 rule$setupResults$fromInfo,
+                                 rule$setupResults$toInfo)
 
     matrix_sort <- function(m) {
         o <- do.call("order", as.data.frame(m))
         m[o,, drop = FALSE]
     }
     
-    fromInfo <- setupResults$fromInfo
-    for(i in seq_len(setupResults$from_flatMax)) {
+    fromInfo <- rule$setupResults$fromInfo
+    for(i in seq_len(rule$setupResults$from_flatMax)) {
         if(i >= debug) browser()
-        rawIndices <- setupResults$from2indicesFunctions$flatIndex2rawIndex(i)
-        rulesAnswer <- indexRule_arbitrary_apply_single(rawIndices,
-                                  setupResults)
+        rawIndices <- rule$setupResults$from2indicesFunctions$flatIndex2rawIndex(i)
+        rulesAnswer <- rule$apply(newIndexRange(matrix(rawIndices, nrow = 1)))$values
+        if(all(is.na(rulesAnswer)))
+            rulesAnswer <- matrix(0, nrow = 0, ncol = length(rulesAnswer))
         bruteForceAnswer <- bruteForceCalculator(rawIndices)
         ## if there is a shuffle on LHS,
         ## the order of results can differ, so we sort rows
@@ -125,13 +126,13 @@ test_arbitraryIndexRule <- function(LHS,
 
 test_that("arbitraryIndexRuleClass", {
     singleContext1 <-
-        modelSingleContext(forCode = quote(for(i in 1:10){}))
+        singleContextClass$new(forCode = quote(for(i in 1:10){}))
     
     singleContext2 <-
-        modelSingleContext(forCode = quote(for(j in 1:5){}))
+        singleContextClass$new(forCode = quote(for(j in 1:5){}))
     
     singleContext2ni <-
-        modelSingleContext(forCode = quote(for(j in 1:n[i]){}))
+        singleContextClass$new(forCode = quote(for(j in 1:n[i]){}))
     
     context_i <- modelContextClass$new(list(singleContext1))
     
@@ -141,6 +142,18 @@ test_that("arbitraryIndexRuleClass", {
     context_ijni<- modelContextClass$new(list(singleContext1,
                                               singleContext2ni))
 
+    ## Check that constant and all cases are rejected.
+    ## Block case is valid but block rule is checked before arbitrary rule in `makeGraphRules`.
+
+    rule <- indexRuleArbitraryClass$new(list(3),
+                                        list(),
+                                        list())
+    expect_identical(rule$setupResults, NULL)
+
+    rule <- indexRuleArbitraryClass$new(list(t1 = quote(i+1)),
+                                        list(),
+                                        context_i)
+    expect_identical(rule$setupResults, NULL)
 
     ## Note that when run through graphRules, many of these would be
     ## two separate rules.
@@ -148,9 +161,9 @@ test_that("arbitraryIndexRuleClass", {
     ## Example case:
     ## for(i in 1:10)
     ##     for(j in 1:5)
-    ##         y[i, j] <- foo(x[i+1, j + 2])
+    ##         y[i, j] <- x[i+1, j + 2]
 
-    setupResults <- indexRule_arbitrary_setup(
+    rule <- indexRuleArbitraryClass$new(
         toIndexExprList = list(
             t1 = quote(i),
             t2 = quote(j)),
@@ -160,97 +173,46 @@ test_that("arbitraryIndexRuleClass", {
         context = context_ij)
     
     expect_equal(
-        indexRule_arbitrary_apply_single(c(5, 3),
-                                         setupResults),
-        matrix(c(4, 1), nrow = 1)
+        rule$apply(newIndexRange(matrix(c(5, 3), nrow = 1))),
+        newIndexRange(matrix(c(4, 1), nrow = 1))
     )
 
     expect_equal(
-        indexRule_arbitrary_apply_single(c(5, 99),
-                                         setupResults),
-        matrix(numeric(), 0, 2)
+        rule$apply(newIndexRange(matrix(c(5, 99), nrow = 1))),
+        indexRangeEmptyClass$new()
     )
 
     expect_equal(
-        indexRule_arbitrary_apply_matrix(matrix(c(5, 3, 6, 3),
-                                                byrow = TRUE,
-                                                nrow = 2),
-                                         setupResults),
-        matrix(c(4, 1, 5, 1),
-               byrow = TRUE,
-               nrow = 2)
+        rule$apply(newIndexRange(matrix(c(5, 3, 6, 3), byrow = TRUE, nrow = 2))),
+        newIndexRange(matrix(c(4, 1, 5, 1), byrow = TRUE, nrow = 2))
     )
     
     expect_equal(
-        indexRule_arbitrary_apply_matrix(matrix(c(5, 3, 6, 3),
-                                                byrow = TRUE,
-                                                nrow = 2),
-                                         setupResults,
-                                         collapse = FALSE),
-       list(matrix(c(4, 1),
-                   byrow = TRUE,
-                   nrow = 1),
-            matrix(c(5, 1),
-                   byrow = TRUE,
-                   nrow = 1)
-            )
-    )
-
-    
-    expect_equal(
-        indexRule_arbitrary_apply_matrix(matrix(c(15, 3, 6, 3),
-                                                byrow = TRUE,
-                                                nrow = 2),
-                                         setupResults),
-        matrix(c(NA, NA, 5, 1),
-               byrow = TRUE,
-               nrow = 2)
+        rule$apply(newIndexRange(matrix(c(5, 3, 6, 3), byrow = TRUE, nrow = 2)),
+                   collapse = FALSE),
+        indexRangeMatrixListClass$new(list(matrix(c(4, 1),
+                                                  byrow = TRUE,
+                                                  nrow = 1),
+                                           matrix(c(5, 1),
+                                                  byrow = TRUE,
+                                                  nrow = 1)
+                                           )
+                                      )
     )
 
     expect_equal(
-        indexRule_arbitrary_apply_matrix(matrix(c(15, 3, 16, 3),
-                                                byrow = TRUE,
-                                                nrow = 2),
-                                         setupResults),
-        matrix(numeric(), 0, 2)
-    )
-
-    
-    ## re-do previous case using indexRuleClass_arbitrary
-    ## to wrap control of lower-level features
-    rule <- indexRuleClass_arbitrary$new(
-        toIndexExprList = list(
-            t1 = quote(i),
-            t2 = quote(j)),
-        fromIndexExprList = list(
-            f1 = quote(i+1),
-            f2 = quote(j+2)),
-        context = context_ij)
-
-    expect_identical(
-        rule$applyOne(c(5, 3)),
-        matrix(c(4L,1L), nrow = 1)
+        rule$apply(newIndexRange(matrix(c(15, 3, 6, 3), byrow = TRUE, nrow = 2))),
+        newIndexRange(matrix(c(NA, NA, 5, 1), byrow = TRUE, nrow = 2))
     )
 
     expect_equal(
-        rule$apply(indexRangeMatrixClass$new(matrix(c(5, 3, 6, 3),
-                                                       byrow = TRUE,
-                                                       nrow = 2))),
-                      indexRangeMatrixClass$new(
-                          matrix(c(4, 1, 5, 1),
-                                 byrow = TRUE,
-                                 nrow = 2))
+        rule$apply(newIndexRange(matrix(c(15, 3, 16, 3), byrow = TRUE, nrow = 2))),
+        indexRangeEmptyClass$new()
     )
 
-    expect_equal(
-        rule$apply(indexRangeMatrixClass$new(matrix(c(15, 3, 16, 3),
-                                                byrow = TRUE,
-                                            nrow = 2))),
-        nimbleModel:::indexRangeEmptyClass$new()
-    )
-
+ 
     ## RHS single index a function of multiple contexts
-    setupResults <- indexRule_arbitrary_setup(
+    rule <- indexRuleArbitraryClass$new(
         toIndexExprList = list(
             t1 = quote(i),
             t2 = quote(j)),
@@ -259,9 +221,8 @@ test_that("arbitraryIndexRuleClass", {
         context = context_ij)
     
     expect_equal(
-        indexRule_arbitrary_apply_single(c(3),
-                                         setupResults),
-        matrix(c(1,2,2,1), nrow = 2)
+        rule$apply(newIndexRange(3)),
+        newIndexRange(matrix(c(1,2,2,1), nrow = 2))
     )
     
     ## Non-scalar RHS test
@@ -269,7 +230,7 @@ test_that("arbitraryIndexRuleClass", {
     ##     for(j in 1:5) 
     ##         y[i, j] <- foo(x[i+1, 1:(j+2)])
     
-    setupResults <- indexRule_arbitrary_setup(
+    rule <- indexRuleArbitraryClass$new(
         toIndexExprList = list(
             t1 = quote(i),
             t2 = quote(j)),
@@ -278,29 +239,27 @@ test_that("arbitraryIndexRuleClass", {
             f2 = quote(1:(j+2))),
         context = context_ij)
 
-    expect_equal(indexRule_arbitrary_apply_single(c(4, 6),
-                                                setupResults),
-                 matrix(c(3, 4, 3, 5), byrow = TRUE, nrow = 2))
+    expect_equal(
+        rule$apply(newIndexRange(matrix(c(4, 6), nrow = 1))),
+        newIndexRange(matrix(c(3, 4, 3, 5), byrow = TRUE, nrow = 2))
+    )
 
     ## This does not remove duplicate rows.
-    expect_equal(indexRule_arbitrary_apply_matrix(matrix(c(4, 5, 4, 6),
-                                                  byrow = TRUE, nrow = 2),
-                                                setupResults),
-                 matrix(c(3, 3, 3, 4, 3, 5, 3, 4, 3, 5),
-                        byrow = TRUE, ncol = 2))
-
-    expect_equal(indexRule_arbitrary_apply_matrix(matrix(c(4, 5, 4, 99),
-                                                  byrow = TRUE, nrow = 2),
-                                                setupResults),
-                 matrix(c(3, 3, 3, 4, 3, 5, NA, NA),
-                        byrow = TRUE, ncol = 2))
-
+    expect_equal(
+        rule$apply(newIndexRange(matrix(c(4, 5, 4, 6), byrow = TRUE, nrow = 2))),
+        newIndexRange(matrix(c(3, 3, 3, 4, 3, 5, 3, 4, 3, 5), byrow = TRUE, ncol = 2))
+    )
+    
+    expect_equal(
+        rule$apply(newIndexRange(matrix(c(4, 5, 4, 99), byrow = TRUE, nrow = 2))),
+        newIndexRange(matrix(c(3, 3, 3, 4, 3, 5, NA, NA), byrow = TRUE, ncol = 2))
+    )
     
     ## Non-scalar on LHS
     ## for(i in 1:10)
     ##  y[i, 2:n[i] ] <- foo(x[i+1])
 
-    setupResults <- indexRule_arbitrary_setup(
+    rule <- indexRuleArbitraryClass$new(
         toIndexExprList = list(
             t1 = quote(i),
             t2 = quote(2:n[i])),
@@ -310,22 +269,22 @@ test_that("arbitraryIndexRuleClass", {
         constants = list2env(list(n = 1:10))
     )
 
-    ## Equivalence because iRow2toIndices ends up as a dataframe and can't remove row names.
-    expect_equal(indexRule_arbitrary_apply_single(c(4),
-                                                  setupResults),
-                 matrix(c(3, 2, 3, 3), nrow = 2, byrow = TRUE)
-                 )
+    expect_equal(
+        rule$apply(newIndexRange(c(4))),
+        newIndexRange(matrix(c(3, 2, 3, 3), nrow = 2, byrow = TRUE))
+    )
 
-    expect_equal(indexRule_arbitrary_apply_matrix(matrix(c(4, 6), nrow = 2),
-                                                  setupResults),
-                 matrix(c(3, 2, 3, 3, 5, 2, 5, 3, 5, 4, 5, 5), ncol = 2, byrow = TRUE)
-                 )
+    expect_equal(
+        rule$apply(newIndexRange(matrix(c(4, 6), nrow = 2))),
+        newIndexRange(matrix(c(3, 2, 3, 3, 5, 2, 5, 3, 5, 4, 5, 5), ncol = 2, byrow = TRUE))
+    )
 
     ## Ragged definition
     ## for(i in 1:10)
     ##     for(j in 1:n[i])
     ##         y[i, j] <- foo(x[i, j])
-    setupResults <- indexRule_arbitrary_setup(
+    
+    rule <- indexRuleArbitraryClass$new(
         toIndexExprList = list(
             t1 = quote(i),
             t2 = quote(j)),
@@ -336,113 +295,113 @@ test_that("arbitraryIndexRuleClass", {
         constants = list2env(list(n = 1:10))
     )
 
-    expect_equal(indexRule_arbitrary_apply_single(c(8, 2),
-                                                setupResults),
-                 matrix(c(8, 2), nrow = 1))
-
-    expect_equal(indexRule_arbitrary_apply_matrix(matrix(c(8, 2, 8, 99), nrow = 2, byrow = TRUE),
-                                                  setupResults),
-                 matrix(c(8, 2, NA, NA), nrow = 2, byrow = TRUE)
+    expect_equal(
+        rule$apply(newIndexRange(matrix(c(8, 2), nrow = 1))),
+        newIndexRange(matrix(c(8, 2), nrow = 1))
     )
 
-    test_arbitraryIndexRule(quote(y[i]),
+    expect_equal(
+        rule$apply(newIndexRange(matrix(c(8, 2, 8, 99), nrow = 2, byrow = TRUE))),
+        newIndexRange(matrix(c(8, 2, NA, NA), nrow = 2, byrow = TRUE))
+    )
+
+    test_indexRuleArbitrary(quote(y[i]),
                             quote(x[i]),
                             context_i)
 
-    test_arbitraryIndexRule(quote(y[i + 1]),
+    test_indexRuleArbitrary(quote(y[i + 1]),
                             quote(x[i]),
                             context_i)
 
-    test_arbitraryIndexRule(quote(y[i]),
+    test_indexRuleArbitrary(quote(y[i]),
                             quote(x[i + 1]),
                             context_i)
 
-    test_arbitraryIndexRule(quote(y[i + 1]),
+    test_indexRuleArbitrary(quote(y[i + 1]),
                             quote(x[i + 1]),
                             context_i)
 
-    test_arbitraryIndexRule(quote(y[i + 3]),
+    test_indexRuleArbitrary(quote(y[i + 3]),
                             quote(x[i + 2]),
                             context_i)
 
     block <- as.integer(c(1, 3, 2, 3, 1, 2, 1, 3, 2, 3))
 
-    test_arbitraryIndexRule(quote(y[i + 3]),
+    test_indexRuleArbitrary(quote(y[i + 3]),
                             quote(x[block[i] + 2]),
                             context_i,
                             constants = list(block = block))
 
     gappy_block <- as.integer(c(1, 3, 1, 3, 1, 1, 1, 3, 3, 3))
 
-    test_arbitraryIndexRule(quote(y[i + 3]),
+    test_indexRuleArbitrary(quote(y[i + 3]),
                             quote(x[gappy_block[i] + 2]),
                             context_i,
                             constants = list(gappy_block = gappy_block))
 
 
     shuffle <- as.integer(c(5, 4, 1, 9, 10, 8, 6, 2, 7, 3))
-    test_arbitraryIndexRule(quote(y[shuffle[i] + 3]),
+    test_indexRuleArbitrary(quote(y[shuffle[i] + 3]),
                             quote(x[i + 2]),
                             context_i,
                             constants = list(shuffle = shuffle))
 
-    test_arbitraryIndexRule(quote(y[shuffle[i] + 3]),
+    test_indexRuleArbitrary(quote(y[shuffle[i] + 3]),
                             quote(x[block[i] + 2]),
                             context_i,
                             constants = list(shuffle = shuffle,
                                              block = block))
 
-
     ## 2D
 
-    test_arbitraryIndexRule(quote(y[i, j]),
+    test_indexRuleArbitrary(quote(y[i, j]),
                             quote(x[i, j]),
                             context_ij)
 
-    test_arbitraryIndexRule(quote(y[i, j]),
+    test_indexRuleArbitrary(quote(y[i, j]),
                             quote(x[j, i]),
                             context_ij)
 
-    test_arbitraryIndexRule(quote(y[j, i]),
+    test_indexRuleArbitrary(quote(y[j, i]),
                             quote(x[i, j]),
                             context_ij)
 
-    test_arbitraryIndexRule(quote(y[j, i]),
+    test_indexRuleArbitrary(quote(y[j, i]),
                             quote(x[j, i]),
                             context_ij)
 
-    test_arbitraryIndexRule(quote(y[i + 5, j + 3]),
+    test_indexRuleArbitrary(quote(y[i + 5, j + 3]),
                             quote(x[i, j]),
                             context_ij)
 
-    test_arbitraryIndexRule(quote(y[i, j]),
+    test_indexRuleArbitrary(quote(y[i, j]),
                             quote(x[i + 5, j + 3]),
                             context_ij)
 
-    test_arbitraryIndexRule(quote(y[j + 7, i + 11]),
+    test_indexRuleArbitrary(quote(y[j + 7, i + 11]),
                             quote(x[i + 5, j + 3]),
                             context_ij)
 
-    test_arbitraryIndexRule(quote(y[i, j]),
+    test_indexRuleArbitrary(quote(y[i, j]),
                             quote(x[block[i], j]),
                             context_ij,
                             constants = list(block = block))
 
     block2 <- c(5,4,5,3,4)
 
-    test_arbitraryIndexRule(quote(y[i, j]),
+    test_indexRuleArbitrary(quote(y[i, j]),
                             quote(x[block[i], block2[j]]),
                             context_ij,
                             constants = list(block = block,
                                              block2 = block2))
 
-    test_arbitraryIndexRule(quote(y[i, j]),
+    test_indexRuleArbitrary(quote(y[i, j]),
                             quote(x[block2[j], block[i]]),
                             context_ij,
                             constants = list(block = block,
                                              block2 = block2))
 
-    test_arbitraryIndexRule(quote(y[shuffle[i] + 3, j+5]),
+    test_indexRuleArbitrary(quote(y[shuffle[i] + 3, j+5]),
                             quote(x[block2[j] + 11, block[i] + 7]),
                             context_ij,
                             constants = list(shuffle = shuffle,
@@ -452,78 +411,75 @@ test_that("arbitraryIndexRuleClass", {
     ## cases where j extent depends on i
     raggedRowLengths <- c(5, 8, 3, 9, 4, 5, 2, 1, 9, 2)
 
-    test_arbitraryIndexRule(quote(y[i, j]),
+    test_indexRuleArbitrary(quote(y[i, j]),
                             quote(x[i, j]),
                             context_ijni,
                             constants = list(n = raggedRowLengths))
 
-    test_arbitraryIndexRule(quote(y[j + 7, i + 11]),
+    test_indexRuleArbitrary(quote(y[j + 7, i + 11]),
                             quote(x[i + 5, j + 3]),
                             context_ijni,
                             constants = list(n = raggedRowLengths))
 
-    test_arbitraryIndexRule(quote(y[i, 1:n[i]]),
+    test_indexRuleArbitrary(quote(y[i, 1:n[i]]),
                             quote(x[i]),
                             context_i,
                             constants = list(n = raggedRowLengths))
 
-    test_arbitraryIndexRule(quote(y[i+3, 4:(n[i] + 5)]),
+    test_indexRuleArbitrary(quote(y[i+3, 4:(n[i] + 5)]),
                             quote(x[i+11]),
                             context_i,
                             constants = list(n = raggedRowLengths))
 
-    test_arbitraryIndexRule(quote(y[4:(n[i] + 5), i + 3]),
+    test_indexRuleArbitrary(quote(y[4:(n[i] + 5), i + 3]),
                             quote(x[i+11]),
                             context_i,
                             constants = list(n = raggedRowLengths))
 
-    test_arbitraryIndexRule(quote(y[i]),
+    test_indexRuleArbitrary(quote(y[i]),
                             quote(x[1:n[i]]),
                             context_i,
                             constants = list(n = raggedRowLengths))
 
-    test_arbitraryIndexRule(quote(y[i + 5]),
+    test_indexRuleArbitrary(quote(y[i + 5]),
                             quote(x[2:n[i]]),
                             context_i,
                             constants = list(n = raggedRowLengths))
 
-    test_arbitraryIndexRule(quote(y[i + 5]),
+    test_indexRuleArbitrary(quote(y[i + 5]),
                             quote(x[2:n[block[i]]]),
                             context_i,
                             constants = list(block = block,
                                              n = raggedRowLengths))
 
-    test_arbitraryIndexRule(quote(y[i, j]),
+    test_indexRuleArbitrary(quote(y[i, j]),
                             quote(x[2:n[i]]),
                             context_ij,
                             constants = list(n = raggedRowLengths))
 
-    test_arbitraryIndexRule(quote(y[i + 5, j]),
+    test_indexRuleArbitrary(quote(y[i + 5, j]),
                             quote(x[j + 3, 2:n[i]]),
                             context_ij,
                             constants = list(n = raggedRowLengths))
 
-    test_arbitraryIndexRule(quote(y[3*i]),
+    test_indexRuleArbitrary(quote(y[3*i]),
                             quote(x[i+1]),
                             context_i)
 
-})
-
-
-test_that("get_max", {
     singleContext1 <-
-        modelSingleContext(forCode = quote(for(i in 1:3){}))
+        singleContextClass$new(forCode = quote(for(i in 1:3){}))
     
     context_i_short <- modelContextClass$new(list(singleContext1))
+    
+    rule <- indexRuleArbitraryClass$new(
+                                         toIndexExprList = list(
+                                             t1 = quote(i)),                                  
+                                         fromIndexExprList = list(
+                                             f1 = quote(k1[i]+3),
+                                             f2 = quote(k2[i]-1)),
+                                         context = context_i_short,
+                                         constants = list2env(list(k1 = c(1,3,7), k2 = c(9,4,3)))
+                                     )
+    expect_identical(rule$getMax(), c(10, 8))
 
-    rule <- indexRuleClass_arbitrary$new(
-        toIndexExprList = list(
-           t1 = quote(i)),                                  
-        fromIndexExprList = list(
-           f1 = quote(k1[i]+3),
-           f2 = quote(k2[i]-1)),
-        context = context_i_short,
-        constants = list2env(list(k1 = c(1,3,7), k2 = c(9,4,3)))
-    )
-    expect_identical(rule$get_max(), c(10, 8))
 })

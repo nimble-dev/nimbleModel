@@ -13,17 +13,12 @@ indexRuleConstantClass <- R6Class(
                               context,
                               constants = list()
                               ) {
-            ## Rule only applicable if no RHS indexing since no relationship of RHS to LHS indexing,
-            ## so graphRule processing needs to pass in nothing for RHS.
-            if(length(fromIndexExprList) || length(context$singleContexts))
-                return()
-            else 
-                setupResults <<-
-                    indexRule_constant_setup(toIndexExprList,
-                                             fromIndexExprList,
-                                             context,
-                                             constants
-                                             )
+            setupResults <<-
+                indexRuleConstant_setup(toIndexExprList,
+                                         fromIndexExprList,
+                                         context,
+                                         constants
+                                         )
         },
 
         apply = function(indexRange) {
@@ -37,7 +32,7 @@ indexRuleConstantClass <- R6Class(
 )
 
 
-indexRule_constant_setup <- function(toIndexExprList,
+indexRuleConstant_setup <- function(toIndexExprList,
                                       fromIndexExprList,
                                       context,
                                       constants = list()

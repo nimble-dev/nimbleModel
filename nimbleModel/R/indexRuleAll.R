@@ -56,7 +56,8 @@ indexRuleAll_setup <- function(toIndexExprList,
                 c(eval(indexRangeExpr[[2]], envir = constants),
                   eval(indexRangeExpr[[3]], envir = constants))
             
-            return(list(all = indexRangeSequenceClass$new(toOffset$offset + indexingRange)))
+            return(list(all = indexRangeSequenceClass$new(indexingRange[1] + toOffset$offset,
+                                                          indexingRange[2] + toOffset$offset)))
         }
     }
         

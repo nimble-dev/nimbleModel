@@ -339,15 +339,17 @@ makeGraphRule <- function(LHS,
         ## We try making each rule in order.
         ## It one fails, we will throw it away and try to make the next.
 
-        ## y[i] <- x[2] case
-        thisIndexRule <- indexRuleClass_all$new(
+        ## CHECK: where check that non-all cases have indexing in `to` and `from`?
+        
+        ## y[i] <- x[2] 'all' case
+        thisIndexRule <- indexRuleAllClass$new(
                                                 toIndexExprList = thisLHSindexExprs,
                                                 fromIndexExprList = thisRHSindexExprs,
                                                 context = thisContext,
                                                 constants = constantsEnv)
-        ## y[i] <- x[i] case
+        ## y[i] <- x[i] block case
         if(is.null(thisIndexRule$setupResults)) {
-            thisIndexRule <- indexRuleClass_block$new(
+            thisIndexRule <- indexRuleBlockClass$new(
                                                       toIndexExprList = thisLHSindexExprs,
                                                       fromIndexExprList = thisRHSindexExprs,
                                                       context = thisContext,
@@ -355,7 +357,7 @@ makeGraphRule <- function(LHS,
         }
         ## catch-all, e.g., y[i] <- x[block[i]]
         if(is.null(thisIndexRule$setupResults)) {
-            thisIndexRule <- indexRuleClass_arbitrary$new(
+            thisIndexRule <- indexRuleArbitraryClass$new(
                                                           toIndexExprList = thisLHSindexExprs,
                                                           fromIndexExprList = thisRHSindexExprs,
                                                           context = thisContext,
@@ -395,53 +397,7 @@ makeGraphRule <- function(LHS,
         numRHSindices = numRHSindices))
 }
 
-## Evaluate validity on a per indexRange basis, looping through constraints
-## and combining results from multiple constraints for a single indexRange as needed.
-checkConstraints <- function(fromVarRange, constraints) {
-    valid <- list(); length(valid) <- length(fromVarRange$indexRanges)    
-    if(length(constraints)) 
-        for(i in seq_along(constraints)) {
-            irIndex <- which(sapply(fromVarRange$rangeID_2_indexID, function(x)
-                constraints[[i]]$RHSindex %in% x))
-            ## These two error traps should never be triggered. 
-            if(!length(irIndex))  
-                stop("checkConstraints: No relevant indexRanges for the constraint.")
-            if(length(irIndex) > 1)
-                stop("checkConstraints: Multiple indexRanges for the constraint should not be possible.")
-            ## 'col' only actually used if a matrix indexRange with multiple columns.
-            col <- which(fromVarRange$rangeID_2_indexID[[irIndex]] == constraints[[i]]$RHSindex)
-            if(length(col) != 1)
-                stop("checkConstraints: Multiple columns associated with the constraint should not be possible.")
-            ## Result is logical: either a scalar or, for matrix indexRanges, a vector.
-            result <- checkOneConstraint(fromVarRange$indexRanges[[irIndex]], constraints[[i]]$constraint, col)
-            ## Combine results (element-wise for matrices) from multiple constraints applied to a single indexRange, if needed.
-            if(is.null(valid[[irIndex]])) {
-                valid[[irIndex]] <- result
-            } else valid[[irIndex]] <- valid[[irIndex]] & result
-        }
-    return(valid)
-}
 
-## If indexRanges were R6 classes with inheritance, we could move the
-## checking into methods of the indexRange classes.
-
-checkOneConstraint <- function(indexRange, constraint, col = 1) {
-    if(!attr(indexRange, 'rangeType') %in% c('scalar', 'sequence', 'matrix', 'none')) {
-        warning("Not yet checking input in case of non-{scalar, sequence, matrix, none} indexRanges.")
-        return(TRUE)
-    }
-    rg <- indexRange[[1]]
-    if(is.list(rg))   # from a sequence range
-        rg <- unlist(rg)
-
-    ## Vectorized check for a matrix.
-    if(is.matrix(rg)) {
-        return(rg[ , col] >= constraint[1] & rg[ , col] <= constraint[2])
-    }
-    ## Single logical check of inclusion for scalar or sequence range.
-    if(constraint[2] < min(rg) || constraint[1] > max(rg))
-        return(FALSE) else return(TRUE)
-}
 
 ## TODO: look into collapse=TRUE argument to indexRule$apply.
 ## I think collapse=F makes sense for arbitrary rule but what about block rule?
@@ -745,7 +701,7 @@ applyGraphRule <- function(fromVarRange,
     }
     ## Add in result of constant rule for case of no LHS indexing at all.
     if(!length(indexSets$LHSindex2setID)) {
-        iSet <- which(sapply(indexRules, function(ir) 'indexRuleClass_constant' %in% class(ir)))
+        iSet <- which(sapply(indexRules, function(ir) identical(class(ir)[1], 'indexRuleConstantClass')))
         thisLHSresult <- indexRules[[iSet]]$apply(NULL)
         constantIndexRanges <- list(thisLHSresult)
         constantIndexOrders <- as.list(1)
