@@ -4,6 +4,7 @@ indexConstraintClass <- R6Class(
     classname = 'indexRuleClass',
     portable = FALSE,
     public = list(
+        slots = numeric()
     )
 )
 ## e.g. y[i] <- x[2],  <- x[2:4], <- x[(c(2,3,5)]
@@ -36,10 +37,9 @@ indexConstraintScalarClass <- R6Class(
     portable = FALSE,
     public = list(
         value = numeric(),
-        slot = numeric(),
         initialize = function(value, slot) {
             value <<- value
-            slot <<- slot
+            slots <<- slot
         },
 
         check = function(indexRange) {
@@ -63,11 +63,10 @@ indexConstraintSequenceClass <- R6Class(
     public = list(
         start = numeric(),
         end = numeric(),
-        slot = numeric(),
         initialize = function(start, end, slot) {
             start <<- start
             end <<- end
-            slot <<- slot
+            slots <<- slot
         },
 
         check = function(indexRange) {
@@ -89,10 +88,10 @@ indexConstraintMatrix1dClass <- R6Class(
     inherit = indexConstraintClass,
     portable = FALSE,
     public = list(
-        
+        values = numeric(),
         initialize = function(values, slot) {
             values <<- values
-            slot <<- slot
+            slots <<- slot
         },
 
         ## CHECK: this assumes a one-column matrix; can't think of cases where
@@ -113,7 +112,6 @@ indexConstraintMatrixClass <- R6Class(
     portable = FALSE,
     public = list(
         values = numeric(),
-        slots = numeric(),
         numColumns = numeric(),
         initialize = function(values, slots) {
             values <<- values
@@ -143,7 +141,7 @@ indexConstraintMatrixClass <- R6Class(
 ## Create an `indexConstraint` for simple expressions, such as `x[2]`, `x[2:4]`.    
 newIndexConstraint_fromSimple <- function(expr, slot, constants) {
     if(is.call(expr) && expr[[1]] == ":") {   ## sequence case, e.g., `x[2:4]`
-        return(indexConstraintSequence$class$new(eval(expr[[2]], envir = constants),
+        return(indexConstraintSequenceClass$new(eval(expr[[2]], envir = constants),
                                           eval(expr[[3]], envir = constants),
                                           slot))
     } else {  ## various other cases such as `x[2]`, `x[k+1]`, `x[c(2,3,5)]`, `x[c(2,3,k)]`.
@@ -161,23 +159,25 @@ newIndexConstraint_fromUnrolling <- function(fromIndexExprs, slots, context, con
     if(ncol(values) == 1) {
         return(indexConstraintMatrix1dClass$new(values[ , 1], slots))
     } else
-        return(indexConstraintMatrixClass$new(values), slots)
+        return(indexConstraintMatrixClass$new(values, slots))
 }
 
 
 checkIndexConstraints <- function(varRange, indexConstraints) {
-    result <- list(); length(result) <- length(fromVarRange$indexRanges)    
+    result <- list(); length(result) <- length(varRange$indexRanges)    
     if(length(indexConstraints))
-        for(i in seq_along(fromVarRange$indexRanges)) {
+        for(i in seq_along(varRange$indexRanges)) {
             ## Don't check ranges already used in combination with another range for a single constraint.
-            if(!is.null(result[[i]])) { 
-                rangeSlots <- fromVarRange$rangeID_2_indexID[[i]]
+            if(!length(result[[i]])) {
+                rangeSlots <- varRange$rangeID_2_indexID[[i]]
                 usedConstraints <- sapply(indexConstraints, function(x)
-                    rangeSlots %in% x$slots)
+                    any(rangeSlots %in% x$slots))
                 if(length(usedConstraints)) {
-                    for(constraint in seq_along(indexConstraints[[usedConstraints]])) {
+                    for(constraint in indexConstraints[usedConstraints]) {
                         if(!all(constraint$slots %in% rangeSlots)) {
-                            ## Cross ranges involved in a single constraint.
+                            ## Cross ranges involved in a single constraint and
+                            ## assign result to all the input ranges.
+                            
                             ## This will not have to deal with complicated cases where
                             ## additional slots in a range are not constrained, as
                             ## this is handled in `applyGraphRule` as `complicatedCrossing`.
@@ -189,15 +189,16 @@ checkIndexConstraints <- function(varRange, indexConstraints) {
                                 result[[j]] <- valid
                             }
                         } else {
-                            if(!all(rangeSlots %in% constraint$slots)) {
+                            if(!all(rangeSlots %in% constraint$slots)) {  # pull out only slots needed
                                 valid <- constraint$check(varRange$extractIndexRange(constraint$slots))
-                            } else valid <- constraint$check(fromVarRange$indexRanges[[i]])
+                            } else valid <- constraint$check(varRange$indexRanges[[i]])
+                            ## Combine results from multiple constraints applied to columns of a single range.
                             if(is.null(result[[i]])) {
                                 result[[i]] <- valid
-                            } else result[[i]] <- result[[i]] & valid
+                            } else result[[i]] <- result[[i]] & valid 
                         }
                     }
-                    constraintSlots <- unlist(lapply(usedConstraints, function(x) x$slots))
+                    constraintSlots <- unlist(lapply(indexConstraints[usedConstraints], function(x) x$slots))
                     ## If range fully covers the slots of the constraints (and only those slots)
                     ## just need to record scalar boolean of validity as not used to
                     ## constrain result of an indexRule to the range.
@@ -224,8 +225,9 @@ generateIndicesMatrix <- function(fromIndexExprs, context, constants) {
             constantsEnv = constants
         )
     fromUnrolledResults <-
-        lapply(names(fromIndexExprList),
+        lapply(names(fromIndexExprs),
                function(x) unrolledIndicesEnv[[x]])
+    
     if(any(is.na(unlist(fromUnrolledResults))))
         stop("Missing values found in setting up arbitrary indexRule: are constants the correct size?")
     unrolledSize <- unrolledIndicesEnv$outputSize
@@ -234,16 +236,16 @@ generateIndicesMatrix <- function(fromIndexExprs, context, constants) {
         sapply(fromUnrolledResults,
                function(x) !is.list(x)))
 
-    if(to_allScalar) {
+    if(from_allScalar) {
         allIndices <- do.call("cbind",
-                              toUnrolledResults)
+                              fromUnrolledResults)
         iRow2toIndices <- split(allIndices,
                                 1:unrolledSize) ## makes it a list
     } else {
         ## This will return a list in the right form.
         allIndicesList <- do.call("mapply",
                                   c(list(as.name("expand.grid")),
-                                    toUnrolledResults,
+                                    fromUnrolledResults,
                                     list(SIMPLIFY = FALSE))
                                   )
         iRows <- rep(1:unrolledSize,
@@ -252,7 +254,9 @@ generateIndicesMatrix <- function(fromIndexExprs, context, constants) {
         iRow2toIndices <- split(allIndices,
                                 iRows)
     }
-    return(do.call(rbind, iRow2toIndices))
+    result <- do.call(rbind, iRow2toIndices)
+    dimnames(result) <- NULL
+    return(result)
     ## combineFun <- ifelse(length(iRow2toIndices[[1]]) == 1, c, rbind)
     ## return(do.call(combineFun, iRow2toIndices))
 }
