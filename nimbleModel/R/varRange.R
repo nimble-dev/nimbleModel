@@ -33,11 +33,11 @@ varRangeClass <- R6Class(
         ## They contain the information indicating how index positions relate to indexRanges.
         ## Example: x[3, 1, 11], x[3, 2, 11], x[10, 1, 8], x[10, 2, 8]
         ## An indexRangeMatrix handles 1st/3rd index positions, while a sequence covers second.
-        rangeID_2_indexID = list(),  # e.g., list(c(1,3), 2) for a matrix covering 1st/3rd index positions
-        indexID_2_rangeID = integer(),  # e.g., c(1,2,1)
+        rangeToIndexSlot = list(),  # e.g., list(c(1,3), 2) for a matrix covering 1st/3rd index positions
+        indexSlotToRange = integer(),  # e.g., c(1,2,1)
 
         initialize = function(indexInfo,
-                              rangeToIndex = NULL,
+                              rangeToIndexSlot = NULL,
                               varName = NULL,
                               fromStochRule = NULL) {
 
@@ -53,7 +53,7 @@ varRangeClass <- R6Class(
                     ## The expression is just a name.
                     nameFromExpr <- as.character(indexInfo)
                     indexRanges <<- list(indexRangeNoneClass$new())
-                    rangeID_2_indexID <<- list()
+                    rangeToIndexSlot <<- list()
                 } else {
                     ## The expression must have some indexing so it must start with `[`.
                     if(!identical(indexInfo[[1]], as.name("[")))
@@ -66,7 +66,7 @@ varRangeClass <- R6Class(
                     if(any(sapply(indexRanges, function(x) is(x, "indexRangeMatrixClass"))))
                         indexRangeExprs <<- lapply(indexRanges, function(x) x$toExpr())
                     
-                    rangeID_2_indexID <<- as.list(seq_along(indexRanges))
+                    rangeToIndexSlot <<- as.list(seq_along(indexRanges))
                 }
                 if(is.null(varName)) {
                     varName <<- nameFromExpr
@@ -82,31 +82,31 @@ varRangeClass <- R6Class(
                     if(!all(sapply(indexInfo, function(x) is(x, "indexRangeClass"))))
                         stop("varRange: `indexInfo` should be a list of `indexRange`s.")
                     varName <<- varName
-                    setIndexRanges(indexInfo, rangeToIndex)
+                    setIndexRanges(indexInfo, rangeToSlot)
                     if(!isNone())                         
                         indexRangeExprs <<- lapply(indexRanges, function(x) x$toExpr())
                 } else stop("varRange: unexpected input.")
             }
-            if(length(rangeID_2_indexID)) { 
-                rangeID <- rep(seq_along(rangeID_2_indexID), times = sapply(rangeID_2_indexID, length))
-                indexID_2_rangeID <<- rangeID[order(unlist(rangeID_2_indexID))]
-            } else indexID_2_rangeID <<- integer(0) ## no indexing of the variable
+            if(length(rangeToIndexSlot)) { 
+                rangeID <- rep(seq_along(rangeToIndexSlot), times = sapply(rangeToIndexSlot, length))
+                indexSlotToRange <<- rangeID[order(unlist(rangeToIndexSlot))]
+            } else indexSlotToRange <<- integer(0) ## no indexing of the variable
         },
 
-        setIndexRanges = function(indexRanges, rangeID_2_indexID = NULL) {
-            ## Helper method for `initialize` to set `indexRanges` and `rangeID_2_indexID`
+        setIndexRanges = function(indexRanges, rangeToIndexSlot = NULL) {
+            ## Helper method for `initialize` to set `indexRanges` and `rangeToIndexSlot`
             ## based on list input, each element as returned by `indexRange` and possibly
-            ## an `rangeID_2_indexID` list relating each `indexRange` to one or more index positions.
+            ## an `rangeToIndexSlot` list relating each `indexRange` to one or more index positions.
             indexRanges <<- indexRanges
             if(is(indexRanges[[1]], "indexRangeNoneClass")) {
-                rangeID_2_indexID <<- list()
+                rangeToIndexSlot <<- list()
             } else {
-                if(!is.null(rangeID_2_indexID))
-                    rangeID_2_indexID <<- lapply(rangeID_2_indexID, as.integer)
+                if(!is.null(rangeToIndexSlot))
+                    rangeToIndexSlot <<- lapply(rangeToIndexSlot, as.integer)
                 else {
-                    ## Assign elements of `rangeID_2_indexID` sequentially based on number of columns.
+                    ## Assign elements of `rangeToIndexSlot` sequentially based on number of columns.
                     nextID <- 1
-                    rangeID_2_indexID <<-
+                    rangeToIndexSlot <<-
                         lapply(indexRanges,
                                function(x) {
                                    numCols <- x$numColumns
@@ -124,8 +124,8 @@ varRangeClass <- R6Class(
         ## If multiple columns, result is expanded as a matrix of indices.
         extractIndexRange = function(indices, returnUsedRanges = FALSE) {
             
-            usedIndices <- unlist(lapply(rangeID_2_indexID, function(x) x[x %in% indices]))
-            usedIndicesBool <- lapply(rangeID_2_indexID, function(x) x %in% indices)
+            usedIndices <- unlist(lapply(rangeToIndexSlot, function(x) x[x %in% indices]))
+            usedIndicesBool <- lapply(rangeToIndexSlot, function(x) x %in% indices)
             usedRanges <- which(sapply(usedIndicesBool, any))
             
             if(!length(usedRanges)) {
@@ -174,7 +174,7 @@ varRangeClass <- R6Class(
                 do.call("call",
                         c(list("[",
                                as.name(varName)),
-                          indexRangeExprs[indexID_2_rangeID]),
+                          indexRangeExprs[indexSlotToRange]),
                         quote = TRUE)
         },
 
@@ -194,8 +194,8 @@ varRangeClass <- R6Class(
 
 
 varRange_isEqual <- function(vr1, vr2) {
-    identical(vr1$indexID_2_rangeID, vr2$indexID_2_rangeID) &&
-        identical(vr1$rangeID_2_indexID, vr2$rangeID_2_indexID) &&
+    identical(vr1$indexSlotToRange, vr2$indexSlotToRange) &&
+        identical(vr1$rangeToIndexSlot, vr2$rangeToIndexSlot) &&
         all.equal(vr1$indexRanges, vr2$indexRanges)
 }
 

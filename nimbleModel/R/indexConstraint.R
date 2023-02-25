@@ -50,6 +50,10 @@ indexConstraintScalarClass <- R6Class(
                    indexRangeMatrixClass =
                        c(indexRange$values == value)
                    )                   
+        },
+
+        getMax = function() {
+            return(value)
         }
     )
 )
@@ -77,6 +81,10 @@ indexConstraintSequenceClass <- R6Class(
                    indexRangeMatrixClass =
                        indexRange$values %in% start:end
                    )                   
+        },
+
+        getMax = function() {
+            return(end)
         }
     )
 )
@@ -102,6 +110,10 @@ indexConstraintMatrix1dClass <- R6Class(
                    indexRangeSequenceClass = any(indexRange$start <= values & indexRange$end >= values),
                    indexRangeMatrixClass = indexRange$values %in% values
                    )                   
+        },
+
+        getMax = function() {
+            return(max(values))
         }
     )
 )
@@ -133,6 +145,10 @@ indexConstraintMatrixClass <- R6Class(
             result <- merge(mat1, mat2, by = seq_len(numColumns), all.x = TRUE)
             ord <- order(result[ , numColumns + 1])
             return(!is.na(result[ord , numColumns + 2]))
+        },
+
+        getMax = function() {
+            return(apply(values, 2, max))
         }
      
     )
@@ -169,7 +185,7 @@ checkIndexConstraints <- function(varRange, indexConstraints) {
         for(i in seq_along(varRange$indexRanges)) {
             ## Don't check ranges already used in combination with another range for a single constraint.
             if(!length(result[[i]])) {
-                rangeSlots <- varRange$rangeID_2_indexID[[i]]
+                rangeSlots <- varRange$rangeToIndexSlot[[i]]
                 usedConstraints <- sapply(indexConstraints, function(x)
                     any(rangeSlots %in% x$slots))
                 if(length(usedConstraints)) {
