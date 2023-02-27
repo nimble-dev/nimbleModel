@@ -298,11 +298,11 @@ makeIndexRules <- function(toExpr, fromExpr, indexSets, context, constants = lis
         indexRules[[iSet]] <- thisIndexRule
     }
         
-    ## Make constant rules for all `toExpr` constants, e.g. first index in y[3, i] <- x[i]
+    ## Make constant rules for all `toExpr` constants, e.g. first index in y[3, i] <- x[i],
+    ## and append to the indexRules.
     iSet <- length(indexRules) + 1
-    for(constantSet in which(indexSets$fromIndexSlotToSetID == 0)) {
-        thisToIndexExprs <- structure(
-            toIndexExprs[constantSet], names = 't1')        
+    for(constantSlot in which(indexSets$toIndexSlotToSetID == 0)) {
+        thisToIndexExprs <- structure(toIndexExprs[constantSlot], names = 't1')        
         indexRules[[iSet]] <- indexRuleConstantClass$new(
                                                      toIndexExprList = thisToIndexExprs,
                                                      fromIndexExprList = character(0),
@@ -311,7 +311,8 @@ makeIndexRules <- function(toExpr, fromExpr, indexSets, context, constants = lis
         iSet <- iSet + 1
     }
     
-    ## Make constant rule for case of no LHS indexing, e.g., y <- x[3]
+    ## Make constant rule for case of no LHS indexing, e.g., y <- x[3].
+    ## These are stuck at the end in order of the index slots that are constant.
     if(!length(indexSets$toIndexSlotToSetID)) 
         indexRules[[iSet]] <- indexRuleConstantClass$new(
                                                      toIndexExprList = character(0),
@@ -338,9 +339,7 @@ applyGraphRule <- function(fromVarRange, rule, varName = NULL) {
     numSets <- indexSets$numSets
 
     ## Determine number of sets applied to get result (i.e., excluding fromOnly constraint rules from getParents cases)
-    constantSets <- which(indexSets$LHSindex2setID == 0)
-    numSetsResult <- sum(!indexSets$fromOnly) + length(constantSets)
-    numSetsResult <- max(1, numSetsResult)  ## e.g., y <- x[2] case
+    constantSlots <- which(indexSets$toIndexSlotToSetID == 0)
     
     ## Check valid number of input indices
     numFromIndices <- length(unlist(fromVarRange$rangeToIndexSlot))
@@ -350,10 +349,10 @@ applyGraphRule <- function(fromVarRange, rule, varName = NULL) {
     ansIndexRanges <- list()
     ansRangeToIndexSlot <- list()
 
-    ## Determine which fromIndices will be used for each rule
+    ## Determine which fromSlots will be used for each rule
     ## and set up index crossing and aligning needs.
     
-    setToFromIndices <- vector('list', length = numSets)
+    setToFromSlots <- vector('list', length = numSets)
     complicatedCrossing <- FALSE
     ## Each set corresponds to one rule.
     for(iSet in seq_len(numSets)) {
@@ -374,7 +373,7 @@ applyGraphRule <- function(fromVarRange, rule, varName = NULL) {
                 complicatedCrossing <- TRUE
     
     numIndexRanges <- length(fromVarRange$indexRanges)
-    rangeToSetID <- lapply(seq_len(numIndexRanges),
+    fromIndexRangeToSetID <- lapply(seq_len(numIndexRanges),
                            function(x) integer())
     
     ## For complicated crossing we first set up the fully-crossed inputs.
@@ -386,189 +385,157 @@ applyGraphRule <- function(fromVarRange, rule, varName = NULL) {
         numIndexRanges <- 1
     }
 
-    ## HERE
-
     ## Check valid fromExpr.
-    ## Returns a list with one element per each input indexRange giving validity with respect to constraints,
+    ## Returns a list with one element for each input indexRange giving validity with respect to constraints,
     ## either a scalar when the range does not (also) involve unconstrained columns or the valid rows when it does.
     fromConstraints <- checkIndexConstraints(fromVarRange, rule$indexConstraints)
 
-    ## TODO: does that fully handle multiple input indexRanges in various cases for single fromOnly constraint rule, e.g.,
-    ## 1) with nested indexing, e.g., y[i,j] -> x  where j in 1:n[i]
-    ## (2) y[foo(i,j),j] -> x
-
-    ## Empty result if any indexRange has no valid rows based on constraints.
-    invalid <- sapply(seq_along(RHSconstraints), function(i)
-        !is.null(RHSconstraints[[i]]) && !any(RHSconstraints[[i]]))
+    ## No result if any constraint not satisfied for any input rows.
+    invalid <- sapply(fromConstraints, function(constraint)
+        !is.null(constraints) && !any(constraint))
     if(any(invalid)) 
         return(NULL)
 
-    ## Apply indexRules, getting inputs from multiple indexRanges if necessary.
+    ## Apply indexRules one by one, getting inputs from multiple indexRanges if necessary.
     setIdx <- 1
     for(iSet in which(!indexSets$fromOnly)) {
-        thisRHSindices <- setID_2_RHSindices[[iSet]]
-        
-        if(length(thisRHSindices)) {
-            if(!complicatedCrossing) {
-                fromIndicesInfo <- fromVarRange$extractIndexRange(thisRHSindices, returnUsedRanges = TRUE)
-                fromIndices <- fromIndicesInfo$indexRange
-            } else {
-                ## Extract relevant RHS columns from fully-crossed inputs.
-                fromIndicesInfo <- fromIndicesInfoFullyCrossed
-                fromIndicesInfo$indexRanges[[1]] <- fromIndicesInfo$indexRanges[[1]][ , thisRHSindices, drop = FALSE]
-                fromIndices <- fromIndicesInfo$indexRange
-            }
-            ## usedRanges is a vector of rangeIDs from RHS from which
-            ## fromIndicesInfo were extracted
-            usedRanges <- fromIndicesInfo$usedRanges
-            for(ur in usedRanges)
-                rangeToSetID[[ur]] <- append(rangeToSetID[[ur]], iSet)
+        thisFromSlots <- setToFromSlots[[iSet]]
+
+        ## Create an indexRange containing the indices for the needed index slots.
+        if(length(thisFromSlots)) {
+            result <- fromVarRange$extractIndexRange(thisFromSlots, returnUsedRanges = TRUE)
+            fromIndexRange <- result$indexRange
+            for(usedRange in result$usedRanges)
+                fromIndexRangeToSetID[[usedRange]] <- append(fromIndexRangeToSetID[[usedRange]], iSet)
         } else {  ## no indexing or constant indexing
-            fromIndices <- NULL
+            fromIndexRange <- NULL
         }
         
-        ## Apply the rule.
-        thisLHSresult <-indexRules[[iSet]]$apply(fromIndices, collapse = FALSE)
-        
-        ## Populate answer indexRange information.
-        ansIndexRanges[[setIdx]] <- thisLHSresult
+        ## Apply the rule to produce a resulting range and noting the slots covered by the range.
+        ansIndexRanges[[setIdx]] <- indexRules[[iSet]]$apply(fromIndexRange, collapse = FALSE)
         ansRangeToIndexSlot[[setIdx]] <-
-            which(indexSets$LHSindex2setID == iSet)
+            which(indexSets$toIndexSlotToSetID == iSet)
         setIdx <- setIdx + 1
     }
 
     ## Treat as a single input indexRange, so that collapse across results of all rules.
     if(complicatedCrossing)
-        rangeID_2_setIDs <- list(sort(unique(unlist(rangeID_2_setIDs))))
+        fromIndexRangeToSetID <- list(sort(unique(unlist(fromIndexRangeToSetID))))
 
+    ## TODO: simplify above if this check works out.
+    if(!identical(fromIndexRangeToSetID, list(which(!indexSets$fromOnly))))
+        stop("CHECK: found non-match case.")
 
     ## Compose results from the various rules, including those unrelated to input indexRanges.
 
     finalIndexRanges <- list()
     finalRangeToIndexSlot <- list()
 
-
     ## Aggregate results from multiple rules applied to one input.
 
-    ## Loop through rules based on input indexRanges; this will not handle 'constant' rules.
+    ## Loop through results based on input indexRanges; this will not handle 'constant' rules.
     ## Also, this will produce duplicate results (handled at the end) when multiple indexRanges used in a single rule.
     iAns <- 1
     for(iRange in seq_len(numIndexRanges)) {
-        sets <- rangeToSetID[[iRange]]
+        sets <- fromIndexRangeToSetID[[iRange]]
+        
+        ## TODO: can we remove this next check?
+        if(any(indexSets$fromOnly[sets]))
+            stop("CHECK: found non-match case 2.")
         sets <- sets[!indexSets$fromOnly[sets]]  ## fromOnly constraint rule handled above.
+
         if(length(sets)) {
             if(length(sets) > 1) {  # Multiple rules operate on the indexRange.
-                if(any(sapply(ansIndexRanges[ sets ],
-                              function(x) identical(attr(x, 'rangeType'), 'empty')))) {
+                if(any(sapply(ansIndexRanges[sets],
+                              function(x) is(x, 'indexRangeEmptyClass')))) {
                     finalIndexRanges[[iAns]] <- indexRangeEmptyClass$new()
                 } else {
                     ## Combine results from multiple rules (which are in matrixList form, because result for an input row can have arbitrary output rows)
-                    ## into multi-column matrix indexRange.
-
-                    ## TODO: rename this given these are indexRanges?
-                    indexRangeExpandedMatrices <-
-                        ansIndexRanges[sets]
+                    ## into multi-column indexRangeMatrix.
                     finalIndexRanges[[iAns]] <-
-                        indexRangeMatrixListsToMatrix(indexRangeExpandedMatrices)
+                        indexRangeMatrixListsToMatrix(ansIndexRanges[sets])
                 }
-                ## Sort the columns of the result based on ordering of indices of LHS..
-                finalRangeToIndexSlot[[iAns]] <-
-                    do.call('c',
-                            ansRangeToIndexSlot[ sets ] )
-                sortedIndexOrders <- order(finalRangeToIndexSlot[[iAns]])
-                if(!identical(sortedIndexOrders, seq_along(sortedIndexOrders))) {
-                    finalRangeToIndexSlot[[iAns]] <-
-                        finalRangeToIndexSlot[[iAns]][sortedIndexOrders]
-                    if(!identical(attr(finalIndexRanges[[iAns]], 'rangeType'), 'empty'))
-                        finalIndexRanges[[iAns]] <-
-                            indexRangeMatrixClass$new(
-                                finalIndexRanges[[iAns]][[1]][, sortedIndexOrders, drop = FALSE])
+                ## Sort the columns of the result based on ordering of `to` indices.
+                finalRangeToIndexSlot[[iAns]] <- do.call('c', ansRangeToIndexSlot[sets])
+                slotOrder <- order(finalRangeToIndexSlot[[iAns]])
+                if(!identical(slotOrder, seq_along(slotOrder))) {
+                    finalRangeToIndexSlot[[iAns]] <- finalRangeToIndexSlot[[iAns]][slotOrder]
+                    ## TODO: do we need this check?
+                    if(is(finalIndexRanges[[iAns]], 'indexRangeEmptyClass'))
+                        stop("CHECK: found empty range")
+                    finalIndexRanges[[iAns]] <- finalIndexRanges[[iAns]]$getColumns(slotOrder)
                 }
             } else {  # Only one rule operates on the indexRange.
-                finalIndexRanges[[iAns]] <-
-                    ansIndexRanges[[ sets ]]
-                if(identical(
-                    attr(finalIndexRanges[[iAns]], 'rangeType'),
-                    'matrixList'
-                ))  ## Simplify to a matrix indexRange.
+                finalIndexRanges[[iAns]] <- ansIndexRanges[[sets]]
+                ## Simplify to a matrix indexRange.
+                if(is(finalIndexRanges[[iAns]], 'indexRangeMatrixListClass'))  
                     finalIndexRanges[[iAns]] <-finalIndexRanges[[iAns]]$toMatrix()
-                finalRangeToIndexSlot[[iAns]] <-
-                    ansRangeToIndexSlot[[ sets ]]
+                finalRangeToIndexSlot[[iAns]] <- ansRangeToIndexSlot[[sets]]
             }
             
-            ## Remove invalid rows from matrix indexRanges flagged by constraint checking, only
-            ## when indexRange is involved in the rule.
-            ## Only need to check cases where have a logical vector as RHSconstraint as
+            ## Remove invalid rows from matrix indexRanges flagged by constraint checking.
+            ## Only need to check cases where have a logical vector as fromConstraint as
             ## logical scalar (resulting from the constraint index having its own input indexRange)
             ## already checked above where 'invalid' is created and used.
-            if(length(RHSconstraints[[iRange]]) > 1) {
-                if(!identical(attr(finalIndexRanges[[iAns]], 'rangeType'), 'matrix'))
-                    stop("Expecting RHSconstraints to only be relevant for a matrix indexRange.")
-                if(length(RHSconstraints[[iRange]]) != nrow(finalIndexRanges[[iAns]][[1]]))
-                    stop("Expecting RHSconstraints to have as many logicals as rows of the indexRange.")
-                finalIndexRanges[[iAns]][[1]] <-
-                    finalIndexRanges[[iAns]][[1]][RHSconstraints[[iRange]], , drop = FALSE]
+            if(length(fromConstraints[[iRange]]) > 1) {
+                if(!is(finalIndexRanges[[iAns]], 'indexRangeMatrixClass'))
+                    stop("applyGraphRule: Expecting `fromConstraints` to only be relevant for a matrix indexRange.")
+                if(length(fromConstraints[[iRange]]) != finalIndexRanges[[iAns]]$numElements)
+                    stop("applyGraphRule: Expecting fromConstraints to have as many logicals as rows of the indexRange.")
+                finalIndexRanges[[iAns]] <- finalIndexRanges[[iAns]]$getRows(fromConstraints[[iRange]])
             }
 
             iAns <- iAns + 1
         }
-    }    
+    }
 
     ## Remove invalid rows from matrix indexRanges based on presence of NAs and set to empty if no rows left
     ## This can only be done after collapsing or else the constituent matrixLists will have different lengths
     ## and couldn't be properly collapsed above (i.e., if we removed the NAs earlier).
     for(iRange in seq_along(finalIndexRanges)) 
-        if(identical(attr(finalIndexRanges[[iRange]], 'rangeType'), 'matrix')) {
-            NArows <- apply(finalIndexRanges[[iRange]][[1]], 1,
+        if(is(finalIndexRanges[[iRange]], 'indexRangeMatrixClass')) {
+            NArows <- apply(finalIndexRanges[[iRange]]$values, 1,
                             function(x) any(is.na(x)))
-            if(all(NArows)) {
+            if(all(NArows))
                 finalIndexRanges[[iRange]] <- indexRangeEmptyClass$new()
-            } else finalIndexRanges[[iRange]][[1]] <- finalIndexRanges[[iRange]][[1]][!NArows, , drop = FALSE]
+            if(any(NArows))
+                finalIndexRanges[[iRange]] <- finalIndexRanges[[iRange]]$getRows(!NArows)
         }
+
+    ## Add in results from `indexRuleAll` cases, as these have no `from` index used in the rule,
+    ## and are not populated into `finalIndexRanges` above.
+    missedSets <- which(!seq_along(ansIndexRanges) %in% unlist(fromIndexRangeToSetID))
+    if(length(missedSets)) {
+       finalIndexRanges <- c(finalIndexRanges, ansIndexRanges[missedSets])
+       finalRangeToIndexSlot <- c(finalRangeToIndexSlot, ansRangeToIndexSlot[missedSets])
+    }
+
+    ## Add in result of constant rules (constant `to` index and (of course) no corresponding `from` index).
+    if(length(constantSlots)) {
+        constantIndexRanges <- sapply(indexRules[(numSets+1):(numSets+length(constantSets))],
+                                      function(rule) rule$apply(NULL))
+        finalIndexRanges <- c(finalIndexRanges, constantIndexRanges)
+        finalRangeToIndexSlot <- c(finalRangeToIndexSlot, as.list(constantSlots))
+    }
+
+    ## Add in result of constant rule for case of no `to` indexing at all.
+    if(!length(indexSets$toIndexSlotTosetID)) {
+        if(length(finalIndexRanges))
+            stop("applyGraphRule: unexpected result for non-indexed result.")
+        finalIndexRanges <- indexRangeNoneClass$new()
+        finalRangeToIndexSlot <- as.list(1)
+    }
 
     ## Convert single-column matrix indexRanges to sequence if possible
-    ## (e.g., to more efficiently handle y[i] <- x[k[i]] cases where all y's included
-    for(iRange in seq_along(finalIndexRanges)) 
-        if(identical(attr(finalIndexRanges[[iRange]], 'rangeType'), 'matrix'))
-           finalIndexRanges[[iRange]] <- finalIndexRanges[[iRange]]$toSequence()
-    
+    ## (e.g., to more efficiently handle y[i] <- x[k[i]] cases where all y's included).
+    for(iRange in seq_along(finalIndexRanges))
+        if(is(finalIndexRanges[[iRange]], 'indexRangeMatrixClass'))
+            finalIndexRanges[[iRange]] <- finalIndexRanges[[iRange]]$toSequence()
 
-    ## TODO: check this - not quite following what I was doing here. Shouldn't be needed now that _any rules are in constraints.
-    ## Add in results from 'any' rules, as these have no RHS index used in the rule (i.e., blank or constant RHS, e.g., x[] or x[2])
-    ## missedSets <- which(!seq_along(ansIndexRanges) %in% unlist(rangeToSetID))
-    ## if(length(missedSets)) {
-    ##    finalIndexRanges <- c(finalIndexRanges, ansIndexRanges[missedSets])
-    ##    finalRangeToIndexSlot <- c(finalRangeToIndexSlot, ansRangeToIndexSlot[missedSets])
-    ## }
-
-    ## Add in result of constant rules (constant LHS index and (of course) no corresponding RHS index).
-    iSet <- 1
-    if(length(constantSets)) {
-        constantIndexRanges <- list()
-        for(constantSet in constantSets) {
-            thisLHSresult <- indexRules[[iSet + numSets]]$apply(NULL)
-            constantIndexRanges[[iSet]] <- thisLHSresult
-            iSet <- iSet + 1
-        }
-        constantRangeToIndexSlot <- as.list(constantSets)
-        finalIndexRanges <- c(finalIndexRanges, constantIndexRanges)
-        finalRangeToIndexSlot <- c(finalRangeToIndexSlot, constantRangeToIndexSlot)
-    }
-    ## Add in result of constant rule for case of no LHS indexing at all.
-    if(!length(indexSets$LHSindex2setID)) {
-        iSet <- which(sapply(indexRules, function(ir) identical(class(ir)[1], 'indexRuleConstantClass')))
-        thisLHSresult <- indexRules[[iSet]]$apply(NULL)
-        constantIndexRanges <- list(thisLHSresult)
-        constantRangeToIndexSlot <- as.list(1)
-        finalIndexRanges <- c(finalIndexRanges, constantIndexRanges)
-        finalRangeToIndexSlot <- c(finalRangeToIndexSlot, constantRangeToIndexSlot)
-    }
-
-    ## Put final results in natural order in case they are not already.
-    finalIndexOrderStarts <- unlist(lapply(finalRangeToIndexSlot, `[`, 1))
+    ## Put final results in natural order (based on first slot for each indexRange) in case they are not already.
+    finalIndexOrderStarts <- sapply(finalRangeToIndexSlot, `[`, 1)
     orderFinalIndexOrderStarts <- order(finalIndexOrderStarts)
-    if(!identical(orderFinalIndexOrderStarts,
-                  seq_along(orderFinalIndexOrderStarts))) {
+    if(!identical(orderFinalIndexOrderStarts, seq_along(orderFinalIndexOrderStarts))) {
         finalIndexRanges <- finalIndexRanges[orderFinalIndexOrderStarts]
         finalRangeToIndexSlot <- finalRangeToIndexSlot[orderFinalIndexOrderStarts]
     }

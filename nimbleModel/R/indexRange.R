@@ -265,6 +265,13 @@ indexRangeMatrixClass <- R6Class(
                 return(indexRangeMatrixClass$new(values[ , indices, drop = FALSE]))
         },
 
+        getRows = function(indices = NULL) {
+            if(is.null(indices)) {
+                return(.self)
+            } else
+                return(indexRangeMatrixClass$new(values[indices, , drop = FALSE]))
+        },
+
         toMatrix = function() {
             return(self)
         },
