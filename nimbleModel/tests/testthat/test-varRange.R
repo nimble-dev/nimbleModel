@@ -1,5 +1,9 @@
 test_that('varRangeClass', {
 
+    ## erroneous instantiation
+    expect_error(varRangeClass$new(newIndexRange(4), varName = 'x'),
+                 "must be initialized from a list of indexRanges")
+    
     ## 0D
     xVar1 <- varRangeClass$new('x')
     xVar2 <- varRangeClass$new(list(indexRange(NULL)), varName = 'x')

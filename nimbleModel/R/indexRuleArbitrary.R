@@ -32,10 +32,10 @@ indexRuleArbitraryClass <- R6Class(
 )
 
 indexRuleArbitrary_setup <- function(toIndexExprList,
-                                      fromIndexExprList,
-                                      context,
-                                      constants = list()
-                                      ) {
+                                     fromIndexExprList,
+                                     context,
+                                     constants = list()
+                                     ) {
     ## Valid only when indexing in both to and from.
     if(!length(toIndexExprList) || !length(fromIndexExprList)) 
         return(NULL)
@@ -172,7 +172,18 @@ indexRuleArbitrary_setup <- function(toIndexExprList,
         allIndices <- do.call("rbind", allIndicesList)
         iRow2toIndices <- split(allIndices, iRows)
     }
-    
+
+    ## Simplify to list of numeric matrices (not data frames) for
+    ## consistent types and simpler handling later.
+    iRow2toIndices <- lapply(iRow2toIndices, function(x) {
+        if(is.null(dim(x))) {
+            result <- as.numeric(x)
+        } else {
+            result <- matrix(as.numeric(as.matrix(x)), ncol = ncol(x))
+            dimnames(result) <- NULL
+        }
+        return(result)
+    })
     names(iRow2toIndices) <- NULL
     
     return(list(from2indicesFunctions = from2indicesFunctions,
@@ -267,11 +278,12 @@ indexRuleArbitrary_applyMatrix <- function(indexRange,
                                                 setupResults$iRow2toIndices[x])
                                  if(is.null(result)) {
                                      return(NAs)
-                                 } else {
-                                     result <- as.matrix(result)
-                                     dimnames(result) <- NULL
+                                 } else
                                      return(result)
-                                 }})
+                                 })
+
+    if(!length(toIndicesList))
+        return(indexRangeEmptyClass$new())
 
     ## `applyGraphRules` will use `collapse=FALSE`, as we need to maintain correspondence
     ## of rows of input indexRange (via toIndicesList) in order to cross results of multiple rules
@@ -279,17 +291,12 @@ indexRuleArbitrary_applyMatrix <- function(indexRange,
     ## E.g., `y[i,j] <- x[k1[i],k2[j]]` can produce multiple output rows from an input row
     ## e.g., if `k1[1:3] = c(2,2,4)` then x[2,] -> y[c(1,2),].
     ## Or even  `y[i,j] <- x[k1[i],j]` which needs to cross with the result of the `j` block rule.
+    
     if(collapse) {
-        ## Do we want to strip out NA cases and duplicates?
-        if(!length(toIndicesList))
-            return(indexRangeEmptyClass$new())
-        else {
-            toIndicesList <-
-                toIndicesList[!unlist(lapply(toIndicesList, is.null))]
-            result <- indexRangeMatrixClass$new(do.call('rbind', toIndicesList))
-            return(result)
-        }
-    }
-    else
+        ## This does not strip out NA cases or duplicates. 
+        toIndicesList <-
+            toIndicesList[!unlist(lapply(toIndicesList, is.null))]
+        return(indexRangeMatrixClass$new(do.call('rbind', toIndicesList)))
+    } else
         return(indexRangeMatrixListClass$new(toIndicesList))
 }

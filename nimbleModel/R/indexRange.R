@@ -57,7 +57,7 @@ newIndexRange <- function(expr) {
             mat <- intToNumeric(as.matrix(eval(expr)))
             vals <- c(mat)
             vals <- vals[!is.na(mat)]
-            if(isTRUE(all(vals >= 1)) && identical(vals, round(vals))) {
+            if(isTRUE(all(vals >= 1)) && isTRUE(all(vals < Inf)) && identical(vals, round(vals))) {
                 dimnames(mat) <- NULL
                 return(indexRangeMatrixClass$new(mat))
             } else
@@ -223,13 +223,19 @@ indexRangeSequenceClass <- R6Class(
             return(start + item - 1)
         },
 
+        toScalar = function() {
+            if(start == end)
+                return(indexRangeScalarClass$new(start))
+            return(self)
+        },
+
         toMatrix = function() {
-            return(indexRangeMatrixClass$new(matrix(seq.int(start, end))))
+            return(indexRangeMatrixClass$new(matrix(as.numeric(seq.int(start, end)))))
         },
 
         toMatrixList = function() {
             return(indexRangeMatrixListClass$new(
-                lapply(seq.int(start, end), matrix)))
+                lapply(as.numeric(seq.int(start, end)), matrix)))
         },
 
         toExpr = function() {
@@ -320,8 +326,6 @@ indexRangeMatrixListClass <- R6Class(
         },
 
         toMatrix = function() {
-            ## TODO: check if called
-            stop("toMatrix: not valid for '", class(self)[1], "' objects.")
             return(indexRangeMatrixClass$new(do.call("rbind", rangeList)))
         }
 

@@ -53,7 +53,7 @@ export(getSymbolicParentNodesRecurse)
 export(newIndexRange)
 
 
-export(makeGraphRule)
+export(makeIndexRules)
 export(makeSeparableIndexSets)
 
 export(exclude)

@@ -20,7 +20,7 @@ indexRuleAllClass <- R6Class(
                                     )
         },
         
-        apply = function(indexRange) {
+        apply = function(indexRange, collapse = FALSE) {
             return(setupResults$all)
         },
 

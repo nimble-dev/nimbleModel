@@ -42,7 +42,12 @@ getOffset <- function(indexExpr,
         indexNameInExpr <- as.character(indexExpr[[indexSlot]])
         offsetExpr <- indexExpr
         offsetExpr[[indexSlot]] <- 0
-        offset <- eval(offsetExpr, envir = constantsEnv)
+        offset <- try(eval(offsetExpr, envir = constantsEnv), silent = TRUE)
+        ## Check whether can resolve offset (will fail when there is another index
+        ## in the expression).
+        if(inherits(offset, "try-error")) 
+            return(NULL)
+        
     }
     if(indexNameInExpr != indexVarName)
         return(NULL)

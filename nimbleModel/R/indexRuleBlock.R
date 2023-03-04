@@ -90,8 +90,8 @@ indexRuleBlock_applyToScalar <- function(fromValue,
 }
 
 indexRuleBlock_applyToMatrix <- function(fromValues,
-                                       setupResults,
-                                       collapse = TRUE) {
+                                         setupResults,
+                                         collapse = TRUE) {
     if(ncol(fromValues) != 1)
         stop("indexRuleBlock_applyMatrix: a block rule can only be applied to a one-column indexRangeMatrix.")
     valid <-
@@ -112,7 +112,7 @@ indexRuleBlock_applyToMatrix <- function(fromValues,
     if(collapse)  
         return(indexRangeMatrixClass$new(toValues))
     else  
-        return(indexRangeMatrixListClass$new(toValues))
+        return(indexRangeMatrixListClass$new(lapply(toValues, as.matrix)))
 }
 
 indexRuleBlock_applyToSequence <- function(fromStart, fromEnd,

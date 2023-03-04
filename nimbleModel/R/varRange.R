@@ -42,7 +42,7 @@ varRangeClass <- R6Class(
                               fromStochRule = NULL) {
 
             fromStochRule <<- fromStochRule
-            if(is(indexInfo, "indexRange"))
+            if(is(indexInfo, "indexRangeClass"))
                 stop("varRange must be initialized from a list of indexRanges not a single indexRange.")
             if(is.character(indexInfo))
                 indexInfo <- parse(text = indexInfo, keep.source = FALSE)[[1]]
@@ -60,7 +60,7 @@ varRangeClass <- R6Class(
                         stop("varRange: input is not a valid variable or variable range.")
                     nameFromExpr <- deparse(indexInfo[[2]])
                     indexRangeExprs <<- as.list(indexInfo[-c(1,2)])
-                    indexRanges <<- lapply(indexRangeExprs, indexRange)
+                    indexRanges <<- lapply(indexRangeExprs, newIndexRange)
                     
                     ## Truncate indexRangeExprs for matrices for nicer printing.
                     if(any(sapply(indexRanges, function(x) is(x, "indexRangeMatrixClass"))))
@@ -82,14 +82,14 @@ varRangeClass <- R6Class(
                     if(!all(sapply(indexInfo, function(x) is(x, "indexRangeClass"))))
                         stop("varRange: `indexInfo` should be a list of `indexRange`s.")
                     varName <<- varName
-                    setIndexRanges(indexInfo, rangeToSlot)
+                    setIndexRanges(indexInfo, rangeToIndexSlot)
                     if(!isNone())                         
                         indexRangeExprs <<- lapply(indexRanges, function(x) x$toExpr())
                 } else stop("varRange: unexpected input.")
             }
-            if(length(rangeToIndexSlot)) { 
-                rangeID <- rep(seq_along(rangeToIndexSlot), times = sapply(rangeToIndexSlot, length))
-                indexSlotToRange <<- rangeID[order(unlist(rangeToIndexSlot))]
+            if(length(self$rangeToIndexSlot)) { 
+                rangeID <- rep(seq_along(self$rangeToIndexSlot), times = sapply(self$rangeToIndexSlot, length))
+                indexSlotToRange <<- rangeID[order(unlist(self$rangeToIndexSlot))]
             } else indexSlotToRange <<- integer(0) ## no indexing of the variable
         },
 
@@ -122,6 +122,7 @@ varRangeClass <- R6Class(
 
         ## Extract one or more columns of a varRange.
         ## If multiple columns, result is expanded as a matrix of indices.
+        ## TODO: `returnUsedRanges` is never used, so could remove.
         extractIndexRange = function(indices, returnUsedRanges = FALSE) {
             
             usedIndices <- unlist(lapply(rangeToIndexSlot, function(x) x[x %in% indices]))
@@ -168,14 +169,18 @@ varRangeClass <- R6Class(
         ## EXample 2: varRange2expr(varRangeClass$new(list(indexRange(quote(1:10), varName = 'x'))))
         ##  ==> "x[1:10]"
         toExpr = function() {
+            if(is.null(varName)) {
+                nm <- as.name("no_name")
+            } else nm <- as.name(varName)
             if(isNone()) {
-                return(as.name(varName))
-            } else 
+                return(nm)
+            } else {
+                
                 do.call("call",
-                        c(list("[",
-                               as.name(varName)),
+                        c(list("[", nm),
                           indexRangeExprs[indexSlotToRange]),
                         quote = TRUE)
+            }
         },
 
         ## `toChar` takes a varRange object and returns the corresponding

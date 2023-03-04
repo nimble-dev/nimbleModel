@@ -197,7 +197,7 @@ checkIndexConstraints <- function(varRange, indexConstraints) {
                             ## This will not have to deal with complicated cases where
                             ## additional slots in a range are not constrained, as
                             ## this is handled in `applyGraphRule` as `complicatedCrossing`.
-                            neededRanges <- varRange$indexID_2_rangeID[constraint$slots]
+                            neededRanges <- varRange$indexSlotToRange[constraint$slots]
                             valid <- constraint$check(varRange$extractIndexRange(constraint$slots))
                             for(j in neededRanges) {
                                 if(!is.null(result[[j]]))
