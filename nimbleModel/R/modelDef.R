@@ -146,12 +146,12 @@ modelDefClass <- R6Class(
 
             allDownstreamRules <- unlist(lapply(declInfo, function(x) x$downstreamRules))
             varNames <- sapply(allDownstreamRules, function(rule)
-                rule$parentVar)
+                rule$fromVar)
             downstreamRules <<- newVarRule(allDownstreamRules, varNames)
             
             allUpstreamRules <- unlist(lapply(declInfo, function(x) x$upstreamRules))
             varNames <- sapply(allUpstreamRules, function(rule)
-                rule$parentVar)   ## TODO: nomenclature is confusing - parent in an upstream rule is child in graph
+                rule$fromVar)   
             upstreamRules <<- newVarRule(allUpstreamRules, varNames)
 
             allCalcRules <- generateCalcRules(declRules, rhsOriginalRules, downstreamRules)

@@ -1,6 +1,6 @@
 ## Code to take the declRules and graphRules and create full set of fractured calcRules and 'excluded' rhsRules
 
-## assume we have graphRules as list of lists, indexed by parentVar
+## assume we have graphRules as list of lists, indexed by fromVar
 ## e.g., graphRules[['mu']], graphRules[['x']]
 
  
@@ -230,7 +230,7 @@ processCyclicRules <- function(allCalcRules, modelDef) {
     ## Need to know if sortIDs are increasing or decreasing with the indexing.
     for(currentCyclicRule in cyclicRulesSet) {
         parentVars <- sapply(modelDef$upstreamRules[[varNames[currentCyclicRule]]]$rules, function(rule)
-            rule$childVar)
+            rule$toVar)
         idx <- which(parentVars %in% varNames[cyclicRulesSet])
 
         ## if(length(idx) != 1) 
@@ -314,7 +314,7 @@ processCyclicRules <- function(allCalcRules, modelDef) {
 
         ## Determine the graphRule involved in getting next upstream calcRule.
         parentVars <- sapply(modelDef$upstreamRules[[varNames[currentCyclicRule]]]$rules,
-                             function(rule) rule$childVar)
+                             function(rule) rule$toVar)
         idx <- which(parentVars %in% varNames[cyclicRulesSet])
         upstreamGraphRules <- modelDef$upstreamRules[[varNames[currentCyclicRule]]]$rules[idx]
         sapply(upstreamGraphRules, followUpstream, modelDef$upstreamRules, childSortID, focalIndex, allCalcRules,
@@ -371,7 +371,7 @@ setSortIDs <- function(calcRules) {
 
 followUpstream <- function(upstreamGraphRule, upstreamRules, childSortID, focalIndex, allCalcRules, cyclicRulesSet, varNames, sortIDs, fullMaxSortID, direction, eps, count = 0) {
 
-    parentVar <- upstreamGraphRule$childVar
+    parentVar <- upstreamGraphRule$toVar
 
     ## There could be multiple rules if model has two cycles involving a single variable.
     currentCyclicRules <- cyclicRulesSet[varNames[cyclicRulesSet] == parentVar]
@@ -454,7 +454,7 @@ followUpstream <- function(upstreamGraphRule, upstreamRules, childSortID, focalI
 
         ## Determine the graphRule involved in getting next upstream calcRule.
         parentVars <- sapply(upstreamRules[[varNames[currentCyclicRule]]]$rules,
-                             function(rule) rule$childVar)
+                             function(rule) rule$toVar)
         idx <- which(parentVars %in% varNames[cyclicRulesSet])
         
         upstreamGraphRules <- upstreamRules[[varNames[currentCyclicRule]]]$rules[idx]

@@ -339,7 +339,7 @@ test_that("graphRules works for single index cases, wrapping indexRules", {
         varRangeClass$new(list(newIndexRange(quote(2:5))), varName = 'y')
     )
 
-    ## indexRuleAll case.
+    ## indexRuleAll cases.
     rule <- graphRuleClass$new(toExpr = quote(y[i+1]),
                                fromExpr = quote(x[3]),
                                context = context_i)
@@ -351,6 +351,21 @@ test_that("graphRules works for single index cases, wrapping indexRules", {
         varRangeClass$new(list(newIndexRange(quote(2:11))), varName = 'y')
     )
 
+    rule <- graphRuleClass$new(toExpr = quote(y[2]),
+                               fromExpr = quote(x[3:n]),
+                               context = context_0,
+                               constants = list(n = 5))
+    
+    expect_equal(
+        applyGraphRule(
+            varRangeClass$new(list(newIndexRange(quote(4)))), rule),
+        varRangeClass$new(list(newIndexRange(quote(2))), varName = 'y'))
+
+    expect_identical(
+        applyGraphRule(
+            varRangeClass$new(list(newIndexRange(quote(7)))), rule),
+        NULL
+    )
 
     ## more complicated expression than simple index
     rule <- graphRuleClass$new(toExpr = quote(y[3*i]),
@@ -514,6 +529,54 @@ test_that("graphRules works for various basic multiple index cases", {
 })
 
 
+test_that("graphRules works for constraints tangled up with rule results because of multi-index indexRange", {
+    
+    rule <- graphRuleClass$new(toExpr = quote(y[i]),
+                               fromExpr = quote(x[i, 2]),
+                               context = context_i_short)
+
+    expect_equal(
+        applyGraphRule(
+            varRangeClass$new(list(
+                              newIndexRange(matrix(c(3,2,2,3,4,3,10,2), ncol = 2, byrow = TRUE)))), rule),
+        varRangeClass$new(list(newIndexRange(3)), varName = 'y')
+    )
+
+    expect_identical(
+        applyGraphRule(
+            varRangeClass$new(list(
+                              newIndexRange(matrix(c(13,2,2,3,4,3,10,2), ncol = 2, byrow = TRUE)))), rule),
+        NULL
+    )
+        
+    rule <- graphRuleClass$new(toExpr = quote(y[i, j]),
+                               fromExpr = quote(x[i, j, 2]),
+                               context = context_ij_short)
+
+    expect_equal(
+        applyGraphRule(
+            varRangeClass$new(list(
+                              newIndexRange(matrix(c(3,2,2,2,2,3,4,2,3,10,2,2,3,4,2), ncol = 3, byrow = TRUE)))), rule),
+        varRangeClass$new(list(
+                          newIndexRange(matrix(c(3,3,2,4), ncol = 2))), varName = 'y')
+    )
+
+    
+    rule <- graphRuleClass$new(toExpr = quote(y[i]),
+                               fromExpr = quote(x[k[i], 2]),
+                               context = context_i_short,
+                               constants = list(k = c(2,2,3)))
+
+    expect_equal(
+        applyGraphRule(
+            varRangeClass$new(list(
+                              newIndexRange(matrix(c(1,2,2,1,2,2,3,2), ncol = 2, byrow = TRUE)))), rule),
+        varRangeClass$new(list(
+                          newIndexRange(quote(1:3))), varName = 'y')
+    )    
+})
+
+
 test_that("graphRules works for arbitrary rules of multiple contexts entangled with other indices", {
 
     rule <- graphRuleClass$new(toExpr = quote(y[i, j]),
@@ -671,9 +734,24 @@ test_that("graphRules works for arbitrary rules of multiple contexts entangled w
        varRangeClass$new(list(newIndexRange(matrix(c(7,10,9,12,1,1,3,3), ncol = 2)),
                               newIndexRange(quote(1:2))), varName = 'y'))
 
+
+   rule <- graphRuleClass$new(toExpr = quote(x[j]),
+                              fromExpr = quote(y[k[i], j, 3*i]),
+                              context = context_ij_short,
+                              constants = list(k = c(2,4,5)))
+
+   expect_equal(
+       applyGraphRule(
+           varRangeClass$new(list(
+                             newIndexRange(matrix(c(2,9,4,2,4,9,6,2,5,4),ncol = 2,byrow = TRUE)),
+                             newIndexRange(quote(6:7)))
+                             ), rule),
+       varRangeClass$new(list(newIndexRange(2)), varName = 'x')
+   )
+
+   
 })
 
-## HERE
 
 test_that("graphRules works for arbitrary rule with ragged blocks combined with another rule", {
 
@@ -1227,7 +1305,7 @@ test_that("graphRules correctly handles ragged indexing", {
                               constants = list(n = n))
    expect_identical(sapply(rule$indexRules, function(ir) class(ir)[1]),
                     c('indexRuleArbitraryClass', 'indexRuleBlockClass'))
-   expect_identical(rule$indexSets$toIndexSlotToSetID, c(2, 1, 1))
+   expect_identical(rule$indexSets$toIndexSlotToSet, c(2, 1, 1))
 
    expect_equal(
        applyGraphRule(
@@ -1245,7 +1323,7 @@ test_that("graphRules correctly handles ragged indexing", {
                               constants = list(n = n, mi = mi))
    expect_identical(sapply(rule$indexRules, function(ir) class(ir)[1]),
                     'indexRuleArbitraryClass')
-   expect_identical(rule$indexSets$toIndexSlotToSetID, rep(1,3))
+   expect_identical(rule$indexSets$toIndexSlotToSet, rep(1,3))
    
    expect_equal(
        applyGraphRule(
@@ -1262,7 +1340,7 @@ test_that("graphRules correctly handles ragged indexing", {
                               constants = list(n = n, mj = mj))
    expect_identical(sapply(rule$indexRules, function(ir) class(ir)[1]),
                     'indexRuleArbitraryClass')
-   expect_identical(rule$indexSets$toIndexSlotToSetID, rep(1,3))
+   expect_identical(rule$indexSets$toIndexSlotToSet, rep(1,3))
    
    expect_equal(
        applyGraphRule(
@@ -1279,7 +1357,7 @@ test_that("graphRules correctly handles ragged indexing", {
                               constants = list(n = n, mij = mij))
    expect_identical(sapply(rule$indexRules, function(ir) class(ir)[1]),
                     'indexRuleArbitraryClass')
-   expect_identical(rule$indexSets$toIndexSlotToSetID, rep(1,3))
+   expect_identical(rule$indexSets$toIndexSlotToSet, rep(1,3))
 
    expect_equal(
        applyGraphRule(
@@ -1370,12 +1448,21 @@ test_that("graphRules works for getParents by checking 1-to-many case", {
         NULL
     )
 
+    rule <- graphRuleClass$new(toExpr = quote(x[2:4]),
+                               fromExpr = quote(y[i]),
+                               context = context_i_short)
+
+    expect_equal(
+        applyGraphRule(
+            varRangeClass$new(list(newIndexRange(matrix(c(3,5), ncol = 1)))), rule),
+        varRangeClass$new(list(newIndexRange(quote(2:4))), varName = 'x')
+    )
+
     k <- c(2,5,1)
     rule <- graphRuleClass$new(toExpr = quote(x[2]),
                                fromExpr = quote(y[k[i]]),
                                context = context_i_short,
                                constants = list(k = k))
-
 
     expect_equal(
         applyGraphRule(
@@ -1436,6 +1523,26 @@ test_that("graphRules works for getParents by checking 1-to-many case", {
             varRangeClass$new(list(newIndexRange(matrix(c(3,9), ncol = 1)))), rule),
         NULL
     )
+
+    k1 <- c(2,5,1)
+    k2 <- c(3,4,2)
+    rule <- graphRuleClass$new(toExpr = quote(x[2]),
+                               fromExpr = quote(y[k1[i],k2[i]]),
+                               context = context_i_short,
+                               constants = list(k1 = k1, k2 = k2))
+
+    expect_equal(
+        applyGraphRule(
+            varRangeClass$new(list(newIndexRange(rbind(c(5,5),c(5,4))))), rule),
+        varRangeClass$new(list(newIndexRange(quote(2))), varName = 'x')
+    )
+
+    expect_identical(
+        applyGraphRule(
+            varRangeClass$new(list(newIndexRange(matrix(c(3,9), ncol = 2)))), rule),
+        NULL
+    )
+    
 
     rule <- graphRuleClass$new(toExpr = quote(x[2]),
                                fromExpr = quote(y[i,3]),
@@ -1694,6 +1801,40 @@ test_that("graphRules works for getParents by checking 1-to-many case", {
         NULL
     )
 
+    rule <- graphRuleClass$new(toExpr = quote(x[2]),
+                               fromExpr = quote(y[i+j,j]),
+                               context = context_ij_short)
+
+    expect_equal(
+        applyGraphRule(
+            varRangeClass$new(list(newIndexRange(matrix(c(5,5,3,1), ncol = 2)))), rule),
+        varRangeClass$new(list(newIndexRange(2)), varName = 'x')
+    )
+    
+    expect_identical(
+        applyGraphRule(
+            varRangeClass$new(list(newIndexRange(matrix(c(5,5,7,1), ncol = 2)))), rule),
+        NULL
+    )
+
+    n <- c(1,3,2)
+    rule <- graphRuleClass$new(toExpr = quote(x[2]),
+                               fromExpr = quote(y[i,j]),
+                               context = context_ijni_short,
+                               constants = list(n = n))
+
+    expect_equal(
+        applyGraphRule(
+            varRangeClass$new(list(newIndexRange(matrix(c(2,3,2,3), ncol = 2)))), rule),
+        varRangeClass$new(list(newIndexRange(2)), varName = 'x')
+    )
+    
+    expect_identical(
+        applyGraphRule(
+            varRangeClass$new(list(newIndexRange(matrix(c(1,3,2,3), ncol = 2)))), rule),
+        NULL
+    )
+    
 })
 
 test_that("Single index variable used multiple times", {
@@ -1765,8 +1906,8 @@ test_that("Single index variable used multiple times", {
     )
 
     rule <- graphRuleClass$new(toExpr = quote(y[i+1,i]),
-                                fromExpr = quote(x[2]),
-                                context = context_i)
+                               fromExpr = quote(x[2]),
+                               context = context_i)
 
     expect_equal(
         applyGraphRule(
@@ -1774,6 +1915,20 @@ test_that("Single index variable used multiple times", {
                               newIndexRange(quote(2)))), rule),
         varRangeClass$new(list(newIndexRange(cbind(2:11, 1:10))), varName = 'y')
     )
+
+    rule <- graphRuleClass$new(toExpr = quote(y[k1[i+1],k2[i]]),
+                               fromExpr = quote(x[i]),
+                               context = context_i_short,
+                               constants = list(k1 = c(2,5,9,12),
+                                                k2 = c(8,1,2)))
+    expect_equal(
+        applyGraphRule(
+            varRangeClass$new(list(
+                              newIndexRange(matrix(c(3,4,1))))), rule),
+        varRangeClass$new(list(newIndexRange(rbind(c(12,2), c(5,8)))), varName = 'y')
+    )
+    
+    
 })
 
 

@@ -253,6 +253,8 @@ indexRangeMatrixClass <- R6Class(
     portable = FALSE,
     public = list(
         values = numeric(),
+        numElements = numeric(),
+        numColumns = numeric(),
         
         initialize = function(values) {
             values <<- values
@@ -318,17 +320,26 @@ indexRangeMatrixListClass <- R6Class(
     portable = FALSE,
     public = list(
         rangeList = list(),
-        
+        numElements = numeric(),
+
         initialize = function(rangeList) {
             if(!all(sapply(rangeList, is.matrix)))
                 stop("indexRangeMatrixList: input must be a list of matrices.")
             rangeList <<- rangeList
+            numElements <<- length(rangeList)
         },
 
         toMatrix = function() {
             return(indexRangeMatrixClass$new(do.call("rbind", rangeList)))
-        }
+        },
 
+        ## Naming is a bit tricky - 'row's are really `rangeList` elements
+        getRows = function(indices = NULL) {
+            if(is.null(indices)) {
+                return(.self)
+            } else
+                return(indexRangeMatrixListClass$new(rangeList[indices]))
+        }
     )
 )
 

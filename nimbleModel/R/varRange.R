@@ -197,7 +197,8 @@ varRangeClass <- R6Class(
     )
 )
 
-
+## NOTE: This will not catch cases where the order of the indexRanges
+## is permuted consistent with `rangeToIndexSlot` and `indexSlotToRange`.
 varRange_isEqual <- function(vr1, vr2) {
     identical(vr1$indexSlotToRange, vr2$indexSlotToRange) &&
         identical(vr1$rangeToIndexSlot, vr2$rangeToIndexSlot) &&
