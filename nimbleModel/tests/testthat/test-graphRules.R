@@ -1972,6 +1972,36 @@ test_that("indexRange matrix converted to sequence if appropriate", {
     
 })
 
+## TODO: This works in terms of graphRules; will need to consider if we want to allow use of it.
+test_that("non-sequential indexing in for loop", {
+    singleContext1 <-
+    singleContextClass$new(forCode = quote(for(i in c(2,3,5)){}))
+    context_i <- modelContextClass$new(list(singleContext1))
+
+    rule <- graphRuleClass$new(toExpr = quote(y[i]),
+                               fromExpr = quote(x[i]),
+                               context = context_i)
+
+    expect_equal(
+        applyGraphRule(
+            varRangeClass$new(list(newIndexRange(quote(1:4)))), rule),
+        varRangeClass$new(list(newIndexRange(quote(2:3))), varName = 'y')
+    )
+    
+    expect_equal(
+        applyGraphRule(
+            varRangeClass$new(list(newIndexRange(quote(3:5)))), rule),
+                varRangeClass$new(list(newIndexRange(matrix(c(3,5)))), varName = 'y')
+    )        
+
+    expect_identical(
+        applyGraphRule(
+            varRangeClass$new(list(newIndexRange(quote(7:9)))), rule),
+        NULL
+    )
+    
+
+})
 
 test_that("getFromRange", {
     rule <- graphRuleClass$new(toExpr = quote(y[i]),

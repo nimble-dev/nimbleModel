@@ -68,6 +68,8 @@ indexRuleBlock_setup <- function(toIndexExprList,
 
     ## We rely on eval here, but we could instead pick out arguments of `:`
     ## fromRange <- range(eval(indexRangeExpr, envir = constants))
+    if(indexRangeExpr[[1]] != ":")
+        return(NULL)
     fromRange <- 
         c(eval(indexRangeExpr[[2]], envir = constants),
           eval(indexRangeExpr[[3]], envir = constants))

@@ -1,13 +1,4 @@
-## TODO: check this:
-
-## before refactoring rule$indexRules[[2]] was an indexRuleClass_constant
-## now it is some how a seq indexRange
-rule <- makeGraphRule(LHS = quote(x[2:5]),
-                                RHS = quote(y[i]),
-                                context = context_i_short)
-
 context("indexConstraint")
-
 
 test_that("indexConstraint", {
     constraint <- nimbleModel:::newIndexConstraint_fromSimple(3, 1, list())
