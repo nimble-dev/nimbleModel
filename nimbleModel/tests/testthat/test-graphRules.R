@@ -847,6 +847,17 @@ test_that("graphRules works for all rule that is function of two indexes", {
         varRangeClass$new(list(newIndexRange(matrix(c(4:7,7:10,10:13)))), varName = 'y')
     )
 
+    rule <- graphRuleClass$new(toExpr = quote(y[i+1,i]),
+                               fromExpr = quote(x[2]),
+                               context = context_i_short)
+
+    expect_equal(
+        applyGraphRule(
+            varRangeClass$new(list(
+                              newIndexRange(quote(2)))), rule),
+        varRangeClass$new(list(newIndexRange(matrix(c(2,3,4,1,2,3), ncol = 2))), varName = 'y')
+    )
+    
 })
 
 test_that("graphRules works for fixed RHS indices", {
