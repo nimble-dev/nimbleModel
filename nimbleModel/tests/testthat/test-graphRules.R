@@ -16,8 +16,6 @@ bruteForceNestedIndexing <- function(indexVector, indexQuery) {
     ans
 }
 
-irNone <- nimbleModel:::indexRangeNoneClass$new()
-
 singleContext1 <-
     singleContextClass$new(forCode = quote(for(i in 1:10){}))
 
@@ -233,7 +231,7 @@ test_that("error trap incorrect number of input indices", {
 
     expect_error(
         applyGraphRule(
-            varRangeClass$new(list(irNone), varName = 'x'), rule),
+            varRangeClass$new(list(), varName = 'x'), rule),
         "incorrect number of input indices"
     )
     
@@ -275,8 +273,8 @@ test_that("graphRules works for basic cases lacking indexing", {
     
     expect_equal(
         applyGraphRule(
-            varRangeClass$new(list(irNone), varName = 'x'), rule),
-        varRangeClass$new(list(irNone), varName = 'y')
+            varRangeClass$new(list(), varName = 'x'), rule),
+        varRangeClass$new(list(), varName = 'y')
     )
 
     rule <- graphRuleClass$new(toExpr = quote(y),
@@ -286,7 +284,7 @@ test_that("graphRules works for basic cases lacking indexing", {
     expect_equal(
         applyGraphRule(
             varRangeClass$new(list(newIndexRange(2))), rule),
-        varRangeClass$new(list(irNone), varName = 'y')
+        varRangeClass$new(list(), varName = 'y')
     )
 
     expect_identical(
@@ -295,13 +293,29 @@ test_that("graphRules works for basic cases lacking indexing", {
         NULL
     )
 
+    rule <- graphRuleClass$new(toExpr = quote(x),
+                               fromExpr = quote(y[2,i]),
+                               context = context_i_short)
+
+    expect_equal(
+        applyGraphRule(
+            varRangeClass$new(list(newIndexRange(matrix(c(3,2,1,3), ncol = 2)))), rule),
+        varRangeClass$new(list(), varName = 'x')
+    )
+    
+    expect_identical(
+        applyGraphRule(
+            varRangeClass$new(list(newIndexRange(matrix(c(3,2,1,99), ncol = 2)))), rule),
+        NULL
+    )
+    
     rule <- graphRuleClass$new(toExpr = quote(y[2]),
                                 fromExpr = quote(x),
                                 context = context_0)
 
     expect_equal(
         applyGraphRule(
-            varRangeClass$new(list(irNone), varName = 'x'), rule),
+            varRangeClass$new(list(), varName = 'x'), rule),
         varRangeClass$new(list(newIndexRange(2)), varName = 'y')
     )
     
@@ -463,7 +477,7 @@ test_that("graphRules works for various basic multiple index cases", {
 
     expect_equal(
         applyGraphRule(
-            varRangeClass$new(list(irNone), varName = 'x'), rule),
+            varRangeClass$new(list(), varName = 'x'), rule),
         varRangeClass$new(list(newIndexRange(quote(1:10)),
                                newIndexRange(quote(2))), varName = 'y')
     )
@@ -475,7 +489,7 @@ test_that("graphRules works for various basic multiple index cases", {
 
     expect_equal(
         applyGraphRule(
-            varRangeClass$new(list(irNone), varName = 'x'), rule),
+            varRangeClass$new(list(), varName = 'x'), rule),
         varRangeClass$new(list(newIndexRange(quote(2)),
                                newIndexRange(quote(3))), varName = 'y')
     )
@@ -965,7 +979,7 @@ test_that("graphRules works for fixed RHS indices", {
 
     expect_equal(
         applyGraphRule(
-            varRangeClass$new(list(irNone), varName = 'x'), rule),
+            varRangeClass$new(list(), varName = 'x'), rule),
         varRangeClass$new(list(newIndexRange(quote(2))), varName = 'y'))
 
     
@@ -988,7 +1002,7 @@ test_that("graphRules works for fixed RHS indices", {
     expect_equal(
         applyGraphRule(
             varRangeClass$new(list(newIndexRange(matrix(2:3, ncol = 1)))), rule),
-        varRangeClass$new(list(irNone), varName = 'y')
+        varRangeClass$new(list(), varName = 'y')
     )
 
     expect_identical(
@@ -1000,7 +1014,7 @@ test_that("graphRules works for fixed RHS indices", {
     expect_equal(
         applyGraphRule(
             varRangeClass$new(list(newIndexRange(quote(2:3)))), rule),
-        varRangeClass$new(list(irNone), varName = 'y')
+        varRangeClass$new(list(), varName = 'y')
     )
 
     ## TODO: figure out if dealing with blank index case.
@@ -1012,19 +1026,19 @@ test_that("graphRules works for fixed RHS indices", {
         expect_equal(
             applyGraphRule(
                 varRangeClass$new(list(newIndexRange(3))), rule),
-            varRangeClass$new(list(irNone), varName = 'y')
+            varRangeClass$new(list(), varName = 'y')
         )
         
         expect_equal(
             applyGraphRule(
                 varRangeClass$new(list(newIndexRange(3:20))), rule),
-            varRangeClass$new(list(irNone), varName = 'y')
+            varRangeClass$new(list(), varName = 'y')
         )
         
         expect_equal(
             applyGraphRule(
                 varRangeClass$new(list(newIndexRange(matrix(c(3,20), ncol = 1)))), rule),
-            varRangeClass$new(list(irNone), varName = 'y')
+            varRangeClass$new(list(), varName = 'y')
         )
         
         expect_error(  ## Not yet checking input variable bounds in blank index case
@@ -1050,7 +1064,7 @@ test_that("graphRules works for fixed RHS indices", {
     expect_equal(
         applyGraphRule(
             varRangeClass$new(list(newIndexRange(3))), rule),
-        varRangeClass$new(list(irNone), varName = 'y')
+        varRangeClass$new(list(), varName = 'y')
     )
 
     expect_identical(
@@ -1068,7 +1082,7 @@ test_that("graphRules works for fixed RHS indices", {
     expect_equal(
         applyGraphRule(
             varRangeClass$new(list(newIndexRange(matrix(c(3,5), ncol = 1)))), rule),
-        varRangeClass$new(list(irNone), varName = 'y')
+        varRangeClass$new(list(), varName = 'y')
     )
 
     expect_identical(
@@ -1080,7 +1094,7 @@ test_that("graphRules works for fixed RHS indices", {
     expect_equal(
         applyGraphRule(
             varRangeClass$new(list(newIndexRange(quote(3:4)))), rule),
-        varRangeClass$new(list(irNone), varName = 'y')
+        varRangeClass$new(list(), varName = 'y')
     )
     
     rule <- graphRuleClass$new(toExpr = quote(y),
@@ -1090,7 +1104,7 @@ test_that("graphRules works for fixed RHS indices", {
     expect_equal(
         applyGraphRule(
             varRangeClass$new(list(newIndexRange(2), newIndexRange(3))), rule),
-        varRangeClass$new(list(irNone), varName = 'y')
+        varRangeClass$new(list(), varName = 'y')
     )
 
     expect_identical(
@@ -1109,7 +1123,7 @@ test_that("graphRules works for fixed RHS indices", {
         applyGraphRule(
             varRangeClass$new(list(newIndexRange(matrix(c(2,4), ncol = 1)),
                                    newIndexRange(matrix(c(1,3), ncol = 1)))), rule),
-        varRangeClass$new(list(irNone), varName = 'y')
+        varRangeClass$new(list(), varName = 'y')
     )
 
     expect_identical(
@@ -1130,7 +1144,7 @@ test_that("graphRules works for fixed RHS indices", {
         applyGraphRule(
             varRangeClass$new(list(newIndexRange(quote(2:3)),
                                    newIndexRange(quote(2:3)))), rule),
-        varRangeClass$new(list(irNone), varName = 'y')
+        varRangeClass$new(list(), varName = 'y')
     )
 
     expect_identical(
@@ -1156,7 +1170,7 @@ test_that("graphRules works for fixed RHS indices", {
     expect_equal(
         applyGraphRule(
             varRangeClass$new(list(newIndexRange(matrix(c(2,2,4,3), ncol = 2)))), rule),
-        varRangeClass$new(list(irNone), varName = 'y')
+        varRangeClass$new(list(), varName = 'y')
     )
 
     ## Various cases where the index of the constraint is or is not tangled up in an indexRange
@@ -1429,7 +1443,7 @@ test_that("graphRules works for getParents by checking 1-to-many case", {
     expect_equal(
         applyGraphRule(
             varRangeClass$new(list(newIndexRange(3))), rule),
-        varRangeClass$new(list(irNone), varName = 'x')
+        varRangeClass$new(list(), varName = 'x')
     )
 
     expect_identical(
@@ -2062,7 +2076,7 @@ test_that("getFromRange", {
     rule <- graphRuleClass$new(toExpr = quote(y[i]),
                                fromExpr = quote(x),
                                context = context_i)
-    expect_equal(rule$getFromRange(), varRangeClass$new(list(irNone),
+    expect_equal(rule$getFromRange(), varRangeClass$new(list(),
                                                             varName = 'x'))
 
     rule <- graphRuleClass$new(toExpr = quote(y[i]),
@@ -2123,7 +2137,7 @@ test_that("application of graphRule to varName and character string (rather than
                                   fromExpr = quote(x[3]),
                                   context = context_0)
        expect_equal(rule$apply('x'),
-                    varRangeClass$new(list(irNone), varName = 'y'))
+                    varRangeClass$new(list(), varName = 'y'))
 
        rule <- graphRuleClass$new(toExpr = quote(y[i+2]),
                                   fromExpr = quote(x[i]),

@@ -92,12 +92,13 @@ graphRuleClass <- R6Class(
                     maxes[constraint$slots] <- constraint$getMax()
 
                 ## Cases with indexing in `fromExpr` apart from `any` style constraints.
-                sets <- which(sapply(indexRules, function(x)
-                    class(x)[1] %in% c('indexRuleBlockClass', 'indexRuleArbitraryClass')))
+                if(length(indexRules)) {
+                    sets <- which(sapply(indexRules, function(x)
+                        class(x)[1] %in% c('indexRuleBlockClass', 'indexRuleArbitraryClass')))
+                    for(set in sets) 
+                        maxes[indexSets$fromIndexSlotToSet == set] <- indexRules[[set]]$getMax()
+                }
                 
-                for(set in sets) 
-                    maxes[indexSets$fromIndexSlotToSet == set] <- indexRules[[set]]$getMax()
-
                 varRange <- varRangeClass$new(lapply(seq_along(maxes),
                                                      function(i) newIndexRange(
                                                                      substitute(1:MAX, list(MAX = maxes[i])))),
@@ -283,6 +284,7 @@ makeIndexRules <- function(toExpr, fromExpr, indexSets, context, constants = lis
     indexConstraints <- lapply(fromConstantIndexSlots, function(idx)
         newIndexConstraint_fromSimple(fromIndexExprs[[idx]], idx, constants))
 
+   
     ## `indexRules` will have one rule per set with a `NULL` for `indexRuleAny` cases
     ## (which are treated as constraints). `indexRuleConstant` cases are tacked on at end.
     numSets <- indexSets$numSets
@@ -346,6 +348,13 @@ makeIndexRules <- function(toExpr, fromExpr, indexSets, context, constants = lis
         indexRules[[iSet]] <- thisIndexRule
     }
         
+    ## No indexing in result, so no indexRanges.
+    if(!length(indexSets$toIndexSlotToSet))
+        return(list(
+            indexRules = list(),
+            indexConstraints = indexConstraints
+        ))
+
     ## Make constant rules for all `toExpr` constants, e.g. first index in y[3, i] <- x[i],
     ## and append to the indexRules.
     iSet <- length(indexRules) + 1
@@ -434,6 +443,12 @@ applyGraphRule <- function(fromVarRange, rule, varName = NULL) {
     if(any(invalid)) 
         return(NULL)
 
+    if(!length(indexRules))
+        return(
+            varRangeClass$new(ifelse(is.null(varName), rule$toVarName, varName),
+                              fromStochRule = rule$stoch)
+        )
+    
     ## Step 1: Apply indexRules one by one, getting inputs from multiple indexRanges if necessary.
 
     ## One answer indexRange per indexSet, with `any` cases left as `NULL`.

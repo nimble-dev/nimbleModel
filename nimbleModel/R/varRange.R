@@ -52,8 +52,6 @@ varRangeClass <- R6Class(
                 if(length(indexInfo) == 1) {
                     ## The expression is just a name.
                     nameFromExpr <- as.character(indexInfo)
-                    indexRanges <<- list(indexRangeNoneClass$new())
-                    rangeToIndexSlot <<- list()
                 } else {
                     ## The expression must have some indexing so it must start with `[`.
                     if(!identical(indexInfo[[1]], as.name("[")))
@@ -79,18 +77,19 @@ varRangeClass <- R6Class(
             } else {
                 ## Input is a list that should be of `indexRange`s.
                 if(is.list(indexInfo)) {
-                    if(!all(sapply(indexInfo, function(x) is(x, "indexRangeClass"))))
-                        stop("varRange: `indexInfo` should be a list of `indexRange`s.")
-                    varName <<- varName
-                    setIndexRanges(indexInfo, rangeToIndexSlot)
-                    if(!isNone())                         
+                    if(length(indexInfo)) {
+                        if(!all(sapply(indexInfo, function(x) is(x, "indexRangeClass"))))
+                            stop("varRange: `indexInfo` should be a list of `indexRange`s.")
+                        setIndexRanges(indexInfo, rangeToIndexSlot)
                         indexRangeExprs <<- lapply(indexRanges, function(x) x$toExpr())
+                    }
+                    varName <<- varName
                 } else stop("varRange: unexpected input.")
             }
             if(length(self$rangeToIndexSlot)) { 
                 rangeID <- rep(seq_along(self$rangeToIndexSlot), times = sapply(self$rangeToIndexSlot, length))
                 indexSlotToRange <<- rangeID[order(unlist(self$rangeToIndexSlot))]
-            } else indexSlotToRange <<- integer(0) ## no indexing of the variable
+            } 
         },
 
         setIndexRanges = function(indexRanges, rangeToIndexSlot = NULL) {
@@ -98,24 +97,20 @@ varRangeClass <- R6Class(
             ## based on list input, each element as returned by `indexRange` and possibly
             ## an `rangeToIndexSlot` list relating each `indexRange` to one or more index positions.
             indexRanges <<- indexRanges
-            if(is(indexRanges[[1]], "indexRangeNoneClass")) {
-                rangeToIndexSlot <<- list()
+            if(!is.null(rangeToIndexSlot)) {
+                rangeToIndexSlot <<- lapply(rangeToIndexSlot, as.integer)
             } else {
-                if(!is.null(rangeToIndexSlot))
-                    rangeToIndexSlot <<- lapply(rangeToIndexSlot, as.integer)
-                else {
-                    ## Assign elements of `rangeToIndexSlot` sequentially based on number of columns.
-                    nextID <- 1
-                    rangeToIndexSlot <<-
-                        lapply(indexRanges,
-                               function(x) {
-                                   numCols <- x$numColumns
-                                   if(is.null(numCols)) numCols <- 1  # indexRangeEmpty
-                                   ans <- nextID-1 + (1:numCols)
-                                   nextID <<- nextID + numCols
-                                   as.integer(ans)
-                               })
-                }
+                ## Assign elements of `rangeToIndexSlot` sequentially based on number of columns.
+                nextID <- 1
+                rangeToIndexSlot <<-
+                    lapply(indexRanges,
+                           function(x) {
+                               numCols <- x$numColumns
+                               if(is.null(numCols)) numCols <- 1  # indexRangeEmpty
+                               ans <- nextID-1 + (1:numCols)
+                               nextID <<- nextID + numCols
+                               as.integer(ans)
+                           })
             }
             return(NULL)
         },
@@ -157,8 +152,7 @@ varRangeClass <- R6Class(
         },
         
         isNone = function() {
-            return(length(indexRanges) == 1 &&
-                   is(indexRanges[[1]], "indexRangeNoneClass"))
+            return(!length(indexRanges))
         },
 
         ## `toExpr` takes a `varRange` object and returns the corresponding

@@ -81,7 +81,7 @@ newIndexRange <- function(expr) {
             } else
                 stop("indexRange: an indexRange with a single index must be a positive, integer-valued number.")
         } else {
-            return(indexRangeNoneClass$new())
+            return(NULL)
         }
     }
 }
@@ -158,20 +158,6 @@ indexRangeEmptyClass <- R6Class(
     )
 )
 
-## A class representing non-indexed ranges, e.g., the (single, placeholder) `indexRange` for `y`.
-## CHECK: we might also handle this case by a varRange with no indexRanges or some special varRange type. 
-indexRangeNoneClass <- R6Class(
-    classname = 'indexRangeNoneClass',
-    inherit = indexRangeClass,
-    portable = FALSE,
-    public = list(
-        numElements = 1,
-        numColumns = 0,
-        toExpr = function() {
-            return(NULL)
-        }
-    )
-)
 
 ## A class representing a single 'constant' index value, e.g., the `2` in `y[2,i]`.
 indexRangeScalarClass <- R6Class(

@@ -45,8 +45,8 @@ indexRuleConstant_setup <- function(toIndexExprList,
     if(is.list(constants))
         constants <- list2env(constants)
 
-    if(!length(toIndexExprList)) {
-        toConstant <- indexRangeNoneClass$new()
+    if(!length(toIndexExprList)) {  # no indexing; handled by indexRuleNone
+        return(NULL)
     } else {
         toIndexExpr <- toIndexExprList[[1]]
         if(length(toIndexExpr) == 1) {

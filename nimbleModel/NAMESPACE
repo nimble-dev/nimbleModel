@@ -5,7 +5,6 @@ import(R6)
 ## Classes: R6 classes are exported as regular objects
 export(indexRangeClass)
 export(indexRangeEmptyClass)
-export(indexRangeNoneClass)
 export(indexRangeScalarClass)
 export(indexRangeSequenceClass)
 export(indexRangeMatrixClass)
