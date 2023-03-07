@@ -48,14 +48,14 @@ graphRuleClass <- R6Class(
         indexSets = NULL,
         indexConstraints = NULL,
         numFromIndexSlots = NULL,
-        fromVar = NULL,
-        toVar = NULL,
+        fromVarName = NULL,
+        toVarName = NULL,
         stoch = logical(),
         
         initialize = function(toExpr, fromExpr, context, constants = list(), stoch = NULL) {
             stoch <<- stoch
-            fromVar <<- deparse(ifelse(length(fromExpr) > 1, fromExpr[[2]], fromExpr))
-            toVar <<- deparse(ifelse(length(toExpr) > 1, toExpr[[2]], toExpr))
+            fromVarName <<- deparse(ifelse(length(fromExpr) > 1, fromExpr[[2]], fromExpr))
+            toVarName <<- deparse(ifelse(length(toExpr) > 1, toExpr[[2]], toExpr))
             indexSets <<- makeSeparableIndexSets(toExpr, fromExpr, context)
             numFromIndexSlots <<- length(fromExpr) - 2
             if(numFromIndexSlots == -1)
@@ -69,14 +69,14 @@ graphRuleClass <- R6Class(
         
         apply = function(fromVarRange) {
             if(is.character(fromVarRange)) {
-                if(fromVar == fromVarRange && numFromIndexSlots) {
+                if(fromVarName == fromVarRange && numFromIndexSlots) {
                     fromVarRange <- getFromRange()   # only varName given
                 } else fromVarRange <- varRangeClass$new(fromVarRange)   # string providing the varRange         
             }
             if(!is(fromVarRange, 'varRangeClass'))
                 stop("graphRuleClass$apply: 'fromVarRange' needs to be a `varRangeClass` object.")
-            inputVar <- getVarName(fromVarRange)
-            if(!is.null(fromVar) && !is.null(inputVar) && inputVar != fromVar)
+            inputVarName <- getVarName(fromVarRange)
+            if(!is.null(fromVarName) && !is.null(inputVarName) && inputVarName != fromVarName)
                 return(NULL)
             ## CHECK: should we error out if fromVarRange doesn't have a varName?
             applyGraphRule(fromVarRange, self)
@@ -84,7 +84,7 @@ graphRuleClass <- R6Class(
 
         getFromRange = function() {
             if(!length(indexSets$fromIndexSlotToSet)) { ## no indexing
-                varRange <- varRangeClass$new(fromVar)
+                varRange <- varRangeClass$new(fromVarName)
             } else {
                 maxes <- indexSets$fromIndexSlotToSet
 
@@ -101,7 +101,7 @@ graphRuleClass <- R6Class(
                 varRange <- varRangeClass$new(lapply(seq_along(maxes),
                                                      function(i) newIndexRange(
                                                                      substitute(1:MAX, list(MAX = maxes[i])))),
-                                              varName = fromVar) 
+                                              varName = fromVarName) 
             }
             return(varRange)
         })
@@ -539,7 +539,7 @@ applyGraphRule <- function(fromVarRange, rule, varName = NULL) {
     ## Add in results from `indexRuleAll` cases, as these have no `from` index used in the rule,
     ## and are not populated into `finalIndexRanges` above.
     allRuleSets <- sapply(indexRules, function(x) is(x, 'indexRuleAllClass'))
-    if(length(allRuleSets)) {
+    if(sum(allRuleSets)) {
        finalIndexRanges <- c(finalIndexRanges, ansIndexRanges[allRuleSets])
        finalRangeToIndexSlot <- c(finalRangeToIndexSlot, ansRangeToIndexSlot[allRuleSets])
     }
@@ -583,7 +583,7 @@ applyGraphRule <- function(fromVarRange, rule, varName = NULL) {
         varRangeClass$new(
         indexInfo = finalIndexRanges[!repeats],
         rangeToIndexSlot = finalRangeToIndexSlot[!repeats],
-        varName = ifelse(is.null(varName), rule$toVar, varName),
+        varName = ifelse(is.null(varName), rule$toVarName, varName),
         fromStochRule = rule$stoch)
     )
 }

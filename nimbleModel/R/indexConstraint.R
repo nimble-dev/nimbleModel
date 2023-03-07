@@ -11,17 +11,6 @@ indexConstraintClass <- R6Class(
 
 ## also, y[i] -> x[2],  y[k[i]] -> x[2], y[k1[i],k2[i]] -> x[2]
 
-
-indexConstraintNoneClass <- R6Class(
-    classname = 'indexConstraintNoneClass',
-    inherit = indexConstraintClass,
-    portable = FALSE,
-    public = list(
-        check = function(indexRange)
-            return(is(indexRange, "indexRangeNoneClass"))
-    )
-)
-
 ## TODO: do we need to check input None in any of these next ones?
 
 ## `check` method will return single boolean when given scalar or sequence,

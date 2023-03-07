@@ -258,8 +258,8 @@ indexRangeMatrixClass <- R6Class(
         
         initialize = function(values) {
             values <<- values
-            numElements <<- as.numeric(nrow(values))
-            numColumns <<- as.numeric(ncol(values))
+            numElements <<- as.numeric(nrow(self$values))
+            numColumns <<- as.numeric(ncol(self$values))
         },
 
         getItem = function(item) {

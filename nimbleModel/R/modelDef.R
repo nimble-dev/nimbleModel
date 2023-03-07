@@ -146,12 +146,12 @@ modelDefClass <- R6Class(
 
             allDownstreamRules <- unlist(lapply(declInfo, function(x) x$downstreamRules))
             varNames <- sapply(allDownstreamRules, function(rule)
-                rule$fromVar)
+                rule$fromVarName)
             downstreamRules <<- newVarRule(allDownstreamRules, varNames)
             
             allUpstreamRules <- unlist(lapply(declInfo, function(x) x$upstreamRules))
             varNames <- sapply(allUpstreamRules, function(rule)
-                rule$fromVar)   
+                rule$fromVarName)   
             upstreamRules <<- newVarRule(allUpstreamRules, varNames)
 
             allCalcRules <- generateCalcRules(declRules, rhsOriginalRules, downstreamRules)

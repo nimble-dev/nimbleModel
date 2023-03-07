@@ -230,7 +230,7 @@ processCyclicRules <- function(allCalcRules, modelDef) {
     ## Need to know if sortIDs are increasing or decreasing with the indexing.
     for(currentCyclicRule in cyclicRulesSet) {
         parentVars <- sapply(modelDef$upstreamRules[[varNames[currentCyclicRule]]]$rules, function(rule)
-            rule$toVar)
+            rule$toVarName)
         idx <- which(parentVars %in% varNames[cyclicRulesSet])
 
         ## if(length(idx) != 1) 
@@ -314,7 +314,7 @@ processCyclicRules <- function(allCalcRules, modelDef) {
 
         ## Determine the graphRule involved in getting next upstream calcRule.
         parentVars <- sapply(modelDef$upstreamRules[[varNames[currentCyclicRule]]]$rules,
-                             function(rule) rule$toVar)
+                             function(rule) rule$toVarName)
         idx <- which(parentVars %in% varNames[cyclicRulesSet])
         upstreamGraphRules <- modelDef$upstreamRules[[varNames[currentCyclicRule]]]$rules[idx]
         sapply(upstreamGraphRules, followUpstream, modelDef$upstreamRules, childSortID, focalIndex, allCalcRules,
@@ -371,7 +371,7 @@ setSortIDs <- function(calcRules) {
 
 followUpstream <- function(upstreamGraphRule, upstreamRules, childSortID, focalIndex, allCalcRules, cyclicRulesSet, varNames, sortIDs, fullMaxSortID, direction, eps, count = 0) {
 
-    parentVar <- upstreamGraphRule$toVar
+    parentVar <- upstreamGraphRule$toVarName
 
     ## There could be multiple rules if model has two cycles involving a single variable.
     currentCyclicRules <- cyclicRulesSet[varNames[cyclicRulesSet] == parentVar]
@@ -454,7 +454,7 @@ followUpstream <- function(upstreamGraphRule, upstreamRules, childSortID, focalI
 
         ## Determine the graphRule involved in getting next upstream calcRule.
         parentVars <- sapply(upstreamRules[[varNames[currentCyclicRule]]]$rules,
-                             function(rule) rule$toVar)
+                             function(rule) rule$toVarName)
         idx <- which(parentVars %in% varNames[cyclicRulesSet])
         
         upstreamGraphRules <- upstreamRules[[varNames[currentCyclicRule]]]$rules[idx]

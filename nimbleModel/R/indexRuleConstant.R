@@ -55,7 +55,7 @@ indexRuleConstant_setup <- function(toIndexExprList,
             toConstant <- indexRangeSequenceClass$new(eval(toIndexExpr[[2]], envir = constants),
                                                       eval(toIndexExpr[[3]], envir = constants))
         } else if(length(toIndexExpr) > 1 && toIndexExpr[[1]] == "c") {
-            toConstant <- indexRangeMatrixClass$new(eval(toIndexExpr, envir = constants))
+            toConstant <- indexRangeMatrixClass$new(as.matrix(eval(toIndexExpr, envir = constants)))
         } else stop("indexRuleConstant_setup: input error in ", deparse(toIndexExprList))
     }
     return(list(constant = toConstant))
