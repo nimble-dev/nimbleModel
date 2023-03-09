@@ -11,11 +11,11 @@ varRuleClass <- R6Class(
         rules = list(),
         varName = character(),
         
-        initialize = function(rules = list(), name) {
+        initialize = function(rules = list(), varName) {
             rules <<- rules
             ## Probably won't be used but useful for clarity.
             ## For a `graphRule`, this will be the input variable.
-            varName <<- name 
+            varName <<- varName 
         },
         
         apply = function(node) {
@@ -26,26 +26,26 @@ varRuleClass <- R6Class(
 )
 
 ## Take a flat list of `nodeRule`s and divide up into one `varRule` per variable.
-newVarRule <- function(items, varNames = NULL, type = NULL) {
-    if(!all(sapply(items, function(x) is(x, "nodeRuleClass"))))
-        stop("newVarRule: all elements of `items` must be `nodeRule`s.")
+newVarRules <- function(items, varNames = NULL, type = NULL) {
+    if(!all(sapply(items, function(x) is(x, "nodeRuleClass") || is(x, "graphRuleClass"))))
+        stop("newVarRules: all elements of `items` must be `nodeRule`s or `graphRule`s.")
     if(is.null(varNames)) {
         varNames <- sapply(items, function(item) item$varName)
     } else 
         if(length(varNames) != length(items))
-            stop("newVarRule: length of `varNames` must match length of `items`.")
+            stop("newVarRules: length of `varNames` must match length of `items`.")
     if(!is.null(type)) {
         include <- sapply(items, function(item) item$is_type(type))
     } else include <- rep(TRUE, length(items))
     uniqVarNames <- unique(varNames)
     if(is(items[[1]], 'varRangeClass')) {
         ## TODO: why would we ever have a varRule of varRanges?
-        browser()
+        stop("newVarRules: unexpected input.")
         result <- lapply(uniqVarNames, function(nm)
             items[varNames == nm & include])
     } else  
         result <- lapply(uniqVarNames, function(nm)
-            varRuleClass$new(items[varNames == nm & include]), varName = nm)
+            varRuleClass$new(items[varNames == nm & include], varName = nm))
     names(result) <- uniqVarNames
     return(result)
 }

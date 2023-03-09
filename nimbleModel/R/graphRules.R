@@ -44,7 +44,7 @@ graphRuleClass <- R6Class(
     classname = "graphRuleClass",
     portable = FALSE,
     public = list(
-        indexRules = NULL,
+        indexRules = list(),
         indexSets = NULL,
         indexConstraints = NULL,
         numFromIndexSlots = NULL,

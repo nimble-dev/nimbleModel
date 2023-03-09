@@ -53,7 +53,7 @@ generateRHSonlyRules <- function(rhsOriginalRules, declRules) {
 
 getChildren <- function(varRange, graphRules) {
     result <- lapply(graphRules, function(rule)
-        applyGraphRule(varRange, rule))
+        rule$apply(varRange))
     if(length(result) == 1 && is.null(result[[1]]))
         return(NULL)
     return(result)
@@ -241,7 +241,7 @@ processCyclicRules <- function(allCalcRules, modelDef) {
         ## Multiple graphRules can result from AR(p) structure for p>1.
         upstreamGraphRules <- modelDef$upstreamRules[[varNames[currentCyclicRule]]]$rules[idx]
         offsets <- lapply(upstreamGraphRules, function(graphRule) sapply(graphRule$indexRules, function(rule) 
-            if(is(rule, 'indexRuleClass_block')) return(rule$setupResults$offset) else return(0)
+            if(is(rule, 'indexRuleBlockClass')) return(rule$setupResults$offset) else return(0)
             ))
 
         ## Multiple indices in a rule are lagged.
@@ -285,7 +285,7 @@ processCyclicRules <- function(allCalcRules, modelDef) {
         ## Need to find indexRule corresponding to the focalIndex
         focalIndexRule <- allCalcRules[[currentCyclicRule]]$graphRule$indexSets$LHSindex2setID[focalIndex]
         if(focalIndexRule == 0 ||
-            !inherits(allCalcRules[[currentCyclicRule]]$graphRule$indexRules[[focalIndexRule]], 'indexRuleClass_block'))
+            !inherits(allCalcRules[[currentCyclicRule]]$graphRule$indexRules[[focalIndexRule]], 'indexRuleBlockClass'))
             return(allCalcRules) # stop("new nimbleModel processing reached unexpected structure in cycle processing.")
         setup <- allCalcRules[[currentCyclicRule]]$graphRule$indexRules[[focalIndexRule]]$setupResults
 
@@ -416,14 +416,14 @@ followUpstream <- function(upstreamGraphRule, upstreamRules, childSortID, focalI
         
         ## Determine sortID incrementing based on graphRule.
         setup <- upstreamGraphRule$indexRules[[focalIndexRule]]$setupResults
-        if(!inherits(upstreamGraphRule$indexRules[[focalIndexRule]], 'indexRuleClass_block'))
+        if(!inherits(upstreamGraphRule$indexRules[[focalIndexRule]], 'indexRuleBlockClass'))
             return(NULL) # stop("new nimbleModel processing reached unexpected structure in cycle processing.")
         childIndices <- setup$fromMin:setup$fromMax
         sortIDvals <- childSortID[childIndices] + eps
         currentIndices <- childIndices + as.integer(setup$offset)  # as.integer() because of identical() below
         
         focalIndexRule <- allCalcRules[[currentCyclicRule]]$index2setID[focalIndex]
-        if(!inherits(allCalcRules[[currentCyclicRule]]$graphRule$indexRules[[focalIndexRule]], 'indexRuleClass_block'))
+        if(!inherits(allCalcRules[[currentCyclicRule]]$graphRule$indexRules[[focalIndexRule]], 'indexRuleBlockClass'))
             return(NULL) # stop("new nimbleModel processing reached unexpected structure in cycle processing.")
         
         setup <- allCalcRules[[currentCyclicRule]]$graphRule$indexRules[[focalIndexRule]]$setupResults

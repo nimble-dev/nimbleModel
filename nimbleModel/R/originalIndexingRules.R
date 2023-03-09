@@ -19,18 +19,14 @@ originalIndexingRuleClass <- R6Class(
                 dummyLHS <- parse(text = paste0(varName, "[",
                                                 paste(context$indexVarNames, collapse = ","), "]"))[[1]]
                 } else dummyLHS <- varNameExpr
-            graphRule <<-
-                makeGraphRule(dummyLHS,
-                                    LHS,
-                                    context,
-                                    constants)
+            graphRule <<- graphRuleClass$new(dummyLHS,
+                                             LHS,
+                                             context,
+                                             constants)
         },
+        
         apply = function(fromVarRange, varName = NULL) {
-            applyGraphRule(
-                fromVarRange,
-                graphRule,
-                varName
-            )
+            graphRule$apply(fromVarRange, graphRule)
         }
     )
 )

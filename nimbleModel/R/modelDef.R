@@ -141,18 +141,18 @@ modelDefClass <- R6Class(
             declRules <<- lapply(declInfo, function(x) x$declRule)
             varNames <<- unique(lapply(declRules, function(rule) rule$varName))
             rhsOriginalRules <- unlist(lapply(declInfo, function(x) x$rhsOriginalRules))
-            rhsOnlyRules <<- newVarRule(
+            rhsOnlyRules <<- newVarRules(
                 generateRHSonlyRules(rhsOriginalRules, declRules))
 
             allDownstreamRules <- unlist(lapply(declInfo, function(x) x$downstreamRules))
             varNames <- sapply(allDownstreamRules, function(rule)
                 rule$fromVarName)
-            downstreamRules <<- newVarRule(allDownstreamRules, varNames)
+            downstreamRules <<- newVarRules(allDownstreamRules, varNames)
             
             allUpstreamRules <- unlist(lapply(declInfo, function(x) x$upstreamRules))
             varNames <- sapply(allUpstreamRules, function(rule)
                 rule$fromVarName)   
-            upstreamRules <<- newVarRule(allUpstreamRules, varNames)
+            upstreamRules <<- newVarRules(allUpstreamRules, varNames)
 
             allCalcRules <- generateCalcRules(declRules, rhsOriginalRules, downstreamRules)
 
@@ -183,11 +183,11 @@ modelDefClass <- R6Class(
             ## setLatentNodes(calcRules)
 
             ## Set up nested lists indexed by varName
-            topRules <<- newVarRule(allCalcRules, type = 'top')
-            endRules <<- newVarRule(allCalcRules, type = 'end')
-            latentRules <<- newVarRule(allCalcRules, type = 'latent')
-            calcRules <<- newVarRule(allCalcRules)
-            declRules <<- newVarRule(declRules)
+            topRules <<- newVarRules(allCalcRules, type = 'top')
+            endRules <<- newVarRules(allCalcRules, type = 'end')
+            latentRules <<- newVarRules(allCalcRules, type = 'latent')
+            calcRules <<- newVarRules(allCalcRules)
+            declRules <<- newVarRules(declRules)
                         
             invisible(0)
         },

@@ -23,12 +23,14 @@ nodeRuleClass <- R6Class(
         varName = character(),
         numIndices = numeric(),
         graphRule = NULL,
-        tmpRule = NULL,  ## TODO: remove
-        externalRules = NULL, # indexing for the nodes
-        internalRules = NULL, # indexing for components, if multivariate nodes
-        numExternalRules = numeric(0),
-        numInternalRules = numeric(0),
-        index2setID = NULL,
+        ## `externalRules` and `internalRules` are subsets of the graphRule,
+        ## so sets of indexRules and associated information.
+        ## Use of plural 'Rules' is a bit confusing as each plays the role of a graphRule.
+        externalRules = list(), # indexing for the nodes
+        internalRules = list(), # indexing for components, if multivariate nodes
+        numExternalRules = 0,
+        numInternalRules = 0,
+        indexSlotToSet = NULL,
 
         initialize = function(expr, ID, context = modelContextClass$new(), constants = list()) {
             ## not clear everything will go through if no indexing
@@ -41,31 +43,33 @@ nodeRuleClass <- R6Class(
             ## Note: this is awkward to go into the data structures and modify them
 
             ## We'll use graphRules, though only have a single side of declaration.
-            graphRule <<- makeGraphRule(expr, expr, context, constants)
-            tmpRule <<- graphRuleClass$new(expr, expr, context, constants)
-            index2setID <<- graphRule$indexSets$LHSindex2setID
-            isConstant <- sapply(graphRule$indexRules, is, "indexRuleClass_constant")
-            
-            numIndices <<- length(graphRule$indexSets$LHSindex2setID)
+            graphRule <<- graphRuleClass$new(expr, expr, context, constants)
+            indexSlotToSet <<- graphRule$indexSets$toIndexSlotToSet
+            numIndices <<- length(graphRule$indexSets$toIndexSlotToSet)
 
-            ## Treat constants as internal rules that don't relate to indexing over nodes.
-            ## Need to relate constant rule types to indexing; constant rules are in order of constant indices.
-            constantIndices <- graphRule$indexSets$LHSindex2setID == 0
+            noIndices <- !length(graphRule$indexRules)
             
-            externalRules <<- graphRule
-            externalRules$indexRules[isConstant] <<- NULL
-            externalRules$indexSets$LHSindex2setID <<-
-                externalRules$indexSets$LHSindex2setID[!constantIndices]
+            if(!noIndices) {
+                isConstant <- sapply(graphRule$indexRules, is, "indexRuleConstantClass")
 
-            internalRules <<- graphRule
-            internalRules$indexRules[!isConstant] <<- NULL
-            internalRules$indexSets$numSets <<- 0
-            internalRules$indexSets$LHSindex2setID <<-
-                internalRules$indexSets$LHSindex2setID[constantIndices]
+                ## Treat constants as internal rules that don't relate to indexing over nodes.
+                ## Need to relate constant rule types to indexing; constant rules are in order of constant indices.
+                constantIndices <- graphRule$indexSets$toIndexSlotToSet == 0
             
-            numExternalRules <<- length(externalRules$indexRules)
-            numInternalRules <<- length(internalRules$indexRules)
-
+                externalRules <<- graphRule
+                externalRules$indexRules[isConstant] <<- NULL
+                externalRules$indexSets$toIndexSlotToSet <<-
+                    externalRules$indexSets$toIndexSlotToSet[!constantIndices]
+                
+                internalRules <<- graphRule
+                internalRules$indexRules[!isConstant] <<- NULL
+                internalRules$indexSets$numSets <<- 0
+                internalRules$indexSets$toIndexSlotToSet <<-
+                    internalRules$indexSets$toIndexSlotToSet[constantIndices]
+            
+                numExternalRules <<- length(externalRules$indexRules)
+                numInternalRules <<- length(internalRules$indexRules)
+            }
         },
         
         ## Generate nodeRange from a varRange (or another nodeRange)
@@ -77,16 +81,16 @@ nodeRuleClass <- R6Class(
                 return(NULL)  
             if(is.character(varRange)) 
                 if(name == varRange) {
-                    varRange <- tmpRule$getFromRange()  ## TODO change to graphRule$getFromRange()
+                    varRange <- graphRule$getFromRange()  
                 } else varRange <- varRangeClass$new(varRange)
             if(numExternalRules) {
-                externalRange <- applyGraphRule(varRange, externalRules)
+                externalRange <- externalRules$apply(varRange)
                 if(is.null(externalRange)) return(NULL)
-            } else externalRange <- NULL
+            } else externalRange <- varRangeClass$new(list())
             if(numInternalRules) {
-                internalRange <- applyGraphRule(varRange, internalRules)
+                internalRange <- internalRules$apply(varRange)
                 if(is.null(internalRange)) return(NULL)
-            } else internalRange <- NULL
+            } else internalRange <- varRangeClass$new(list())
             ## if((!is.null(externalRange) && externalRange$isEmpty()) || (!is.null(internalRange) &&  internalRange$isEmpty())) {
             ##     if(!is.null(externalRange))
             ##         externalRange <- varRangeClass$new(lapply(seq_len(numExternalRules), function(i) indexRange_empty()),
@@ -96,14 +100,12 @@ nodeRuleClass <- R6Class(
             ##                                            rangeToIndex = internalRange$rangeID_2_indexID)
             ## }
             result <- nodeRangeClass$new(varName, externalRange, internalRange,
-                                                index2setID, self)
+                                                indexSlotToSet, self)
             return(result)
         },
 
         getFullRange = function() {
-            ## TODO: when graphRule is an instance of graphRuleClass and not a list, change to this:
-            ## return(graphRule$apply(varName))
-            return(tmpRule$apply(varName))
+            return(graphRule$apply(varName))
         }
     )
 )
@@ -213,7 +215,7 @@ calcRuleClass <- R6Class(
             ## canonicalRule <- makeGraphIndexRules(expr, expr, context, constants)
             ## The following fails in ijni type case where 1:Inf is actually expanded in a matrix.
             ## canonicalRange <<- applyGraphIndexRules(
-            ##    varRangeClass$new(lapply(seq_along(graphRule$indexSets$LHSindex2setID),
+            ##    varRangeClass$new(lapply(seq_along(graphRule$indexSets$toIndexSlotToSet),
             ##        function(i) indexRange(quote(1:Inf)))), graphRule)
 
             ## For testing we are doing fracturing on generic nodeRules rather than declRules,
@@ -496,7 +498,7 @@ nodeRangeClass <- R6Class(
         initialize = function(varName,
                               externalRange,
                               internalRange,
-                              index2setID,
+                              indexSlotToSet,
                               declRule) {
 
             numExternalIndexRanges <<- length(externalRange$indexRanges)
@@ -505,10 +507,10 @@ nodeRangeClass <- R6Class(
             ## and then pass these into varRange initialization where indexID_2_rangeID will be recalculated
             ## from rangeID_2_indexID.
            
-            indexID_2_rangeID <<- rep(0, length(index2setID))
+            indexID_2_rangeID <<- rep(0, length(indexSlotToSet))
 
-            indexID_2_rangeID[index2setID != 0] <<- externalRange$indexID_2_rangeID
-            indexID_2_rangeID[index2setID == 0] <<- internalRange$indexID_2_rangeID +
+            indexID_2_rangeID[indexSlotToSet != 0] <<- externalRange$indexID_2_rangeID
+            indexID_2_rangeID[indexSlotToSet == 0] <<- internalRange$indexID_2_rangeID +
                 numExternalIndexRanges
             if(length(indexID_2_rangeID)) {
                 rangeID_2_indexID <<- lapply(seq_len(max(indexID_2_rangeID)),
@@ -532,7 +534,7 @@ nodeRangeClass <- R6Class(
             ## Expand externalRange into full matrix (crossed if necessary), keeping full internal
             ## indexing for each individual node.
             ## TODO: allow user to request all elements and compact/expanded
-            nc <- length(declRule$index2setID)  # might be, e.g., 0 1 0 2 3 or 0 1 0 2 1
+            nc <- length(declRule$indexSlotToSet)  # might be, e.g., 0 1 0 2 3 or 0 1 0 2 1
             str <- paste0(name, "[")
 
             nodeInfo <- lapply(indexRanges, function(x) {
@@ -560,7 +562,7 @@ nodeRangeClass <- R6Class(
             for(i in 1:nc) {
                 if(i > 1)
                     str <- paste0(str, ", ")
-                if(declRule$index2setID[i] == 0) {
+                if(declRule$indexSlotToSet[i] == 0) {
                     str <- paste0(str, internalInfo[[idxInternal]])
                     idxInternal <- idxInternal + 1
                 } else {

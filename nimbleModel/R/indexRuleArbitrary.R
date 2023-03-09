@@ -285,7 +285,7 @@ indexRuleArbitrary_applyMatrix <- function(indexRange,
     if(!length(toIndicesList))
         return(indexRangeEmptyClass$new())
 
-    ## `applyGraphRules` will use `collapse=FALSE`, as we need to maintain correspondence
+    ## `applyGraphRule` will use `collapse=FALSE`, as we need to maintain correspondence
     ## of rows of input indexRange (via toIndicesList) in order to cross results of multiple rules
     ## applied to a multi-column input indexRange.
     ## E.g., `y[i,j] <- x[k1[i],k2[j]]` can produce multiple output rows from an input row

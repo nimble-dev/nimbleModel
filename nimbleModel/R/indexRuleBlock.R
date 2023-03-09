@@ -104,7 +104,7 @@ indexRuleBlock_applyToMatrix <- function(fromValues,
     ## CHECK: Presumably NAs needed to preserve input length when combining results later.
     toValues[!valid] <- NA
 
-    ## `applyGraphRules` will use `collapse = FALSE` because
+    ## `applyGraphRule` will use `collapse = FALSE` because
     ## one could have something like `y[i,j] <- x[k[i],j]` applied to an input
     ## indexRangeMatrix with two columns. In that case the `i` rule can
     ## produce variable number of outputs for each input index, and these
