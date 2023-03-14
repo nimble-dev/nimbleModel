@@ -1,8 +1,8 @@
-## open issues:
+## An originalIndexingRuleClass object represents the relationship
+## between the loop indexing and the indexing of a LHS variable,
+## such as giving the values of `i` when provided a varRange for `y` in
+## `for(i in 1:n) y[i-2] <- 1`
 
-## y[5:7] ~ dmnorm()
-## is there an orig index rule?
-## if not, how handle finding calc for y[6:8] (i.e, offset/partial)
 
 originalIndexingRuleClass <- R6Class(
     classname = "originalIndexingRuleClass",
@@ -10,6 +10,7 @@ originalIndexingRuleClass <- R6Class(
     public = list(
         graphRule = NULL,
         varName = character(),
+        
         initialize = function(LHS,
                               context,
                               constants = list()) {
@@ -17,16 +18,19 @@ originalIndexingRuleClass <- R6Class(
             varName <<- deparse(varNameExpr)
             if(length(context$indexVarNames)) {
                 dummyLHS <- parse(text = paste0(varName, "[",
-                                                paste(context$indexVarNames, collapse = ","), "]"))[[1]]
-                } else dummyLHS <- varNameExpr
+                                                paste(context$indexVarNames, collapse = ","),
+                                                "]"))[[1]]
+            } else dummyLHS <- varNameExpr
             graphRule <<- graphRuleClass$new(dummyLHS,
                                              LHS,
                                              context,
                                              constants)
         },
-        
-        apply = function(fromVarRange, varName = NULL) {
-            graphRule$apply(fromVarRange, graphRule)
+
+        ## Produces a varRange, though it's not really a range for a variable
+        ## but rather a range for the indices.
+        apply = function(fromVarRange) {
+            graphRule$apply(fromVarRange)
         }
     )
 )

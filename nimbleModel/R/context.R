@@ -35,15 +35,18 @@ singleContextClass <- R6Class(
                 } else {
                     if(!identical(indexVarExpr, forCode[[2]]))
                         stop("singleContext: `indexVarExpr` does not match the index variable in `forCode`.")
+                    indexVarExpr <<- indexVarExpr
                 }
                 if(missing(indexRangeExpr)) {
                     indexRangeExpr <<- forCode[[3]]
                 } else {
                     if(!identical(indexRangeExpr, forCode[[3]]))
                         stop("singleContext: `indexRangeExpr` does not match the index range in `forCode`.")
+                    indexRangeExpr <<- indexRangeExpr
                 }
                 ## Remove any code from body of loop.
-                if(length(forCode) > 3) forCode <<- forCode[1:3]
+                if(length(forCode) > 3) forCode <- forCode[1:3]
+                forCode <<- forCode
             }
         }
     )
@@ -61,7 +64,7 @@ modelContextClass <- R6Class(
             
             ## Sets all fields, which never change.
             initialize = function(singleContexts) {
-                if(!missing(singleContexts)) {
+                if(!missing(singleContexts) && length(singleContexts)) {
                     singleContexts <<- lapply(singleContexts,
                                               function(x)
                                                   if(is.call(x)) {

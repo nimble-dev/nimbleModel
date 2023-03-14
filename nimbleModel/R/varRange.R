@@ -196,7 +196,7 @@ varRangeClass <- R6Class(
 varRange_isEqual <- function(vr1, vr2) {
     identical(vr1$indexSlotToRange, vr2$indexSlotToRange) &&
         identical(vr1$rangeToIndexSlot, vr2$rangeToIndexSlot) &&
-        all.equal(vr1$indexRanges, vr2$indexRanges)
+        isTRUE(all.equal(vr1$indexRanges, vr2$indexRanges))
 }
 
 getVarName <- function(x) {

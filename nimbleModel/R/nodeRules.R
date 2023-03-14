@@ -33,7 +33,6 @@ nodeRuleClass <- R6Class(
         indexSlotToSet = NULL,
 
         initialize = function(expr, ID, context = modelContextClass$new(), constants = list()) {
-            ## not clear everything will go through if no indexing
             varName <<- ifelse(length(expr) > 1, deparse(expr[[2]]), deparse(expr))
             ID <<- ID
             context <<- context
@@ -56,12 +55,12 @@ nodeRuleClass <- R6Class(
                 ## Need to relate constant rule types to indexing; constant rules are in order of constant indices.
                 constantIndices <- graphRule$indexSets$toIndexSlotToSet == 0
             
-                externalRules <<- graphRule
+                externalRules <<- graphRule$clone()
                 externalRules$indexRules[isConstant] <<- NULL
                 externalRules$indexSets$toIndexSlotToSet <<-
                     externalRules$indexSets$toIndexSlotToSet[!constantIndices]
                 
-                internalRules <<- graphRule
+                internalRules <<- graphRule$clone()
                 internalRules$indexRules[!isConstant] <<- NULL
                 internalRules$indexSets$numSets <<- 0
                 internalRules$indexSets$toIndexSlotToSet <<-
@@ -388,6 +387,8 @@ calcRangeClass <- R6Class(
         varName = NULL,
         indexingRange = NULL,
         sortID = NULL,
+        calcFun = NULL,
+        multiSortIDindex <- NULL
         initialize = function(varName, indexingRange, calcFun, sortID, multiSortIDindex) {
             varName <<- varName
             indexingRange <<- indexingRange
@@ -411,7 +412,7 @@ calcRangeClass <- R6Class(
             numRanges <- length(indexingRange$indexRanges)
             indexRange_lengths <- sapply(indexingRange$indexRanges,
                                          function(x) x$numElements)
-            indexPositions <- indexingRange$rangeID_2_indexID
+            indexPositions <- indexingRange$rangeToIndexSlot
             len <- prod(indexRange_lengths)
             ## nestedLengths <- sapply(seq_len(numRanges), function(i) prod(indexRange_lengths[(i+1):numRanges]))
 
@@ -430,7 +431,7 @@ calcRangeClass <- R6Class(
                 }
 
                 if(length(sortID) == 1 || len == 1) {
-                    index <- numeric(length(indexingRange$indexID_2_rangeID))  ## vector to hold the original index values
+                    index <- numeric(length(indexingRange$indexSlotToRange))  ## vector to hold the original index values
                     for(item in seq_len(len)) {
                         for(irIndex in seq_len(numRanges)) {
                             ## Determine nested indexing from unrolled indexing
@@ -449,7 +450,7 @@ calcRangeClass <- R6Class(
                         result[item] <- calcFun(index)  ## scalar calculation
                     }
                 } else {
-                    index <- matrix(0, len, length(indexingRange$indexID_2_rangeID))  ## vector to hold the original index values
+                    index <- matrix(0, len, length(indexingRange$indexSlotToRange))  ## vector to hold the original index values
                     sortIDvals <- rep(0, len)
                     for(item in seq_len(len)) {
                         for(irIndex in seq_len(numRanges)) {
@@ -503,21 +504,21 @@ nodeRangeClass <- R6Class(
 
             numExternalIndexRanges <<- length(externalRange$indexRanges)
             
-            ## This is convoluted to determine the indexID_2_rangeID and rangeID_2_indexID
-            ## and then pass these into varRange initialization where indexID_2_rangeID will be recalculated
-            ## from rangeID_2_indexID.
+            ## This is convoluted to determine the indexSlotToRange and rangeToIndexSlot
+            ## and then pass these into varRange initialization where indexSlotToRange will be recalculated
+            ## from rangeToIndexSlot.
            
-            indexID_2_rangeID <<- rep(0, length(indexSlotToSet))
+            indexSlotToRange <<- rep(0L, length(indexSlotToSet))
 
-            indexID_2_rangeID[indexSlotToSet != 0] <<- externalRange$indexID_2_rangeID
-            indexID_2_rangeID[indexSlotToSet == 0] <<- internalRange$indexID_2_rangeID +
+            indexSlotToRange[indexSlotToSet != 0] <<- externalRange$indexSlotToRange
+            indexSlotToRange[indexSlotToSet == 0] <<- internalRange$indexSlotToRange +
                 numExternalIndexRanges
-            if(length(indexID_2_rangeID)) {
-                rangeID_2_indexID <<- lapply(seq_len(max(indexID_2_rangeID)),
-                                             function(x) which(indexID_2_rangeID == x))
-            } else rangeID_2_indexID <- list()
+            if(length(indexSlotToRange)) {
+                rangeToIndexSlot <<- lapply(seq_len(max(indexSlotToRange)),
+                                             function(x) which(indexSlotToRange == x))
+            } else rangeToIndexSlot <- list()
             super$initialize(indexInfo = c(externalRange$indexRanges, internalRange$indexRanges),
-                             rangeToIndex = rangeID_2_indexID,
+                             rangeToIndex = rangeToIndexSlot,
                              varName = varName)
             boolExternalIndexRanges <<- c(rep(TRUE, numExternalIndexRanges),
                                           rep(FALSE, length(internalRange$indexRanges)))
@@ -538,8 +539,8 @@ nodeRangeClass <- R6Class(
             str <- paste0(name, "[")
 
             nodeInfo <- lapply(indexRanges, function(x) {
-                if(identical(attr(x, 'rangeType'), 'sequence'))
-                    result <- seq(x[[1]][[1]], x[[1]][[2]]) else result <- x[[1]]
+                if(is(x, 'indexRangeSequenceClass'))
+                    result <- seq(x$start, x$end) else result <- x[[1]]
                 if(!is.matrix(result)) result <- matrix(result, ncol = 1)
                 return(result)
             })
@@ -548,8 +549,8 @@ nodeRangeClass <- R6Class(
             }))
 
             internalInfo <- lapply(indexRanges[!boolExternalIndexRanges], function(x) {
-                if(identical(attr(x, 'rangeType'), 'sequence'))
-                    return(deparse(substitute(X:Y, list(X = x[[1]][[1]], Y = x[[1]][[2]]))))
+                if(is(x, 'indexRangeSequenceClass'))
+                    return(deparse(substitute(X:Y, list(X = x$start, Y = x$end))))
                 return(x)
             })
 
@@ -566,7 +567,7 @@ nodeRangeClass <- R6Class(
                     str <- paste0(str, internalInfo[[idxInternal]])
                     idxInternal <- idxInternal + 1
                 } else {
-                    rangeIdx <- indexID_2_rangeID[indexID_2_rangeID <= numExternalIndexRanges][idxNode] ## which indexRange is being used
+                    rangeIdx <- indexSlotToRange[indexSlotToRange <= numExternalIndexRanges][idxNode] ## which indexRange is being used
                     str <- paste0(str, nodeInfo[[rangeIdx]][expanded[ , rangeIdx], colID[[rangeIdx]]])
                     colID[[rangeIdx]] <- colID[[rangeIdx]] + 1  ## index through columns of the indexRange_matrix 
                     idxNode <- idxNode + 1
@@ -577,14 +578,14 @@ nodeRangeClass <- R6Class(
         },
 
         getVarRange = function() {
-            varRangeClass$new(indexRanges, rangeToIndex = rangeID_2_indexID, varName = varName, fromStochRule = declRule$stoch)
+            varRangeClass$new(indexRanges, rangeToIndexSlot = rangeToIndexSlot, varName = varName, fromStochRule = declRule$stoch)
         }
     )
 )
 
 nodeRange_isEqual <- function(nr1, nr2) {
-    ok <- identical(nr1$indexID_2_rangeID, nr2$indexID_2_rangeID) &&
-        identical(nr1$indexRanges, nr2$indexRanges) &&
+    ok <- identical(nr1$indexSlotToRange, nr2$indexSlotToRange) &&
+        isTRUE(all.equal(nr1$indexRanges, nr2$indexRanges)) &&
         identical(nr1$boolExternalIndexRanges, nr2$boolExternalIndexRanges) 
     return(ok)
 }
@@ -628,11 +629,11 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
     }
 
     ## Indices for internalRange should be identical, so just check/fracture those for external
-    boolIdenticalIndices <- sapply(seq_along(LHSrange$indexID_2_rangeID), function(idx)
-        isTRUE(all.equal(LHSrange$indexRanges[[LHSrange$indexID_2_rangeID[idx]]],
-                          fracturingRange$indexRanges[[fracturingRange$indexID_2_rangeID[idx]]])))
+    boolIdenticalIndices <- sapply(seq_along(LHSrange$indexSlotToRange), function(idx)
+        isTRUE(all.equal(LHSrange$indexRanges[[LHSrange$indexSlotToRange[idx]]],
+                          fracturingRange$indexRanges[[fracturingRange$indexSlotToRange[idx]]])))
 
-    ## boolIdenticalIndices <- sapply(LHSrange$indexID_2_rangeID, function(idx)
+    ## boolIdenticalIndices <- sapply(LHSrange$indexSlotToRange, function(idx)
     ##     isTRUE(all.equal(LHSrange$indexRanges[[idx]],
     ##                       fracturingRange$indexRanges[[idx]])))
 
@@ -654,29 +655,26 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
     
     if(length(nonIdenticalIndices) == 1) {
         ## Handle simple cases where need only fracture one index
-        LHS <- LHSrange$indexRanges[[LHSrange$indexID_2_rangeID[nonIdenticalIndices]]]
-        frac <- fracturingRange$indexRanges[[LHSrange$indexID_2_rangeID[nonIdenticalIndices]]]
+        LHS <- LHSrange$indexRanges[[LHSrange$indexSlotToRange[nonIdenticalIndices]]]
+        frac <- fracturingRange$indexRanges[[LHSrange$indexSlotToRange[nonIdenticalIndices]]]
         
-        typeLHS <- attr(LHS, "rangeType")
-        typeFrac <- attr(frac, "rangeType")
-
         focalContext <- sapply(names(singleContexts), function(nm)
             nm %in% all.vars(expr[[2+nonIdenticalIndices]]))
 
         ## If matrix involved, need to be dealt with so as to create an arbitrary rule.
-        if(typeLHS == "matrix" || typeFrac == "matrix") {
+        if(is(LHS, 'indexRangeMatrixClass') || is(frac, 'indexRangeMatrixClass')) {
             ## (as.numeric prevents some indexRanges from having ints when generally have doubles)
-            valsLHS <- switch(typeLHS,
-                              matrix = LHS[[1]],
-                              scalar = LHS[[1]],
-                              sequence = as.numeric(LHS[[1]][[1]]:LHS[[1]][[2]]),
-                              stop("typeLHS not found")
+            valsLHS <- switch(class(LHS)[1],
+                              indexRangeMatrixClass = LHS$values,
+                              indexRangeScalarClass = LHS$value,
+                              indexRangeSequenceClass = as.numeric(LHS$start:LHS$end),
+                              stop("fracture: `LHS` type not found.")
                               )
-            valsFrac <- switch(typeFrac,
-                              matrix = frac[[1]],
-                              scalar = frac[[1]],
-                              sequence = as.numeric(frac[[1]][[1]]:frac[[1]][[2]]),
-                              stop("typeFrac not found")
+            valsFrac <- switch(class(frac)[1],
+                              indexRangeMatrixClass = frac$values,
+                              indexRangeScalarClass = frac$value,
+                              indexRangeSequenceClass = as.numeric(frac$start:frac$end),
+                              stop("fracture: `frac` type not found.")
                               )
             valsLHS <- valsLHS[!valsLHS %in% valsFrac]
 
@@ -711,25 +709,25 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
 
             result <- list(fracturingRule, resultRule)
         } else {  # seq+seq or seq+scalar
-            if(typeFrac == "scalar")   # process as a sequence
-                frac <- newIndexRange(substitute(A:A, list(A = frac[[1]])))
-            if(typeLHS == "scalar") stop("Not expecting LHS to be a scalar")  ## scalar LHS either fully intersected or not intersected
+            if(is(frac, "indexRangeScalarClass"))   # process as a sequence
+                frac <- newIndexRange(substitute(A:A, list(A = frac$value)))
+            if(is(LHS, "indexRangeScalarClass")) stop("fracture: Not expecting `LHS` to be a scalar.")  ## scalar LHS either fully intersected or not intersected
           
-            if(frac[[1]][1] == LHS[[1]][[1]] || frac[[1]][[2]] == LHS[[1]][[2]]) {
+            if(frac$start == LHS$start || frac$end == LHS$end) {
                 ## Shrink existing sequence
-                if(frac[[1]][[1]] == LHS[[1]][[1]]) 
-                    LHS[[1]][[1]] <- frac[[1]][[2]]+1 else LHS[[1]][[2]] <- frac[[1]][[1]]-1
+                if(frac$start == LHS$start) 
+                    LHS$start <- frac$end+1 else LHS$end <- frac$start-1
 
                 newSingleContexts1 <- singleContexts[!focalContext]
                 newSingleContexts2 <- singleContexts[!focalContext]
 
                 newSingleContexts1[[length(newSingleContexts1)+1]] <- singleContextClass$new(
                     indexVarExpr = parsedIdxName,
-                    indexRangeExpr = substitute(A:B, list(A = LHS[[1]][[1]], B = LHS[[1]][[2]])))
+                    indexRangeExpr = substitute(A:B, list(A = LHS$start, B = LHS$end)))
 
                 newSingleContexts2[[length(newSingleContexts2)+1]] <- singleContextClass$new(
                     indexVarExpr = parsedIdxName,
-                    indexRangeExpr = substitute(A:B, list(A = frac[[1]][[1]], B = frac[[1]][[2]])))
+                    indexRangeExpr = substitute(A:B, list(A = frac$start, B = frac$end)))
 
                 expr[[nonIdenticalIndices+2]] <- newSingleContexts1[[length(newSingleContexts1)]]$indexVarExpr
 
@@ -746,17 +744,17 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
                 expr1 <- expr2 <- expr3 <- expr
                 newSingleContexts1[[length(newSingleContexts1)+1]] <- singleContextClass$new(
                     indexVarExpr = parsedIdxName,
-                    indexRangeExpr = substitute(A:B, list(A = frac[[1]][[1]], B = frac[[1]][[2]])))
+                    indexRangeExpr = substitute(A:B, list(A = frac$start, B = frac$end)))
                 expr1[[nonIdenticalIndices+2]] <- newSingleContexts1[[length(newSingleContexts1)]]$indexVarExpr
 
                 newSingleContexts2[[length(newSingleContexts2)+1]] <- singleContextClass$new(
                     indexVarExpr = parsedIdxName,
-                    indexRangeExpr = substitute(A:B, list(A = LHS[[1]][[1]], B = frac[[1]][[1]]-1)))
+                    indexRangeExpr = substitute(A:B, list(A = LHS$start, B = frac$start-1)))
                 expr2[[nonIdenticalIndices+2]] <- newSingleContexts2[[length(newSingleContexts2)]]$indexVarExpr
 
                 newSingleContexts3[[length(newSingleContexts3)+1]] <- singleContextClass$new(
                     indexVarExpr = parsedIdxName,
-                    indexRangeExpr = substitute(A:B, list(A = frac[[1]][[2]]+1, B = LHS[[1]][[2]])))
+                    indexRangeExpr = substitute(A:B, list(A = frac$end+1, B = LHS$end)))
                 expr3[[nonIdenticalIndices+2]] <- newSingleContexts3[[length(newSingleContexts3)]]$indexVarExpr
                
                 fracturingRule <- calcRuleClass$new(LHSrule$declRule, expr1, as.character(currentID + 1), context = modelContextClass$new(newSingleContexts1))

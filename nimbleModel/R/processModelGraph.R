@@ -47,6 +47,8 @@ generateRHSonlyRules <- function(rhsOriginalRules, declRules) {
         }
         rhsOnlyRules <- newRules
     }
+    ## Assign unique ID sequentially (these will overlap with calcRule IDs.
+    ## CHECK: do we use these IDs?
     tmp <- sapply(seq_along(rhsOnlyRules), function(idx) rhsOnlyRules[[idx]]$ID <- idx)
     return(rhsOnlyRules)
 }

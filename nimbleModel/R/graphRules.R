@@ -56,6 +56,13 @@ graphRuleClass <- R6Class(
             stoch <<- stoch
             fromVarName <<- deparse(ifelse(length(fromExpr) > 1, fromExpr[[2]], fromExpr))
             toVarName <<- deparse(ifelse(length(toExpr) > 1, toExpr[[2]], toExpr))
+
+            checkForVars(toExpr, fromExpr, context, constants)
+
+            ## RHSonlyRules can involve fewer single contexts than the full declaration (e.g., mu[i] <- tau)
+            ## Need to remove unneeded contexts or the indexSets won't be correct.
+            context <- modifyContextForFromOnlyRules(toExpr, fromExpr, context, constants)
+
             indexSets <<- makeSeparableIndexSets(toExpr, fromExpr, context)
             numFromIndexSlots <<- length(fromExpr) - 2
             if(numFromIndexSlots == -1)
@@ -245,7 +252,7 @@ checkForVars <- function(toExpr, fromExpr, context, constants) {
 }
 
 
-modifyContextForfromOnlyRules <- function(LHS, RHS, context, constants) {
+modifyContextForFromOnlyRules <- function(LHS, RHS, context, constants) {
     if(identical(LHS, RHS)) {
         varsInExpr <- NULL
         if(length(RHS) > 1)
@@ -262,12 +269,6 @@ makeIndexRules <- function(toExpr, fromExpr, indexSets, context, constants = lis
                         constants
                     else
                         list2env(constants)
-
-    checkForVars(toExpr, fromExpr, context, constants)
-
-    ## RHSonlyRules can involve fewer single contexts than the full declaration (e.g., mu[i] <- tau)
-    ## Need to remove unneeded contexts or the indexSets won't be correct.
-    context <- modifyContextForfromOnlyRules(toExpr, fromExpr, context, constants)
     
     if(length(toExpr) >= 3 && toExpr[[1]] == '[') {
         toIndexExprs <- as.list(toExpr[-c(1,2)])

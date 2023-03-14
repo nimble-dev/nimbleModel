@@ -101,7 +101,7 @@ modelDeclClass <- R6Class(
                                       length(symbolicParentNodes))
             for(i in seq_along(symbolicParentNodes)) {
                 rhsOriginalRules[[i]] <<-
-                    rhsRuleClass$new(symbolicParentNodes[[i]], i, context, constants)
+                    rhsRuleClass$new(symbolicParentNodes[[i]], context, constants)
             }
         }
     )
