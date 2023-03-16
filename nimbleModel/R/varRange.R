@@ -194,18 +194,18 @@ varRangeClass <- R6Class(
 ## NOTE: This will not catch cases where the order of the indexRanges
 ## is permuted consistent with `rangeToIndexSlot` and `indexSlotToRange`.
 varRange_isEqual <- function(vr1, vr2) {
-    identical(vr1$indexSlotToRange, vr2$indexSlotToRange) &&
+    return(identical(vr1$indexSlotToRange, vr2$indexSlotToRange) &&
         identical(vr1$rangeToIndexSlot, vr2$rangeToIndexSlot) &&
-        isTRUE(all.equal(vr1$indexRanges, vr2$indexRanges))
+        isTRUE(all.equal(vr1$indexRanges, vr2$indexRanges)))
 }
 
 getVarName <- function(x) {
     if(is(x, 'varRangeClass'))
         return(x$varName)
-    if(is.character(x)) {
-        expr <- parse(text = x)[[1]]
-        if(length(expr) == 1) return(x) else return(deparse(expr[[2]]))
-    }
+    if(is.character(x)) 
+        x <- parse(text = x)[[1]]
+    if(is.call(x) || is.name(x))
+        if(length(x) == 1) return(deparse(x)) else return(deparse(x[[2]]))
     if(is.null(x)) return(NULL)
     stop("getVarName: unexpected input.")
 }

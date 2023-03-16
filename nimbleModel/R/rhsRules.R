@@ -74,9 +74,9 @@ exclude <- function(rhsRule, excludingRule) {
     expr <- rhsRule$expr
     singleContexts <- rhsRule$context$singleContexts
     
-    if(rhsRule$numIndices == 1 || length(nonIdenticalIndices) == 1) {
+    if(length(rhsRule$fullRule$indexSets$toIndexSlotToSet) == 1 || length(nonIdenticalIndices) == 1) {
         ## TODO: remove this check when have done full testing and presumably simply above to only check 2nd condition.
-        if(rhsRule$numIndices == 1 && length(nonIdenticalIndices) != 1)
+        if(length(rhsRule$fullRule$indexSets$toIndexSlotToSet) == 1 && length(nonIdenticalIndices) != 1)
             stop("DEBUG: check.")
 
         ## split, shrink, or remove from focal index, and combine with other indices
@@ -162,31 +162,38 @@ exclude <- function(rhsRule, excludingRule) {
                 return(list(resultRule1, resultRule2))
             }
         }
-    } else { ## not simple setting of a single non-identical scalar index that needs to be considered
-        ## unroll, exclude, create new arbitrary rhsRule by creating a complicated context, crossed with any indices that are identical
+    } else { 
+        ## Scenarios that are not the simple setting of a single index slot that needs to be considered.
+        ## Create fully unrolled matrix of indices for non-identical indices, do exclusion,
+        ## then create new arbitrary rhsRule by creating a complicated context, crossed with any indices that are identical
         unrolledRHS <- rhsRange$extractIndexRange(nonIdenticalIndices)
         unrolledIntersection <- intersection$extractIndexRange(nonIdenticalIndices)
 
-        rhsAsChar <- do.call(paste, as.data.frame(unrolledRHS[[1]]))
-        intAsChar <- do.call(paste, as.data.frame(unrolledIntersection[[1]]))
+        ## Convert matrices of index values by row to strings to allow matching.
+        rhsAsChar <- do.call(paste, as.data.frame(unrolledRHS$values))
+        intAsChar <- do.call(paste, as.data.frame(unrolledIntersection$values))
 
         remaining <- !rhsAsChar %in% intAsChar
-        mat <- unrolledRHS[[1]][remaining, , drop = FALSE]
+        remainingVals <- unrolledRHS$values[remaining, , drop = FALSE]
 
-        focalContext <- sapply(names(singleContexts), function(nm)
+        ## Retain singleContexts for identical indices.
+        focalSingleContexts <- sapply(names(singleContexts), function(nm)
             nm %in% unlist(lapply(2+nonIdenticalIndices, function(x) all.vars(expr[[x]]))))
-        if(sum(!focalContext)) {
-            newSingleContexts <- singleContexts[!focalContext]
+        if(sum(!focalSingleContexts)) {
+            newSingleContexts <- singleContexts[!focalSingleContexts]
         } else newSingleContexts <- list()
 
         newSingleContexts[[length(newSingleContexts) + 1]] <- singleContextClass$new(
                                indexVarExpr = quote(.newidx),
-            indexRangeExpr = substitute(1:L, list(L = nrow(mat))))
+            indexRangeExpr = substitute(1:L, list(L = nrow(remainingVals))))
 
         newcode <- paste0(".idx", nonIdenticalIndices, "[.newidx]")
         for(i in seq_along(nonIdenticalIndices)) 
             expr[[nonIdenticalIndices[i]+2]] <- parse(text = newcode[i])[[1]]
-        constants <- lapply(seq_len(ncol(mat)), function(i) mat[,i])
+
+        ## Replace any constants related to an index slot processed in a previous
+        ## call to `exclude`.
+        constants <- lapply(seq_len(ncol(remainingVals)), function(i) remainingVals[ , i])
         names(constants) <- paste0(".idx", nonIdenticalIndices)
         oldConstants <- rhsRule$constants
         oldConstants[names(oldConstants) %in% names(constants)] <- NULL

@@ -1,3 +1,7 @@
+## {top,end,latent} rules are just lists of pointers/shallow copies of calcRules
+## {stoch,dep} rules are just lists of pointers/shallow copies of nodeRules
+
+
 modelDefClass <- R6Class(
     classname = "modelDefClass",
     portable = FALSE,
@@ -258,7 +262,7 @@ traverseGraph <- function(streamRules, declRules,
                                                   lapply(declRules[[getVarName(node)]]$rules,
                                                          function(declRule) {
                                                              tmp <- declRule$apply(node)
-                                                             if(is.null(tmp)) NULL else tmp$getVarRange()
+                                                             if(is.null(tmp)) NULL else tmp$toVarRange()
                                                          })
                                                   }))
         if(identical(selfRangeFromCharRanges, list(NULL)))

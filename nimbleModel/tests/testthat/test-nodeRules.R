@@ -1,6 +1,6 @@
 test_that("declRules are generated correctly", {
     singleContext1 <-
-        modelSingleContext(forCode = quote(for(i in 2:8){}))
+        singleContextClass$new(forCode = quote(for(i in 2:8){}))
     context_i <- modelContextClass$new(list(singleContext1))
 
     rule <- declRuleClass$new(quote(y[i+2] ~ dnorm(0,1)), 1, context_i)
@@ -18,9 +18,9 @@ test_that("declRules are generated correctly", {
 test_that("nodeRule creation and application works", {
     ## Apply nodeRule to varRange
     singleContext1 <-
-        modelSingleContext(forCode = quote(for(i in 2:8){}))
+        singleContextClass$new(forCode = quote(for(i in 2:8){}))
     singleContext2 <-
-        modelSingleContext(forCode = quote(for(j in 3:5){}))
+        singleContextClass$new(forCode = quote(for(j in 3:5){}))
     context_i <- modelContextClass$new(list(singleContext1))
     context_ij <- modelContextClass$new(list(singleContext1, singleContext2))
 
@@ -182,7 +182,7 @@ test_that("rhsRule creation and application works", {
     ## mu[i,j] <- mu0[i]
     
     singleContext1 <-
-        modelSingleContext(forCode = quote(for(i in 2:8){}))
+        singleContextClass$new(forCode = quote(for(i in 2:8){}))
     
     context_i <- modelContextClass$new(list(singleContext1))
 
@@ -229,11 +229,11 @@ test_that("rhsRule creation and application works", {
 
 test_that("calcRanges are generated correctly", {  
     singleContext1 <-
-        modelSingleContext(forCode = quote(for(i in 2:8){}))
+        singleContextClass$new(forCode = quote(for(i in 2:8){}))
     singleContext2 <-
-        modelSingleContext(forCode = quote(for(j in 3:5){}))
+        singleContextClass$new(forCode = quote(for(j in 3:5){}))
     singleContext3 <-
-        modelSingleContext(forCode = quote(for(k in 1:4){}))
+        singleContextClass$new(forCode = quote(for(k in 1:4){}))
     context_i <- modelContextClass$new(list(singleContext1))
     context_ijk <- modelContextClass$new(list(singleContext1, singleContext2, singleContext3))
     context_0 <- modelContextClass$new()
@@ -353,9 +353,9 @@ test_that("calcRanges are generated correctly", {
 
     ## j in 1:n[i] type case
     singleContext1 <-
-        modelSingleContext(forCode = quote(for(i in 1:3){}))
+        singleContextClass$new(forCode = quote(for(i in 1:3){}))
     singleContext2ni <-
-        modelSingleContext(indexVarExpr = quote(j),
+        singleContextClass$new(indexVarExpr = quote(j),
                            indexRangeExpr = quote(1:n[i]),
                            )
     context_ijni <- modelContextClass$new(list(singleContext1,
@@ -380,10 +380,10 @@ test_that("calcRule fracturing works", {
     ## I think nodeRuleClass can stay as a generic nodeRule rather than needed to be a calcRule,
     ## even though in real work, input would be a calcRule.
     singleContext1 <-
-        modelSingleContext(forCode = quote(for(i in 2:8){}))
+        singleContextClass$new(forCode = quote(for(i in 2:8){}))
     
     singleContext2 <-
-        modelSingleContext(forCode = quote(for(j in 1:4){}))
+        singleContextClass$new(forCode = quote(for(j in 1:4){}))
     
     context_0 <- modelContextClass$new()
     context_i <- modelContextClass$new(list(singleContext1))
@@ -410,11 +410,11 @@ test_that("calcRule fracturing works", {
 
     expect_identical(length(result), 2L)
     expr <- quote(mu[i])
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 3:3){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 3:3){}))))
     expected <- nodeRuleClass$new(expr, 1, context_tmp)
     expect_identical(result[[1]]$externalRules$indexRules[[1]]$setupResults,
                      expected$externalRules$indexRules[[1]]$setupResults)
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 4:9){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 4:9){}))))
     expected <- nodeRuleClass$new(expr, 1, context_tmp)
     expect_identical(result[[2]]$externalRules$indexRules[[1]]$setupResults,
                      expected$externalRules$indexRules[[1]]$setupResults)
@@ -429,11 +429,11 @@ test_that("calcRule fracturing works", {
 
     expect_identical(length(result), 2L)
     expr <- quote(mu[i])
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 3:4){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 3:4){}))))
     expected <- nodeRuleClass$new(expr, 1, context_tmp)
     expect_identical(result[[1]]$externalRules$indexRules[[1]]$setupResults,
                      expected$externalRules$indexRules[[1]]$setupResults)
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 5:9){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 5:9){}))))
     expected <- nodeRuleClass$new(expr, 1, context_tmp)
     expect_identical(result[[2]]$externalRules$indexRules[[1]]$setupResults,
                      expected$externalRules$indexRules[[1]]$setupResults)
@@ -448,15 +448,15 @@ test_that("calcRule fracturing works", {
 
     expect_identical(length(result), 3L)
     expr <- quote(mu[i])
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 4:5){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 4:5){}))))
     expected <- nodeRuleClass$new(expr, 1, context_tmp)
     expect_identical(result[[1]]$externalRules$indexRules[[1]]$setupResults,
                      expected$externalRules$indexRules[[1]]$setupResults)
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 3:3){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 3:3){}))))
     expected <- nodeRuleClass$new(expr, 1, context_tmp)
     expect_identical(result[[2]]$externalRules$indexRules[[1]]$setupResults,
                      expected$externalRules$indexRules[[1]]$setupResults)
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 6:9){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 6:9){}))))
     expected <- nodeRuleClass$new(expr, 1, context_tmp)
     expect_identical(result[[3]]$externalRules$indexRules[[1]]$setupResults,
                      expected$externalRules$indexRules[[1]]$setupResults)
@@ -474,11 +474,11 @@ test_that("calcRule fracturing works", {
     expect_identical(length(result), 2L)
     expr <- quote(mu[idx[i]])
     idx2 <- c(4,5,7,8)
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:3){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:3){}))))
     expected <- nodeRuleClass$new(expr, 1, context_tmp, constants = list(idx = idx))
     expect_equal(result[[1]]$externalRules$indexRules[[1]]$setupResults,
                  expected$externalRules$indexRules[[1]]$setupResults)
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:4){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:4){}))))
     expected <- nodeRuleClass$new(expr, 1, context_tmp, constants = list(idx = idx2))
     expect_equal(result[[2]]$externalRules$indexRules[[1]]$setupResults,
                  expected$externalRules$indexRules[[1]]$setupResults)
@@ -496,11 +496,11 @@ test_that("calcRule fracturing works", {
                      LHSrule$internalRules$indexRules[[1]]$setupResults)
     expect_identical(result[[2]]$internalRules$indexRules[[1]]$setupResults,
                      LHSrule$internalRules$indexRules[[1]]$setupResults)
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 2:3){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 2:3){}))))
     expected <- nodeRuleClass$new(LHS, 1, context_tmp)
     expect_identical(result[[1]]$externalRules$indexRules[[1]]$setupResults,
                      expected$externalRules$indexRules[[1]]$setupResults)
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 4:8){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 4:8){}))))
     expected <- nodeRuleClass$new(LHS, 1, context_tmp)
     expect_identical(result[[2]]$externalRules$indexRules[[1]]$setupResults,
                      expected$externalRules$indexRules[[1]]$setupResults)
@@ -526,13 +526,13 @@ test_that("calcRule fracturing works", {
         expect_identical(result[[k]]$index2setID, c(0,1,2,0))
     }
     
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:2){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:2){}))))
     idx <- as.integer(c(2,4))
     expr <- quote(mu[idx[i]])
     expected <- nodeRuleClass$new(expr, 1, context_tmp, constants = list(idx = idx))
     expect_equal(result[[1]]$externalRules$indexRules[[2]]$setupResults,
                  expected$externalRules$indexRules[[1]]$setupResults)
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:5){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:5){}))))
     idx <- as.integer(c(3,5,6,7,8))
     expr <- quote(mu[idx[i]])
     expected <- nodeRuleClass$new(expr, 1, context_tmp, constants = list(idx = idx))
@@ -579,14 +579,14 @@ test_that("calcRule fracturing works", {
         expect_identical(result[[k]]$index2setID, c(0,1,1,0))
     }
 
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:4){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:4){}))))
     idx1 <- as.integer(c(2,3,2,3))
     idx2 <- as.integer(c(2,2,3,3))
     expr <- quote(mu[idx1[i],idx2[i]])
     expected <- nodeRuleClass$new(expr, 1, context_tmp, constants = list(idx1 = idx1, idx2 = idx2))
     expect_equal(result[[1]]$externalRules$indexRules[[1]]$setupResults,
                  expected$externalRules$indexRules[[1]]$setupResults)
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:24){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:24){}))))
     idx1 <- as.integer(c(1,4,1,4,rep(1:4, 5)))
     idx2 <- as.integer(c(2,2,3,3,rep(4:8, each = 4)))
     expr <- quote(mu[idx1[i],idx2[i]])
@@ -613,14 +613,14 @@ test_that("calcRule fracturing works", {
         expect_identical(result[[k]]$index2setID, c(0,1,1,0))
     }
 
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:2){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:2){}))))
     idx1 <- as.integer(c(2,3))
     idx2 <- as.integer(c(3,7))
     expr <- quote(mu[idx1[i],idx2[i]])
     expected <- nodeRuleClass$new(expr, 1, context_tmp, constants = list(idx1 = idx1, idx2 = idx2))
     expect_equal(result[[1]]$externalRules$indexRules[[1]]$setupResults,
                  expected$externalRules$indexRules[[1]]$setupResults)
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:26){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:26){}))))
     idx1 <- as.integer(rep(1:4, 7))
     idx2 <- as.integer(rep(2:8, each = 4))
     wh <- (idx1 == 2 & idx2 == 3) | (idx1 == 3 & idx2 == 7)
@@ -640,10 +640,10 @@ test_that("RHS exclusion works", {
     ## I think nodeRuleClass can stay as is here, even though in real work, input would be a calcRule
 
     singleContext1 <-
-        modelSingleContext(forCode = quote(for(i in 2:8){}))
+        singleContextClass$new(forCode = quote(for(i in 2:8){}))
     
     singleContext2 <-
-        modelSingleContext(forCode = quote(for(j in 1:4){}))
+        singleContextClass$new(forCode = quote(for(j in 1:4){}))
     
     context_0 <- modelContextClass$new()
     context_i <- modelContextClass$new(list(singleContext1))
@@ -667,7 +667,7 @@ test_that("RHS exclusion works", {
     
     result <- exclude(RHSrule, LHSrule)[[1]]
 
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 3:8){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 3:8){}))))
     expected <- rhsRuleClass$new(RHS, 1, context_tmp)
     expect_identical(result$externalRules$indexRules[[1]]$setupResults,
                     expected$externalRules$indexRules[[1]]$setupResults)
@@ -689,11 +689,11 @@ test_that("RHS exclusion works", {
 
     result <- exclude(RHSrule, LHSrule)
 
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 2:2){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 2:2){}))))
     expected <- rhsRuleClass$new(RHS, 1, context_tmp)
     expect_identical(result[[1]]$externalRules$indexRules[[1]]$setupResults,
                     expected$externalRules$indexRules[[1]]$setupResults)
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 4:8){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 4:8){}))))
     expected <- rhsRuleClass$new(RHS, 1, context_tmp)
     expect_identical(result[[2]]$externalRules$indexRules[[1]]$setupResults,
                     expected$externalRules$indexRules[[1]]$setupResults)
@@ -702,13 +702,13 @@ test_that("RHS exclusion works", {
     ## seq/seq partial overlap
     RHS <- quote(mu[i+1])
     RHSrule <- rhsRuleClass$new(RHS, 1, context_i)
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:5){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:5){}))))
     LHS <- quote(mu[i])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_tmp)
 
     result <- exclude(RHSrule, LHSrule)
 
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 5:8){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 5:8){}))))
     expected <- rhsRuleClass$new(RHS, 1, context_tmp)
     expect_identical(result[[1]]$externalRules$indexRules[[1]]$setupResults,
                     expected$externalRules$indexRules[[1]]$setupResults)
@@ -717,7 +717,7 @@ test_that("RHS exclusion works", {
     ## seq/seq full overlap
     RHS <- quote(mu[i+1])
     RHSrule <- rhsRuleClass$new(RHS, 1, context_i)
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:9){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:9){}))))
     LHS <- quote(mu[i])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_tmp)
 
@@ -727,20 +727,20 @@ test_that("RHS exclusion works", {
     ## matrix in LHS
     RHS <- quote(mu[i+1])
     RHSrule <- rhsRuleClass$new(RHS, 1, context_i)
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:3){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:3){}))))
     LHS <- quote(mu[idx[i]])
     idx <- c(2,5,4)
     LHSrule <- nodeRuleClass$new(LHS, 1, context_tmp, constants = list(idx = idx))
 
     result <- exclude(RHSrule, LHSrule)
 
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 2:2){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 2:2){}))))
     expected <- rhsRuleClass$new(RHS, 1, context_tmp)
 
     expect_equal(result[[1]]$externalRules$indexRules[[1]]$setupResults,
                      expected$externalRules$indexRules[[1]]$setupResults)
 
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 5:8){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 5:8){}))))
     expected <- rhsRuleClass$new(RHS, 1, context_tmp)
 
     expect_equal(result[[2]]$externalRules$indexRules[[1]]$setupResults,
@@ -751,13 +751,13 @@ test_that("RHS exclusion works", {
     idx <- c(14,4,2,9,1,3,7,11)
     RHS <- quote(mu[idx[i]])
     RHSrule <- rhsRuleClass$new(RHS, 1, context_i, constants = list(idx = idx))
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:3){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:3){}))))
     LHS <- quote(mu[i])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_tmp)
 
     result <- exclude(RHSrule, LHSrule)
 
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:4){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:4){}))))
     idx <- as.integer(c(4,7,9,11))
     expected <- rhsRuleClass$new(RHS, 1, context_tmp, constants = list(idx = idx))
 
@@ -774,7 +774,7 @@ test_that("RHS exclusion works", {
 
     result <- exclude(RHSrule, LHSrule)
 
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:5){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:5){}))))
     idx1 <- c(11,11,12,13,5)
     idx2 <- c(2,5,6,7,13)
     expected <- rhsRuleClass$new(RHS, 1, context_tmp, constants = list(idx1 = idx1,idx2=idx2))
@@ -792,7 +792,7 @@ test_that("RHS exclusion works", {
 
     result <- exclude(RHSrule, LHSrule)
 
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:26){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:26){}))))
     idx1 <- c(2,3,5,6,7,8,2,4:8,rep(2:8, 2))
     idx2 <- c(rep(1,6),rep(2,6),rep(3,7), rep(4,7))
     expected <- rhsRuleClass$new(LHS, 1, context_tmp, constants = list(idx1 = idx1,idx2=idx2))
@@ -807,14 +807,14 @@ test_that("RHS exclusion works", {
     
     result <- exclude(RHSrule, LHSrule)
 
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 2:4){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 2:4){}))))
     expected <- rhsRuleClass$new(RHS, 1, context_tmp)
     expect_identical(result[[1]]$externalRules$indexRules[[1]]$setupResults,
                      RHSrule$externalRules$indexRules[[2]]$setupResults)
     expect_identical(result[[1]]$externalRules$indexRules[[2]]$setupResults,
                      expected$externalRules$indexRules[[1]]$setupResults)
     
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 6:8){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 6:8){}))))
     expected <- rhsRuleClass$new(RHS, 1, context_tmp)
     expect_identical(result[[2]]$externalRules$indexRules[[1]]$setupResults,
                     RHSrule$externalRules$indexRules[[2]]$setupResults)
@@ -833,20 +833,20 @@ test_that("RHS exclusion works", {
     ## basic mv node case with seq-seq partial overlap
     RHS <- quote(mu[i,1:3])
     RHSrule <- rhsRuleClass$new(RHS, 1, context_i)
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 4:5){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 4:5){}))))
     LHS <- quote(mu[i+1, 1:3])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_tmp)
     
     result <- exclude(RHSrule, LHSrule)
     
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 2:4){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 2:4){}))))
     expected <- rhsRuleClass$new(RHS, 1, context_tmp)
     expect_identical(result[[1]]$externalRules$indexRules[[1]]$setupResults,
                      RHSrule$externalRules$indexRules[[2]]$setupResults)
     expect_identical(result[[1]]$externalRules$indexRules[[2]]$setupResults,
                      expected$externalRules$indexRules[[1]]$setupResults)
     
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 7:8){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 7:8){}))))
     expected <- rhsRuleClass$new(RHS, 1, context_tmp)
     expect_identical(result[[2]]$externalRules$indexRules[[1]]$setupResults,
                     RHSrule$externalRules$indexRules[[2]]$setupResults)
@@ -862,16 +862,16 @@ test_that("RHS exclusion works", {
     
     result <- exclude(RHSrule, LHSrule)
 
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 2:4){})),
-                                              modelSingleContext(forCode = quote(for(j in 1:4){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 2:4){})),
+                                              singleContextClass$new(forCode = quote(for(j in 1:4){}))))
     expected <- rhsRuleClass$new(RHS, 1, context_tmp, constants = list(idx = idx))
     expect_equal(result[[1]]$externalRules$indexRules[[1]]$setupResults,
                      RHSrule$externalRules$indexRules[[2]]$setupResults)
     expect_identical(result[[1]]$externalRules$indexRules[[2]]$setupResults,
                      expected$externalRules$indexRules[[1]]$setupResults)
     
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 6:8){})),
-                                              modelSingleContext(forCode = quote(for(j in 1:4){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 6:8){})),
+                                              singleContextClass$new(forCode = quote(for(j in 1:4){}))))
     expected <- rhsRuleClass$new(RHS, 1, context_tmp, constants = list(idx = idx))
     expect_equal(result[[2]]$externalRules$indexRules[[1]]$setupResults,
                     RHSrule$externalRules$indexRules[[2]]$setupResults)
@@ -884,13 +884,13 @@ test_that("RHS exclusion works", {
     ## Partial overlap in some rows; for now this is simply unrolled.
     RHS <- quote(mu[i,1:3])
     RHSrule <- rhsRuleClass$new(RHS, 1, context_i)
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 7:9){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 7:9){}))))
     LHS <- quote(mu[i, 1:2])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_tmp)
     
     result <- exclude(RHSrule, LHSrule)
 
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:17){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:17){}))))
     idx1 <- c(2:6,2:6,2:8)
     idx2 <- c(rep(1,5), rep(2,5), rep(3, 7))
     RHS <- quote(mu[idx1[i], idx2[i]])
@@ -906,7 +906,7 @@ test_that("RHS exclusion works", {
     
     result <- exclude(RHSrule, LHSrule)
 
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:20){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:20){}))))
     idx1 <- c(2:8,2:8,2,4:8)
     idx2 <- c(rep(1,7), rep(2,7), rep(3, 6))
     RHS <- quote(mu[idx1[i], idx2[i]])
@@ -918,12 +918,12 @@ test_that("RHS exclusion works", {
     ## LHS fully overlaps RHS block constant in additional dimension; this is handled nicely.
     RHS <- quote(mu[i,1:3])
     RHSrule <- rhsRuleClass$new(RHS, 1, context_i)
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 7:9){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 7:9){}))))
     LHS <- quote(mu[i, 1:4])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_tmp)
     
     result <- exclude(RHSrule, LHSrule)
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 2:6){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 2:6){}))))
     expected <- rhsRuleClass$new(RHS, 1, context_tmp)
     expect_identical(result[[1]]$externalRules$indexRules[[2]]$setupResults,
                      expected$externalRules$indexRules[[1]]$setupResults)
@@ -933,13 +933,13 @@ test_that("RHS exclusion works", {
     ## basic 3-d case - two identical indices
     RHS <- quote(mu[1:3, i, 1:2])
     RHSrule <- rhsRuleClass$new(RHS, 1, context_i)
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 7:9){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 7:9){}))))
     LHS <- quote(mu[1:3, i, 1:2])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_tmp)
  
     result <- exclude(RHSrule, LHSrule)
     
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 2:6){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 2:6){}))))
     expected <- rhsRuleClass$new(RHS, 1, context_tmp)
     expect_identical(result[[1]]$externalRules$indexRules[[1]]$setupResults,
                      RHSrule$externalRules$indexRules[[2]]$setupResults)
@@ -953,15 +953,15 @@ test_that("RHS exclusion works", {
     RHS <- quote(mu[i, j, 1:3])
     RHSrule <- rhsRuleClass$new(RHS, 1, context_ij)
 
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 7:9){})),
-                                              modelSingleContext(forCode = quote(for(j in 1:4){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 7:9){})),
+                                              singleContextClass$new(forCode = quote(for(j in 1:4){}))))
     LHS <- quote(mu[i, j, 1:2])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_tmp)
     
     result <- exclude(RHSrule, LHSrule)
 
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 1:17){})),
-                                              modelSingleContext(forCode = quote(for(j in 1:4){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:17){})),
+                                              singleContextClass$new(forCode = quote(for(j in 1:4){}))))
     idx1 <- c(2:6,2:6,2:8)
     idx2 <- c(rep(1,5), rep(2,5), rep(3, 7))
     expr <- quote(mu[idx1[i], j, idx2[i]])
@@ -983,8 +983,8 @@ test_that("RHS exclusion works", {
     
     result <- exclude(RHSrule, LHSrule)
 
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 3:8){})),
-                                              modelSingleContext(forCode = quote(for(j in 1:4){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 3:8){})),
+                                              singleContextClass$new(forCode = quote(for(j in 1:4){}))))
     expected <- rhsRuleClass$new(RHS, 1, context_tmp, constants = list(idx1 = idx1,idx2=idx2))
     expect_equal(result[[1]]$externalRules$indexRules[[1]]$setupResults,
                      RHSrule$externalRules$indexRules[[2]]$setupResults)
@@ -1002,8 +1002,8 @@ test_that("RHS exclusion works", {
     
     result <- exclude(RHSrule, LHSrule)
 
-    context_tmp <- modelContextClass$new(list(modelSingleContext(forCode = quote(for(i in 2:8){})),
-                                              modelSingleContext(forCode = quote(for(j in 1:2){}))))
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 2:8){})),
+                                              singleContextClass$new(forCode = quote(for(j in 1:2){}))))
     idx5 <- c(1,7)
     idx6 <- c(3,9)
     expr <- quote(mu[idx5[j], i, idx6[j]])
@@ -1028,9 +1028,9 @@ test_that("RHS exclusion works", {
 ## FAILS for the moment because of logProb initialization currently hacked into $calculate (see next test)
 test_that("declaration-specific calculate generated correctly", {
     singleContext1 <-
-        modelSingleContext(forCode = quote(for(i in 2:8){}))
+        singleContextClass$new(forCode = quote(for(i in 2:8){}))
     singleContext2 <-
-        modelSingleContext(forCode = quote(for(j in 1:4){}))
+        singleContextClass$new(forCode = quote(for(j in 1:4){}))
     context_ij <- modelContextClass$new(list(singleContext1, singleContext2))
 
     context_0 <- modelContextClass$new()
@@ -1059,7 +1059,7 @@ test_that("calculate works correctly", {
     expect_identical(get('logProb_y', .GlobalEnv), true_logProb_y)
 
     singleContext1 <-
-        modelSingleContext(forCode = quote(for(i in 2:6){}))
+        singleContextClass$new(forCode = quote(for(i in 2:6){}))
     context_i <- modelContextClass$new(list(singleContext1))
     declRule <- declRuleClass$new(quote(y[i] ~ dnorm(0, 1)), 1, context_i)
 
@@ -1082,9 +1082,9 @@ test_that("calculate works correctly", {
     ## current nimble 1e5 dnorms is 34 sec. (compare to vec dnorm in R of .02 f0r 1e6 and for loop of 0.88 sec for 1e6)
 
     singleContext1 <-
-        modelSingleContext(forCode = quote(for(i in 2:6){}))
+        singleContextClass$new(forCode = quote(for(i in 2:6){}))
     singleContext2 <-
-        modelSingleContext(forCode = quote(for(j in 3:9){}))
+        singleContextClass$new(forCode = quote(for(j in 3:9){}))
     context_ij <- modelContextClass$new(list(singleContext1, singleContext2))
     declRule <- declRuleClass$new(quote(y[j,i] ~ dnorm(x[i], 1)), 1, context_ij)
 
@@ -1123,11 +1123,11 @@ test_that("calculate works correctly", {
     expect_identical(get('y', .GlobalEnv)[matrix(c(3,2,4,3,3,4,5,2,5,5,3,5), byrow = TRUE, ncol = 3)], x[matrix(c(3,4,3,4,5,5,5,5), byrow = TRUE, ncol = 2)])
 
     singleContext1 <-
-        modelSingleContext(forCode = quote(for(i in 1:2){}))
+        singleContextClass$new(forCode = quote(for(i in 1:2){}))
     singleContext2 <-
-        modelSingleContext(forCode = quote(for(j in 1:3){}))
+        singleContextClass$new(forCode = quote(for(j in 1:3){}))
     singleContext3 <-
-        modelSingleContext(forCode = quote(for(k in 1:4){}))
+        singleContextClass$new(forCode = quote(for(k in 1:4){}))
     context_ijk <- modelContextClass$new(list(singleContext1, singleContext2, singleContext3))
 
     y <- array(rnorm(2*3*4), c(2,3,4))
@@ -1191,10 +1191,10 @@ test_that("calculate works correctly for SSM recursion", {
 test_that("getFullRange works correctly", {
     context_0 <- modelContextClass$new()
     singleContext1 <-
-        modelSingleContext(forCode = quote(for(i in 2:8){}))
+        singleContextClass$new(forCode = quote(for(i in 2:8){}))
     context_i <- modelContextClass$new(list(singleContext1))
     singleContext2 <-
-        modelSingleContext(forCode = quote(for(j in 1:4){}))
+        singleContextClass$new(forCode = quote(for(j in 1:4){}))
     context_ij <- modelContextClass$new(list(singleContext1, singleContext2))
 
     LHS <- quote(mu)
@@ -1244,6 +1244,31 @@ test_that("getFullRange works correctly", {
 })
 
 
+test_that("nodeRange::print works correctly", {
+    ## We need to test result of `toChar` as no obvious way
+    ## to capture and check result of print method.
+    singleContext1 <-
+        singleContextClass$new(forCode = quote(for(i in 2:8){}))
+    singleContext2 <-
+        singleContextClass$new(forCode = quote(for(j in 3:5){}))
+    context_i <- modelContextClass$new(list(singleContext1))
+    context_ij <- modelContextClass$new(list(singleContext1, singleContext2))
 
+    LHS <- quote(mu[1:3,i])
+    LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
+    
+    expect_identical(LHSrule$apply()$toChar(),
+                     "`mu[1:3, idx1]`, for idx1 in 2:8")
 
+    LHS <- quote(mu[1:3,j,i])
+    LHSrule <- nodeRuleClass$new(LHS, 1, context_ij)
+    expect_identical(LHSrule$apply()$toChar(),
+                     "`mu[1:3, idx1, idx2]`, for idx1 in 3:5, idx2 in 2:8")
+
+    LHS <- quote(mu[1:3,j,i-1])
+    LHSrule <- nodeRuleClass$new(LHS, 1, context_ij)
+    expect_identical(LHSrule$apply()$toChar(),
+                     "`mu[1:3, idx1, idx2]`, for idx1 in 3:5, idx2 in 1:7")
+  
+})
 

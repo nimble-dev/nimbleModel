@@ -570,8 +570,6 @@ applyGraphRule <- function(fromVarRange, rule, varName = NULL) {
         if(length(constantSlots) != length(constantRulesIdx) &&
            length(constantSlots) > 0)
             stop("applyGraphRule: number of constant rules doesn't match number of index slots.")
-        if(!length(constantSlots))  ## indexRangeNone case; there are problems later if an empty list
-            constantSlots <- 1
         finalRangeToIndexSlot <- c(finalRangeToIndexSlot, as.list(constantSlots))
     }
 
