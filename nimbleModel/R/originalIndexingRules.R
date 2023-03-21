@@ -14,13 +14,12 @@ originalIndexingRuleClass <- R6Class(
         initialize = function(LHS,
                               context,
                               constants = list()) {
-            varNameExpr <- ifelse(length(LHS) == 1, LHS, LHS[[2]])
-            varName <<- deparse(varNameExpr)
+            varName <<- getVarName(LHS)
             if(length(context$indexVarNames)) {
                 dummyLHS <- parse(text = paste0(varName, "[",
                                                 paste(context$indexVarNames, collapse = ","),
                                                 "]"))[[1]]
-            } else dummyLHS <- varNameExpr
+            } else dummyLHS <- as.name(varName)
             graphRule <<- graphRuleClass$new(dummyLHS,
                                              LHS,
                                              context,

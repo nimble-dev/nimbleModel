@@ -25,26 +25,26 @@ test_that("graph processing for basic model works", {
     ids <- sapply(tmp, function(x) x$ID)
     names(ids) <- sub("\\..*", "", names(ids))
     
-    expect_identical(modelDef$calcRules[['sigma']]$rules[[1]]$is_type('top'), TRUE)
-    expect_identical(modelDef$calcRules[['sigma']]$rules[[1]]$is_type('end'), FALSE)
-    expect_identical(modelDef$calcRules[['sigma']]$rules[[1]]$is_type('latent'), FALSE)
+    expect_identical(modelDef$calcRules[['sigma']]$rules[[1]]$is('top'), TRUE)
+    expect_identical(modelDef$calcRules[['sigma']]$rules[[1]]$is('end'), FALSE)
+    expect_identical(modelDef$calcRules[['sigma']]$rules[[1]]$is('latent'), FALSE)
     expect_identical(modelDef$calcRules[['sigma']]$rules[[1]]$sortID, 1)
     expect_identical(modelDef$calcRules[['sigma']]$rules[[1]]$ID, getElement(ids, "sigma"))
     expect_identical(modelDef$calcRules[['sigma']]$rules[[1]]$parents, numeric(0))
     expect_identical(modelDef$calcRules[['sigma']]$rules[[1]]$children, getElement(ids, 'y'))
                      
-    expect_identical(modelDef$calcRules[['y']]$rules[[1]]$is_type('top'), FALSE)
-    expect_identical(modelDef$calcRules[['y']]$rules[[1]]$is_type('end'), TRUE)
-    expect_identical(modelDef$calcRules[['y']]$rules[[1]]$is_type('latent'), FALSE)
+    expect_identical(modelDef$calcRules[['y']]$rules[[1]]$is('top'), FALSE)
+    expect_identical(modelDef$calcRules[['y']]$rules[[1]]$is('end'), TRUE)
+    expect_identical(modelDef$calcRules[['y']]$rules[[1]]$is('latent'), FALSE)
     expect_identical(modelDef$calcRules[['y']]$rules[[1]]$sortID, 2)
     expect_identical(modelDef$calcRules[['y']]$rules[[1]]$ID, getElement(ids, "y"))
     expect_identical(sort(modelDef$calcRules[['y']]$rules[[1]]$parents),
                      sort(c(getElement(ids, "sigma"), getElement(ids, "mu"))))
     expect_identical(modelDef$calcRules[['y']]$rules[[1]]$children, numeric(0))
 
-    expect_identical(modelDef$calcRules[['mu']]$rules[[1]]$is_type('top'), TRUE)
-    expect_identical(modelDef$calcRules[['mu']]$rules[[1]]$is_type('end'), FALSE)
-    expect_identical(modelDef$calcRules[['mu']]$rules[[1]]$is_type('latent'), FALSE)
+    expect_identical(modelDef$calcRules[['mu']]$rules[[1]]$is('top'), TRUE)
+    expect_identical(modelDef$calcRules[['mu']]$rules[[1]]$is('end'), FALSE)
+    expect_identical(modelDef$calcRules[['mu']]$rules[[1]]$is('latent'), FALSE)
     expect_identical(modelDef$calcRules[['mu']]$rules[[1]]$sortID, 1)
     expect_identical(modelDef$calcRules[['mu']]$rules[[1]]$ID, getElement(ids, "mu"))
     expect_identical(modelDef$calcRules[['mu']]$rules[[1]]$parents, numeric(0))
@@ -90,45 +90,45 @@ test_that("graph processing for basic model with deterministic nodes works", {
     names(ids) <- sub("\\..*", "", names(ids))
 
     var <- 'sigma'
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('top'), TRUE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('end'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('latent'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('top'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('end'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('latent'), FALSE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 3)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$ID, getElement(ids, var))
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$parents, numeric(0))
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$children, getElement(ids, 'y'))
 
     var <- 'mu0'
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('top'), TRUE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('end'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('latent'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('top'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('end'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('latent'), FALSE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 1)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$ID, getElement(ids, var))
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$parents, numeric(0))
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$children, getElement(ids, "mu"))
 
     var <- 'mu'
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('top'), TRUE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('end'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('latent'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('top'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('end'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('latent'), FALSE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 2)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$ID, getElement(ids, var))
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$parents, getElement(ids, "mu0"))
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$children, getElement(ids, "phi"))
 
     var <- "phi"
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('top'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('end'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('latent'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('top'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('end'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('latent'), TRUE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 3)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$ID, getElement(ids, var))
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$parents, getElement(ids, "mu"))
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$children, getElement(ids, "y"))
 
     var <- "y"
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('top'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('end'), TRUE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('latent'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('top'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('end'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('latent'), FALSE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 4)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$ID, getElement(ids, var))
     expect_identical(sort(modelDef$calcRules[[var]]$rules[[1]]$parents),
@@ -136,9 +136,9 @@ test_that("graph processing for basic model with deterministic nodes works", {
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$children, getElement(ids, "z"))
 
     var <- "z"
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('top'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('end'), TRUE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('latent'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('top'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('end'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('latent'), FALSE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 5)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$ID, getElement(ids, var))
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$parents, getElement(ids, "y"))
@@ -206,17 +206,17 @@ test_that("graph processing with split latent node", {
     var <- "z"
 
     ## z[1] (some hard-coding here)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('top'), TRUE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('end'), TRUE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('latent'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('top'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('end'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('latent'), FALSE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 2)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$parents, numeric(0))
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$children, "4")
 
     ## z[2] (some hard-coding here)
-    expect_identical(modelDef$calcRules[[var]]$rules[[2]]$is_type('top'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[2]]$is_type('end'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[2]]$is_type('latent'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[2]]$is('top'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[2]]$is('end'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[2]]$is('latent'), TRUE)
     expect_identical(modelDef$calcRules[[var]]$rules[[2]]$sortID, 2)
     expect_identical(modelDef$calcRules[[var]]$rules[[2]]$parents, "1")
     expect_identical(modelDef$calcRules[[var]]$rules[[2]]$children, c("4", "6"))
@@ -250,9 +250,9 @@ test_that("graph processing with split LHS node", {
     
     var <- "z"
     expect_identical(length(modelDef$calcRules[[var]]$rules), 1L)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('top'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('end'), TRUE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('latent'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('top'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('end'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('latent'), FALSE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 2)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$parents, "3")
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$children, numeric(0))
@@ -260,23 +260,23 @@ test_that("graph processing with split LHS node", {
     var <- "y"
     expect_identical(length(modelDef$calcRules[[var]]$rules), 3L)
 
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('top'), TRUE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('end'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('latent'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('top'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('end'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('latent'), FALSE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 1)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$parents, numeric(0))
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$children, getElement(ids, 'z'))
     
-    expect_identical(modelDef$calcRules[[var]]$rules[[2]]$is_type('top'), TRUE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[2]]$is_type('end'), TRUE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[2]]$is_type('latent'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[2]]$is('top'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[2]]$is('end'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[2]]$is('latent'), FALSE)
     expect_identical(modelDef$calcRules[[var]]$rules[[2]]$sortID, 2)
     expect_identical(modelDef$calcRules[[var]]$rules[[2]]$parents, numeric(0))
     expect_identical(modelDef$calcRules[[var]]$rules[[2]]$children, numeric(0))
 
-    expect_identical(modelDef$calcRules[[var]]$rules[[3]]$is_type('top'), TRUE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[3]]$is_type('end'), TRUE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[3]]$is_type('latent'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[3]]$is('top'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[3]]$is('end'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[3]]$is('latent'), FALSE)
     expect_identical(modelDef$calcRules[[var]]$rules[[3]]$sortID, 2)
     expect_identical(modelDef$calcRules[[var]]$rules[[3]]$parents, numeric(0))
     expect_identical(modelDef$calcRules[[var]]$rules[[3]]$children, numeric(0))
@@ -303,34 +303,34 @@ test_that("graph processing with triangular dependency structure", {
     expect_identical(length(modelDef$calcRules), 4L)
 
     var <- "theta"
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('top'), TRUE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('end'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('latent'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('top'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('end'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('latent'), FALSE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 1)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$parents, numeric(0))
     expect_identical(sort(modelDef$calcRules[[var]]$rules[[1]]$children),
                      sort(c(getElement(ids, 'w'), getElement(ids, 'y'),  getElement(ids, 'mu'))))
 
     var <- "mu"
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('top'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('end'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('latent'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('top'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('end'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('latent'), TRUE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 2)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$parents, getElement(ids, "theta"))
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$children, getElement(ids, 'y'))
     
     var <- "y"
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('top'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('end'), TRUE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('latent'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('top'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('end'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('latent'), FALSE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 3)
     expect_identical(sort(modelDef$calcRules[[var]]$rules[[1]]$parents),
                      sort(c(getElement(ids, "theta"), getElement(ids, 'mu'))))
 
     var <- "w"
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('top'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('end'), TRUE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('latent'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('top'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('end'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('latent'), FALSE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 3)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$parents, getElement(ids, "theta"))
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$children, numeric(0))
@@ -352,33 +352,33 @@ test_that("graph processing and top/end nodes with deterministic nodes", {
     modelDef$generateGraphInfo()
 
     var <- "z"
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('top'), TRUE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('end'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('latent'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('top'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('end'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('latent'), FALSE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 1)
     
     var <- "w"
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('top'), TRUE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('end'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('latent'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('top'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('end'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('latent'), FALSE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 2)
  
     var <- "theta"
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('top'), TRUE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('end'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('latent'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('top'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('end'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('latent'), FALSE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 3)
  
     var <- "y"
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('top'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('end'), TRUE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('latent'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('top'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('end'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('latent'), FALSE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 4)
 
     var <- "y2"
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('top'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('end'), TRUE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('latent'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('top'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('end'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('latent'), FALSE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 4)
 
     code <- quote({
@@ -395,33 +395,33 @@ test_that("graph processing and top/end nodes with deterministic nodes", {
     modelDef$generateGraphInfo()
 
     var <- "z"
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('top'), TRUE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('end'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('latent'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('top'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('end'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('latent'), FALSE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 1)
 
     var <- "w"
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('top'), TRUE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('end'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('latent'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('top'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('end'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('latent'), FALSE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 1)
 
     var <- "theta"
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('top'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('end'), TRUE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('latent'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('top'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('end'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('latent'), FALSE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 2)
 
     var <- "y"
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('top'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('end'), TRUE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('latent'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('top'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('end'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('latent'), FALSE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 3)
 
     var <- "y2"
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('top'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('end'), TRUE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('latent'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('top'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('end'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('latent'), FALSE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 4)
 
 })
@@ -447,9 +447,9 @@ test_that("graph processing with various types of multivariate nodes", {
     var <- "y"
     expect_identical(length(modelDef$calcRules[[var]]$rules), 1L)
     
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('top'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('end'), TRUE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('latent'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('top'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('end'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('latent'), FALSE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 2)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$children, numeric(0))
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$parents, c('1','3'))
@@ -458,9 +458,9 @@ test_that("graph processing with various types of multivariate nodes", {
     expect_identical(length(modelDef$calcRules[[var]]$rules), 2L)
 
     for(i in 1:2) {
-        expect_identical(modelDef$calcRules[[var]]$rules[[i]]$is_type('top'), TRUE)
-        expect_identical(modelDef$calcRules[[var]]$rules[[i]]$is_type('end'), FALSE)
-        expect_identical(modelDef$calcRules[[var]]$rules[[i]]$is_type('latent'), FALSE)
+        expect_identical(modelDef$calcRules[[var]]$rules[[i]]$is('top'), TRUE)
+        expect_identical(modelDef$calcRules[[var]]$rules[[i]]$is('end'), FALSE)
+        expect_identical(modelDef$calcRules[[var]]$rules[[i]]$is('latent'), FALSE)
         expect_identical(modelDef$calcRules[[var]]$rules[[i]]$sortID, 1)
         expect_identical(modelDef$calcRules[[var]]$rules[[i]]$children, getElement(ids, "y"))
         expect_identical(modelDef$calcRules[[var]]$rules[[i]]$parents, numeric(0))
@@ -485,9 +485,9 @@ test_that("graph processing with various types of multivariate nodes", {
     var <- "y"
     expect_identical(length(modelDef$calcRules[[var]]$rules), 1L)
     
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('top'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('end'), TRUE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('latent'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('top'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('end'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('latent'), FALSE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 2)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$children, numeric(0))
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$parents, getElement(ids, 'mu'))
@@ -495,9 +495,9 @@ test_that("graph processing with various types of multivariate nodes", {
     var <- "mu"
     expect_identical(length(modelDef$calcRules[[var]]$rules), 1L)
 
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('top'), TRUE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('end'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('latent'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('top'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('end'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('latent'), FALSE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 1)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$children, getElement(ids, "y"))
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$parents, numeric(0))
@@ -521,9 +521,9 @@ test_that("graph processing with various types of multivariate nodes", {
     var <- "y"
     expect_identical(length(modelDef$calcRules[[var]]$rules), 1L)
     
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('top'), TRUE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('end'), TRUE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('latent'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('top'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('end'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('latent'), FALSE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 1)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$children, getElement(ids, 'z'))
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$parents, numeric(0))
@@ -531,9 +531,9 @@ test_that("graph processing with various types of multivariate nodes", {
     var <- "z"
     expect_identical(length(modelDef$calcRules[[var]]$rules), 1L)
 
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('top'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('end'), TRUE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('latent'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('top'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('end'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('latent'), FALSE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 2)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$parents, getElement(ids, "y"))
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$children, numeric(0))
@@ -613,11 +613,11 @@ test_that("graph processing for complicated multiple mv LHS nodes", {
     expect_identical(modelDef$calcRules[[var]]$rules[[3]]$getFullRange()$indexRanges,
                      list(indexRange(3), indexRange(quote(1:3))))
 
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('latent'), TRUE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[2]]$is_type('end'), TRUE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[2]]$is_type('top'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[3]]$is_type('top'), TRUE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[3]]$is_type('end'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('latent'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[2]]$is('end'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[2]]$is('top'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[3]]$is('top'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[3]]$is('end'), TRUE)
 
 })
 
@@ -666,9 +666,9 @@ test_that("graph processing for basic RHS exclusion and LHS fracturing", {
 
     var <- 'mu'
     for(i in 1:3) {
-        expect_identical(modelDef$calcRules[[var]]$rules[[i]]$is_type('top'), TRUE)
-        expect_identical(modelDef$calcRules[[var]]$rules[[i]]$is_type('end'), FALSE)
-        expect_identical(modelDef$calcRules[[var]]$rules[[i]]$is_type('latent'), FALSE)
+        expect_identical(modelDef$calcRules[[var]]$rules[[i]]$is('top'), TRUE)
+        expect_identical(modelDef$calcRules[[var]]$rules[[i]]$is('end'), FALSE)
+        expect_identical(modelDef$calcRules[[var]]$rules[[i]]$is('latent'), FALSE)
         expect_identical(modelDef$calcRules[[var]]$rules[[i]]$sortID, 1)
         expect_identical(modelDef$calcRules[[var]]$rules[[i]]$parents, numeric(0))
     }
@@ -678,23 +678,23 @@ test_that("graph processing for basic RHS exclusion and LHS fracturing", {
     
     var <- 'y'
     for(i in c(1,3,5)) {
-        expect_identical(modelDef$calcRules[[var]]$rules[[i]]$is_type('end'), TRUE)
-        expect_identical(modelDef$calcRules[[var]]$rules[[i]]$is_type('latent'), FALSE)
+        expect_identical(modelDef$calcRules[[var]]$rules[[i]]$is('end'), TRUE)
+        expect_identical(modelDef$calcRules[[var]]$rules[[i]]$is('latent'), FALSE)
         expect_identical(modelDef$calcRules[[var]]$rules[[i]]$sortID, 2)
         expect_identical(modelDef$calcRules[[var]]$rules[[i]]$children, numeric(0))
     }
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('top'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[3]]$is_type('top'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[5]]$is_type('top'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('top'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[3]]$is('top'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[5]]$is('top'), TRUE)
     
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$parents, "1")
     expect_identical(modelDef$calcRules[[var]]$rules[[3]]$parents, "2")
     expect_identical(modelDef$calcRules[[var]]$rules[[5]]$parents, "4")
     
     for(i in c(2,4,6,7)) {
-        expect_identical(modelDef$calcRules[[var]]$rules[[i]]$is_type('top'), TRUE)
-        expect_identical(modelDef$calcRules[[var]]$rules[[i]]$is_type('end'), TRUE)
-        expect_identical(modelDef$calcRules[[var]]$rules[[i]]$is_type('latent'), FALSE)
+        expect_identical(modelDef$calcRules[[var]]$rules[[i]]$is('top'), TRUE)
+        expect_identical(modelDef$calcRules[[var]]$rules[[i]]$is('end'), TRUE)
+        expect_identical(modelDef$calcRules[[var]]$rules[[i]]$is('latent'), FALSE)
         expect_identical(modelDef$calcRules[[var]]$rules[[i]]$sortID, 2)
         expect_identical(modelDef$calcRules[[var]]$rules[[i]]$children, numeric(0))
         expect_identical(modelDef$calcRules[[var]]$rules[[i]]$parents, numeric(0))
@@ -729,8 +729,8 @@ test_that("graph processing for basic RHS exclusion and LHS fracturing", {
     
     expect_identical(length(modelDef$calcRules), 2L)
     var <- "mu"
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('end'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('top'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('end'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('top'), TRUE)
 
     ## no overlap
     code <- quote({
@@ -747,8 +747,8 @@ test_that("graph processing for basic RHS exclusion and LHS fracturing", {
     
     expect_identical(length(modelDef$calcRules), 2L)
     var <- "mu"
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('end'), TRUE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is_type('top'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('end'), TRUE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('top'), TRUE)
     
 })
 

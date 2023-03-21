@@ -25,6 +25,7 @@
 ## calcRanges manage the calculation for one or more nodes, handling the indexing, and
 ## calling out to the declRule `calculate` function.
 
+## Base class for all node-related classes
 nodeRuleClass <- R6Class(
     classname = "nodeRuleClass",
     portable = FALSE,
@@ -57,7 +58,7 @@ nodeRuleClass <- R6Class(
             indexSlotToSet <<- fullRule$indexSets$toIndexSlotToSet
 
             if(length(fullRule$indexRules)) {  # if any indexing
-                isConstant <- sapply(fullRule$indexRules, is, "indexRuleConstantClass")
+                isConstant <- sapply(fullRule$indexRules, function(x) is(x, "indexRuleConstantClass"))
 
                 ## Treat constants as internal rules that don't relate to indexing over nodes.
                 ## Need to relate constant rule types to indexing; constant rules are in order of constant indices.
@@ -111,11 +112,13 @@ nodeRuleClass <- R6Class(
         },
 
         getFullRange = function() {
-            return(fullRule$apply())
+            return(fullRule$apply(varName))
         }
     )
 )
 
+## Class for representing nodes at the declaration level, containing
+## calculate and other nodeFunctions.
 declRuleClass <- R6Class(
     classname = "declRuleClass",
     portable = FALSE,
@@ -128,18 +131,17 @@ declRuleClass <- R6Class(
         ## TODO: remove this:
         test = rep(0, 10),  ## test element used for testing calculation while modelDef doesn't have acccess to a model
         test2 = matrix(0, 3, 5),
+        
         initialize = function(decl, ID, context = modelContextClass$new(), constants = list()) {
-            ## Set up rules that operate on the indexing of the nodes and on
-            ## the internal indexing of the elements of a node.
             stoch <<- decl[[1]] == '~'
             decl <<- decl
+
+            calcFun <<- generateCalculateFun(decl, context)
             super$initialize(decl[[2]], ID, context = context, constants = constants)
-            
             originalIndexingRule <<- originalIndexingRuleClass$new(expr, context, constants)
-            calcFun <<- genCalcFun(decl, context)
         },
 
-        genCalcFun = function(decl, context) {
+        generateCalculateFun = function(decl, context) {
             newDecl <- decl
             if(newDecl[[1]] == '<-') {
                 newDecl  <- quote(A <<- B)
@@ -152,8 +154,8 @@ declRuleClass <- R6Class(
             for(i in seq_along(context$singleContexts))
                 newDecl <- eval(substitute(substitute(e, replacements), list(e = newDecl)))
 
-            ## Insert 'logProb_' and change to assignment
             if(stoch) {
+                ## Insert 'logProb_' and change to assignment, moving LHS in as first argument.
                 finalDecl <- quote(A <<- B)
                 finalDecl[[3]] <- newDecl[[3]]
                 replacements <- list(parse(text = paste0('logProb_', varName))[[1]])
@@ -163,10 +165,6 @@ declRuleClass <- R6Class(
                 if(len > 1)
                     finalDecl[[3]][3:(len+1)] <- finalDecl[[3]][2:len]
                 finalDecl[[3]][[2]] <- newDecl[[2]]
-                ## Former placeholder to create local logProb_ variable to assign into.
-                ## With global assignment and use of .GlobalEnv in testing, this shouldn't be needed anymore.
-                ## nvals <- length(newDecl[[2]])-2 ## placeholder
-                ## if(nvals < 1) nvals <- 1        ## placeholder
                 calculate <<- function(idx) {
                     ## logProb_y <- array(0, rep(100, nvals))  # TODO: placeholder so logProb storage exists for testing
                 }
@@ -176,8 +174,8 @@ declRuleClass <- R6Class(
                 calculate <<- function(idx) {}
                 body(calculate) <<- newDecl
             }
-            ## will need to deal with logProb for mv node having single value inserted.
-            ## will need to deal with the various complexities we currently deal with - alt params, truncation, etc.
+            ## TODO: will need to deal with logProb for mv node having single value inserted.
+            ## TODO: will need to deal with the various complexities we currently deal with - alt params, truncation, etc.
         }
         
     )
@@ -189,20 +187,18 @@ calcRuleClass <- R6Class(
     inherit = nodeRuleClass,
     public = list(
         canonicalRange = NULL,
-        declRule = NULL,  # multiple calcRules can share a declRule and its density function
+        declRule = NULL,  # for access to nodeFunctions, since multiple calcRules can share a declRule 
 
         stochParent = NA,
         stochDep = NA,
-        ## touchedDown = FALSE,
-        ## touchedUp = FALSE,
         parents = numeric(),
         children = numeric(),
 
         top = FALSE,
         end = NA,
 
-        ## `Inf` is placeholder for 'unresolved'
-        sortID = Inf, # was `NULL` but when setting sortIDs, if have as NULL, causes lists to be created instead of vectors
+        ## `Inf` is placeholder for 'unresolved' (`NULL` causes processing issues)
+        sortID = Inf, 
         multiSortIDindex = NULL,
 
         initialize = function(declRule = NULL, expr = NULL, ID, context, constants = list()) {
@@ -215,31 +211,24 @@ calcRuleClass <- R6Class(
 
             ## Full range, for use with calculate applied to full variable.
 
-            ## 1:Inf fails if ijni
-            ## use getFullRange()
-            
-            ## canonicalRule <- makeGraphIndexRules(expr, expr, context, constants)
-            ## The following fails in ijni type case where 1:Inf is actually expanded in a matrix.
-            ## canonicalRange <<- applyGraphIndexRules(
-            ##    varRangeClass$new(lapply(seq_along(fullRule$indexSets$toIndexSlotToSet),
-            ##        function(i) indexRange(quote(1:Inf)))), fullRule)
-
-            ## For testing we are doing fracturing on generic nodeRules rather than declRules,
+            ## TODO: For testing we are doing fracturing on generic nodeRules rather than declRules,
             ## so declRule not available. Revisit whether it's ok to leave this as is.
             if(!is.null(declRule))
                 canonicalRange <<- declRule$getFullRange()
             context <<- context
             declRule <<- declRule
         },
-
-        ## calcRuleClass$apply generates a nodeRange
         
-        ## Generate calcRange given a varRange (including a nodeRange).
-        generate_calcRange = function(inputRange = NULL) {
+        ## Generate calcRange given a varRange (possibly a nodeRange).
+        ## (calcRuleClass$apply generates a nodeRange (inheriting from nodeRuleClass$apply().)
+        generateCalcRange = function(inputRange = NULL) {
             if(is.null(inputRange))
                 inputRange <- canonicalRange
             if(!is.null(inputRange$varName) && !is.null(varName) && inputRange$varName != varName)
-                stop("generate_calcRange: inputRange varianble name does not match the calcRule variable name.")
+                stop("generateCalcRange: inputRange varianble name does not match the calcRule variable name.")
+
+            ## Need original indexing because nodeFunctions will use that indexing
+            ## (e.g. `y[i+1]` needs value of `i`).
             indexingRange <- declRule$originalIndexingRule$apply(inputRange, varName)
             if(is.null(indexingRange))
                 return(NULL)
@@ -247,12 +236,7 @@ calcRuleClass <- R6Class(
             return(result)
         },
 
-        get = function(varRange = NULL, type) {
-            ## type is 'end', 'latent', etc.
-            ## returns the embedded nodeRange (or subset of it if provided a varRange) that corresponds to 'type'
-        },
-        
-        is_type = function(type) {
+        isOfType = function(type) {
             switch(type,
                 end = return(end),
                 top = return(top),
@@ -265,7 +249,6 @@ calcRuleClass <- R6Class(
             switch(type,
                 end = end <<- TRUE,
                 top = top <<- TRUE,
-                ## latent = latent <<- TRUE,
                 stochParent = stochParent <<- TRUE,
                 stochDep = stochDep <<- TRUE,
                 stop("Invalid type ", type)
@@ -277,7 +260,6 @@ calcRuleClass <- R6Class(
             switch(type,
                 end = end <<- FALSE,
                 top = top <<- FALSE,
-                ## latent = latent <<- FALSE,
                 stochParent = stochParent <<- FALSE,
                 stochDep = stochDep <<- FALSE,
                 stop("Invalid type ", type)
@@ -285,10 +267,11 @@ calcRuleClass <- R6Class(
             return(FALSE)
         },
 
-        checkAnyRHS = function() {
+        ## Check for only constants on RHS, in which case this is a top rule.
+        checkAllRHSconstants = function() {
             vars <- all.vars(declRule$decl[[3]])
             if(all(vars %in% c(names(declRule$constants), declRule$context$indexVarNames)))
-                return(FALSE) else return(TRUE)
+                return(TRUE) else return(FALSE)
         },
 
         setParents = function(IDs) {
@@ -307,21 +290,24 @@ calcRuleClass <- R6Class(
             children <<- children[!children %in% IDs]
         },
 
+        ## Used recursively to determine if a rule has stochastic dependents.
+        ## Terminates if no children or if stochastic dependent found.
         setStochDep = function(calcRules) {
             if(!is.na(stochDep))
                 return(stochDep)
             if(!length(children)) {
                 return(unset('stochDep'))
             }
-            ## First check if any children are stochastic
+            ## First check if any children are stochastic.
             stoch <- sapply(children, function(idx)
                 calcRules[[idx]]$declRule$stoch)
             if(any(stoch)) {
                 return(set('stochDep'))
-            } else {   ## If necessary check if deterministic children have stoch dependents
+            } else {   ## Check if children (all deterministic) have stoch dependents.
                 idx <- 1
                 while(idx <= length(stoch)) {
                     ## Walk down the tree as needed, avoiding infinitely looping over calcRule itself.
+                    ## Can stop when find first stochastic dependent.
                     if(children[idx] != ID && calcRules[[children[idx]]]$setStochDep(calcRules)) {
                         return(set('stochDep'))
                     }
@@ -331,21 +317,24 @@ calcRuleClass <- R6Class(
             return(unset('stochDep'))
         },
         
+        ## Used recursively to determine if a rule has stochastic parents.
+        ## Terminates if no parents or if stochastic parent found.
         setStochParent = function(calcRules) {
             if(!is.na(stochParent))
                 return(stochParent)
             if(!length(parents)) {
                 return(unset('stochParent'))
             }
-            ## First check if any parents are stochastic
+            ## First check if any parents are stochastic.
             stoch <- sapply(parents, function(idx)
                 calcRules[[idx]]$declRule$stoch)
             if(any(stoch)) {
                 return(set('stochParent'))
-            } else {   ## If necessary check if deterministic parents have stoch parents
+            } else {   ## Check if parents (all deterministic) have stoch parents.
                 idx <- 1
                 while(idx <= length(stoch)) {
-                    ## Walk up the tree as needed.
+                    ## Walk up the tree as needed, avoiding infinitely looping over calcRule itself.
+                    ## Can stop when find first stochastic parent.
                     if(parents[idx] != ID && calcRules[[parents[idx]]]$setStochParent(calcRules)) {
                         return(set('stochParent'))
                     }
@@ -355,30 +344,31 @@ calcRuleClass <- R6Class(
             return(unset('stochParent'))
         },
 
+        ## Determine sortID recursively.
+        ## sortID gives ordering in which calculations need to be done.
+        ## Use bottom-up determination (since want maximal ties amongst potentially most-numerous data nodes).
+        ## Easiest here to have bottom-most rules have sortID of 1, since we have to start with bottom.
         setSortID = function(calcRules, ancestors = NULL) {
-            ## Bottom-up determination (since want maximal ties amongst potentially most-numerous data nodes)
-            ## Easiest here to have bottom-most rules have sortID of 1, since have to start with bottom.
             if(length(sortID) == 1 && is.infinite(sortID)) {
                 if(!length(children)) {
                     sortID <<- 1
                     return(sortID)
                 }
-                if(any(children %in% ancestors)) {
+                ## Set NAs for graph cycles (SSM type cases), which will be handled elsewhere.
+                if(any(children %in% ancestors)) { 
                     ## warning("Cycle found in model graph. NIMBLE does not allow cyclic models.")
                     sortID <<- as.numeric(NA)
-                    ## This allows NA to propagate into other nodes involved in cycle
+                    ## This allows NA to propagate into other nodes involved in cycle.
                     tmp <- sapply(children, function(i)
                         calcRules[[i]]$setSortID(calcRules, c(ancestors, ID)))
                     return(sortID)
                 }
+                ## sortID is next largest integer above the maximum sortIDs of the children.
                 result <- max(sapply(children, function(i)
                     calcRules[[i]]$setSortID(calcRules, c(ancestors, ID)))) + 1
-                if(!is.na(result))  ## avoid propagating NA upwards, leave as Inf = 'unresolved'
+                ## Avoid propagating NA upwards, leave those further up as Inf (i.e., 'unresolved').
+                if(!is.na(result))  
                     sortID <<- result
-                ## sortID <<- max(sapply(children, function(i)
-                ##     calcRules[[i]]$setSortID(calcRules, c(ancestors, ID)))) + 1
-
-                ##                calcRules[[i]]$setSortID(calcRules[[i]](calcRules))) + 1)
             }
             if(length(sortID) == 1 && is.na(sortID))
                 return(NA) else return(max(sortID, na.rm = TRUE))  ## max() accounts for SSM case where have multiple sortIDs
@@ -484,14 +474,13 @@ calcRangeClass <- R6Class(
 
 ## nodeRangeClass
 
-## Holds a collection of like nodes (same declaration, but not (I think) necessarily same graph role or same sort ID).
+## Holds a collection of like nodes (same declaration, but not necessarily same graph role or same sort ID).
 ## Basically a varRange but with indication of which indexRanges relate to node indexing (external indexRanges)
 ## and a pointer to the declRule governing the nodes.
 
 ## example: y[i, 1:5] ~ dmnorm() has:
 ## externalRange: first index, over selected nodes
 ## internalRange: 1:5
-## e.g., could represent as y[1:3, (1:5)] where () indicates internal grouping
 
 nodeRangeClass <- R6Class(
     classname = "nodeRangeClass",
@@ -540,6 +529,8 @@ nodeRangeClass <- R6Class(
             varRangeClass$new(indexRanges, rangeToIndexSlot = rangeToIndexSlot, varName = varName, fromStochRule = declRule$stoch)
         },
 
+        ## FUTURE: could represent as y[(1:3), 1:5] where () indicates external indexing over nodes,
+        ## instead of y[i, 1:5] for i = 1:3.
         toChar = function() {
            if(is.null(varName)) {
                 nm <- as.name("no_name")
@@ -555,62 +546,9 @@ nodeRangeClass <- R6Class(
             if(sum(boolExternalIndexRanges))
                 result <- paste0('`', result, "`, for ", paste(forText, collapse = ', '))
         },
-        
 
         print = function() {
              cat("node range for ", toChar(), ".\n", sep = '')
-        },
-        
-## TODO: Rework nodeRangeClass$expandNames(),
-## allowing user to request compact or expanded representations and element vs block,
-## e.g., y[1:5,2] vs. y[i,2] for i=1,...5 vs y[1],y[2],y[3],y[4],y[5]
-## or y[i] for i=c(3,5,7,9,12) vs. y[i] for i=c(3,5,...,12) vs y[3],y[5],y[7],y[9],y[12]
-        expandNames = function() {
-            ## Expand externalRange into full matrix (crossed if necessary), keeping full internal
-            ## indexing for each individual node.
-            ## TODO: allow user to request all elements and compact/expanded
-            if(FALSE) {
-            nc <- length(declRule$indexSlotToSet)  # might be, e.g., 0 1 0 2 3 or 0 1 0 2 1
-            str <- paste0(varName, "[")
-
-            nodeInfo <- lapply(indexRanges, function(x) {
-                if(is(x, 'indexRangeSequenceClass'))
-                    result <- seq(x$start, x$end) else result <- x[[1]]
-                if(!is.matrix(result)) result <- matrix(result, ncol = 1)
-                return(result)
-            })
-            expanded <- do.call(expand.grid, lapply(nodeInfo, function(x) {
-                if(is.matrix(x)) 1:nrow(x) else 1:length(x)
-            }))
-
-            internalInfo <- lapply(indexRanges[!boolExternalIndexRanges], function(x) {
-                if(is(x, 'indexRangeSequenceClass'))
-                    return(deparse(substitute(X:Y, list(X = x$start, Y = x$end))))
-                return(x)
-            })
-
-            ## Mark column position within indexRanges of the externalRange.
-            colID <- as.list(rep(1, length(nodeInfo)))
-            ## Mark position within internal- and node-related indices.
-            idxInternal <- 1
-            idxNode <- 1
-            
-            for(i in 1:nc) {
-                if(i > 1)
-                    str <- paste0(str, ", ")
-                if(declRule$indexSlotToSet[i] == 0) {
-                    str <- paste0(str, internalInfo[[idxInternal]])
-                    idxInternal <- idxInternal + 1
-                } else {
-                    rangeIdx <- indexSlotToRange[indexSlotToRange <= numExternalIndexRanges][idxNode] ## which indexRange is being used
-                    str <- paste0(str, nodeInfo[[rangeIdx]][expanded[ , rangeIdx], colID[[rangeIdx]]])
-                    colID[[rangeIdx]] <- colID[[rangeIdx]] + 1  ## index through columns of the indexRange_matrix 
-                    idxNode <- idxNode + 1
-                }
-            }
-            str <- paste0(str, "]")
-            return(str)
-            }
         }
     )
 )
@@ -621,28 +559,15 @@ nodeRange_isEqual <- function(nr1, nr2) {
         identical(nr1$boolExternalIndexRanges, nr2$boolExternalIndexRanges))
 }
 
-## fracture(dep, calcRule, stochParent, parentID) -> calcRule (0 or more)
-
-## Fracture a LHS rule based on dependencies of another LHS rule, produced from applyGraphIndexRules,
-## passed through a nodeRule to produce a nodeRange
+## Take a calcRule and fracture it based on another rule, allowing us to determine topRules, endRules, latentRules.
 ## Result can be:
 ##  - original rule
-##  - subset of original rule and a rule created from the fracturingRange
+##  - a subset of the original rule and a rule created from the fracturingRange
 ##  - two subsets of original rule and a rule created from the fracturingRange (when dealing with a sequence that is split)
-
-## LHSrule will be a calcRule, not a declRule
-## fracture() should take in ID of parent calcRule that generated the fracturingRange via getDeps
-## assign the parents to any rules that are fractured
 fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL, currentRules = NULL) {
-    ## presume fracturingRange is a nodeRange, so has external/internal split consistent with LHS rule
-    ## but it could be that we pass in a varRange and then use nodeRule$apply to get the nodeRange
-    ## this also means that fracturingRange is the 'intersection' as it shouldn't contain anything not in the LHSrule
-
     ## TODO: do we need to guard against being provided a fracturingRange that is a nodeRange that contains elements not
     ## part of the LHSrange?
     
-    ## stochParent <- !is(parentRule, "rhsRuleClass") && (parentRule$declRule$stoch || parentRule$stochParent)
-
     ## Get full nodeRange of the rule.
     LHSrange <- LHSrule$apply()
 

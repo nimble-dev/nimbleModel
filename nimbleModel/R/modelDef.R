@@ -182,6 +182,8 @@ modelDefClass <- R6Class(
                         stop("Cycle found in model graph. NIMBLE does not allow cyclic models.")
                 }
             }
+            ## Now that know not SSM, call generateCalcRules again?
+            
             setEndNodes(allCalcRules)
             setTopNodes(allCalcRules)
             ## setLatentNodes(calcRules)

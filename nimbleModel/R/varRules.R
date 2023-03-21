@@ -35,7 +35,7 @@ newVarRules <- function(items, varNames = NULL, type = NULL) {
         if(length(varNames) != length(items))
             stop("newVarRules: length of `varNames` must match length of `items`.")
     if(!is.null(type)) {
-        include <- sapply(items, function(item) item$is_type(type))
+        include <- sapply(items, function(item) item$isOfType(type))
     } else include <- rep(TRUE, length(items))
     uniqVarNames <- unique(varNames)
     if(is(items[[1]], 'varRangeClass')) {

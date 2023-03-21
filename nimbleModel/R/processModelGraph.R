@@ -72,13 +72,9 @@ generateCalcRules <- function(declRules, rhsOriginalRules, graphRules, recurseFr
 
     numRHSrules <- length(rhsOriginalRules)
     
-    originalCalcRules <- lapply(declRules, function(rule)
+    calcRules <- lapply(declRules, function(rule)
         calcRuleClass$new(rule, NULL, NULL, rule$context, rule$constants)
         )
-
-    ## Start process with known top calcRules 
-    topRules <- !sapply(originalCalcRules, function(rule) rule$checkAnyRHS())
-    calcRules <- c(originalCalcRules[topRules], originalCalcRules[!topRules])
 
     ## Use character representation of numbers to index calcRules as we remove fractured calcRules
     ## but don't want to have to modify the child/parent ids.
@@ -87,15 +83,14 @@ generateCalcRules <- function(declRules, rhsOriginalRules, graphRules, recurseFr
     
     ## fracture LHS of same varName as rhsRule
     pos <- 1
-    start <- sum(topRules) + 1 # index of rules to be fractured
 
     fracturedRules <- rep(FALSE, length(calcRules))
     currentID <- length(calcRules)
     while(pos <= length(rhsOriginalRules)) {   # use while rather than for to match needed while in loop over calcRules
         rhsRange <- rhsOriginalRules[[pos]]$getFullRange()
         if(!rhsRange$isNone()) {
-            ## Try to fracture all rules by looping over non-top rules.
-            for(i in start:length(calcRules)) {
+            ## Try to fracture all rules by looping over rules.
+            for(i in seq_along(calcRules)) {
                 if(!fracturedRules[i] && rhsRange$varName == calcRules[[i]]$varName) {
                     result <- fracture(calcRules[[i]], rhsRange, currentID = currentID,
                                        parentRule = NULL, currentRules = calcRules)
@@ -116,13 +111,13 @@ generateCalcRules <- function(declRules, rhsOriginalRules, graphRules, recurseFr
     }
 
     calcRules <- calcRules[!fracturedRules]
-    topRules <- !sapply(calcRules, function(rule) rule$checkAnyRHS())
+    topRules <- sapply(calcRules, function(rule) rule$checkAllRHSconstants())
     calcRules <- c(calcRules[topRules], calcRules[!topRules])
-    
+
     pos <- 1  # index of fracturer
     start <- sum(topRules) + 1 # index of rules to be fractured
     fracturedRules <- rep(FALSE, length(calcRules))
-
+    
     numOrigCalcRules <- length(calcRules)
 ##     while(pos <= numOrigCalcRules) {  ## originally `length(calcRules)` but that leads to very slow SSM processing
     while(pos <= length(calcRules)) {  ## originally `length(calcRules)` but that leads to very slow SSM processing
@@ -151,6 +146,7 @@ generateCalcRules <- function(declRules, rhsOriginalRules, graphRules, recurseFr
                                 fracturedRules[i] <- TRUE
                                 fracturedRules <- c(fracturedRules, rep(FALSE, length(result)))
                                 currentID <- currentID + length(result)
+                                ## CHECK: can we break out of fracturing based on this dep - could this dep fracture two rules?
                             }
                         }
                         ## If parent rule has been fractured (state-space use case)
@@ -166,7 +162,8 @@ generateCalcRules <- function(declRules, rhsOriginalRules, graphRules, recurseFr
         ## start <- max(c(start, pos))  # this prevents SSM with intervening det nodes from working correctly
     }
 
-    ## Find additional parent/children links (will this only be needed for SSM cases?)
+    ## Find additional parent/children links from new rules resulting from fracturing
+    ## Since these new rules have not gone through fracturing when recurseFracturing is FALSE.
     numCalcRules <- length(calcRules)
     if(numCalcRules > numOrigCalcRules)   # set children/parents for new rules
         for(pos in (numOrigCalcRules + 1):numCalcRules) {
