@@ -158,31 +158,50 @@ modelDefClass <- R6Class(
                 rule$fromVarName)   
             upstreamRules <<- newVarRules(allUpstreamRules, varNames)
 
-            allCalcRules <- generateCalcRules(declRules, rhsOriginalRules, downstreamRules)
+            ## Check for cycles. Need to use `initialCalcRules` rather than `declRules`
+            ## as `declRules` don't have `sortID`.
 
-            sorted <- setSortIDs(allCalcRules)  ## Do before top/end to catch cycles.
+            initialCalcRules <- lapply(declRules, function(rule)
+                calcRuleClass$new(rule, NULL, NULL, rule$context, rule$constants)
+                )
+            tmp <- sapply(seq_along(initialCalcRules), function(i) initialCalcRules[[i]]$ID <- i)
+            names(initialCalcRules) <- sapply(initialCalcRules, function(rule) rule$ID)
+
+            setRelationships(initialCalcRules, downstreamRules)
+            sorted <- setSortIDs(initialCalcRules)  
+            ## At this point, we have a potential cyclic case if `sorted` is `FALSE`.
+            
+            ## Do fracturing, but in potential cyclic case, do not fracture already-fractured nodes
+            ## to avoid very slow one by one carving off calcRules in state-space cases.
+
+            ## Start from scratch with clean set of `initialCalcRules` (empty `sortID`, `parents`, `children` slots).
+            initialCalcRules <- lapply(declRules, function(rule)
+                calcRuleClass$new(rule, NULL, NULL, rule$context, rule$constants)
+                )
+            tmp <- sapply(seq_along(initialCalcRules), function(i) initialCalcRules[[i]]$ID <- i)
+            names(initialCalcRules) <- sapply(initialCalcRules, function(rule) rule$ID)
+
+            allCalcRules <- generateCalcRules(initialCalcRules, rhsOriginalRules, downstreamRules,
+                                              recurseFracturing = sorted)
+            sorted <- setSortIDs(allCalcRules)
+            
             if(!sorted) {  ## SSM case
-                ## TODO: need code that handles SSM in general, albeit computationally-inefficient way of 'unrolling'/fracturing
-                ## the calcRules into scalars. 
-
                 ## Handle standard SSM case of lag +1 or -1, with one or more calcRules in the cycle.
                 ## This inserts vectors of sortIDs for the calcRules in the cycle.
                 allCalcRules <- processCyclicRules(allCalcRules, self)
 
-                ## Now assign remaining sortIDs (i.e., to various parent calcRules that formerly had Inf as sortID.
+                ## Now assign remaining sortIDs (i.e., to various parent calcRules that formerly had Inf as sortID).
                 sorted <- setSortIDs(allCalcRules)
                 if(!sorted) {  # Complicated SSM-type cases or true cycles
                     ## Fully fracture to try to handle complicated SSM cases.
-                    ## TODO: perhaps warn user this may be slow.
                     warning("Detected cycle or state-space type structure in model graph. Attempting to determine graph structure. This may take some time. You may wish to alert the development team of your use case so that handling of such cases can be improved.")
-                    allCalcRules <- generateCalcRules(declRules, rhsOriginalRules, downstreamRules,
+                    allCalcRules <- generateCalcRules(initialCalcRules, rhsOriginalRules, downstreamRules,
                                                       recurseFracturing = TRUE)
                     sorted <- setSortIDs(allCalcRules)
                     if(!sorted)
                         stop("Cycle found in model graph. NIMBLE does not allow cyclic models.")
                 }
             }
-            ## Now that know not SSM, call generateCalcRules again?
             
             setEndNodes(allCalcRules)
             setTopNodes(allCalcRules)

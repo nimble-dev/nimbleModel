@@ -33,7 +33,7 @@ nodeRuleClass <- R6Class(
         context = NULL,
         expr = NULL,  
         constants = NULL,
-        ID = numeric(),
+        ID = character(),  # need to look up calcRules by name not position
         varName = character(),
         fullRule = NULL,
         ## `externalRule` and `internalRule` are subsets of the fullRule,
@@ -46,7 +46,7 @@ nodeRuleClass <- R6Class(
 
         initialize = function(expr, ID, context = modelContextClass$new(), constants = list()) {
             varName <<- getVarName(expr)
-            ID <<- ID
+            ID <<- as.character(ID)
             context <<- context
             expr <<- expr
             constants <<- constants
@@ -802,16 +802,11 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
 }
 
       
-findLinks <- function(LHSrule, fracturingRange, parentRule) {
-    ## Finds parents and children; used with generated calcRules to fill in additional relationships.
-
-    ## Get full nodeRange of the rule.
-    LHSrange <- LHSrule$apply()
-
-    if(!is(fracturingRange, 'nodeRangeClass'))
-        fracturingRange <- LHSrule$apply(fracturingRange)
-
-    if(!is.null(fracturingRange)) {
+createLink <- function(LHSrule, dependentRange, parentRule) {
+    ## Sets parent-child link based on a dependency of
+    ## `parentRule` overlapping with `LHSrule`.
+    overlapRange <- LHSrule$apply(dependentRange)
+    if(!is.null(overlapRange)) {
         ## Any intersection means we need to set parent/child relationship.
         parentRule$setChildren(LHSrule$ID)
         LHSrule$setParents(parentRule$ID)

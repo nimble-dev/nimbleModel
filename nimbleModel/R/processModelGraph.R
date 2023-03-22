@@ -61,7 +61,7 @@ getChildren <- function(varRange, graphRules) {
     return(result)
 }
 
-generateCalcRules <- function(declRules, rhsOriginalRules, graphRules, recurseFracturing = FALSE) {
+generateCalcRules <- function(calcRules, rhsOriginalRules, graphRules, recurseFracturing = FALSE) {
     ## Step 1: fracture LHS with rhsOriginalRules of same var
     ## e.g., mu[i] ~ dnorm(z[i], 1); y[2:3] <- mu[2:3]
     ## Fracture based on pieces of var potentially having different children.
@@ -71,16 +71,7 @@ generateCalcRules <- function(declRules, rhsOriginalRules, graphRules, recurseFr
     ## Fracture based on pieces of var potentially having different parents.
 
     numRHSrules <- length(rhsOriginalRules)
-    
-    calcRules <- lapply(declRules, function(rule)
-        calcRuleClass$new(rule, NULL, NULL, rule$context, rule$constants)
-        )
-
-    ## Use character representation of numbers to index calcRules as we remove fractured calcRules
-    ## but don't want to have to modify the child/parent ids.
-    tmp <- sapply(seq_along(calcRules), function(i) calcRules[[i]]$ID <- as.character(i))
-    names(calcRules) <- sapply(calcRules, function(rule) rule$ID)
-    
+       
     ## fracture LHS of same varName as rhsRule
     pos <- 1
 
@@ -162,27 +153,37 @@ generateCalcRules <- function(declRules, rhsOriginalRules, graphRules, recurseFr
         ## start <- max(c(start, pos))  # this prevents SSM with intervening det nodes from working correctly
     }
 
+    calcRules <- calcRules[!fracturedRules]
+    
     ## Find additional parent/children links from new rules resulting from fracturing
     ## Since these new rules have not gone through fracturing when recurseFracturing is FALSE.
-    numCalcRules <- length(calcRules)
-    if(numCalcRules > numOrigCalcRules)   # set children/parents for new rules
-        for(pos in (numOrigCalcRules + 1):numCalcRules) {
-            if(!fracturedRules[pos]) {
-                varName <- calcRules[[pos]]$varName
-                deps <- getChildren(
-                    calcRules[[pos]]$getFullRange(),
-                    graphRules[[varName]]$rules)
-                if(!is.null(deps)) 
-                    for(d in seq_along(deps)) 
-                        ## Find additional parent/children relationships.
-                        for(i in seq_len(numCalcRules)) 
-                            if(!fracturedRules[i] && !is.null(deps[[d]]) && deps[[d]]$varName == calcRules[[i]]$varName) 
-                                findLinks(calcRules[[i]], deps[[d]], parentRule = calcRules[[pos]])
-            }
-        }
-     
-    return(calcRules[!fracturedRules])
+    if(!recurseFracturing)
+        setRelationships(calcRules, graphRules, startPos = numOrigCalcRules + 1 - sum(fracturedRules))
+    
+    return(calcRules)
 }
+
+## Find parent-child links.
+setRelationships <- function(calcRules, graphRules, startPos = 1) {
+    setToCheck <- startPos:length(calcRules)
+    for(pos in setToCheck) {
+        varName <- calcRules[[pos]]$varName
+        deps <- getChildren(
+            calcRules[[pos]]$getFullRange(),
+            graphRules[[varName]]$rules)
+        if(!is.null(deps)) 
+            for(d in seq_along(deps)) {
+                ## TODO: check if really need !is.null(deps[[d]]) and also move the check up a level and use `next`
+                if(is.null(deps[[d]]))
+                    print('found case of null deps in setRelationships')
+                for(i in seq_along(calcRules))
+                    if(!is.null(deps[[d]]) && deps[[d]]$varName == calcRules[[i]]$varName) 
+                        createLink(calcRules[[i]], deps[[d]], parentRule = calcRules[[pos]])
+            }
+    }
+    invisible(NULL)
+}
+
 
 ## how will getDependencies work and interact with set(s) of graphRules?
 
@@ -252,7 +253,7 @@ processCyclicRules <- function(allCalcRules, modelDef) {
         ## Any non-zero lags
         if(sum(sapply(focalIndexRules, length))) {
             thisFocalIndices <- sapply(seq_along(focalIndexRules), function(i)
-                which(upstreamGraphRules[[i]]$indexSets$RHSindex2setID == focalIndexRules[[i]]))
+                which(upstreamGraphRules[[i]]$indexSets$fromIndexSlotToSet == focalIndexRules[[i]]))
             focalIndex <- unique(unlist(thisFocalIndices))  # unlist() deals with AR(p) case where there might be a non-block rule
             if(length(focalIndex) > 1)
                 return(allCalcRules) # stop("new nimbleModel processing reached unexpected structure in cycle processing.")
@@ -282,11 +283,11 @@ processCyclicRules <- function(allCalcRules, modelDef) {
         focalIndex <- focalIndices[i]
     
         ## Need to find indexRule corresponding to the focalIndex
-        focalIndexRule <- allCalcRules[[currentCyclicRule]]$graphRule$indexSets$LHSindex2setID[focalIndex]
+        focalIndexRule <- allCalcRules[[currentCyclicRule]]$fullRule$indexSets$toIndexSlotToSet[focalIndex]
         if(focalIndexRule == 0 ||
-            !inherits(allCalcRules[[currentCyclicRule]]$graphRule$indexRules[[focalIndexRule]], 'indexRuleBlockClass'))
+            !inherits(allCalcRules[[currentCyclicRule]]$fullRule$indexRules[[focalIndexRule]], 'indexRuleBlockClass'))
             return(allCalcRules) # stop("new nimbleModel processing reached unexpected structure in cycle processing.")
-        setup <- allCalcRules[[currentCyclicRule]]$graphRule$indexRules[[focalIndexRule]]$setupResults
+        setup <- allCalcRules[[currentCyclicRule]]$fullRule$indexRules[[focalIndexRule]]$setupResults
 
         ## TODO: extract out initial assignment as a function, since also done in `followUpstream`
         if(all(is.na(allCalcRules[[currentCyclicRule]]$sortID))) {
@@ -381,10 +382,10 @@ followUpstream <- function(upstreamGraphRule, upstreamRules, childSortID, focalI
         return(NULL)
     }
 
-    focalIndexRule <- upstreamGraphRule$indexSets$RHSindex2setID[focalIndex]
+    focalIndexRule <- upstreamGraphRule$indexSets$fromIndexSlotToSet[focalIndex]
     if(focalIndexRule == 0)  # non-block rule, nothing to follow
         return(NULL)
-    focalIndex <- which(upstreamGraphRule$indexSets$LHSindex2setID == focalIndexRule)
+    focalIndex <- which(upstreamGraphRule$indexSets$toIndexSlotToSet == focalIndexRule)
     ## The upstreamGraphRule should only involve one index.
     if(length(focalIndex) != 1)
         return(NULL) # stop("new nimbleModel processing reached unexpected structure in cycle processing.")
@@ -393,7 +394,7 @@ followUpstream <- function(upstreamGraphRule, upstreamRules, childSortID, focalI
         currentSortID <- allCalcRules[[currentCyclicRule]]$sortID
         initialized <- FALSE
         if(all(is.na(currentSortID))) {
-            setup <- allCalcRules[[currentCyclicRule]]$graphRule$indexRules[[focalIndexRule]]$setupResults
+            setup <- allCalcRules[[currentCyclicRule]]$fullRule$indexRules[[focalIndexRule]]$setupResults
             childSortIDs <- sortIDs[allCalcRules[[currentCyclicRule]]$children]
             if(any(is.infinite(childSortIDs))) ## Another cycle downstream; can't handle this.
                 return(NULL) # stop("new nimbleModel processing reached unexpected structure in cycle processing.")
@@ -421,11 +422,11 @@ followUpstream <- function(upstreamGraphRule, upstreamRules, childSortID, focalI
         sortIDvals <- childSortID[childIndices] + eps
         currentIndices <- childIndices + as.integer(setup$offset)  # as.integer() because of identical() below
         
-        focalIndexRule <- allCalcRules[[currentCyclicRule]]$index2setID[focalIndex]
-        if(!inherits(allCalcRules[[currentCyclicRule]]$graphRule$indexRules[[focalIndexRule]], 'indexRuleBlockClass'))
+        focalIndexRule <- allCalcRules[[currentCyclicRule]]$indexSlotToSet[focalIndex]
+        if(!inherits(allCalcRules[[currentCyclicRule]]$fullRule$indexRules[[focalIndexRule]], 'indexRuleBlockClass'))
             return(NULL) # stop("new nimbleModel processing reached unexpected structure in cycle processing.")
         
-        setup <- allCalcRules[[currentCyclicRule]]$graphRule$indexRules[[focalIndexRule]]$setupResults
+        setup <- allCalcRules[[currentCyclicRule]]$fullRule$indexRules[[focalIndexRule]]$setupResults
         currentCalcRuleIndices <- setup$fromMin:setup$fromMax
         
         ## currentIndices may include indices not in the calcRule, if the rule has been fractured,
