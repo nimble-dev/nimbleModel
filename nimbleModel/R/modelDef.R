@@ -191,6 +191,7 @@ modelDefClass <- R6Class(
                 allCalcRules <- processCyclicRules(allCalcRules, self)
 
                 ## Now assign remaining sortIDs (i.e., to various parent calcRules that formerly had Inf as sortID).
+
                 sorted <- setSortIDs(allCalcRules)
                 if(!sorted) {  # Complicated SSM-type cases or true cycles
                     ## Fully fracture to try to handle complicated SSM cases.

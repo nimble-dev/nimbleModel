@@ -18,12 +18,6 @@
 ## TODO: work on `simulate`, `getParam` and other related model methods; will these be part or
 ## `calcRules`?
 
-## nodeRanges are similar to varRanges but account for sets of elements tied together by a declaration
-## via having both external and internal indexing. E.g., `x[i, 1:3]` has external indexing for the
-## first index slot and internal indexing for the `1:3` block.
-
-## calcRanges manage the calculation for one or more nodes, handling the indexing, and
-## calling out to the declRule `calculate` function.
 
 ## Base class for all node-related classes
 nodeRuleClass <- R6Class(
@@ -84,6 +78,7 @@ nodeRuleClass <- R6Class(
         },
         
         ## Generate nodeRange from a varRange, nodeRange, or char representation of a varRange (e.g., 'y[1:3]'.
+        ## By default returns the full range of the rule.
         apply = function(varRange = NULL) {
             if(is.null(varRange)) 
                 varRange <- varName                
@@ -92,7 +87,7 @@ nodeRuleClass <- R6Class(
                 return(NULL)  
             if(is.character(varRange)) 
                 if(name == varRange) {
-                    varRange <- fullRule$getFromRange()  # e.g., 'y'
+                    varRange <- fullRule$getFromRange()  # e.g., 'y' -- produce full range of the rule
                 } else varRange <- varRangeClass$new(varRange)  # e.g., 'y[1:3]'
 
             ## Apply both the external and internal indexRules.
@@ -181,6 +176,10 @@ declRuleClass <- R6Class(
     )
 )
 
+## Class for representing sets of nodes from a single declaration that
+## can be calculated together (same `sortID`).
+## Also used for representing states in a state-space case where calculation
+## needs to be done in order.
 calcRuleClass <- R6Class(
     classname = "calcRuleClass",
     portable = FALSE,
@@ -377,6 +376,8 @@ calcRuleClass <- R6Class(
     )
 )
 
+## calcRanges manage the calculation for one or more nodes, handling the indexing, and
+## calling out to the declRule `calculate` function.
 calcRangeClass <- R6Class(
     classname = "calcRangeClass",
     portable = FALSE,
@@ -472,11 +473,10 @@ calcRangeClass <- R6Class(
     )
 )
 
-## nodeRangeClass
 
-## Holds a collection of like nodes (same declaration, but not necessarily same graph role or same sort ID).
-## Basically a varRange but with indication of which indexRanges relate to node indexing (external indexRanges)
-## and a pointer to the declRule governing the nodes.
+## Class for managing a set of like nodes (same declaration, but not necessarily same graph role or same sort ID).
+## Basically a `varRange` but with indication of which indexRanges relate to node indexing (external indexRanges)
+## (versus internal indexing of elements within a multivariate node) and a pointer to the declRule governing the nodes.
 
 ## example: y[i, 1:5] ~ dmnorm() has:
 ## externalRange: first index, over selected nodes
@@ -559,15 +559,16 @@ nodeRange_isEqual <- function(nr1, nr2) {
         identical(nr1$boolExternalIndexRanges, nr2$boolExternalIndexRanges))
 }
 
-## Take a calcRule and fracture it based on another rule, allowing us to determine topRules, endRules, latentRules.
+## Take a calcRule and fracture (split) it into one or more calcRules based on another rule.
+## This is used to determine topRules, endRules, latentRules.
+
 ## Result can be:
-##  - original rule
-##  - a subset of the original rule and a rule created from the fracturingRange
-##  - two subsets of original rule and a rule created from the fracturingRange (when dealing with a sequence that is split)
+##  - NULL if no overlap or complete overlap, 
+##  - a subset of the original rule and a rule created from the fracturingRange, or
+##  - two subsets of original rule and a rule created from the fracturingRange
+##    (when dealing with a sequence that is split)
 fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL, currentRules = NULL) {
-    ## TODO: do we need to guard against being provided a fracturingRange that is a nodeRange that contains elements not
-    ## part of the LHSrange?
-    
+     
     ## Get full nodeRange of the rule.
     LHSrange <- LHSrule$apply()
 
@@ -577,6 +578,7 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
     if(is.null(fracturingRange))
         return(NULL)
 
+    ## Complete overlap case: set parent-child relationship.
     if(nodeRange_isEqual(LHSrange, fracturingRange)) {
         if(!is.null(parentRule)) {  # if parent is not RHS
             parentRule$setChildren(LHSrule$ID)
@@ -585,16 +587,13 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
         return(NULL)
     }
 
-    ## Indices for internalRange should be identical, so just check/fracture those for external
-    boolIdenticalIndices <- sapply(seq_along(LHSrange$indexSlotToRange), function(idx)
+    ## Check which index slots use identical indexRanges and don't need to be fractured.
+    ## Note this should only return a subset of the external ranges as internal should be identical.
+    boolIdenticalIndexSlots <- sapply(seq_along(LHSrange$indexSlotToRange), function(idx)
         isTRUE(all.equal(LHSrange$indexRanges[[LHSrange$indexSlotToRange[idx]]],
                           fracturingRange$indexRanges[[fracturingRange$indexSlotToRange[idx]]])))
 
-    ## boolIdenticalIndices <- sapply(LHSrange$indexSlotToRange, function(idx)
-    ##     isTRUE(all.equal(LHSrange$indexRanges[[idx]],
-    ##                       fracturingRange$indexRanges[[idx]])))
-
-    nonIdenticalIndices <- which(!boolIdenticalIndices)
+    nonIdenticalIndexSlots <- which(!boolIdenticalIndexSlots)
     
     expr <- LHSrule$expr
     singleContexts <- LHSrule$context$singleContexts
@@ -610,17 +609,24 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
     }
     parsedIdxName <- parse(text = newIdxName)[[1]]
     
-    if(length(nonIdenticalIndices) == 1) {
+    if(length(nonIdenticalIndexSlots) == 1) {
         ## Handle simple cases where need only fracture one index
-        LHS <- LHSrange$indexRanges[[LHSrange$indexSlotToRange[nonIdenticalIndices]]]
-        frac <- fracturingRange$indexRanges[[LHSrange$indexSlotToRange[nonIdenticalIndices]]]
+        LHS <- LHSrange$indexRanges[[LHSrange$indexSlotToRange[nonIdenticalIndexSlots]]]
+        frac <- fracturingRange$indexRanges[[LHSrange$indexSlotToRange[nonIdenticalIndexSlots]]]
         
         focalContext <- sapply(names(singleContexts), function(nm)
-            nm %in% all.vars(expr[[2+nonIdenticalIndices]]))
+            nm %in% all.vars(expr[[2+nonIdenticalIndexSlots]]))
 
-        ## If matrix involved, need to be dealt with so as to create an arbitrary rule.
+        if(length(focalContext) != 1)
+            stop("fracture: unexpected number of contexts in ", deparse(expr), ".")
+
+        ## General strategy in cases below is to determine overlapped and non-overlapped
+        ## index values and create new calcRules for these, modifying the
+        ## expression, contexts, and constants from the LHS rule.
+        
+        ## If matrix involved, we need to create resulting rules as indexRuleArbitraryClass.
         if(is(LHS, 'indexRangeMatrixClass') || is(frac, 'indexRangeMatrixClass')) {
-            ## (as.numeric prevents some indexRanges from having ints when generally have doubles)
+            ## `as.numeric` prevents some indexRanges from having ints when generally have doubles.
             valsLHS <- switch(class(LHS)[1],
                               indexRangeMatrixClass = LHS$values,
                               indexRangeScalarClass = LHS$value,
@@ -633,9 +639,10 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
                               indexRangeSequenceClass = as.numeric(frac$start:frac$end),
                               stop("fracture: `frac` type not found.")
                               )
-            valsLHS <- valsLHS[!valsLHS %in% valsFrac]
+            valsLHS <- valsLHS[!valsLHS %in% valsFrac]  # values for new rule are those that don't overlap
 
-            ## Modify LHSrule expr and context to insert vector of relevent values.
+            ## Modify LHSrule expr and context to insert vector of relevant values for
+            ## one rule with non-overlapped index values and one rule with overlapped values.
             newSingleContexts1 <- singleContexts[!focalContext]
             newSingleContexts2 <- singleContexts[!focalContext]
 
@@ -647,31 +654,36 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
                                indexVarExpr = parsedIdxName,
                 indexRangeExpr = substitute(1:L, list(L = length(valsFrac))))
 
-            newcode <- paste0(".idx", nonIdenticalIndices, "[", newIdxName, "]")
-            expr[[nonIdenticalIndices+2]] <- parse(text = newcode[1])[[1]]
+            newcode <- paste0(".idx", nonIdenticalIndexSlots, "[", newIdxName, "]")
+            expr[[nonIdenticalIndexSlots+2]] <- parse(text = newcode[1])[[1]]
          
-            ## Replace any constants related to a previously processed index.
+            ## Replace any constants related to a previously processed index slot.
+            ## Index values are stored in an element of `constants`.
             constants1 <- list(valsLHS)
             constants2 <- list(valsFrac)
-            names(constants1) <- paste0(".idx", nonIdenticalIndices)
-            names(constants2) <- paste0(".idx", nonIdenticalIndices)
+            names(constants1) <- paste0(".idx", nonIdenticalIndexSlots)
+            names(constants2) <- paste0(".idx", nonIdenticalIndexSlots)
             oldConstants <- LHSrule$constants
             oldConstants[names(oldConstants) %in% names(constants1)] <- NULL
 
-            resultRule <- calcRuleClass$new(LHSrule$declRule, expr, as.character(currentID + 1), context = modelContextClass$new(newSingleContexts1),
+            resultRule <- calcRuleClass$new(LHSrule$declRule, expr, currentID + 1,
+                                            context = modelContextClass$new(newSingleContexts1),
                                             constants = c(constants1, oldConstants))
 
-            fracturingRule <- calcRuleClass$new(LHSrule$declRule, expr, as.character(currentID + 2), context = modelContextClass$new(newSingleContexts2),
+            fracturingRule <- calcRuleClass$new(LHSrule$declRule, expr, currentID + 2,
+                                                context = modelContextClass$new(newSingleContexts2),
                                                 constants = c(constants2, oldConstants))
 
             result <- list(fracturingRule, resultRule)
-        } else {  # seq+seq or seq+scalar
-            if(is(frac, "indexRangeScalarClass"))   # process as a sequence
+        } else {  # Two sequences or sequence and a scalar, handled by creating new sequences.
+            if(is(frac, "indexRangeScalarClass"))   # Process as a sequence to avoid special casing.
                 frac <- newIndexRange(substitute(A:A, list(A = frac$value)))
-            if(is(LHS, "indexRangeScalarClass")) stop("fracture: Not expecting `LHS` to be a scalar.")  ## scalar LHS either fully intersected or not intersected
+            ## Scalar LHS should either have no overlap or full overlap and have been handled at start.
+            if(is(LHS, "indexRangeScalarClass"))
+                stop("fracture: Not expecting `LHS` to be a scalar.")
           
             if(frac$start == LHS$start || frac$end == LHS$end) {
-                ## Shrink existing sequence
+                ## Shrink existing sequence.
                 if(frac$start == LHS$start) 
                     LHS$start <- frac$end+1 else LHS$end <- frac$start-1
 
@@ -686,14 +698,16 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
                     indexVarExpr = parsedIdxName,
                     indexRangeExpr = substitute(A:B, list(A = frac$start, B = frac$end)))
 
-                expr[[nonIdenticalIndices+2]] <- newSingleContexts1[[length(newSingleContexts1)]]$indexVarExpr
+                expr[[nonIdenticalIndexSlots+2]] <- newSingleContexts1[[length(newSingleContexts1)]]$indexVarExpr
 
-                fracturingRule <- calcRuleClass$new(LHSrule$declRule, expr, as.character(currentID + 1), context = modelContextClass$new(newSingleContexts2))
-                resultRule <- calcRuleClass$new(LHSrule$declRule, expr, as.character(currentID + 2), context = modelContextClass$new(newSingleContexts1))
+                fracturingRule <- calcRuleClass$new(LHSrule$declRule, expr, currentID + 1,
+                                                    context = modelContextClass$new(newSingleContexts2))
+                resultRule <- calcRuleClass$new(LHSrule$declRule, expr, currentID + 2,
+                                                context = modelContextClass$new(newSingleContexts1))
 
                 result <- list(fracturingRule, resultRule)
             } else {
-                ## Split an existing sequence 
+                ## Split an existing sequence.
                 newSingleContexts1 <- singleContexts[!focalContext]
                 newSingleContexts2 <- singleContexts[!focalContext]
                 newSingleContexts3 <- singleContexts[!focalContext]
@@ -702,29 +716,34 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
                 newSingleContexts1[[length(newSingleContexts1)+1]] <- singleContextClass$new(
                     indexVarExpr = parsedIdxName,
                     indexRangeExpr = substitute(A:B, list(A = frac$start, B = frac$end)))
-                expr1[[nonIdenticalIndices+2]] <- newSingleContexts1[[length(newSingleContexts1)]]$indexVarExpr
+                expr1[[nonIdenticalIndexSlots+2]] <- newSingleContexts1[[length(newSingleContexts1)]]$indexVarExpr
 
                 newSingleContexts2[[length(newSingleContexts2)+1]] <- singleContextClass$new(
                     indexVarExpr = parsedIdxName,
                     indexRangeExpr = substitute(A:B, list(A = LHS$start, B = frac$start-1)))
-                expr2[[nonIdenticalIndices+2]] <- newSingleContexts2[[length(newSingleContexts2)]]$indexVarExpr
+                expr2[[nonIdenticalIndexSlots+2]] <- newSingleContexts2[[length(newSingleContexts2)]]$indexVarExpr
 
                 newSingleContexts3[[length(newSingleContexts3)+1]] <- singleContextClass$new(
                     indexVarExpr = parsedIdxName,
                     indexRangeExpr = substitute(A:B, list(A = frac$end+1, B = LHS$end)))
-                expr3[[nonIdenticalIndices+2]] <- newSingleContexts3[[length(newSingleContexts3)]]$indexVarExpr
+                expr3[[nonIdenticalIndexSlots+2]] <- newSingleContexts3[[length(newSingleContexts3)]]$indexVarExpr
                
-                fracturingRule <- calcRuleClass$new(LHSrule$declRule, expr1, as.character(currentID + 1), context = modelContextClass$new(newSingleContexts1))
-                resultRule1 <- calcRuleClass$new(LHSrule$declRule, expr2, as.character(currentID + 2), context = modelContextClass$new(newSingleContexts2))
-                resultRule2 <- calcRuleClass$new(LHSrule$declRule, expr3, as.character(currentID + 3), context = modelContextClass$new(newSingleContexts3))
+                fracturingRule <- calcRuleClass$new(LHSrule$declRule, expr1, currentID + 1,
+                                                    context = modelContextClass$new(newSingleContexts1))
+                resultRule1 <- calcRuleClass$new(LHSrule$declRule, expr2, currentID + 2,
+                                                 context = modelContextClass$new(newSingleContexts2))
+                resultRule2 <- calcRuleClass$new(LHSrule$declRule, expr3, currentID + 3,
+                                                 context = modelContextClass$new(newSingleContexts3))
 
                 result <- list(fracturingRule, resultRule1, resultRule2)
             }
         }
-    } else {     ## unroll, exclude, create new arbitrary rule based on all non-identical indices
-        unrolledLHS <- LHSrange$extractIndexRange(nonIdenticalIndices)
-        unrolledFrac <- fracturingRange$extractIndexRange(nonIdenticalIndices)
+    } else {     ## Unroll, exclude, create new arbitrary rule based on all non-identical indices.
+        unrolledLHS <- LHSrange$extractIndexRange(nonIdenticalIndexSlots)
+        unrolledFrac <- fracturingRange$extractIndexRange(nonIdenticalIndexSlots)
 
+        ## Convert to character representation to allow simplest determination of overlap/non-overlap,
+        ## using all index
         lhsAsChar <- do.call(paste, as.data.frame(unrolledLHS[[1]]))
         fracAsChar <- do.call(paste, as.data.frame(unrolledFrac[[1]]))
 
@@ -733,8 +752,9 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
         mat2 <- unrolledLHS[[1]][!remaining, , drop = FALSE]
 
         focalContext <- sapply(names(singleContexts), function(nm)
-            nm %in% unlist(lapply(2+nonIdenticalIndices, function(x) all.vars(expr[[x]]))))
+            nm %in% unlist(lapply(2+nonIdenticalIndexSlots, function(x) all.vars(expr[[x]]))))
 
+        ## Handle any contexts involving identical indices.
         if(sum(!focalContext)) {
             newSingleContexts1 <- singleContexts[!focalContext]
             newSingleContexts2 <- singleContexts[!focalContext]
@@ -748,44 +768,47 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
                                indexVarExpr = parsedIdxName,
             indexRangeExpr = substitute(1:L, list(L = nrow(mat2))))
 
-        newcode <- paste0(".idx", nonIdenticalIndices, "[", newIdxName, "]")
-        for(i in seq_along(nonIdenticalIndices)) 
-            expr[[nonIdenticalIndices[i]+2]] <- parse(text = newcode[i])[[1]]
-        
-        constants1 <- lapply(seq_len(ncol(mat1)), function(i) mat1[,i])
-        names(constants1) <- paste0(".idx", nonIdenticalIndices)
-        constants2 <- lapply(seq_len(ncol(mat2)), function(i) mat2[,i])
-        names(constants2) <- paste0(".idx", nonIdenticalIndices)
+        newcode <- paste0(".idx", nonIdenticalIndexSlots, "[", newIdxName, "]")
+        for(i in seq_along(nonIdenticalIndexSlots)) 
+            expr[[nonIdenticalIndexSlots[i]+2]] <- parse(text = newcode[i])[[1]]
+
+        ## Store index values in elements of `constants`, one per non-identical index slot.
+        constants1 <- lapply(seq_len(ncol(mat1)), function(i) mat1[, i])
+        names(constants1) <- paste0(".idx", nonIdenticalIndexSlots)
+        constants2 <- lapply(seq_len(ncol(mat2)), function(i) mat2[, i])
+        names(constants2) <- paste0(".idx", nonIdenticalIndexSlots)
         oldConstants <- LHSrule$constants
         oldConstants[names(oldConstants) %in% names(constants1)] <- NULL
-
       
-        fracturingRule <- calcRuleClass$new(LHSrule$declRule, expr, as.character(currentID + 1), context = modelContextClass$new(newSingleContexts2),
-                                        constants = c(constants2, oldConstants))
-        resultRule <- calcRuleClass$new(LHSrule$declRule, expr, as.character(currentID + 2), context = modelContextClass$new(newSingleContexts1),
+        fracturingRule <- calcRuleClass$new(LHSrule$declRule, expr, currentID + 1,
+                                            context = modelContextClass$new(newSingleContexts2),
+                                            constants = c(constants2, oldConstants))
+        resultRule <- calcRuleClass$new(LHSrule$declRule, expr, currentID + 2,
+                                        context = modelContextClass$new(newSingleContexts1),
                                         constants = c(constants1, oldConstants))
-
+        
         result <- list(fracturingRule, resultRule)
     }
 
     names(result) <- sapply(result, function(rule) rule$ID)
-    if(!is.null(parentRule)) {  # if parent is not RHS
+
+    ## Set parent-child links based on newly-create rules.
+    if(!is.null(parentRule)) {  # Only need to do if parent is not from a rhsRule.
 
         if(parentRule$ID != LHSrule$ID) {
             ## Condition ensures we don't set child-parent pair based on parent itself being
             ## fractured, as occurs in state-space type cases.
             
-            ## set fracturingRule and parentRule as child-parent pair
+            ## Set fracturingRule (always `result[[1]]`) and parentRule as child-parent pair.
             result[[1]]$setParents(parentRule$ID)
             parentRule$setChildren(result[[1]]$ID)
-            ## if(stochParent) result[[1]]$set('stochParent')
         }
         
-        ## Update original parents of fractured rule to be parents of fractured results
+        ## Set parents of fractured results to be the original parents of fractured (LHS) rule.
         sapply(result, function(rule) rule$setParents(LHSrule$parents))
 
-        ## Update children of parents of the fractured rule to be
-        ## new fractured results and not fractured rule
+        ## Update children of parents of the fractured (LHS) rule to be
+        ## new fractured results and not fractured (LHS) rule.
         newChildren <- sapply(result, function(x) x$ID)
         names(newChildren) <- NULL
         tmp <- sapply(LHSrule$parents, function(idx)
@@ -793,7 +816,7 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
         tmp <- sapply(LHSrule$parents, function(idx)
             currentRules[[idx]]$unsetChildren(LHSrule$ID))
     }
-    ## Remove fractured rule as parent of its children
+    ## Remove fractured (LHS) rule as parent of its children.
     ## The new fractured rules will be added in as parents when they are used as fracturers,
     ## later in looping over calcRules.
     tmp <- sapply(LHSrule$children, function(idx)
@@ -803,8 +826,8 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
 
       
 createLink <- function(LHSrule, dependentRange, parentRule) {
-    ## Sets parent-child link based on a dependency of
-    ## `parentRule` overlapping with `LHSrule`.
+    ## Sets parent-child link based on a dependency of `parentRule`
+    ## overlapping with `LHSrule`.
     overlapRange <- LHSrule$apply(dependentRange)
     if(!is.null(overlapRange)) {
         ## Any intersection means we need to set parent/child relationship.
