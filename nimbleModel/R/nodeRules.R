@@ -90,6 +90,10 @@ nodeRuleClass <- R6Class(
                     varRange <- fullRule$getFromRange()  # e.g., 'y' -- produce full range of the rule
                 } else varRange <- varRangeClass$new(varRange)  # e.g., 'y[1:3]'
 
+            if(!(numExternalIndexRules + numInternalIndexRules) &&
+               !varRange$isNone())
+                stop("nodeRuleClass$apply: incorrect number of input indices.")
+            
             ## Apply both the external and internal indexRules.
             if(numExternalIndexRules) {
                 externalRange <- externalRule$apply(varRange)
@@ -824,10 +828,9 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
     return(result)
 }
 
-      
+## Sets parent-child link based on a dependent of `parentRule`
+## overlapping with `LHSrule`.
 createLink <- function(LHSrule, dependentRange, parentRule) {
-    ## Sets parent-child link based on a dependency of `parentRule`
-    ## overlapping with `LHSrule`.
     overlapRange <- LHSrule$apply(dependentRange)
     if(!is.null(overlapRange)) {
         ## Any intersection means we need to set parent/child relationship.

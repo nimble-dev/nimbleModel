@@ -174,7 +174,8 @@ modelDefClass <- R6Class(
             ## Do fracturing, but in potential cyclic case, do not fracture already-fractured nodes
             ## to avoid very slow one by one carving off calcRules in state-space cases.
 
-            ## Start from scratch with clean set of `initialCalcRules` (empty `sortID`, `parents`, `children` slots).
+            ## Start from scratch with clean set of `initialCalcRules`
+            ## (empty `sortID`, `parents`, `children` slots).
             initialCalcRules <- lapply(declRules, function(rule)
                 calcRuleClass$new(rule, NULL, NULL, rule$context, rule$constants)
                 )
