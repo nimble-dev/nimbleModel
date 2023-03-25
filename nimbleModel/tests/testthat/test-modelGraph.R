@@ -2230,3 +2230,34 @@ test_that("actual cycle is trapped", {
     modelDef$processDecls()
     expect_error(modelDef$generateGraphInfo(), "Cycle found")
 })
+
+test_that("for loops with arbitrary sets", {
+    code <- quote({
+        for(i in c(2,3,5))
+            y[i] ~ dnorm(mu, 1)
+        mu ~ dnorm(0, 1)
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
+    
+    yNodes <- getNodes(modelDef, 'y')
+    expect_equal(yNodes[[1]]$indexRanges[[1]],
+                 newIndexRange(c(2,3,5)))
+
+    code <- quote({
+        y[c(2,3,5)] ~ dmnorm(mu[1:3],sigma[1:3,1:3])
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
+
+    getNodes(modelDef, 'y')
+    expect_equal(yNodes[[1]]$indexRanges[[1]],
+                 newIndexRange(c(2,3,5)))
+
+
+})
+

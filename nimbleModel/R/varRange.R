@@ -169,11 +169,12 @@ varRangeClass <- R6Class(
             if(isNone()) {
                 return(nm)
             } else {
-                
-                do.call("call",
-                        c(list("[", nm),
-                          indexRangeExprs[indexSlotToRange]),
-                        quote = TRUE)
+                return(
+                    do.call("call",
+                            c(list("[", nm),
+                              indexRangeExprs[indexSlotToRange]),
+                            quote = TRUE)
+                )
             }
         },
 

@@ -2033,6 +2033,16 @@ test_that("non-sequential indexing in for loop or indexRule", {
     )
 
     rule <- graphRuleClass$new(toExpr = quote(y[i]),
+                               fromExpr = quote(x),
+                               context = context_i_nonseq)
+
+    expect_equal(
+        applyGraphRule(
+            varRangeClass$new(list()), rule),
+        varRangeClass$new(list(newIndexRange(quote(c(2,3,5)))), varName = 'y')
+    )
+    
+    rule <- graphRuleClass$new(toExpr = quote(y[i]),
                                fromExpr = quote(x[c(2,3,5)]),
                                context = context_i_short)
 

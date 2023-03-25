@@ -291,6 +291,10 @@ test_that("calcRanges are generated correctly", {
     expect_equal(calcRange$indexingRange,
                  varRangeClass$new(list(newIndexRange(quote(2:4))), varName = 'y'))
     
+    calcRange <- calcRule$generateCalcRange(varRangeClass$new(list(newIndexRange(quote(5:8)), newIndexRange(quote(3:5)))))
+    expect_equal(calcRange$indexingRange,
+                 varRangeClass$new(list(newIndexRange(quote(2:4))), varName = 'y'))
+
     calcRange <- calcRule$generateCalcRange(varRangeClass$new(list(newIndexRange(quote(6)), newIndexRange(quote(3:5)))))
     expect_equal(calcRange, NULL)
 
@@ -1050,7 +1054,7 @@ test_that("declaration-specific calculate generated correctly", {
 })
 
 
-test_that("calculate works correctly", {
+test_that("calculate works correctly with univariate nodes", {
     ## NOTE: until nodeFun generation and model building are integrated, this testing relies on
     ## having logProb_y be in GlobalEnv
     context_0 <- modelContextClass$new()
@@ -1152,7 +1156,30 @@ test_that("calculate works correctly", {
     expect_identical(get('logProb_y', .GlobalEnv)[matrix(c(2,2,3,2,3,3,1,2,1,1,3,1), ncol = 3, byrow = TRUE)],
                      true_logProb_y[matrix(c(2,2,3,2,3,3,1,2,1,1,3,1), ncol = 3, byrow = TRUE)])
 
-    ## TODO: add tests with mv nodes
+})
+
+test_that("calculate works correctly with multivariate nodes", {
+    ## TODO: add tests with mv nodes; will need to work out single logProb value
+    ## and the need for RHS vars. Might need to move to test-modelGraph.R.
+    
+    context_0 <- modelContextClass$new()
+
+    ## non-sequential indexing
+    declRule <- declRuleClass$new(quote(y[c(2,3,5)] ~ dmnorm(mu[1:3], sigma[1:3,1:3])), 1, context_0)
+    y <- rnorm(5)
+    mu <- rep(0, 3)
+    sigma <- diag(3)
+    logProb_y <- 0
+    assign('y', y, pos = .GlobalEnv)
+    assign('logProb_y', y, pos = .GlobalEnv)
+    true_logProb_y <- nimble:::dmnorm_chol(y[c(2,3,5)], mu, chol(sigma))
+
+    dmnorm <<- nimble:::dmnorm_chol  # so dmnorm can be used in calculate(); only works if chol=prec
+    
+    calcRule <- calcRuleClass$new(declRule, NULL, NULL, context_0)
+    calcRange <- calcRule$generateCalcRange(varRangeClass$new(list(newIndexRange(2))))
+    expect_identical(calcRange$calculate(), true_logProb_y)
+    expect_identical(get('logProb_y', .GlobalEnv)[2], true_logProb_y)
 
 })
 

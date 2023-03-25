@@ -103,7 +103,6 @@ nodeRuleClass <- R6Class(
                 internalRange <- internalRule$apply(varRange)
                 if(is.null(internalRange)) return(NULL)
             } else internalRange <- varRangeClass$new(list())
-
             return(
                 nodeRangeClass$new(varName, externalRange, internalRange,
                                    indexSlotToSet, self)
@@ -503,7 +502,7 @@ nodeRangeClass <- R6Class(
                 rangeToIndexSlot <<- lapply(seq_len(max(indexSlotToRange)),
                                              function(x) which(indexSlotToRange == x))
             } else rangeToIndexSlot <- list()
-            
+
             super$initialize(indexInfo = c(externalRange$indexRanges, internalRange$indexRanges),
                              rangeToIndexSlot = rangeToIndexSlot,
                              varName = varName)
@@ -516,19 +515,22 @@ nodeRangeClass <- R6Class(
         ## FUTURE: could represent as y[(1:3), 1:5] where () indicates external indexing over nodes,
         ## instead of y[i, 1:5] for i = 1:3.
         toChar = function() {
-           if(is.null(varName)) {
+            if(is.null(varName)) {
                 nm <- as.name("no_name")
             } else nm <- as.name(varName)
+            if(!length(indexRangeExprs))
+                return(nm)
             exprs <- indexRangeExprs
             sv <- exprs[boolExternalIndexRanges]
             indexVars <- paste0("idx", seq_len(sum(boolExternalIndexRanges)))
             exprs[boolExternalIndexRanges] <- lapply(indexVars, as.name)
             forText <- paste(indexVars, "in", sv)
             result <- deparse(do.call("call",
-                              c(list("[", nm),
-                                exprs[indexSlotToRange]), quote = TRUE))
+                                      c(list("[", nm),
+                                        exprs[indexSlotToRange]), quote = TRUE))
             if(sum(boolExternalIndexRanges))
                 result <- paste0('`', result, "`, for ", paste(forText, collapse = ', '))
+            return(result)
         },
 
         print = function() {
