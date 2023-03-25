@@ -134,9 +134,9 @@ declRuleClass <- R6Class(
         initialize = function(decl, ID, context = modelContextClass$new(), constants = list()) {
             stoch <<- decl[[1]] == '~'
             decl <<- decl
+            super$initialize(decl[[2]], ID, context = context, constants = constants)
 
             calcFun <<- generateCalculateFun(decl, context)
-            super$initialize(decl[[2]], ID, context = context, constants = constants)
             originalIndexingRule <<- originalIndexingRuleClass$new(expr, context, constants)
         },
 
@@ -213,11 +213,7 @@ calcRuleClass <- R6Class(
             super$initialize(expr, ID, context = context, constants = constants)
 
             ## Full range, for use with calculate applied to full variable.
-
-            ## TODO: For testing we are doing fracturing on generic nodeRules rather than declRules,
-            ## so declRule not available. Revisit whether it's ok to leave this as is.
-            if(!is.null(declRule))
-                canonicalRange <<- declRule$getFullRange()
+            canonicalRange <<- declRule$getFullRange()
             context <<- context
             declRule <<- declRule
         },
@@ -232,7 +228,7 @@ calcRuleClass <- R6Class(
 
             ## Need original indexing because nodeFunctions will use that indexing
             ## (e.g. `y[i+1]` needs value of `i`).
-            indexingRange <- declRule$originalIndexingRule$apply(inputRange, varName)
+            indexingRange <- declRule$originalIndexingRule$apply(inputRange)
             if(is.null(indexingRange))
                 return(NULL)
             result <- calcRangeClass$new(varName, indexingRange, declRule$calculate, sortID, multiSortIDindex)
@@ -412,16 +408,14 @@ calcRangeClass <- R6Class(
 
         calculate = function() {
             numRanges <- length(indexingRange$indexRanges)
-            indexRange_lengths <- sapply(indexingRange$indexRanges,
-                                         function(x) x$numElements)
-            indexPositions <- indexingRange$rangeToIndexSlot
-            len <- prod(indexRange_lengths)
-            ## nestedLengths <- sapply(seq_len(numRanges), function(i) prod(indexRange_lengths[(i+1):numRanges]))
-
-            if(!len) {  # no indexing
+            if(!numRanges) {  # no indexing
                 result <- calcFun(NULL)
             } else {
-            
+                indexRange_lengths <- sapply(indexingRange$indexRanges,
+                                             function(x) x$numElements)
+                indexPositions <- indexingRange$rangeToIndexSlot
+                len <- prod(indexRange_lengths)
+                
                 ## TODO: This is a placeholder so we can test numerical results
                 ## once fuller workflow is in place, remove this and assignment of output of calcFun()
                 result <- rep(0, len)
@@ -435,20 +429,8 @@ calcRangeClass <- R6Class(
                 if(length(sortID) == 1 || len == 1) {
                     index <- numeric(length(indexingRange$indexSlotToRange))  ## vector to hold the original index values
                     for(item in seq_len(len)) {
-                        for(irIndex in seq_len(numRanges)) {
-                            ## Determine nested indexing from unrolled indexing
-                            ## if(irIndex == seq_len(numRanges)) {
-                            ##     elementIdx <- 1 + (item-1) %% indexRange_lengths[irIndex]
-                            ## } else {
-                            ##     elementIdx <- 1 + (item-1) %/% nestedLengths[irIndex]
-                            ##}
-                            
-                            ## TODO: remove kludge when indexRanges are proper R6 classes
-                            tmp <- indexingRange$indexRanges[[irIndex]]$getNext()
-                            index[indexPositions[[irIndex]]] <- tmp$result
-                            ## Need this to capture updated internal indexing
-                            indexingRange$indexRanges[[irIndex]] <- tmp$range 
-                        }
+                        for(irIndex in seq_len(numRanges)) 
+                            index[indexPositions[[irIndex]]] <- indexingRange$indexRanges[[irIndex]]$getNext()
                         result[item] <- calcFun(index)  ## scalar calculation
                     }
                 } else {
@@ -456,9 +438,7 @@ calcRangeClass <- R6Class(
                     sortIDvals <- rep(0, len)
                     for(item in seq_len(len)) {
                         for(irIndex in seq_len(numRanges)) {
-                            tmp <- indexingRange$indexRanges[[irIndex]]$getNext()
-                            index[item, indexPositions[[irIndex]]] <- tmp$result
-                            indexingRange$indexRanges[[irIndex]] <- tmp$range
+                            index[item, indexPositions[[irIndex]]] <- indexingRange$indexRanges[[irIndex]]$getNext()
                         }
                         sortIDvals[item] <- sortID[index[item, multiSortIDindex]]
                     }
@@ -621,7 +601,7 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
         focalContext <- sapply(names(singleContexts), function(nm)
             nm %in% all.vars(expr[[2+nonIdenticalIndexSlots]]))
 
-        if(length(focalContext) != 1)
+        if(sum(focalContext) != 1)
             stop("fracture: unexpected number of contexts in ", deparse(expr), ".")
 
         ## General strategy in cases below is to determine overlapped and non-overlapped
@@ -748,12 +728,12 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
 
         ## Convert to character representation to allow simplest determination of overlap/non-overlap,
         ## using all index
-        lhsAsChar <- do.call(paste, as.data.frame(unrolledLHS[[1]]))
-        fracAsChar <- do.call(paste, as.data.frame(unrolledFrac[[1]]))
+        lhsAsChar <- do.call(paste, as.data.frame(unrolledLHS$values))
+        fracAsChar <- do.call(paste, as.data.frame(unrolledFrac$values))
 
         remaining <- !lhsAsChar %in% fracAsChar
-        mat1 <- unrolledLHS[[1]][remaining, , drop = FALSE]
-        mat2 <- unrolledLHS[[1]][!remaining, , drop = FALSE]
+        mat1 <- unrolledLHS$values[remaining, , drop = FALSE]
+        mat2 <- unrolledLHS$values[!remaining, , drop = FALSE]
 
         focalContext <- sapply(names(singleContexts), function(nm)
             nm %in% unlist(lapply(2+nonIdenticalIndexSlots, function(x) all.vars(expr[[x]]))))

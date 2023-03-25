@@ -248,7 +248,7 @@ checkForVars <- function(toExpr, fromExpr, context, constants) {
         varsInExpr <- c(varsInExpr, all.vars(toExpr[2:length(toExpr)]))
     wh <- which(!varsInExpr %in% c(names(constants), context$indexVarNames))
     if(length(wh))
-        stop("graphRuleClass: Index or constant ", paste(unique(varsInExpr[wh]), collapse = ','), " not found as loop index or in constants.")
+        stop("graphRuleClass: Index or constant `", paste(unique(varsInExpr[wh]), collapse = ','), "` not found as loop index or in constants.")
 }
 
 

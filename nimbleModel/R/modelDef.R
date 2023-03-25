@@ -164,7 +164,7 @@ modelDefClass <- R6Class(
             initialCalcRules <- lapply(declRules, function(rule)
                 calcRuleClass$new(rule, NULL, NULL, rule$context, rule$constants)
                 )
-            tmp <- sapply(seq_along(initialCalcRules), function(i) initialCalcRules[[i]]$ID <- i)
+            tmp <- sapply(seq_along(initialCalcRules), function(i) initialCalcRules[[i]]$ID <- as.character(i))
             names(initialCalcRules) <- sapply(initialCalcRules, function(rule) rule$ID)
 
             setRelationships(initialCalcRules, downstreamRules)
@@ -179,7 +179,7 @@ modelDefClass <- R6Class(
             initialCalcRules <- lapply(declRules, function(rule)
                 calcRuleClass$new(rule, NULL, NULL, rule$context, rule$constants)
                 )
-            tmp <- sapply(seq_along(initialCalcRules), function(i) initialCalcRules[[i]]$ID <- i)
+            tmp <- sapply(seq_along(initialCalcRules), function(i) initialCalcRules[[i]]$ID <- as.character(i))
             names(initialCalcRules) <- sapply(initialCalcRules, function(rule) rule$ID)
 
             allCalcRules <- generateCalcRules(initialCalcRules, rhsOriginalRules, downstreamRules,
@@ -205,9 +205,8 @@ modelDefClass <- R6Class(
                 }
             }
             
-            setEndNodes(allCalcRules)
-            setTopNodes(allCalcRules)
-            ## setLatentNodes(calcRules)
+            setEndRules(allCalcRules)
+            setTopRules(allCalcRules)
 
             ## Set up nested lists indexed by varName
             topRules <<- newVarRules(allCalcRules, type = 'top')

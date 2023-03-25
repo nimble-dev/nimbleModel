@@ -187,7 +187,7 @@ setRelationships <- function(calcRules, graphRules, startPos = 1) {
 
 ## how will getDependencies work and interact with set(s) of graphRules?
 
-setEndNodes <- function(calcRules) {
+setEndRules <- function(calcRules) {
     tmp <- sapply(calcRules, function(rule)
         rule$setStochDep(calcRules))
     tmp <- sapply(calcRules, function(rule)
@@ -195,7 +195,7 @@ setEndNodes <- function(calcRules) {
     invisible(0)
 }
 
-setTopNodes <- function(calcRules) {
+setTopRules <- function(calcRules) {
     tmp <- sapply(calcRules, function(rule)
         rule$setStochParent(calcRules))
     tmp <- sapply(calcRules, function(rule)

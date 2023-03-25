@@ -37,9 +37,8 @@ export(originalIndexingRuleClass)
 export(generateCalcRules)
 export(generateRHSonlyRules)
 export(setSortIDs)
-export(setEndNodes)
-export(setTopNodes)
-## export(setLatentNodes)
+export(setEndRules)
+export(setTopRules)
 
 ## functions and other objects
 export(getDependencies)

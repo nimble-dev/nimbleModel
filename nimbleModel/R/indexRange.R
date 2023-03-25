@@ -108,12 +108,12 @@ indexRangeClass <- R6Class(
             item <- current
             ## Increment internal indexing
             if(local < delay) {
-                local <- local + 1
+                local <<- local + 1
             } else {
-                local <- 1
-                current <- current + 1
+                local <<- 1
+                current <<- current + 1
                 if(current > numElements)
-                    current <- 1
+                    current <<- 1
             }
             
             ## Return original index values

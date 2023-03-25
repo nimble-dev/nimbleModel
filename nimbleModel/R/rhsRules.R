@@ -29,9 +29,9 @@ rhsRuleClass <- R6Class(
                         cnt <- cnt + 1
                         newSingleContexts[[cnt]] <- singleContextClass$new(
                                indexVarExpr = parse(text=paste0(".block", cnt))[[1]],
-                               indexRangeExpr = ifelse(scalarConstants[idx],
-                                                       substitute(A:A, list(A = expr[[idx+2]])),
-                                                       expr[[idx+2]]))
+                               indexRangeExpr = if(scalarConstants[idx]) 
+                                                       substitute(A:A, list(A = expr[[idx+2]])) 
+                                                       else expr[[idx+2]])
                            expr[[idx+2]] <- newSingleContexts[[cnt]]$indexVarExpr
                     }
                     context <- modelContextClass$new(newSingleContexts)

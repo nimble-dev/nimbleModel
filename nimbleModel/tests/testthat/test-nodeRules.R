@@ -175,13 +175,6 @@ test_that("rhsRule creation and application works", {
     expect_error(RHSrule$apply(varRangeClass$new(list(newIndexRange(3)), varName = 'sigma')),
                  "incorrect number of input indices")
                             
-
-    ## HERE
-    
-    ## TODO: test cases with extra single contexts:
-    ## mu[i] <- tau
-    ## mu[i,j] <- mu0[i]
-    
     singleContext1 <-
         singleContextClass$new(forCode = quote(for(i in 2:8){}))
     
@@ -199,6 +192,10 @@ test_that("rhsRule creation and application works", {
     expect_identical(result$numExternalIndexRanges, 1L)
     expect_identical(result$indexSlotToRange, 1L)
     expect_equal(result$indexRanges[[1]], newIndexRange(quote(5:9)))
+
+    expect_error(RHSrule$apply(varRangeClass$new(list(newIndexRange(3), newIndexRange(5)), varName = 'mu')),
+                 "incorrect number of input indices")
+
     
     RHS <- quote(mu[i+1, 1:3])
     RHSrule <- rhsRuleClass$new(RHS, 1, context_i)
@@ -241,9 +238,9 @@ test_that("calcRanges are generated correctly", {
 
     declRule <- declRuleClass$new(quote(y ~ dnorm(mu, sigma)), 1, context_0)
     calcRule <- calcRuleClass$new(declRule, NULL, NULL, context_0)
-    result <- calcRule$apply(varRangeClass$new(list(nimbleModel:::indexRange_none()), varName = 'y'))
+    result <- calcRule$apply(varRangeClass$new(list(), varName = 'y'))
     expect_identical(result$numExternalIndexRanges, 0L)
-    expect_identical(result$indexRanges[[1]], nimbleModel:::indexRange_none())
+    expect_true(result$isNone())
     
     declRule_i <- declRuleClass$new(quote(y[i+1] ~ dnorm(0,1)), 1, context_i)
     
@@ -306,7 +303,7 @@ test_that("calcRanges are generated correctly", {
     expect_equal(calcRange$indexingRange,
                  varRangeClass$new(list(newIndexRange(quote(4:8))), varName = 'y'))
 
-    nodeRange$indexRanges[[1]][[1]][[2]] <- 35  # have nodeRange extend beyond true extent
+    nodeRange$indexRanges[[1]]$end <- 35  # have nodeRange extend beyond true extent
     calcRange <- calcRule$generateCalcRange(nodeRange)
     expect_equal(calcRange$indexingRange,
                  varRangeClass$new(list(newIndexRange(quote(4:8))), varName = 'y'))
@@ -340,13 +337,13 @@ test_that("calcRanges are generated correctly", {
                                               ))
     expect_equal(calcRange$indexingRange,
                  varRangeClass$new(list(newIndexRange(matrix(c(2,8,1,2), ncol = 2)),
-                                        newIndexRange(quote(3:5))), indexOrders = list(c(1,3), 2), varName = 'y'))
+                                        newIndexRange(quote(3:5))), rangeToIndexSlot = list(c(1,3), 2), varName = 'y'))
 
     calcRange <- calcRule$generateCalcRange(varRangeClass$new(list(
                                                   newIndexRange(quote(3:5)),
                                                   newIndexRange(matrix(c(3,12,5,7,2,2,3,2), ncol = 2)),
                                                   newIndexRange(quote(1:5))
-                                              ), indexOrders = list(1,c(2,4), 3)))
+                                              ), rangeToIndexSlot = list(1,c(2,4), 3)))
     expect_equal(calcRange$indexingRange,
                  varRangeClass$new(list(newIndexRange(matrix(c(2,6))),
                                         newIndexRange(quote(3:5)),
@@ -378,8 +375,7 @@ test_that("calcRanges are generated correctly", {
 
 ## Hopefully comprehensive testing of exclude()
 test_that("calcRule fracturing works", {
-    ## CHECK: I think nodeRuleClass can stay as a generic nodeRule rather than needed to be a calcRule,
-    ## even though in real work, input would be a calcRule.
+    ## For simplicity, these tests use generic `nodeRule` inputs rather than `calcRule` that would be used in real work.
     singleContext1 <-
         singleContextClass$new(forCode = quote(for(i in 2:8){}))
     
@@ -396,18 +392,20 @@ test_that("calcRule fracturing works", {
     
     LHS <- quote(mu)
     LHSrule <- nodeRuleClass$new(LHS, 1, context_0)
+    calcRule <- calcRuleClass$new(LHSrule, NULL, NULL, context_0)
     ## fracture with mu itself
-    fracRange <- LHSrule$apply(varRangeClass$new(list(nimbleModel:::indexRange_none()), varName = 'mu'))
-    result <- fracture(LHSrule, fracRange)
+    fracRange <- calcRule$apply(varRangeClass$new(list(), varName = 'mu'))
+    result <- fracture(calcRule, fracRange)
     expect_identical(result, NULL)
     
     ## scalar overlap at end
     LHS <- quote(mu[i+1])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
+    calcRule <- calcRuleClass$new(LHSrule, NULL, NULL, context_i)
     ## fracture with mu[3]
-    fracRange <- LHSrule$apply(varRangeClass$new(list(newIndexRange(3)), varName = 'mu'))
+    fracRange <- calcRule$apply(varRangeClass$new(list(newIndexRange(3)), varName = 'mu'))
     
-    result <- fracture(LHSrule, fracRange)
+    result <- fracture(calcRule, fracRange)
 
     expect_identical(length(result), 2L)
     expr <- quote(mu[i])
@@ -423,10 +421,11 @@ test_that("calcRule fracturing works", {
     ## seq overlap at end
     LHS <- quote(mu[i+1])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
+    calcRule <- calcRuleClass$new(LHSrule, NULL, NULL, context_i)
     ## fracture with mu[3:4]
-    fracRange <- LHSrule$apply(varRangeClass$new(list(newIndexRange(quote(3:4))), varName = 'mu'))
+    fracRange <- calcRule$apply(varRangeClass$new(list(newIndexRange(quote(3:4))), varName = 'mu'))
     
-    result <- fracture(LHSrule, fracRange)
+    result <- fracture(calcRule, fracRange)
 
     expect_identical(length(result), 2L)
     expr <- quote(mu[i])
@@ -442,10 +441,11 @@ test_that("calcRule fracturing works", {
     ## seq overlap in middle
     LHS <- quote(mu[i+1])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
+    calcRule <- calcRuleClass$new(LHSrule, NULL, NULL, context_i)
     ## fracture with mu[4:5]
-    fracRange <- LHSrule$apply(varRangeClass$new(list(newIndexRange(quote(4:5))), varName = 'mu'))
+    fracRange <- calcRule$apply(varRangeClass$new(list(newIndexRange(quote(4:5))), varName = 'mu'))
     
-    result <- fracture(LHSrule, fracRange)
+    result <- fracture(calcRule, fracRange)
 
     expect_identical(length(result), 3L)
     expr <- quote(mu[i])
@@ -466,11 +466,12 @@ test_that("calcRule fracturing works", {
     ## seq and matrix
     LHS <- quote(mu[i+1])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
+    calcRule <- calcRuleClass$new(LHSrule, NULL, NULL, context_i)
     ## fracture with matrix
     idx <- c(3,6,9)
-    fracRange <- LHSrule$apply(varRangeClass$new(list(newIndexRange(matrix(idx))), varName = 'mu'))
+    fracRange <- calcRule$apply(varRangeClass$new(list(newIndexRange(matrix(idx))), varName = 'mu'))
     
-    result <- fracture(LHSrule, fracRange)
+    result <- fracture(calcRule, fracRange)
 
     expect_identical(length(result), 2L)
     expr <- quote(mu[idx[i]])
@@ -487,42 +488,44 @@ test_that("calcRule fracturing works", {
     ## basic case with one external, one internal: mu[1:3, i]
     LHS <- quote(mu[1:3,i])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
-    fracRange <- LHSrule$apply(varRangeClass$new(list(newIndexRange(quote(1:3)),
+    calcRule <- calcRuleClass$new(LHSrule, NULL, NULL, context_i)
+    fracRange <- calcRule$apply(varRangeClass$new(list(newIndexRange(quote(1:3)),
                                                       newIndexRange(quote(2:3))), varName = 'mu'))
     
-    result <- fracture(LHSrule, fracRange)
+    result <- fracture(calcRule, fracRange)
 
     expect_identical(length(result), 2L)
-    expect_identical(result[[1]]$internalRule$indexRules[[1]]$setupResults,
+    expect_equal(result[[1]]$internalRule$indexRules[[1]]$setupResults,
                      LHSrule$internalRule$indexRules[[1]]$setupResults)
-    expect_identical(result[[2]]$internalRule$indexRules[[1]]$setupResults,
+    expect_equal(result[[2]]$internalRule$indexRules[[1]]$setupResults,
                      LHSrule$internalRule$indexRules[[1]]$setupResults)
     context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 2:3){}))))
     expected <- nodeRuleClass$new(LHS, 1, context_tmp)
-    expect_identical(result[[1]]$externalRule$indexRules[[1]]$setupResults,
+    expect_equal(result[[1]]$externalRule$indexRules[[1]]$setupResults,
                      expected$externalRule$indexRules[[1]]$setupResults)
     context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 4:8){}))))
     expected <- nodeRuleClass$new(LHS, 1, context_tmp)
-    expect_identical(result[[2]]$externalRule$indexRules[[1]]$setupResults,
+    expect_equal(result[[2]]$externalRule$indexRules[[1]]$setupResults,
                      expected$externalRule$indexRules[[1]]$setupResults)
 
     ## two external indices, one fractured, two constant internal rules
     LHS <- quote(mu[1:3,j,i,2:3])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_ij)
-    fracRange <- LHSrule$apply(varRangeClass$new(list(newIndexRange(quote(1:3)),
+    calcRule <- calcRuleClass$new(LHSrule, NULL, NULL, context_ij)
+    fracRange <- calcRule$apply(varRangeClass$new(list(newIndexRange(quote(1:3)),
                                                       newIndexRange(quote(1:4)),
                                                       newIndexRange(matrix(c(2,4))),
                                                       newIndexRange(2)), varName = 'mu'))
     
-    result <- fracture(LHSrule, fracRange)
+    result <- fracture(calcRule, fracRange)
     
     expect_identical(length(result), 2L)
     expect_identical(LHSrule$indexSlotToSet, c(0,2,1,0))
     for(k in 1:2) {
         for(kk in 1:2)
-            expect_identical(result[[k]]$internalRule$indexRules[[kk]]$setupResults,
+            expect_equal(result[[k]]$internalRule$indexRules[[kk]]$setupResults,
                              LHSrule$internalRule$indexRules[[kk]]$setupResults)
-        expect_identical(result[[k]]$externalRule$indexRules[[1]]$setupResults,
+        expect_equal(result[[k]]$externalRule$indexRules[[1]]$setupResults,
                          LHSrule$externalRule$indexRules[[2]]$setupResults)
         expect_identical(result[[k]]$indexSlotToSet, c(0,1,2,0))
     }
@@ -543,20 +546,21 @@ test_that("calcRule fracturing works", {
     ## two external indices, one fractured, one constant internal rule and additional external from scalar
     LHS <- quote(mu[1:3,j,i,2])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_ij)
-    fracRange <- LHSrule$apply(varRangeClass$new(list(newIndexRange(quote(1:3)),
+    calcRule <- calcRuleClass$new(LHSrule, NULL, NULL, context_ij)
+    fracRange <- calcRule$apply(varRangeClass$new(list(newIndexRange(quote(1:3)),
                                                       newIndexRange(quote(1:4)),
                                                       newIndexRange(matrix(c(2,4))),
                                                       newIndexRange(2)), varName = 'mu'))
     
-    result <- fracture(LHSrule, fracRange)
+    result <- fracture(calcRule, fracRange)
 
     ## Just check stuff related to the scalar constant index, given similarity to above test.
     expect_identical(length(result), 2L)
     expect_identical(LHSrule$indexSlotToSet, c(0,2,1,0))
     for(k in 1:2) {
-        expect_identical(result[[k]]$internalRule$indexRules[[1]]$setupResults,
+        expect_equal(result[[k]]$internalRule$indexRules[[1]]$setupResults,
                          LHSrule$internalRule$indexRules[[1]]$setupResults)
-        expect_identical(result[[k]]$externalRule$indexRules[[1]]$setupResults,
+        expect_equal(result[[k]]$externalRule$indexRules[[1]]$setupResults,
                          LHSrule$externalRule$indexRules[[2]]$setupResults)
         expect_identical(result[[k]]$indexSlotToSet, c(0,1,2,0))
     }
@@ -565,17 +569,18 @@ test_that("calcRule fracturing works", {
     ## two external indices, both fractured: mu[1:3, j ,2, i]
     LHS <- quote(mu[1:3,j,i,2])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_ij)
-    fracRange <- LHSrule$apply(varRangeClass$new(list(newIndexRange(quote(1:3)),
+    calcRule <- calcRuleClass$new(LHSrule, NULL, NULL, context_ij)
+    fracRange <- calcRule$apply(varRangeClass$new(list(newIndexRange(quote(1:3)),
                                                       newIndexRange(quote(2:3)),
                                                       newIndexRange(quote(2:3)),
                                                       newIndexRange(2)), varName = 'mu'))
     
-    result <- fracture(LHSrule, fracRange)
+    result <- fracture(calcRule, fracRange)
 
     expect_identical(length(result), 2L)
     expect_identical(LHSrule$indexSlotToSet, c(0,2,1,0))
     for(k in 1:2) {
-        expect_identical(result[[k]]$internalRule$indexRules[[1]]$setupResults,
+        expect_equal(result[[k]]$internalRule$indexRules[[1]]$setupResults,
                          LHSrule$internalRule$indexRules[[1]]$setupResults)
         expect_identical(result[[k]]$indexSlotToSet, c(0,1,1,0))
     }
@@ -599,17 +604,18 @@ test_that("calcRule fracturing works", {
     ## two external indices fractured: mu[1:3, j ,2, i] , based on 2-d matrix
     LHS <- quote(mu[1:3,j,i,2])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_ij)
+    calcRule <- calcRuleClass$new(LHSrule, NULL, NULL, context_ij)
     
-    fracRange <- LHSrule$apply(varRangeClass$new(list(newIndexRange(quote(1:3)),
+    fracRange <- calcRule$apply(varRangeClass$new(list(newIndexRange(quote(1:3)),
                                                       newIndexRange(matrix(c(2,3,3,7), ncol = 2)),
                                                       newIndexRange(2)), varName = 'mu'))
 
-    result <- fracture(LHSrule, fracRange)
+    result <- fracture(calcRule, fracRange)
 
     expect_identical(length(result), 2L)
     expect_identical(LHSrule$indexSlotToSet, c(0,2,1,0))
     for(k in 1:2) {
-        expect_identical(result[[k]]$internalRule$indexRules[[1]]$setupResults,
+        expect_equal(result[[k]]$internalRule$indexRules[[1]]$setupResults,
                          LHSrule$internalRule$indexRules[[1]]$setupResults)
         expect_identical(result[[k]]$indexSlotToSet, c(0,1,1,0))
     }
@@ -635,7 +641,8 @@ test_that("calcRule fracturing works", {
 })
 
 test_that("RHS exclusion works", {
-    ## I think nodeRuleClass can stay as is here, even though in real work, input would be a calcRule
+    ## Note that this uses a generic `nodeRule` as the excluding input,
+    ## though in real work, it would be a `rhsRule` or a `declRule`.
 
     singleContext1 <-
         singleContextClass$new(forCode = quote(for(i in 2:8){}))
@@ -667,7 +674,7 @@ test_that("RHS exclusion works", {
 
     context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 3:8){}))))
     expected <- rhsRuleClass$new(RHS, 1, context_tmp)
-    expect_identical(result$externalRule$indexRules[[1]]$setupResults,
+    expect_equal(result$externalRule$indexRules[[1]]$setupResults,
                     expected$externalRule$indexRules[[1]]$setupResults)
 
     ## scalar/seq overlap no overlap
@@ -689,11 +696,11 @@ test_that("RHS exclusion works", {
 
     context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 2:2){}))))
     expected <- rhsRuleClass$new(RHS, 1, context_tmp)
-    expect_identical(result[[1]]$externalRule$indexRules[[1]]$setupResults,
+    expect_equal(result[[1]]$externalRule$indexRules[[1]]$setupResults,
                     expected$externalRule$indexRules[[1]]$setupResults)
     context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 4:8){}))))
     expected <- rhsRuleClass$new(RHS, 1, context_tmp)
-    expect_identical(result[[2]]$externalRule$indexRules[[1]]$setupResults,
+    expect_equal(result[[2]]$externalRule$indexRules[[1]]$setupResults,
                     expected$externalRule$indexRules[[1]]$setupResults)
 
 
@@ -708,7 +715,7 @@ test_that("RHS exclusion works", {
 
     context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 5:8){}))))
     expected <- rhsRuleClass$new(RHS, 1, context_tmp)
-    expect_identical(result[[1]]$externalRule$indexRules[[1]]$setupResults,
+    expect_equal(result[[1]]$externalRule$indexRules[[1]]$setupResults,
                     expected$externalRule$indexRules[[1]]$setupResults)
 
 
@@ -807,16 +814,16 @@ test_that("RHS exclusion works", {
 
     context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 2:4){}))))
     expected <- rhsRuleClass$new(RHS, 1, context_tmp)
-    expect_identical(result[[1]]$externalRule$indexRules[[1]]$setupResults,
+    expect_equal(result[[1]]$externalRule$indexRules[[1]]$setupResults,
                      RHSrule$externalRule$indexRules[[2]]$setupResults)
-    expect_identical(result[[1]]$externalRule$indexRules[[2]]$setupResults,
+    expect_equal(result[[1]]$externalRule$indexRules[[2]]$setupResults,
                      expected$externalRule$indexRules[[1]]$setupResults)
     
     context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 6:8){}))))
     expected <- rhsRuleClass$new(RHS, 1, context_tmp)
-    expect_identical(result[[2]]$externalRule$indexRules[[1]]$setupResults,
+    expect_equal(result[[2]]$externalRule$indexRules[[1]]$setupResults,
                     RHSrule$externalRule$indexRules[[2]]$setupResults)
-    expect_identical(result[[2]]$externalRule$indexRules[[2]]$setupResults,
+    expect_equal(result[[2]]$externalRule$indexRules[[2]]$setupResults,
                      expected$externalRule$indexRules[[1]]$setupResults)
 
     ## basic mv node case, all excluded
@@ -839,16 +846,16 @@ test_that("RHS exclusion works", {
     
     context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 2:4){}))))
     expected <- rhsRuleClass$new(RHS, 1, context_tmp)
-    expect_identical(result[[1]]$externalRule$indexRules[[1]]$setupResults,
+    expect_equal(result[[1]]$externalRule$indexRules[[1]]$setupResults,
                      RHSrule$externalRule$indexRules[[2]]$setupResults)
-    expect_identical(result[[1]]$externalRule$indexRules[[2]]$setupResults,
+    expect_equal(result[[1]]$externalRule$indexRules[[2]]$setupResults,
                      expected$externalRule$indexRules[[1]]$setupResults)
     
     context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 7:8){}))))
     expected <- rhsRuleClass$new(RHS, 1, context_tmp)
-    expect_identical(result[[2]]$externalRule$indexRules[[1]]$setupResults,
+    expect_equal(result[[2]]$externalRule$indexRules[[1]]$setupResults,
                     RHSrule$externalRule$indexRules[[2]]$setupResults)
-    expect_identical(result[[2]]$externalRule$indexRules[[2]]$setupResults,
+    expect_equal(result[[2]]$externalRule$indexRules[[2]]$setupResults,
                      expected$externalRule$indexRules[[1]]$setupResults)
 
     ## basic mv node case with shared matrix index
@@ -865,7 +872,7 @@ test_that("RHS exclusion works", {
     expected <- rhsRuleClass$new(RHS, 1, context_tmp, constants = list(idx = idx))
     expect_equal(result[[1]]$externalRule$indexRules[[1]]$setupResults,
                      RHSrule$externalRule$indexRules[[2]]$setupResults)
-    expect_identical(result[[1]]$externalRule$indexRules[[2]]$setupResults,
+    expect_equal(result[[1]]$externalRule$indexRules[[2]]$setupResults,
                      expected$externalRule$indexRules[[1]]$setupResults)
     
     context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 6:8){})),
@@ -873,7 +880,7 @@ test_that("RHS exclusion works", {
     expected <- rhsRuleClass$new(RHS, 1, context_tmp, constants = list(idx = idx))
     expect_equal(result[[2]]$externalRule$indexRules[[1]]$setupResults,
                     RHSrule$externalRule$indexRules[[2]]$setupResults)
-    expect_identical(result[[2]]$externalRule$indexRules[[2]]$setupResults,
+    expect_equal(result[[2]]$externalRule$indexRules[[2]]$setupResults,
                      expected$externalRule$indexRules[[1]]$setupResults)
 
     
@@ -923,9 +930,9 @@ test_that("RHS exclusion works", {
     result <- exclude(RHSrule, LHSrule)
     context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 2:6){}))))
     expected <- rhsRuleClass$new(RHS, 1, context_tmp)
-    expect_identical(result[[1]]$externalRule$indexRules[[2]]$setupResults,
+    expect_equal(result[[1]]$externalRule$indexRules[[2]]$setupResults,
                      expected$externalRule$indexRules[[1]]$setupResults)
-    expect_identical(result[[1]]$externalRule$indexRules[[1]]$setupResults,
+    expect_equal(result[[1]]$externalRule$indexRules[[1]]$setupResults,
                      RHSrule$externalRule$indexRules[[2]]$setupResults)
 
     ## basic 3-d case - two identical indices
@@ -939,11 +946,11 @@ test_that("RHS exclusion works", {
     
     context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 2:6){}))))
     expected <- rhsRuleClass$new(RHS, 1, context_tmp)
-    expect_identical(result[[1]]$externalRule$indexRules[[1]]$setupResults,
+    expect_equal(result[[1]]$externalRule$indexRules[[1]]$setupResults,
                      RHSrule$externalRule$indexRules[[2]]$setupResults)
-    expect_identical(result[[1]]$externalRule$indexRules[[2]]$setupResults,
+    expect_equal(result[[1]]$externalRule$indexRules[[2]]$setupResults,
                      RHSrule$externalRule$indexRules[[3]]$setupResults)
-    expect_identical(result[[1]]$externalRule$indexRules[[3]]$setupResults,
+    expect_equal(result[[1]]$externalRule$indexRules[[3]]$setupResults,
                      expected$externalRule$indexRules[[1]]$setupResults)
     expect_identical(result[[1]]$indexSlotToSet, c(1,3,2))
 
@@ -1011,16 +1018,17 @@ test_that("RHS exclusion works", {
     expect_equal(result[[1]]$externalRule$indexRules[[2]]$setupResults,
                      expected$externalRule$indexRules[[2]]$setupResults)
     
-    ## This is not error-trapped (use of index and constant in wrong way)
+    ## Use of index and constant in wrong way. Error message could be more informative.
     RHS <- quote(mu[i[idx]])
     idx <- c(4,7,1)
-    RHSrule <- rhsRuleClass$new(RHS, 1, context_i, constants = list(idx = idx))
+    expect_error(RHSrule <- rhsRuleClass$new(RHS, 1, context_i, constants = list(idx = idx)),
+                 "Missing values found")
     
-    ## incorrect length of constant (move this check to test-graphRules, probably).
+    ## Incorrect length of constant. 
     RHS <- quote(mu[i,idx[j]])
     idx <- c(4,7,1)
     expect_error(RHSrule <- rhsRuleClass$new(RHS, 1, context_ij, constants = list(idx = idx)),
-                 "Missing values found in setting up arbitrary indexRule")
+                 "Constants may be incorrect size")
 })
 
 ## FAILS for the moment because of logProb initialization currently hacked into $calculate (see next test)
@@ -1052,7 +1060,7 @@ test_that("calculate works correctly", {
     
     declRule <- declRuleClass$new(quote(y ~ dnorm(0, 1)), 1, context_0)
     calcRule <- calcRuleClass$new(declRule, NULL, NULL, context_0)
-    calcRange <- calcRule$generateCalcRange(varRangeClass$new(list(nimbleModel:::indexRange_none())))
+    calcRange <- calcRule$generateCalcRange(varRangeClass$new(list()))
     expect_identical(calcRange$calculate(), true_logProb_y)
     expect_identical(get('logProb_y', .GlobalEnv), true_logProb_y)
 
@@ -1076,8 +1084,9 @@ test_that("calculate works correctly", {
     expect_identical(calcRange$calculate(), true_logProb_y[c(3,5)])
     expect_identical(get('logProb_y', .GlobalEnv)[c(3,5)], true_logProb_y[c(3,5)])
 
-    ## also test with 1e6 dnorms once have indexRange as proper R6 class to see if faster (avoid current list copies)
-    ## current nimble 1e5 dnorms is 34 sec. (compare to vec dnorm in R of .02 f0r 1e6 and for loop of 0.88 sec for 1e6)
+    ## Note that with 1e6 dnorms, calculate() takes 17 sec.
+    ## current nimble 1e5 dnorms is 34 sec.
+    ## (compare to vec dnorm in R of .02 for 1e6 and for loop of 0.88 sec for 1e6)
 
     singleContext1 <-
         singleContextClass$new(forCode = quote(for(i in 2:6){}))
@@ -1138,7 +1147,7 @@ test_that("calculate works correctly", {
     calcRange <- calcRule$generateCalcRange(varRangeClass$new(
                                                                list(newIndexRange(matrix(c(2,1,3,1), ncol = 2)),
                                                                     newIndexRange(quote(2:3))),
-                                                               indexOrders = list(c(1,3), 2)))
+                                                               rangeToIndexSlot = list(c(1,3), 2)))
     expect_identical(calcRange$calculate(), true_logProb_y[matrix(c(2,2,3,2,3,3,1,2,1,1,3,1), ncol = 3, byrow = TRUE)])
     expect_identical(get('logProb_y', .GlobalEnv)[matrix(c(2,2,3,2,3,3,1,2,1,1,3,1), ncol = 3, byrow = TRUE)],
                      true_logProb_y[matrix(c(2,2,3,2,3,3,1,2,1,1,3,1), ncol = 3, byrow = TRUE)])
@@ -1181,8 +1190,6 @@ test_that("calculate works correctly for SSM recursion", {
                                         newIndexRange(c(3,1)), newIndexRange(quote(3:4)))))
     ## 'test2' is hard coded into declRule class as matrix(0,3,5)
     expect_identical(calcRange$calculate(), c(9,4.5,3,1.5))    
-    
-
 })
 
 
@@ -1198,12 +1205,12 @@ test_that("getFullRange works correctly", {
     LHS <- quote(mu)
     LHSrule <- nodeRuleClass$new(LHS, 1, context_0)
     expect_equal(LHSrule$getFullRange(),
-                     varRangeClass$new(list(nimbleModel:::indexRange_none()), varName = 'mu'))
+                     varRangeClass$new(list(), varName = 'mu'))
 
     LHS <- quote(mu[i])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
     expect_equal(LHSrule$getFullRange(),
-                     varRangeClass$new(list(nimbleModel:::newIndexRange(quote(2:8))), varName = 'mu'))
+                     varRangeClass$new(list(newIndexRange(quote(2:8))), varName = 'mu'))
     
     
     LHS <- quote(mu[5, 1:3])
@@ -1236,7 +1243,7 @@ test_that("getFullRange works correctly", {
     LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
     expect_equal(LHSrule$getFullRange(),
                  varRangeClass$new(list(newIndexRange(quote(4:5)), newIndexRange(matrix(rep(2:8, 2), ncol = 2)), newIndexRange(3)),
-                                   indexOrders = list(1, c(2,4), 3),
+                                   rangeToIndexSlot = list(1, c(2,4), 3),
                                    varName = 'mu'))
 
 })
