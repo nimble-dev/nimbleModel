@@ -160,7 +160,7 @@ test_that("nodeRule creation and application works", {
 
     expect_error(LHSrule$apply(varRangeClass$new(list(newIndexRange(3)), varName = 'mu')),
                  "incorrect number of input indices")
-    
+   
 })
 
 test_that("rhsRule creation and application works", {

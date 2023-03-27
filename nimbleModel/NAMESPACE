@@ -59,4 +59,4 @@ export(fracture)
 export(`[.varStoreClass`)
 export(`[<-.varStoreClass`)
 
-export(nm_seq_noDecrease)
+export(seqNoDecrease)

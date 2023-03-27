@@ -81,109 +81,43 @@ modelContextClass <- R6Class(
                     names(singleContexts) <<- indexVarNames
                 }
             },
-            genIndexVarValues = function(constantsEnvCopy) {
-                genIndexVarValues_recurse(singleContexts, constantsEnvCopy)
-            },
             embedCodeInForLoop = function(innerLoopCode,
                                           useContext = NULL,
-                                          allowNegativeIndexSequences = NULL) {
-                modelContextClass_embedCodeInForLoop(singleContexts,
-                                                innerLoopCode,
-                                                useContext,
-                                                allowNegativeIndexSequences)
+                                          allowNegativeIndexSequences = getNimbleOption('processBackwardsModelIndexRanges')) {
+                ## innerLoopCode: code to be embedded in (possibly nested) for-loops from this context
+                ## useContext: optional logical vector of which contexts to include
+                ## allowNegativeIndexSequences: if TRUE, for(i in 2:1) results in iterating over c(2,1), as R would.
+                ## otherwise (default is FALSE), behavior is like BUGS: for(i in 2:1) results in no iteration.
+                if(is.null(useContext)) {
+                    useContext <- rep(TRUE, length(singleContexts))
+                }
+                iContext <- length(singleContexts)
+                while(iContext >= 1) {
+                    if(useContext[iContext]) {
+                        newCode <- singleContexts[[iContext]]$forCode
+                        if(!allowNegativeIndexSequences) {
+                            indexRangeCode <- newCode[[3]]
+                            isColonExpr <- ifelse(is.name(indexRangeCode[[1]]),
+                                                  as.character(indexRangeCode[[1]]) == ':', FALSE)
+                            if(isColonExpr)
+                                newCode[[3]] <- as.call(
+                                    list(
+                                        as.name('seqNoDecrease'),
+                                        indexRangeCode[[2]],
+                                        indexRangeCode[[3]])
+                                )
+                        }
+                        newCode[[4]] <- innerLoopCode
+                        innerLoopCode <- newCode
+                    }
+                    iContext <- iContext - 1
+                }
+                return(innerLoopCode)
             }
         )
     )
 
-modelContextClass_embedCodeInForLoop = function(singleContexts,
-                                           innerLoopCode,
-                                           useContext = NULL,
-                                           allowNegativeIndexSequences = NULL) {
-    ## innerLoopCode is code to be embedded in (possibly nested) for-loops from this context
-    ## useContext is an optional logical vector of which contexts to include
-    ## allowNegativeIndexSequences: if TRUE, for(i in 2:1) results in iterating over c(2,1), as R would.  If FALSE (Default),
-    ## behavior is like BUGS: for(i in 2:1) results in no iteration.
-    if(is.null(allowNegativeIndexSequences))
-        allowNegativeIndexSequences <-
-            ifelse(is.null(getNimbleOption('processBackwardsModelIndexRanges')), TRUE,
-                   getNimbleOption('processBackwardsModelIndexRanges'))
- 
-    if(is.null(useContext)) {
-        useContext <- rep(TRUE, length(singleContexts))
-    }
-    iContext <- length(singleContexts)
-    while(iContext >= 1) {
-        if(useContext[iContext]) {
-            newCode <- singleContexts[[iContext]]$forCode
-            if(!allowNegativeIndexSequences) {
-                indexRangeCode <- newCode[[3]]
-                isColonExpr <-
-                    ifelse(is.name(indexRangeCode[[1]]),
-                        as.character(indexRangeCode[[1]]) == ':', FALSE)
-                if(isColonExpr)
-                    newCode[[3]] <-
-                        as.call(
-                            list(
-                                as.name('nm_seq_noDecrease'),
-                                indexRangeCode[[2]],
-                                indexRangeCode[[3]])
-                        )
-            }
-            newCode[[4]] <- innerLoopCode
-            innerLoopCode <- newCode
-        }
-        iContext <- iContext - 1
-    }
-    innerLoopCode
-}
 
-genIndexVarValues_recurse <- function(singleContexts, constantsEnvCopy) {
-    if(!length(singleContexts))
-        return(list(list()))
-    
-    indexExpr <- singleContexts[[1]]$indexVarExpr
-    indexName <- as.character(indexExpr)
-    rangeExpr <- singleContexts[[1]]$indexRangeExpr
-    
-    ## This changes the behavior for expanding looping ranges (L:U),
-    ## in particular in the strange cases when L > U.
-    if(is.call(rangeExpr) && rangeExpr[[1]] == ':') {
-        rangeValueL <- eval(rangeExpr[[2]], envir = constantsEnvCopy)
-        rangeValueU <- eval(rangeExpr[[3]], envir = constantsEnvCopy)
-        if(rangeValueL <= rangeValueU) {
-            rangeValues <- rangeValueL:rangeValueU
-        } else {
-            if(getNimbleOption('processBackwardsModelIndexRanges')) {
-                ## for(i in 9:7) --> for(i in c(9, 8, 7))
-                rangeValues <- rangeValueU:rangeValueL
-            } else {
-                ## for(i in 9:7) --> for(i in numeric(0))
-                rangeValues <- numeric(0)
-            }
-        }
-    } else {
-        ## CHECK: are there cases we want to allow here.
-        stop("genIndexVarValues_recurse: loop range expression is not of the form `L:U`.")
-        ## rangeValues <- eval(rangeExpr, envir = constantsEnvCopy)
-    }
-    
-    indexVarValues <- list()
-    for(value in rangeValues) {
-        assign(indexName, value = value, envir = constantsEnvCopy)
-        indexVarValuesNew <-
-            genIndexVarValues_recurse(singleContexts[-1],
-                                      constantsEnvCopy)
-        indexVarValuesNew <-
-            lapply(indexVarValuesNew,
-                   function(l) {
-                       l <- rev(l)
-                       l[[indexName]] <- value
-                       return(rev(l))
-                   })
-        indexVarValues <- c(indexVarValues, indexVarValuesNew)
-    }
-    return(indexVarValues)
-}
 
 ## Evaluate loops in context to determine unrolled index information.
 expandContextAndReplacements <- function(allReplacements, allReplacementNameExprs, context, constantsEnv) {
@@ -240,8 +174,6 @@ expandContextAndReplacements <- function(allReplacements, allReplacementNameExpr
 
     innerLoopCode <- context$embedCodeInForLoop(innerLoopCode, useContext)
     ## At this point `innerLoopCode` has the full loop
-    ## `determineContextSize` does something similar -- creates and executes nested for loops --
-    ## only for the purpose of counting how big the result will be.
     outputSize <- determineContextSize(context, useContext, constantsEnvCopy)
     for(i in seq_along(context$singleContexts)) {
         if(useContext[i])
@@ -274,7 +206,6 @@ expandContextAndReplacements <- function(allReplacements, allReplacementNameExpr
                 rm(FOO_allScalar)
             }, list(VARNAME = allReplacementNameExprs[[i]]) )
             eval(unlistScalarCode, envir = constantsEnvCopy)
-            ##rm(list = 'FOO_allScalar', envir = constantsEnvCopy)
         }
     }
 
@@ -283,7 +214,10 @@ expandContextAndReplacements <- function(allReplacements, allReplacementNameExpr
     return(constantsEnvCopy)   ## becomes replacementsEnv
 }
 
-determineContextSize <- function(context, useContext = rep(TRUE, length(context$singleContexts)), evalEnv = new.env()) {
+## Determines number of index elements in the nested looping by creating and
+## executing nested for loops.
+determineContextSize <- function(context, useContext = rep(TRUE, length(context$singleContexts)),
+                                 evalEnv = new.env()) {
     ## FUTURE: Could improve this by checking for nested loops that don't use indices from outer loops.
     innerLoopCode <- quote(iAns <- iAns + 1)
     innerLoopCode <- context$embedCodeInForLoop(innerLoopCode, useContext)
@@ -297,7 +231,7 @@ determineContextSize <- function(context, useContext = rep(TRUE, length(context$
     return(ans)
 }
 
-nm_seq_noDecrease <- function(a, b) {
+seqNoDecrease <- function(a, b) {
     if(a > b) {
         numeric(0)
     } else {
