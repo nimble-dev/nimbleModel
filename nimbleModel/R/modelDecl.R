@@ -1,20 +1,20 @@
-## Modified from old BUGSdeclClass
+## Class for representing information in a single declaration, replacing `BUGSdeclClass`.
+## Class methods process the code to generate information about the node dependencies
+## set up by the declaration.
 
-## modelDeclClass replaces BUGSdeclClass.
 ## There are components not yet moved from current nimble that will be needed.
-## I think these will include targetIndexNamePieces and parentIndexNamePieces.
-## I don't think these will include the various *replacements*.
+## These will probably include targetIndexNamePieces and parentIndexNamePieces.
+## They will probably not include the various *replacements*.
+
 modelDeclClass <- R6Class(
     classname = 'modelDeclClass',
     portable = FALSE,
     public = list(
-        ## In current nimble we record contextID here.
-        ## We really need the context itself,
-        ## so I switched to recording that.
+        ## In current NIMBLE we hold `contextID` here, but context itself is needed.
         context = NULL,
         sourceLineNumber = NULL,
         code = NULL,
-        type = NULL,
+        stoch = NULL,
         valueExpr = NULL,
         targetExpr = NULL,
         transExpr = NULL,
@@ -29,74 +29,71 @@ modelDeclClass <- R6Class(
         downstreamRules = NULL,
         upstreamRules = NULL,
         rhsOriginalRules = NULL,
-        declRule = NULL,  # placeholder that modelDecl contains the declRule
-        ## TODO: clean this up and determine relationship between modelDecl and declRule
-        
+        declRule = NULL,
+
+        ## Figure out the parts of the declaration.
         setup = function(code,
                          context,
                          constants = list(),
-                         sourceLineNum,
+                         sourceLineNumber,
                          truncated = FALSE,
                          boundExprs = NULL) {
             modelDeclClass_setup(self,
                                  code,
                                  context,
-                                 sourceLineNum,
+                                 sourceLineNumber,
                                  truncated,
                                  boundExprs)
-            ## Placeholder to get things going. For now assume 'code' is simple cases
-            ## that can be handed by declRuleClass initialization.
-            declRule <<- declRuleClass$new(code, sourceLineNum, context, constants)
         },
-        process = function(constants, nimFunNames) {
-            genSymbolicParentNodes(constants, nimFunNames)
+
+        ## Create declRule and declaration-specific graph and RHS rules.
+        makeRules = function(constants, nimFunNames) {
+            ## Placeholder to get things going. For now assume `code` is simple cases
+            ## that can be handed by declRuleClass initialization.
+            declRule <<- declRuleClass$new(code, sourceLineNumber, context, constants)
+
+            makeSymbolicParentNodes(constants, nimFunNames)
             makeGraphRules(constants)
             makeRHSoriginalRules(constants)
         },
-        genSymbolicParentNodes = function(constants,
+
+        ## Determine RHS pieces.
+        makeSymbolicParentNodes = function(constants,
                                           nimFunNames) {
-            constantsNamesList <<- lapply(ls(constants), as.name)
-            indexVarExprs <- if(is.null(context))
-                                 list()
-                             else
-                                 context$indexVarExprs
-            symbolicParentNodes <<-
-                unique(
-                    getSymbolicParentNodes(valueExpr,
-                                           constantsNamesList,
-                                           indexVarExprs,
-                                           nimFunNames)
-                ) 
+            constantsNamesList <- lapply(names(constants), as.name)
+            symbolicParentNodes <<- unique(
+                getSymbolicParentNodes(valueExpr,
+                                       constantsNamesList,
+                                       context$indexVarExprs,
+                                       nimFunNames)
+            ) 
         },
+        
         makeGraphRules = function(constants) {
-            if(is.null(symbolicParentNodes))
-                genSymbolicParentNodes(constants,
-                                       context$indexVarExprs)
             downstreamRules <<- vector('list',
                                       length(symbolicParentNodes))
             upstreamRules <<- vector('list',
-                                      length(symbolicParentNodes))
+                                     length(symbolicParentNodes))
+            
             for(i in seq_along(symbolicParentNodes)) {
                 downstreamRules[[i]] <<-
                     graphRuleClass$new(targetNodeExpr,
                                        symbolicParentNodes[[i]],
                                        context,
                                        constants,
-                                       declRule$stoch)
+                                       stoch)
                 upstreamRules[[i]] <<-
                     graphRuleClass$new(symbolicParentNodes[[i]],
                                        targetNodeExpr,
                                        context,
                                        constants,
-                                       declRule$stoch)
+                                       stoch)
                 
             }
         },
 
+        ## Make an initial RHSrule for each RHS piece. 
         makeRHSoriginalRules = function(constants) {
-            if(is.null(symbolicParentNodes))
-                genSymbolicParentNodes(constants,
-                                       context$indexVarExprs)
             rhsOriginalRules <<- vector('list',
                                       length(symbolicParentNodes))
             for(i in seq_along(symbolicParentNodes)) {
@@ -107,43 +104,32 @@ modelDeclClass <- R6Class(
     )
 )
 
+## Determines the parts of a declaration from the raw `code`.
 modelDeclClass_setup <- function(modelDecl,
                                  code,
                                  context,
-                                 sourceLineNum,
+                                 sourceLineNumber,
                                  truncated = FALSE,
                                  boundExprs = NULL) {
-    ## Argument 'context' is used to set field: context.
-    ## Argument 'code' is used to set the fields:
-    ##  code
-    ##  targetExpr, valueExpr
-    ##  targetVarExpr, targetNodeExpr
-    ##  targetVarName, targetNodeName
         
     modelDecl$context <- context
-    modelDecl$sourceLineNumber <- sourceLineNum
+    modelDecl$sourceLineNumber <- sourceLineNumber
     modelDecl$code <- code
     modelDecl$truncated <- truncated
     modelDecl$boundExprs <- boundExprs
     
     if(code[[1]] == '~') {
-        modelDecl$type <- 'stoch'
-        
+        modelDecl$stoch <- TRUE
+        ## Check for legitimate densities or for truncation.
         if(!is.call(code[[3]]) ||
            (!any(code[[3]][[1]] == getAllDistributionsInfo('namesVector')) &&
             code[[3]][[1]] != "T" &&
             code[[3]][[1]] != "I"))
-            stop(
-                paste0('Improper syntax for stochastic declaration: ',
-                       deparse(code))
-            )
+            stop("modelDeclClass$new: Improper syntax for stochastic declaration: `", deparse(code), "`.")
     } else if(code[[1]] == '<-') {
-        modelDecl$type <- 'determ'
-    } else {
-        stop(paste0('Improper syntax for declaration: ',
-                    deparse(code))
-             )
-    }
+        modelDecl$stoch <- FALSE
+    } else 
+        stop("modelDeclClass$new: Improper syntax for declaration: `", deparse(code), "`.")
     
     targetExpr <- code[[2]]
     valueExpr <- code[[3]]
@@ -152,22 +138,20 @@ modelDeclClass_setup <- function(modelDecl,
     indexExpr <- NULL
         
     if(length(targetExpr) > 1) {
-        ## There is a tranformation and/or a subscript
+        ## There is a tranformation and/or a subscript.
         if(targetExpr[[1]] == '[') {
-            ## It is a subscript only
+            ## It is a subscript only.
             indexExpr <- as.list(targetExpr[-c(1,2)]) 
             targetVarExpr <- targetExpr[[2]]
             targetNodeExpr <- targetExpr
         } else {
-            ## There is a transformation, possibly with a subscript
+            ## There is a transformation, possibly with a subscript.
             transExpr <- targetExpr[[1]]
             targetNodeExpr <- targetExpr[[2]]
             if(length(targetNodeExpr)>1) {
                 ## There are subscripts inside the transformation
-                if(targetNodeExpr[[1]] != '[') {
-                    print(paste("Invalid subscripting for",
-                                deparse(targetExpr)))
-                }
+                if(targetNodeExpr[[1]] != '[') 
+                    stop("modelDeclClass$new: Invalid subscripting for `", deparse(targetExpr), "`.")
                 indexExpr <- as.list(targetNodeExpr[-c(1,2)])
                 targetVarExpr <- targetNodeExpr[[2]]
             } else {
@@ -175,7 +159,7 @@ modelDeclClass_setup <- function(modelDecl,
             }
         }
     } else {
-        ## no tranformation or subscript
+        ## No tranformation or subscript present.
         targetVarExpr <- targetExpr
         targetNodeExpr <- targetVarExpr
     }
@@ -188,5 +172,6 @@ modelDeclClass_setup <- function(modelDecl,
     modelDecl$targetNodeExpr <- targetNodeExpr
     modelDecl$targetVarName <- deparse(targetVarExpr)
     modelDecl$targetNodeName <- deparse(targetNodeExpr)
+    invisible(NULL)
 }
 

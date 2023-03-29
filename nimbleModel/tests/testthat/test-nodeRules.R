@@ -1055,6 +1055,7 @@ test_that("declaration-specific calculate generated correctly", {
 
 
 test_that("calculate works correctly with univariate nodes", {
+    ## This implicitly tests `indexRange$getNext()` (and `getItem`), which is not tested elsewhere.
     ## NOTE: until nodeFun generation and model building are integrated, this testing relies on
     ## having logProb_y be in GlobalEnv
     context_0 <- modelContextClass$new()
@@ -1097,6 +1098,36 @@ test_that("calculate works correctly with univariate nodes", {
     singleContext2 <-
         singleContextClass$new(forCode = quote(for(j in 3:9){}))
     context_ij <- modelContextClass$new(list(singleContext1, singleContext2))
+
+
+    declRule <- declRuleClass$new(quote(y[i,j] ~ dnorm(x[i], 1)), 1, context_ij)
+
+    y <- matrix(rnorm(6*9), 6)
+    x <- rep(0, 6)
+    assign('y', y, pos = .GlobalEnv)
+    assign('x', x, pos = .GlobalEnv)
+    logProb_y <- y
+    assign('logProb_y', y, pos = .GlobalEnv)
+    
+    true_logProb_y <- dnorm(y, 0, 1)
+
+    calcRule <- calcRuleClass$new(declRule, NULL, NULL, context_ij)
+    calcRange <- calcRule$generateCalcRange(varRangeClass$new(
+                        list(newIndexRange(matrix(c(4,7,5,6,2,5), ncol = 2)))))
+    expect_identical(calcRange$calculate(), true_logProb_y[matrix(c(4,5,6,5), ncol = 2)])
+    expect_identical(get('logProb_y', .GlobalEnv)[matrix(c(4,5,6,5), ncol = 2)], true_logProb_y[matrix(c(4,5,6,5), ncol = 2)])
+
+    calcRange <- calcRule$generateCalcRange(varRangeClass$new(
+                        list(newIndexRange(quote(2:3)), newIndexRange(quote(8:9)))))
+                                             
+    assign('logProb_y', y, pos = .GlobalEnv)
+    ## Note that order of returned result is row major because `i` is the outer index.
+    ## Presumably this will be fine as ultimately just return sum, not individual logProbs.
+    ## CHECK: come back to this when have full calculate() implementation.
+    expect_identical(matrix(calcRange$calculate(), 2, byrow = TRUE), true_logProb_y[2:3,8:9])
+    expect_identical(get('logProb_y', .GlobalEnv)[2:3,8:9], true_logProb_y[2:3,8:9])
+
+    ## change index order
     declRule <- declRuleClass$new(quote(y[j,i] ~ dnorm(x[i], 1)), 1, context_ij)
 
     y <- matrix(rnorm(6*9), 9)
@@ -1117,6 +1148,7 @@ test_that("calculate works correctly with univariate nodes", {
     calcRange <- calcRule$generateCalcRange(varRangeClass$new(
                         list(newIndexRange(quote(8:9)), newIndexRange(quote(2:3)))))
                                              
+    assign('logProb_y', y, pos = .GlobalEnv)
     expect_identical(calcRange$calculate(), c(true_logProb_y[8:9,2:3]))
     expect_identical(get('logProb_y', .GlobalEnv)[8:9,2:3], true_logProb_y[8:9,2:3])
 

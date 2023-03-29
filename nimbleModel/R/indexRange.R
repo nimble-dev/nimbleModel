@@ -106,17 +106,19 @@ indexRangeClass <- R6Class(
         
         getNext = function() {
             item <- current
-            ## Increment internal indexing
             if(local < delay) {
+                ## Continue giving same index value.
+                ## (Other index slot(s) are incrementing.)
                 local <<- local + 1
             } else {
+                ## Move on to next index value.
                 local <<- 1
                 current <<- current + 1
                 if(current > numElements)
                     current <<- 1
             }
             
-            ## Return original index values
+            ## Return original index value.
             return(self$getItem(item))
         }, 
         
@@ -206,6 +208,8 @@ indexRangeSequenceClass <- R6Class(
         },
 
         getItem = function(item) {
+            ## FUTURE: this repeats arithmetic repeatedly.
+            ## Could have specialized `getNext` for Sequence
             return(start + item - 1)
         },
 

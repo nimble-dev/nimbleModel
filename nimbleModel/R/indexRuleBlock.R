@@ -9,14 +9,12 @@ indexRuleBlockClass <- R6Class(
         initialize = function(toIndexExprList,
                               fromIndexExprList,
                               context,
-                              constants = list()
-                              ) {
+                              constants = list()) {
             setupResults <<-
                 indexRuleBlock_setup(toIndexExprList,
                                      fromIndexExprList,
                                      context,
-                                     constants
-                                     )
+                                     constants)
         },
         
         apply = function(indexRange, collapse = TRUE) {

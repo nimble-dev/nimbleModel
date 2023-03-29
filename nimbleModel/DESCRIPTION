@@ -28,7 +28,6 @@ Collate:
     nodeRules.R
     options.R       
     originalIndexingRules.R
-    processModelCode.R
     processModelGraph.R
     rhsRules.R
     varRange.R

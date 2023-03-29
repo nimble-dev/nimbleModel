@@ -208,6 +208,40 @@ getVarName <- function(x) {
     if(is.call(x) || is.name(x))
         if(length(x) == 1) return(deparse(x)) else return(deparse(x[[2]]))
     if(is.null(x)) return(NULL)
-    stop("getVarName: unexpected input.")
+    stop("getVarName: unexpected input: `", x, "`.")
 }
-               
+
+## Remove duplicates from an arbitrary set of varRanges.
+removeDuplicateVarRanges <- function(varRanges) {
+    varNames <- sapply(varRanges, function(range) range$varName)
+    uniqVarNames <- unique(varNames)
+    varRanges <- lapply(uniqVarNames, function(nm)
+            varRanges[varNames == nm])
+    names(varRanges) <- uniqVarNames
+    return(flatten(lapply(varRanges, function(vr) removeDuplicateVarRangesOne(vr))))
+}
+
+## Remove duplicates from a set of varRanges for a single variable.
+removeDuplicateVarRangesOne <- function(varRanges) {
+    mx <- length(varRanges)
+    if(mx == 1) return(varRanges)
+    
+    varRangeIDs <- seq_len(mx)
+    dups <- rep(FALSE, mx)
+    for(id in 1:(mx-1)) {
+        equal <- sapply((id+1):mx, function(id2)
+            varRange_isEqual(varRanges[[id]], varRanges[[id2]]))
+        dups[(id+1):mx] <- dups[(id+1):mx] | equal
+    }
+    return(varRanges[!dups])
+}
+
+## Flatten nested lists.
+flatten <- function(x) {
+    result <- do.call(c, x)
+    names(result) <- NULL
+    if(identical(result, list(NULL)))
+        return(NULL)
+    result <- result[!sapply(result, is.null)]
+    return(result)
+}

@@ -1,20 +1,17 @@
-## Code to take the declRules and graphRules and create full set of fractured calcRules and 'excluded' rhsRules
+## Various functions used in creating various kinds of rules and determining graph structure.
 
-## assume we have graphRules as list of lists, indexed by fromVar
-## e.g., graphRules[['mu']], graphRules[['x']]
 
- 
-## split up rhsRules to get rhsOnlyRules using exclude(), to extract parts of rhs that don't appear in LHS
+## Split up original RHS rules from declarations to get `rhsOnlyRules` using `exclude()`,
+## to extract parts of rhs that don't appear in LHS.
 
-## Not clear we need to generate RHSonlyRules
+## CHECK: Not clear we need to generate RHSonlyRules
 ## There may be some non-uniqueness if we don't combine the results of
-## running exclude on a rhsRule applied to another rhsRule
-generateRHSonlyRules <- function(rhsOriginalRules, declRules) {
+## running `exclude` on a rhsRule applied to another rhsRule.
+makeRHSonlyRules <- function(rhsOriginalRules, declRules) {
     rhsOnlyRules <- rhsOriginalRules
 
-    ## Step 1: exclude each rhsRule based on other rhsRules
-    ## Otherwise exclusion process with LHSrules can create redundant rhsOnlyRules
-    ## Step 2: exclude each rhsRule with each LHSrule
+    ## Step 1: exclude elements of each rhsRule that overlap with 'earlier' rhsRules.
+    ## Otherwise exclusion process with declRules can create redundant rhsOnlyRules.
 
     pos <- 1
     while(pos < length(rhsOnlyRules)) {
@@ -22,19 +19,22 @@ generateRHSonlyRules <- function(rhsOriginalRules, declRules) {
         mx <- length(rhsOnlyRules)
         for(i in (pos+1):mx) {
             if(rhsOnlyRules[[i]]$varName == rhsOnlyRules[[pos]]$varName) {
-                ## Exclude gives back what needs to be kept - either the original rule or part of it.
+                ## `exclude` gives back what needs to be kept - either the original rule or part of it.
                 result <- exclude(rhsOnlyRules[[i]], rhsOnlyRules[[pos]])
                 if(!is.null(result)) {  # some or no overlap
                     newRules <- c(newRules, result)
-                    ## TODO: combine result and rhsOnlyRules[[pos]] (for sequence rules and maybe matrix rules)
+                    ## FUTURE: combine result and rhsOnlyRules[[pos]] (for sequence rules and maybe matrix rules)
                     ## if possible to reduce non-uniqueness.
-                    ## But note that one can get a resulting rhsOnlyRule that is larger than a declaration RHS
+                    ## But be careful as one could get a resulting rhsOnlyRule that is larger than a declaration RHS
                 }
             } else newRules <- c(newRules, rhsOnlyRules[[i]])
         }
         rhsOnlyRules <- c(rhsOnlyRules[1:pos], newRules)
         pos <- pos + 1
     }
+
+    ## Step 2: exclude elements of each rhsRule that overlap with declRules.
+    
     for(pos in seq_along(declRules)) {
         newRules <- NULL
         for(i in seq_along(rhsOnlyRules)) {
@@ -45,39 +45,35 @@ generateRHSonlyRules <- function(rhsOriginalRules, declRules) {
                 }
             } else newRules <- c(newRules, rhsOnlyRules[[i]])
         }
-        rhsOnlyRules <- newRules
+        rhsOnlyRules <- newRules  # Next declRule will split on current rhsOnlyRules.
     }
-    ## Assign unique ID sequentially (these will overlap with calcRule IDs.
+    
+    ## Assign unique ID sequentially (these will not be unique w.r.t. calcRule IDs).
     ## CHECK: do we use these IDs?
     tmp <- sapply(seq_along(rhsOnlyRules), function(idx) rhsOnlyRules[[idx]]$ID <- idx)
     return(rhsOnlyRules)
 }
 
-getChildren <- function(varRange, graphRules) {
-    result <- lapply(graphRules, function(rule)
-        rule$apply(varRange))
-    if(length(result) == 1 && is.null(result[[1]]))
-        return(NULL)
-    return(result)
-}
 
-generateCalcRules <- function(calcRules, rhsOriginalRules, graphRules, recurseFracturing = FALSE) {
-    ## Step 1: fracture LHS with rhsOriginalRules of same var
+## Split original calcRules based on intersections with RHS rules and with dependents of other LHS rules.
+## This is needed so that we can determine top/end/latent nodes.
+makeCalcRules <- function(calcRules, rhsOriginalRules, graphRules, recurseFracturing = FALSE) {
+    ## Step 1: fracture LHS with rhsOriginalRules for same variable.
     ## e.g., mu[i] ~ dnorm(z[i], 1); y[2:3] <- mu[2:3]
-    ## Fracture based on pieces of var potentially having different children.
+    ## I.e., fracture based on pieces of variable potentially having different children.
     
-    ## Step 2: fracture LHS based on same-var deps of other LHS 
+    ## Step 2: fracture LHS based on same-variable dependents of other LHS. 
     ## e.g., y[i] ~ dnorm(z[i], 1); z[j] ~ dnorm(0,1)
-    ## Fracture based on pieces of var potentially having different parents.
+    ## I.e., fracture based on pieces of variable potentially having different parents.
 
+    ## Step 1:
     numRHSrules <- length(rhsOriginalRules)
-       
-    ## fracture LHS of same varName as rhsRule
     pos <- 1
-
     fracturedRules <- rep(FALSE, length(calcRules))
     currentID <- length(calcRules)
-    while(pos <= length(rhsOriginalRules)) {   # use while rather than for to match needed while in loop over calcRules
+
+    ## Use `while` rather than `for` to match needed `while` in loop over calcRules in Step 2.
+    while(pos <= length(rhsOriginalRules)) {   
         rhsRange <- rhsOriginalRules[[pos]]$getFullRange()
         if(!rhsRange$isNone()) {
             ## Try to fracture all rules by looping over rules.
@@ -102,16 +98,17 @@ generateCalcRules <- function(calcRules, rhsOriginalRules, graphRules, recurseFr
     }
 
     calcRules <- calcRules[!fracturedRules]
-    topRules <- sapply(calcRules, function(rule) rule$checkAllRHSconstants())
-    calcRules <- c(calcRules[topRules], calcRules[!topRules])
+    ## Determine rules that must be top rules as don't need to try to fracture those.
+    knownTopRules <- sapply(calcRules, function(rule) rule$checkAllRHSconstants())
+    start <- sum(knownTopRules) + 1 # first index of rules to be fractured
+    calcRules <- c(calcRules[knownTopRules], calcRules[!knownTopRules])
 
+    ## Step 2:
     pos <- 1  # index of fracturer
-    start <- sum(topRules) + 1 # index of rules to be fractured
     fracturedRules <- rep(FALSE, length(calcRules))
-    
     numOrigCalcRules <- length(calcRules)
-##     while(pos <= numOrigCalcRules) {  ## originally `length(calcRules)` but that leads to very slow SSM processing
-    while(pos <= length(calcRules)) {  ## originally `length(calcRules)` but that leads to very slow SSM processing
+
+    while(pos <= length(calcRules)) {  
         if(!recurseFracturing && pos > numOrigCalcRules)
             break
         if(!fracturedRules[pos]) {
@@ -119,51 +116,53 @@ generateCalcRules <- function(calcRules, rhsOriginalRules, graphRules, recurseFr
             deps <- getChildren(
                 calcRules[[pos]]$getFullRange(),
                 graphRules[[varName]]$rules)
-            if(!is.null(deps)) {
-                deps <- deps[!sapply(deps, is.null)]
-                ## TODO: don't try to fracture singletons (how could I detect this?)
-                ## TODO: precompute the relevant rules to loop over to avoid if() checking
-                for(d in seq_along(deps)) {
-                    ## Try to fracture all remaining rules by looping over non-top rules.
-                    for(i in start:length(calcRules)) {
-                        if(!fracturedRules[i] && !is.null(deps[[d]]) && deps[[d]]$varName == calcRules[[i]]$varName) {
-                            result <- fracture(calcRules[[i]], deps[[d]], currentID = currentID,
-                                               parentRule = calcRules[[pos]], currentRules = calcRules)
-                            
-                            ## NULL result indicates complete overlap or no overlap, so leave as is.
-                            ## If fracturing has occurred, add nodes to end.
-                            if(!is.null(result)) {
-                                calcRules <- c(calcRules, result)
-                                fracturedRules[i] <- TRUE
-                                fracturedRules <- c(fracturedRules, rep(FALSE, length(result)))
-                                currentID <- currentID + length(result)
-                                ## CHECK: can we break out of fracturing based on this dep - could this dep fracture two rules?
-                            }
+            ## FUTURE: don't try to fracture singletons (how could I detect this?).
+            ## FUTURE: precompute the relevant rules to loop over to avoid if() checking.
+            for(d in seq_along(deps)) {
+                ## Try to fracture all remaining rules by looping over non-top rules.
+                for(i in start:length(calcRules)) {
+                    if(!fracturedRules[i] && deps[[d]]$varName == calcRules[[i]]$varName) {
+                        result <- fracture(calcRules[[i]], deps[[d]], currentID = currentID,
+                                           parentRule = calcRules[[pos]], currentRules = calcRules)
+                        
+                        ## NULL result indicates complete overlap or no overlap, so leave as is.
+                        ## If fracturing has occurred, add nodes to end.
+                        if(!is.null(result)) {
+                            calcRules <- c(calcRules, result)
+                            fracturedRules[i] <- TRUE
+                            fracturedRules <- c(fracturedRules, rep(FALSE, length(result)))
+                            currentID <- currentID + length(result)
                         }
-                        ## If parent rule has been fractured (state-space use case)
-                        ## don't continue fracturing, as we'll fracture with the pieces later.
-                        if(fracturedRules[pos]) break
                     }
-                    ## Don't fracture with additional deps either.
+                    ## If parent rule has been fractured (state-space use case),
+                    ## don't continue fracturing, as we'll fracture with the pieces later.
                     if(fracturedRules[pos]) break
                 }
+                ## Don't fracture parent rule with additional deps either.
+                if(fracturedRules[pos]) break
             }
         }
         pos <- pos + 1
-        ## start <- max(c(start, pos))  # this prevents SSM with intervening det nodes from working correctly
     }
 
     calcRules <- calcRules[!fracturedRules]
     
-    ## Find additional parent/children links from new rules resulting from fracturing
-    ## Since these new rules have not gone through fracturing when recurseFracturing is FALSE.
+    ## Find additional parent/children links from new rules resulting from fracturing,
+    ## Since these new rules have not gone through fracturing when `recurseFracturing` is `FALSE`.
     if(!recurseFracturing)
         setRelationships(calcRules, graphRules, startPos = numOrigCalcRules + 1 - sum(fracturedRules))
     
     return(calcRules)
 }
 
-## Find parent-child links.
+## Find all children of a given varRange.
+getChildren <- function(varRange, graphRules) {
+    result <- lapply(graphRules, function(rule)
+        rule$apply(varRange))
+    return(result[!sapply(result, is.null)])
+}
+
+## Find parent-child links by looking for all children of every rule.
 setRelationships <- function(calcRules, graphRules, startPos = 1) {
     setToCheck <- startPos:length(calcRules)
     for(pos in setToCheck) {
@@ -171,22 +170,16 @@ setRelationships <- function(calcRules, graphRules, startPos = 1) {
         deps <- getChildren(
             calcRules[[pos]]$getFullRange(),
             graphRules[[varName]]$rules)
-        if(!is.null(deps)) 
-            for(d in seq_along(deps)) {
-                ## TODO: check if really need !is.null(deps[[d]]) and also move the check up a level and use `next`
-                if(is.null(deps[[d]]))
-                    print('found case of null deps in setRelationships')
-                for(i in seq_along(calcRules))
-                    if(!is.null(deps[[d]]) && deps[[d]]$varName == calcRules[[i]]$varName) 
-                        createLink(calcRules[[i]], deps[[d]], parentRule = calcRules[[pos]])
-            }
+        for(d in seq_along(deps)) {
+            for(i in seq_along(calcRules))
+                if(deps[[d]]$varName == calcRules[[i]]$varName) 
+                    checkAndCreateLink(calcRules[[i]], deps[[d]], parentRule = calcRules[[pos]])
+        }
     }
     invisible(NULL)
 }
 
-
-## how will getDependencies work and interact with set(s) of graphRules?
-
+## Find endRules based on not having stochastic dependents.
 setEndRules <- function(calcRules) {
     tmp <- sapply(calcRules, function(rule)
         rule$setStochDep(calcRules))
@@ -195,6 +188,7 @@ setEndRules <- function(calcRules) {
     invisible(0)
 }
 
+## Find topRules based on not having stochastic parents.
 setTopRules <- function(calcRules) {
     tmp <- sapply(calcRules, function(rule)
         rule$setStochParent(calcRules))
@@ -203,14 +197,100 @@ setTopRules <- function(calcRules) {
     invisible(0)
 }
 
-## setLatentNodes <- function(calcRules) {
-##     tmp <- sapply(calcRules, function(rule)
-##         if(rule$is_type('end') || rule$is_type('top')) rule$unset('latent'))
-##     invisible(0)
-## }
-        
+## Set sortIDs based on recursive calls to setSortID for individual rules.
+setSortIDs <- function(calcRules) {
+    sortIDs <- sapply(calcRules, function(rule)
+        rule$setSortID(calcRules))
+    ## Reorder sortIDs so that smallest sortID values are at top.
+    if(all(is.finite(sortIDs))) {
+        mx <- max(sortIDs)
+        tmp <- sapply(calcRules, function(rule)
+            rule$sortID <- mx - rule$sortID + 1
+            )
+        return(TRUE) ## All sortIDs resolved.
+    }
+    return(FALSE)  ## Cyclic or state-space type case.
+}
 
-## TODO: should this be method of modelDefClass
+## TODO: should result be nodeRanges or varRanges?
+## Presumably nodeRanges so why does self stuff seem to return varRanges?
+## Perhaps run this with branch before refactor to see what happens?
+
+## Walks graph to find children or parents, by default
+## stopping at stochastic nodes, unless requested to go through (`follow = TRUE`)
+## or to stop at immediate parent or child (`immediateOnly = TRUE`).
+## This is the meat of `getDependencies` and `getParents`.
+traverseGraph <- function(streamRules, declRules,
+                          nodes, down, self = TRUE,
+                          includeData = TRUE, dataOnly = FALSE, 
+                          follow = FALSE, immediateOnly = FALSE) {
+                          
+    if(is(nodes, 'varRangeClass')) nodes <- list(nodes)  # We use lapply on 'nodes' later.
+    
+    if(!all(is.character(nodes) | sapply(nodes, function(node) is(node, 'varRangeClass'))))
+        stop("getNodes: `nodes` must be variable names or variable ranges.")
+
+    results <- traverseGraphRecurse(streamRules, nodes, down, follow, immediateOnly)
+
+    if(self) {
+        ## Need to handle "self" for when an input node is a full variable,
+        ## character expression for a range or an actual nodeRange.
+        varNames <- sapply(nodes, getVarName)
+        vars <- nodes == varNames
+        selfRangeFromVars <- flatten(lapply(nodes[vars],
+                                       function(varName)
+                                           lapply(declRules[[varName]]$rules,
+                                                  function(declRule) declRule$getFullRange())))
+        
+        charRanges <- is.character(nodes) & !vars
+        selfRangeFromCharRanges <- flatten(lapply(nodes[charRanges],
+                                              function(node) {
+                                                  lapply(declRules[[getVarName(node)]]$rules,
+                                                         function(declRule) {
+                                                             tmp <- declRule$apply(node)
+                                                             if(is.null(tmp)) NULL else tmp$toVarRange()
+                                                         })
+                                                  }))
+        if(identical(selfRangeFromCharRanges, list(NULL)))
+            selfRangeFromCharRanges <- NULL
+        
+        results <- c(nodes[!vars & !charRanges], selfRangeFromVars, selfRangeFromCharRanges, results)
+    }
+    
+    if(!length(results))
+        return(NULL)
+    return(removeDuplicateVarRanges(results))
+}
+
+traverseGraphRecurse <- function(rules, nodes, down, follow = FALSE, immediateOnly = FALSE, first = TRUE) {
+    results <- flatten(lapply(nodes, function(node) getNodesOne(rules, node)))
+    if(immediateOnly)
+        return(results)
+    if(!down && !first && !follow) {
+        ## stoch/determ needs to be determined from rule in which the range is on LHS
+        stoch <- sapply(results, function(varRange) varRange$fromStochRule)
+        results <- results[!stoch]
+    }    
+    propagators <- results
+    if(!follow && down) {
+        ## can only be used for getDeps because type of LHS not relevant for upward traversal
+        stoch <- sapply(propagators, function(varRange) varRange$fromStochRule)
+        propagators <- propagators[!stoch]
+    }
+    if(length(propagators)) {
+        results <- c(results, traverseGraphRecurse(rules, propagators, down, follow, first = FALSE))
+    } else {
+        return(results)
+    }
+}
+        
+getNodesOne <- function(rules, node) {
+    varName <- getVarName(node)  
+    if(varName %in% names(rules)) {
+        return(rules[[varName]]$apply(node))
+    } else return(NULL)
+}
+
 processCyclicRules <- function(allCalcRules, modelDef) {
     ## Set sortIDs elementwise for nodes in a nodeRule for nodeRules involved in cyclic relationships
     eps <- 1e-12 # increment that ensures unique increasing sortID values
@@ -349,27 +429,9 @@ processCyclicRules <- function(allCalcRules, modelDef) {
     return(allCalcRules)
 }
 
-setSortIDs <- function(calcRules) {
-    sortIDs <- sapply(calcRules, function(rule)
-        rule$setSortID(calcRules))
-
-    ## TODO: remove as this seems redundant
-    ## sortIDs <- sapply(calcRules, function(rule)
-    ##    if(length(rule$sortID) == 1 && is.na(rule$sortID)) {
-    ##        return(NA)
-    ##    } else return(max(rule$sortID, na.rm = TRUE)))
-    ## Now renumber so sortID=1 is first
-    if(all(is.finite(sortIDs))) {
-        mx <- max(sortIDs)
-        tmp <- sapply(calcRules, function(rule)
-            rule$sortID <- mx - rule$sortID + 1
-            )
-        return(TRUE)
-    }
-    return(FALSE)
-}
-
-followUpstream <- function(upstreamGraphRule, upstreamRules, childSortID, focalIndex, allCalcRules, cyclicRulesSet, varNames, sortIDs, fullMaxSortID, direction, eps, count = 0) {
+followUpstream <- function(upstreamGraphRule, upstreamRules, childSortID, focalIndex,
+                           allCalcRules, cyclicRulesSet, varNames, sortIDs, fullMaxSortID,
+                           direction, eps, count = 0) {
 
     parentVar <- upstreamGraphRule$toVarName
 
@@ -463,4 +525,22 @@ followUpstream <- function(upstreamGraphRule, upstreamRules, childSortID, focalI
         next # return(NULL)
     }
     return(NULL)
+}
+
+reprioritizeColonOperator <- function(code) {
+    split.code <- strsplit(deparse(code), ":")
+    if(length(split.code[[1]]) == 2)
+        return(
+            parse(
+                text = paste0("(",
+                              split.code[[1]][1],
+                              "):(",
+                              split.code[[1]][2],
+                              ")"),
+                keep.source = FALSE)[[1]])
+    if(length(split.code[[1]]) > 2)
+        stop(paste0('Error with this code: ',
+                    deparse(code))
+             )
+    return(code)
 }

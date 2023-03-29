@@ -122,20 +122,3 @@ processModelCode_impl <- function(modelDef = modelDefClass$new(),
         return(modelDef)
 }
 
-reprioritizeColonOperator <- function(code) {
-    split.code <- strsplit(deparse(code), ":")
-    if(length(split.code[[1]]) == 2)
-        return(
-            parse(
-                text = paste0("(",
-                              split.code[[1]][1],
-                              "):(",
-                              split.code[[1]][2],
-                              ")"),
-                keep.source = FALSE)[[1]])
-    if(length(split.code[[1]]) > 2)
-        stop(paste0('Error with this code: ',
-                    deparse(code))
-             )
-    return(code)
-}

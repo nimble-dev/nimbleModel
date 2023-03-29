@@ -160,7 +160,7 @@ newIndexConstraint_fromSimple <- function(expr, slot, constants) {
 
 ## Create an `indexConstraint` from eval'ing loop(s).
 newIndexConstraint_fromUnrolling <- function(fromIndexExprs, slots, context, constants) {
-    values <- generateIndicesMatrix(fromIndexExprs, context, constants)
+    values <- makeIndicesMatrix(fromIndexExprs, context, constants)
     if(ncol(values) == 1) {
         return(indexConstraintMatrix1dClass$new(values[ , 1], slots))
     } else
@@ -219,7 +219,7 @@ checkIndexConstraints <- function(varRange, indexConstraints) {
 
 ## FUTURE: Code copied from `indexRuleArbitrary`. Might see what could be factored out
 ## as a single function to avoid code duplication.
-generateIndicesMatrix <- function(fromIndexExprs, context, constants) {
+makeIndicesMatrix <- function(fromIndexExprs, context, constants) {
     fromIndexNames <- lapply(names(fromIndexExprs),
                              as.name)
     unrolledIndicesEnv <-

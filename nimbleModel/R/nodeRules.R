@@ -135,11 +135,11 @@ declRuleClass <- R6Class(
             decl <<- decl
             super$initialize(decl[[2]], ID, context = context, constants = constants)
 
-            calcFun <<- generateCalculateFun(decl, context)
+            calcFun <<- buildCalculateFun(decl, context)
             originalIndexingRule <<- originalIndexingRuleClass$new(expr, context, constants)
         },
 
-        generateCalculateFun = function(decl, context) {
+        buildCalculateFun = function(decl, context) {
             newDecl <- decl
             if(newDecl[[1]] == '<-') {
                 newDecl  <- quote(A <<- B)
@@ -217,13 +217,13 @@ calcRuleClass <- R6Class(
             declRule <<- declRule
         },
         
-        ## Generate calcRange given a varRange (possibly a nodeRange).
+        ## Create calcRange given a varRange (possibly a nodeRange).
         ## (calcRuleClass$apply generates a nodeRange (inheriting from nodeRuleClass$apply().)
-        generateCalcRange = function(inputRange = NULL) {
+        makeCalcRange = function(inputRange = NULL) {
             if(is.null(inputRange))
                 inputRange <- canonicalRange
             if(!is.null(inputRange$varName) && !is.null(varName) && inputRange$varName != varName)
-                stop("generateCalcRange: inputRange varianble name does not match the calcRule variable name.")
+                stop("makeCalcRange: inputRange varianble name does not match the calcRule variable name.")
 
             ## Need original indexing because nodeFunctions will use that indexing
             ## (e.g. `y[i+1]` needs value of `i`).
@@ -419,8 +419,9 @@ calcRangeClass <- R6Class(
                 ## once fuller workflow is in place, remove this and assignment of output of calcFun()
                 result <- rep(0, len)
 
+                ## Set up information so `getNext` repeats index values for outer loop indices.
                 delay <- 1
-                for(irIndex in rev(seq_len(numRanges))) {
+                for(irIndex in rev(seq_len(numRanges))) {  # work from inner-most loop outwards
                     indexingRange$indexRanges[[irIndex]]$setDelay(delay)
                     delay <- delay * indexingRange$indexRanges[[irIndex]]$numElements
                 }
@@ -445,7 +446,8 @@ calcRangeClass <- R6Class(
                         result[item] <- calcFun(index[item, ])
                 }
             }
-                
+            ## Note that result will be vectorized based on the loop ordering so in simple rectangular
+            ## settings such as `y[i,j]` with `i` the outer index, it will be row-major.
             return(result)
 
         }
@@ -812,7 +814,7 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
 
 ## Sets parent-child link based on a dependent of `parentRule`
 ## overlapping with `LHSrule`.
-createLink <- function(LHSrule, dependentRange, parentRule) {
+checkAndCreateLink <- function(LHSrule, dependentRange, parentRule) {
     overlapRange <- LHSrule$apply(dependentRange)
     if(!is.null(overlapRange)) {
         ## Any intersection means we need to set parent/child relationship.
