@@ -25,7 +25,7 @@ varRangeClass <- R6Class(
     portable = FALSE,
     public = list(
         varName = character(),
-        fromStochRule = logical(),  # used when returned as result of graphRule
+        fromStochRule = logical(),  # used when returned as result of graphRule (need for graph traversal)
         indexRangeExprs = list(),   # e.g., `1:10`, `c(2,4,6)`
         indexRanges = list(),
 
@@ -245,3 +245,12 @@ flatten <- function(x) {
     result <- result[!sapply(result, is.null)]
     return(result)
 }
+
+
+## TODO: need combine() that combines "adjacent" varRanges
+
+## scalar+seq = seq
+## seq + seq = seq
+## seq + matrix = omit seq elements from the matrix
+## mat + mat = mat
+## needs to deal with identical indices

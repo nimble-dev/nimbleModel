@@ -2261,3 +2261,39 @@ test_that("for loops with arbitrary sets", {
 
 })
 
+test_that("SSM with additional pieces handled", {
+
+  code <- quote({
+        for(i in 1:5) {
+            y[i] ~ dnorm(mu[i], sd = sigma)
+            z[i] <- y[i]  # deps below the standard SS structure
+            }
+        for(i in 2:5)
+            mu[i] ~ dnorm(mu[i-1], sd = tau)
+        mu[1] ~ dnorm(0, 1)
+        sigma ~ dunif(0, 1)
+
+        ## mostly unrelated part of model
+        for(i in 1:5) {
+            y2[i] ~ dnorm(mu2[i], sd = sigma)
+            mu2[i] ~ dnorm(0, 1)
+        }
+        z2[1] ~ dnorm(y2[1], 1)
+        
+    })
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$generateGraphInfo()
+
+    expect_equal(getDependencies(modelDef, 'sigma', self = FALSE),
+                 list(varRangeClass$new(list(newIndexRange(quote(1:5))), varName = 'y',
+                                        fromStochRule = TRUE),
+                      varRangeClass$new(list(newIndexRange(quote(1:5))), varName = 'y2',
+                                        fromStochRule = TRUE)))
+    expect_equal(modelDef$endRules$y2$rules[[1]]$getFullRange(),
+                 varRangeClass$new(list(newIndexRange(quote(2:5))), varName = 'y2'))
+    expect_equal(modelDef$latentRules$y2$rules[[1]]$getFullRange(),
+                 varRangeClass$new(list(newIndexRange(quote(1))), varName = 'y2'))
+    
+})

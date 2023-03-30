@@ -212,20 +212,18 @@ setSortIDs <- function(calcRules) {
     return(FALSE)  ## Cyclic or state-space type case.
 }
 
-## TODO: should result be nodeRanges or varRanges?
-## Presumably nodeRanges so why does self stuff seem to return varRanges?
-## Perhaps run this with branch before refactor to see what happens?
 
 ## Walks graph to find children or parents, by default
 ## stopping at stochastic nodes, unless requested to go through (`follow = TRUE`)
 ## or to stop at immediate parent or child (`immediateOnly = TRUE`).
+## Result is a set of varRanges (not nodeRanges), so users may need to
+## pass result through `getNodes`.
 ## This is the meat of `getDependencies` and `getParents`.
 traverseGraph <- function(streamRules, declRules,
                           nodes, down, self = TRUE,
-                          includeData = TRUE, dataOnly = FALSE, 
                           follow = FALSE, immediateOnly = FALSE) {
                           
-    if(is(nodes, 'varRangeClass')) nodes <- list(nodes)  # We use lapply on 'nodes' later.
+    if(is(nodes, 'varRangeClass')) nodes <- list(nodes)  # We use `lapply` on 'nodes' later.
     
     if(!all(is.character(nodes) | sapply(nodes, function(node) is(node, 'varRangeClass'))))
         stop("getNodes: `nodes` must be variable names or variable ranges.")
@@ -233,8 +231,8 @@ traverseGraph <- function(streamRules, declRules,
     results <- traverseGraphRecurse(streamRules, nodes, down, follow, immediateOnly)
 
     if(self) {
-        ## Need to handle "self" for when an input node is a full variable,
-        ## character expression for a range or an actual nodeRange.
+        ## Need to handle "self" for three cases: (a) when an input node is a full variable,
+        ## (b) character expression for a range, or (c) an actual varRange or nodeRange.
         varNames <- sapply(nodes, getVarName)
         vars <- nodes == varNames
         selfRangeFromVars <- flatten(lapply(nodes[vars],
@@ -253,8 +251,12 @@ traverseGraph <- function(streamRules, declRules,
                                                   }))
         if(identical(selfRangeFromCharRanges, list(NULL)))
             selfRangeFromCharRanges <- NULL
-        
-        results <- c(nodes[!vars & !charRanges], selfRangeFromVars, selfRangeFromCharRanges, results)
+        selfRangeFromNodes <- lapply(nodes[!vars & !charRanges],
+                                     function(node)
+                                         if(is(node, 'nodeRangeClass') {
+                                             return(node$toVarRange())
+                                         } else return(node)))
+        results <- c(selFRangeFromNodes, selfRangeFromVars, selfRangeFromCharRanges, results)
     }
     
     if(!length(results))
@@ -262,37 +264,50 @@ traverseGraph <- function(streamRules, declRules,
     return(removeDuplicateVarRanges(results))
 }
 
-traverseGraphRecurse <- function(rules, nodes, down, follow = FALSE, immediateOnly = FALSE, first = TRUE) {
-    results <- flatten(lapply(nodes, function(node) getNodesOne(rules, node)))
+traverseGraphRecurse <- function(rules, nodes, down, follow = FALSE, immediateOnly = FALSE, firstPass = TRUE) {
+    results <- flatten(lapply(nodes, function(node) applyRules(rules, node)))
     if(immediateOnly)
         return(results)
-    if(!down && !first && !follow) {
-        ## stoch/determ needs to be determined from rule in which the range is on LHS
+    ## Following graph more than one level requires knowing whether a link is
+    ## from a stochastic declaration. Determining this has to be done differently
+    ## for upward vs. downward traversal.
+    if(!down && !firstPass && !follow) {
+        ## For upward traversal, check current rule to see if continue upwards, but always go up on first pass.
+        ## (Because we need to determine stochasticity of the next rule up, not stochasticity of starting rule.
         stoch <- sapply(results, function(varRange) varRange$fromStochRule)
-        results <- results[!stoch]
+        results <- results[!stoch]  ## Stop here if upwards involves stochastic rule, excluding the upwards result.
     }    
     propagators <- results
     if(!follow && down) {
-        ## can only be used for getDeps because type of LHS not relevant for upward traversal
+        ## For downward traversal, stop propagating at stochastic cases, but results included. 
         stoch <- sapply(propagators, function(varRange) varRange$fromStochRule)
         propagators <- propagators[!stoch]
     }
+    ## Continue traversing.
     if(length(propagators)) {
-        results <- c(results, traverseGraphRecurse(rules, propagators, down, follow, first = FALSE))
+        results <- c(results, traverseGraphRecurse(rules, propagators, down, follow, firstPass = FALSE))
     } else {
         return(results)
     }
 }
-        
-getNodesOne <- function(rules, node) {
+
+## Utility for determining which varRule is needed for a node and
+## applying it.
+applyRules <- function(rules, node) {
     varName <- getVarName(node)  
     if(varName %in% names(rules)) {
         return(rules[[varName]]$apply(node))
     } else return(NULL)
 }
 
+## Set sortIDs elementwise for nodes in a nodeRule for nodeRules involved in cyclic relationships.
+## Note that this could involve one or more variables, e.g. `y[i] ~ dnorm(z[i],1); z[i] ~ dnorm(y[i-1],1)`,
+## in addition to standard state space style `z[i] ~ dnorm(z[i-1],1)`. And there could be multiple distinct
+## state-space structures in a model.
+
+## This code is complicated. We have testing for a variety of tricky cases, but there may be
+## unconsidered additional cases.
 processCyclicRules <- function(allCalcRules, modelDef) {
-    ## Set sortIDs elementwise for nodes in a nodeRule for nodeRules involved in cyclic relationships
     eps <- 1e-12 # increment that ensures unique increasing sortID values
 
     sortIDs <- sapply(allCalcRules, function(rule) rule$sortID)
@@ -306,17 +321,12 @@ processCyclicRules <- function(allCalcRules, modelDef) {
     directions <- NULL
     focalIndices <- NULL
     
-    ## Find calcRules whose indexing is offset, so that we can process each.
+    ## Find calcRules whose indexing is offset, so that we can process each as potential cyclic cases.
     ## Need to know if sortIDs are increasing or decreasing with the indexing.
     for(currentCyclicRule in cyclicRulesSet) {
         parentVars <- sapply(modelDef$upstreamRules[[varNames[currentCyclicRule]]]$rules, function(rule)
             rule$toVarName)
         idx <- which(parentVars %in% varNames[cyclicRulesSet])
-
-        ## if(length(idx) != 1) 
-        ##    if(length(unique(parentVars[idx])) > 1)  ## e.g. mu[i] <- mu[i-1] + z[i], with z[i] also in a cycle
-        ##        return(allCalcRules) ## stop("new nimbleModel processing reached unexpected structure in cycle processing.")
-        ## might be able to handle this if restrict to direction being same mu[i] <- mu[i-1]+z[i] (can't be z[i+1])
 
         ## Multiple graphRules can result from AR(p) structure for p>1.
         upstreamGraphRules <- modelDef$upstreamRules[[varNames[currentCyclicRule]]]$rules[idx]
@@ -327,37 +337,33 @@ processCyclicRules <- function(allCalcRules, modelDef) {
         ## Multiple indices in a rule are lagged.
         if(any(sapply(offsets, function(x)
             sum(x != 0)) > 1))
-            return(allCalcRules) ## stop("new nimbleModel processing reached unexpected structure in cycle processing.")
+            return(allCalcRules)
 
         focalIndexRules <- lapply(offsets, function(x) which(x != 0))
-        ## Any non-zero lags
+        ## Any non-zero lags,
         if(sum(sapply(focalIndexRules, length))) {
             thisFocalIndices <- sapply(seq_along(focalIndexRules), function(i)
                 which(upstreamGraphRules[[i]]$indexSets$fromIndexSlotToSet == focalIndexRules[[i]]))
             focalIndex <- unique(unlist(thisFocalIndices))  # unlist() deals with AR(p) case where there might be a non-block rule
             if(length(focalIndex) > 1)
-                return(allCalcRules) # stop("new nimbleModel processing reached unexpected structure in cycle processing.")
+                return(allCalcRules)
             allCalcRules[[currentCyclicRule]]$multiSortIDindex <- focalIndex
 
-            ## determine offsets
+            ## Determine offsets,
             offsets <- unlist(offsets)
             if(min(offsets) < 0 && max(offsets) > 0)
-                return(allCalcRules)  # stop("new nimbleModel processing reached unexpected structure in cycle processing.")
+                return(allCalcRules)  
             focalRules <- c(focalRules, currentCyclicRule)
             directions <- c(directions, sign(sum(offsets)))
             focalIndices <- c(focalIndices, focalIndex)
         }
     }
     if(!length(focalRules))
-        return(allCalcRules) # stop("new nimbleModel processing reached unexpected structure in cycle processing.")
+        return(allCalcRules) 
 
-    ## Assign initial ordered, non-integer sortIDs to identified rule in cycle.
-    ## It needs to be the identified rule because only for that rule do we know the relevant index.
-    ## Relevant indices for other calcRules in cycle need to be determined from the identified rule.
-    ## Fill in sortID vals for extent of the calcRule (not extent of the upstream rule)
 
-    ## Process each of focalRules. For each rule, recursively look through parentRules.
-
+    ## Process each of focalRules. For each rule, set initial sortID values and recursively look through parentRules,
+    ## setting their sortID values.
     for(i in seq_along(focalRules)) {
         currentCyclicRule <- focalRules[i]
         focalIndex <- focalIndices[i]
@@ -369,7 +375,10 @@ processCyclicRules <- function(allCalcRules, modelDef) {
             return(allCalcRules) # stop("new nimbleModel processing reached unexpected structure in cycle processing.")
         setup <- allCalcRules[[currentCyclicRule]]$fullRule$indexRules[[focalIndexRule]]$setupResults
 
-        ## TODO: extract out initial assignment as a function, since also done in `followUpstream`
+        ## Assign initial ordered, non-integer sortID values to focal rule.
+        ## Relevant indices for other calcRules in cycle need to be determined from the identified rule.
+        ## It needs to be the identified rule because only for that rule do we know the relevant index.
+        ## TODO: extract out initial assignment as a function, since code repeated in `followUpstream`
         if(all(is.na(allCalcRules[[currentCyclicRule]]$sortID))) {
             childSortIDs <- sortIDs[allCalcRules[[currentCyclicRule]]$children]
             if(any(is.infinite(childSortIDs))) ## Another cycle downstream; can't handle this.
@@ -388,10 +397,8 @@ processCyclicRules <- function(allCalcRules, modelDef) {
         }
         
         ## Walk through parent calcRules involved in cycle and assign sortID based on upstream graphRule.
-        ## touched <- rep(FALSE, length(allCalcRules))
-        
-        childSortID <- allCalcRules[[currentCyclicRule]]$sortID
 
+        childSortID <- allCalcRules[[currentCyclicRule]]$sortID
         ## Determine the graphRule involved in getting next upstream calcRule.
         parentVars <- sapply(modelDef$upstreamRules[[varNames[currentCyclicRule]]]$rules,
                              function(rule) rule$toVarName)
@@ -407,9 +414,9 @@ processCyclicRules <- function(allCalcRules, modelDef) {
     tmpSortIDs <- unlist(lapply(cyclicRules,
                                 function(rule) rule$sortID))
     NAsortIDs <- is.na(tmpSortIDs)
-    ## Can have ties if have distinct unrelated cycles. Use of `'first'` ensures no gaps in the sortIDs.
+    ## Can have ties if have distinct unrelated cycles. 
     rk <- rank(tmpSortIDs, ties.method = 'min')
-    ## Remove gaps from duplicated ranks
+    ## Remove gaps from duplicated ranks.
     if(any(duplicated(rk))) {
         uniqs <- sort(unique(rk))
         lookup <- rep(NA, max(uniqs))
@@ -429,6 +436,7 @@ processCyclicRules <- function(allCalcRules, modelDef) {
     return(allCalcRules)
 }
 
+## Follow cycles until reach a previously encountered rule and don't need to modify it.
 followUpstream <- function(upstreamGraphRule, upstreamRules, childSortID, focalIndex,
                            allCalcRules, cyclicRulesSet, varNames, sortIDs, fullMaxSortID,
                            direction, eps, count = 0) {
@@ -450,7 +458,7 @@ followUpstream <- function(upstreamGraphRule, upstreamRules, childSortID, focalI
     focalIndex <- which(upstreamGraphRule$indexSets$toIndexSlotToSet == focalIndexRule)
     ## The upstreamGraphRule should only involve one index.
     if(length(focalIndex) != 1)
-        return(NULL) # stop("new nimbleModel processing reached unexpected structure in cycle processing.")
+        return(NULL) 
 
     for(currentCyclicRule in currentCyclicRules) {
         currentSortID <- allCalcRules[[currentCyclicRule]]$sortID
@@ -459,7 +467,7 @@ followUpstream <- function(upstreamGraphRule, upstreamRules, childSortID, focalI
             setup <- allCalcRules[[currentCyclicRule]]$fullRule$indexRules[[focalIndexRule]]$setupResults
             childSortIDs <- sortIDs[allCalcRules[[currentCyclicRule]]$children]
             if(any(is.infinite(childSortIDs))) ## Another cycle downstream; can't handle this.
-                return(NULL) # stop("new nimbleModel processing reached unexpected structure in cycle processing.")
+                return(NULL) 
             if(any(is.finite(childSortIDs)))
                 maxSortID <- max(childSortIDs[is.finite(childSortIDs)]) else maxSortID <- fullMaxSortID
             
@@ -479,19 +487,19 @@ followUpstream <- function(upstreamGraphRule, upstreamRules, childSortID, focalI
         ## Determine sortID incrementing based on graphRule.
         setup <- upstreamGraphRule$indexRules[[focalIndexRule]]$setupResults
         if(!inherits(upstreamGraphRule$indexRules[[focalIndexRule]], 'indexRuleBlockClass'))
-            return(NULL) # stop("new nimbleModel processing reached unexpected structure in cycle processing.")
+            return(NULL) 
         childIndices <- setup$fromMin:setup$fromMax
         sortIDvals <- childSortID[childIndices] + eps
         currentIndices <- childIndices + as.integer(setup$offset)  # as.integer() because of identical() below
         
         focalIndexRule <- allCalcRules[[currentCyclicRule]]$indexSlotToSet[focalIndex]
         if(!inherits(allCalcRules[[currentCyclicRule]]$fullRule$indexRules[[focalIndexRule]], 'indexRuleBlockClass'))
-            return(NULL) # stop("new nimbleModel processing reached unexpected structure in cycle processing.")
+            return(NULL) 
         
         setup <- allCalcRules[[currentCyclicRule]]$fullRule$indexRules[[focalIndexRule]]$setupResults
         currentCalcRuleIndices <- setup$fromMin:setup$fromMax
         
-        ## currentIndices may include indices not in the calcRule, if the rule has been fractured,
+        ## `currentIndices` may include indices not in the calcRule, if the rule has been fractured,
         ## so do not update sortID for elements not in the calcRule, using setup info for the calcRule.
         indicesToUpdate <- currentIndices %in% currentCalcRuleIndices
         
@@ -505,9 +513,9 @@ followUpstream <- function(upstreamGraphRule, upstreamRules, childSortID, focalI
         if(any(wh))
             allCalcRules[[currentCyclicRule]]$sortID[currentIndices][wh] <- sortIDvals[wh]
         
-        if(!sum(wh) && !initialized)   ## only complete cycle if get back to a calcRule and don't need to modify it
-            next # return(NULL)
-
+        if(!sum(wh) && !initialized)   ## Only complete cycle if get back to a calcRule and don't need to modify it.
+            next
+        
         ## If no indices to update, we have disjoint indices so don't continue upstream.
         if(!sum(indicesToUpdate, na.rm = TRUE))
             next
@@ -522,7 +530,7 @@ followUpstream <- function(upstreamGraphRule, upstreamRules, childSortID, focalI
         upstreamGraphRules <- upstreamRules[[varNames[currentCyclicRule]]]$rules[idx]
         sapply(upstreamGraphRules, followUpstream, upstreamRules, childSortID, focalIndex, allCalcRules,
                cyclicRulesSet, varNames, sortIDs, fullMaxSortID, direction, eps, count+1)
-        next # return(NULL)
+        next 
     }
     return(NULL)
 }
@@ -539,8 +547,6 @@ reprioritizeColonOperator <- function(code) {
                               ")"),
                 keep.source = FALSE)[[1]])
     if(length(split.code[[1]]) > 2)
-        stop(paste0('Error with this code: ',
-                    deparse(code))
-             )
+        stop("reprioritizeColonOperator: could not process colon operator in `", deparse(code), "`.")
     return(code)
 }

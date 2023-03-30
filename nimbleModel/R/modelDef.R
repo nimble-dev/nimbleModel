@@ -233,37 +233,37 @@ modelDefClass <- R6Class(
 
 ## TODO: look into combining results - duplication only deals with complete overlap, e.g., from `y[i]~dnorm(mu,sigma)`
 ## getDependencies(c('mu','sigma'))
-## TODO: data-related flags not yet dealt with. Perhaps not done here as that relates to nodes and not varRanges?
-## NOTE: formerly had `includeRHSonly` but that relates to nodes and not varRanges.
 
-## Note: `getDependencies` and `getParents` cannot handle `stochOnly` or `determOnly` because a given varRange result
-## for getParents could be partially stochastic and partially deterministic.
-## Instead a user would pass the result through `getNodes()`.
+## Note: `getDependencies` and `getParents` cannot handle `stochOnly` or `determOnly`
+## because a given varRange result for getParents could be partially stochastic and
+## partially deterministic. Instead a user would pass the result through `getNodes()`.
+## Similarly, filtering by RHSonly will be done in `getNodes()`.
+
+## Note: data-related flags not handled as that relates to flags on a model
+## and not part of modelDef.
 
 getDependencies <- function(modelDef, nodes,
                             self = TRUE,
-                            includeData = TRUE, dataOnly = FALSE, 
                             downstream = FALSE, immediateOnly = FALSE) {
     traverseGraph(modelDef$downstreamRules, modelDef$declRules, nodes = nodes,
-              down = TRUE, self = self, 
-              includeData = includeData, dataOnly = dataOnly, 
-              follow = downstream, immediateOnly = immediateOnly)
-
+                  down = TRUE, self = self, 
+                  follow = downstream, immediateOnly = immediateOnly)
+    
 }
 
 getParents <- function(modelDef, nodes,
                             self = FALSE,
-                            includeData = TRUE, dataOnly = FALSE, 
                             upstream = FALSE, immediateOnly = FALSE) {
     traverseGraph(modelDef$upstreamRules, modelDef$declRules, nodes = nodes,
-              down = FALSE, self = self, 
-              includeData = includeData, dataOnly = dataOnly, 
-              follow = upstream, immediateOnly = immediateOnly)
+                  down = FALSE, self = self, 
+                  follow = upstream, immediateOnly = immediateOnly)
 }
 
 
 ## Determine nodes of interest, potentially of particular types.
 ## Incorporates functionality formerly in `getNodeNames` and `expandNodeNames`
+## TODO: data-related flags not handled here and presumably can't be handled
+## here as the data are property of model, not of graph.
 getNodes <- function(modelDef, nodes = NULL,
                      stochOnly = FALSE, determOnly = FALSE,
                      includeData = TRUE, dataOnly = FALSE,
@@ -286,16 +286,16 @@ getNodes <- function(modelDef, nodes = NULL,
     }
     
     if(!topOnly && !latentOnly && !endOnly) 
-        result <- lapply(nodes, function(node) getNodesOne(modelDef$declRules, node))
+        result <- lapply(nodes, function(node) applyRules(modelDef$declRules, node))
         
-    if(topOnly) result <- lapply(nodes, function(node) getNodesOne(modelDef$topRules, node))
-    if(latentOnly) result <- lapply(nodes, function(node) getNodesOne(modelDef$latentRules, node))
-    if(endOnly) result <- lapply(nodes, function(node) getNodesOne(modelDef$endRules, node))
+    if(topOnly) result <- lapply(nodes, function(node) applyRules(modelDef$topRules, node))
+    if(latentOnly) result <- lapply(nodes, function(node) applyRules(modelDef$latentRules, node))
+    if(endOnly) result <- lapply(nodes, function(node) applyRules(modelDef$endRules, node))
 
     result <- flatten(result)  ## Flatten the result so don't have nested list.
 
     if(includeRHSonly) {
-        rhsResult <- lapply(nodes, function(node) getNodesOne(modelDef$rhsOnlyRules, node))
+        rhsResult <- lapply(nodes, function(node) applyRules(modelDef$rhsOnlyRules, node))
         result <- c(result, flatten(rhsResult))
     }
 
