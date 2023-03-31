@@ -1,13 +1,12 @@
 context("modelDeclClass")
 
-test_that("modelDeclClass works",
-{
+test_that("modelDeclClass works", {
     test1 <- modelDeclClass$new()
     ## get dnorm in getAllDistributionsInfo
     test1$setup(code = quote(a ~ dnorm(0, 1)),
                 context = NULL,
                 sourceLineNum = 2)
-    test1$genSymbolicParentNodes(constants = list(),
+    test1$makeSymbolicParentNodes(constants = list(),
                                  nimFunNames = list())
     expect_identical(test1$symbolicParentNodes,
                      NULL)
@@ -17,7 +16,7 @@ test_that("modelDeclClass works",
     test1$setup(code = quote(a[i] ~ dnorm(b * const * mu[i+1], sigma)),
                 context = modelContextClass$new(list(quote(for(i in 1:10){}))),
                 sourceLineNum = 2)
-    test1$genSymbolicParentNodes(constants = list(const = 7),
+    test1$makeSymbolicParentNodes(constants = list(const = 7),
                                  nimFunNames = list())
     expect_identical(test1$symbolicParentNodes,
                      list(quote(b),
@@ -27,7 +26,7 @@ test_that("modelDeclClass works",
                      )
 })
 
-test_that("genSymbolicParentNodes works", {
+test_that("makeSymbolicParentNodes works", {
     modelCode <- quote({
         for(i in 1:10) {
             a[i] ~ dnorm(mu[i]+thetaVal, tau)
@@ -39,10 +38,10 @@ test_that("genSymbolicParentNodes works", {
     constants <- list(thetaVal = 7)
     modelDef <- modelDefClass$new(modelCode, constants = constants)
     modelDef$processModelCode()
-    modelDef$declInfo[[1]]$genSymbolicParentNodes(constants, c('dnorm','dunif'))
-    modelDef$declInfo[[2]]$genSymbolicParentNodes(constants, c('dnorm','dunif'))
-    modelDef$declInfo[[3]]$genSymbolicParentNodes(constants, c('dnorm','dunif'))
-    modelDef$declInfo[[4]]$genSymbolicParentNodes(constants, c('dnorm','dunif'))
+    modelDef$declInfo[[1]]$makeSymbolicParentNodes(constants, c('dnorm','dunif'))
+    modelDef$declInfo[[2]]$makeSymbolicParentNodes(constants, c('dnorm','dunif'))
+    modelDef$declInfo[[3]]$makeSymbolicParentNodes(constants, c('dnorm','dunif'))
+    modelDef$declInfo[[4]]$makeSymbolicParentNodes(constants, c('dnorm','dunif'))
     expect_identical(
         modelDef$declInfo[[1]]$symbolicParentNodes,
         list(quote(mu[i]), quote(tau)))

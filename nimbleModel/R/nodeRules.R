@@ -357,7 +357,7 @@ calcRuleClass <- R6Class(
                     ## warning("Cycle found in model graph. NIMBLE does not allow cyclic models.")
                     sortID <<- as.numeric(NA)
                     ## This allows NA to propagate into other nodes involved in cycle.
-                    tmp <- sapply(children, function(i)
+                    sapply(children, function(i)
                         calcRules[[i]]$setSortID(calcRules, c(ancestors, ID)))
                     return(sortID)
                 }
@@ -799,15 +799,15 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
         ## new fractured results and not fractured (LHS) rule.
         newChildren <- sapply(result, function(x) x$ID)
         names(newChildren) <- NULL
-        tmp <- sapply(LHSrule$parents, function(idx)
+        sapply(LHSrule$parents, function(idx)
             currentRules[[idx]]$setChildren(newChildren))
-        tmp <- sapply(LHSrule$parents, function(idx)
+        sapply(LHSrule$parents, function(idx)
             currentRules[[idx]]$unsetChildren(LHSrule$ID))
     }
     ## Remove fractured (LHS) rule as parent of its children.
     ## The new fractured rules will be added in as parents when they are used as fracturers,
     ## later in looping over calcRules.
-    tmp <- sapply(LHSrule$children, function(idx)
+    sapply(LHSrule$children, function(idx)
         currentRules[[idx]]$unsetParents(LHSrule$ID))
     return(result)
 }

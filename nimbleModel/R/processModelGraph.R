@@ -50,7 +50,7 @@ makeRHSonlyRules <- function(rhsOriginalRules, declRules) {
     
     ## Assign unique ID sequentially (these will not be unique w.r.t. calcRule IDs).
     ## CHECK: do we use these IDs?
-    tmp <- sapply(seq_along(rhsOnlyRules), function(idx) rhsOnlyRules[[idx]]$ID <- idx)
+    sapply(seq_along(rhsOnlyRules), function(idx) rhsOnlyRules[[idx]]$ID <- idx)
     return(rhsOnlyRules)
 }
 
@@ -149,7 +149,7 @@ makeCalcRules <- function(calcRules, rhsOriginalRules, graphRules, recurseFractu
     
     ## Find additional parent/children links from new rules resulting from fracturing,
     ## Since these new rules have not gone through fracturing when `recurseFracturing` is `FALSE`.
-    if(!recurseFracturing)
+    if(!recurseFracturing && sum(fracturedRules))
         setRelationships(calcRules, graphRules, startPos = numOrigCalcRules + 1 - sum(fracturedRules))
     
     return(calcRules)
@@ -181,20 +181,20 @@ setRelationships <- function(calcRules, graphRules, startPos = 1) {
 
 ## Find endRules based on not having stochastic dependents.
 setEndRules <- function(calcRules) {
-    tmp <- sapply(calcRules, function(rule)
+    sapply(calcRules, function(rule)
         rule$setStochDep(calcRules))
-    tmp <- sapply(calcRules, function(rule)
+    sapply(calcRules, function(rule)
         if(rule$stochDep) rule$unset('end') else rule$set('end'))
-    invisible(0)
+    invisible(NULL)
 }
 
 ## Find topRules based on not having stochastic parents.
 setTopRules <- function(calcRules) {
-    tmp <- sapply(calcRules, function(rule)
+    sapply(calcRules, function(rule)
         rule$setStochParent(calcRules))
-    tmp <- sapply(calcRules, function(rule)
+    sapply(calcRules, function(rule)
         if(rule$stochParent) rule$unset('top') else rule$set('top'))
-    invisible(0)
+    invisible(NULL)
 }
 
 ## Set sortIDs based on recursive calls to setSortID for individual rules.
@@ -204,7 +204,7 @@ setSortIDs <- function(calcRules) {
     ## Reorder sortIDs so that smallest sortID values are at top.
     if(all(is.finite(sortIDs))) {
         mx <- max(sortIDs)
-        tmp <- sapply(calcRules, function(rule)
+        sapply(calcRules, function(rule)
             rule$sortID <- mx - rule$sortID + 1
             )
         return(TRUE) ## All sortIDs resolved.
@@ -256,7 +256,7 @@ traverseGraph <- function(streamRules, declRules,
                                          if(is(node, 'nodeRangeClass')) {
                                              return(node$toVarRange())
                                          } else return(node))
-        results <- c(selFRangeFromNodes, selfRangeFromVars, selfRangeFromCharRanges, results)
+        results <- c(selfRangeFromNodes, selfRangeFromVars, selfRangeFromCharRanges, results)
     }
     
     if(!length(results))
@@ -427,7 +427,7 @@ processCyclicRules <- function(allCalcRules, modelDef) {
     tmpSortIDs <- fullMaxSortID + rk
     tmpSortIDs[NAsortIDs] <- NA
 
-    tmp <- sapply(seq_along(numSortIDs), function(i) {
+    sapply(seq_along(numSortIDs), function(i) {
         if(i == 1) {
             cyclicRules[[i]]$sortID <- tmpSortIDs[1:numSortIDs[1]]
         } else cyclicRules[[i]]$sortID <- tmpSortIDs[(numSortIDs[i-1]+1):numSortIDs[i]]

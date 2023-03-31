@@ -73,7 +73,7 @@ modelContextClass <- R6Class(
                                                       x
                                                   } else stop("modelContextClass: `singleContexts` must be a list of `singleContextClass` objects or a list of for-loop code.")
                                               )
-                    indexVarExprs <<- lapply(singleContexts,
+                    indexVarExprs <<- lapply(self$singleContexts,
                                              function(x) x$indexVarExpr)
                     indexVarNames <<- if(length(indexVarExprs))
                                           sapply(indexVarExprs, as.character)

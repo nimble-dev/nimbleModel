@@ -13,28 +13,22 @@ test_that("processModelCode works in simplest case", {
 })
 
 test_that("processModelCode works", {
-    ## FIXME: Something about logit() causes problems
     modelCode <- quote({
         for(i in 1:10)
             logit(a[i]) ~ dnorm(mu[i], tau)
     })
     modelDef <- modelDefClass$new(modelCode)
     modelDef$processModelCode()
-    expect_equal(
-        modelDef$declInfo[[1]]
-       ,
-       {
-           test2 <- modelDeclClass$new()
-           test2$setup(
-               quote(logit(a[i]) ~ dnorm(mu[i], tau)),
-               modelContextClass$new(
-                   list(
-                       quote(for(i in (1):(10)){})
-                   )),
-               2)
-           test2
-       }
-    )
+
+    expected <- modelDeclClass$new()
+    expected$setup(
+                 quote(logit(a[i]) ~ dnorm(mu[i], tau)),
+                 modelContextClass$new(list(
+                                           quote(for(i in (1):(10)){})
+                                       )),
+                 sourceLineNumber = 2)
+
+    expect_equal(modelDef$declInfo[[1]], expected) 
 
     ## Multiple lines; and check declRules
     modelCode <- quote({
@@ -47,6 +41,7 @@ test_that("processModelCode works", {
     })
     modelDef <- modelDefClass$new(modelCode, constants = list(thetaVal = 7))
     modelDef$processModelCode()
+    modelDef$processDecls()
 
     expect_identical(
         modelDef$declInfo[[1]]$targetNodeExpr, quote(a[i]))
@@ -55,7 +50,7 @@ test_that("processModelCode works", {
     expect_identical(
         modelDef$declInfo[[1]]$indexExpr, list(quote(i)))
     expect_identical(
-        modelDef$declInfo[[1]]$type, "stoch")
+        modelDef$declInfo[[1]]$stoch, TRUE)
 
     expect_identical(
         modelDef$declInfo[[4]]$targetNodeExpr, quote(theta))
@@ -64,7 +59,7 @@ test_that("processModelCode works", {
     expect_identical(
         modelDef$declInfo[[4]]$indexExpr, NULL)
     expect_identical(
-        modelDef$declInfo[[4]]$type, "determ")
+        modelDef$declInfo[[4]]$stoch, FALSE)
     
     expect_identical(
         modelDef$declInfo[[1]]$declRule$varName, "a")
@@ -90,7 +85,12 @@ test_that("makeRHSoriginalNodes works", {
     })
     modelDef <- modelDefClass$new(modelCode)
     modelDef$processModelCode()
-    modelDef$declInfo[[1]]$makeDownstreamRules(constants = list())
+    modelDef$processDecls()
+    
+    ## TODO: placeholder:
+    nimFunNames <- list(as.name(':'), as.name('dmnorm'), as.name('dnorm'), as.name('dunif'), as.name('dwish'))
+    
+    modelDef$declInfo[[1]]$makeRules(constants = list(), nimFunNames)
     for(i in 1:4)
         modelDef$declInfo[[i]]$makeRHSoriginalRules(constants = list())
     expect_identical(length(modelDef$declInfo[[1]]$rhsOriginalRules), 1L)
@@ -100,21 +100,25 @@ test_that("makeRHSoriginalNodes works", {
 })
 
 
-test_that("makeDownstreamRules works", {
+test_that("makeRules works", {
     modelCode <- quote({
         for(i in 1:10)
             a[i] ~ dnorm(mu[i], tau)
     })
     modelDef <- modelDefClass$new(modelCode)
     modelDef$processModelCode()
-    modelDef$declInfo[[1]]$makeDownstreamRules(constants = list())
+
+    ## TODO: placeholder:
+    nimFunNames <- list(as.name(':'), as.name('dmnorm'), as.name('dnorm'), as.name('dunif'), as.name('dwish'))
+    
+    modelDef$declInfo[[1]]$makeRules(constants = list(), nimFunNames)
 
     expect_identical(
         length(modelDef$declInfo[[1]]$downstreamRules), 2L)
     expect_is(modelDef$declInfo[[1]]$downstreamRules[[1]]$indexRules[[1]],
-              'indexRuleClass_block')
+              'indexRuleBlockClass')
     expect_is(modelDef$declInfo[[1]]$downstreamRules[[2]]$indexRules[[1]],
-              'indexRuleClass_all')
+              'indexRuleAllClass')
 
     ## FIXME: LHS transformations not currently being processed correctly.
     modelCode <- quote({
@@ -123,23 +127,18 @@ test_that("makeDownstreamRules works", {
     })
     modelDef <- modelDefClass$new(modelCode)
     modelDef$processModelCode()
-    modelDef$declInfo[[1]]$makeDownstreamRules()
+    modelDef$processDecls()
+    modelDef$declInfo[[1]]$makeRules(constants = list(), nimFunNames)
     
-    expect_equal(
-        modelDef$declInfo[[1]]
-       ,
-       {
-           test2 <- modelDeclClass$new()
-           test2$setup(
+    result <- modelDeclClass$new()
+    result$setup(
                quote(logit(a[i]) ~ dnorm(mu[i], tau)),
-               modelContextClass$new(
-                   list(
-                       quote(for(i in (1):(10)){})
-                   )),
-               2)
-           test2
-       }
-    )
+               modelContextClass$new(list(
+                                         quote(for(i in (1):(10)){})
+                                     )),
+               sourceLineNumber = 2)
+    
+    expect_equal(modelDef$declInfo[[1]], result)
 })
 
 test_that("processDecls works", {
