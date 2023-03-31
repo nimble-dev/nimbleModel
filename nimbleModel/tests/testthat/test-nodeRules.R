@@ -1226,7 +1226,7 @@ test_that("calculate works correctly for SSM recursion", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
     calcRange <- modelDef$calcRules[['test']]$rules[[4]]$generateCalcRange(
                  varRangeClass$new(list(newIndexRange(quote(2:3)))))
     ## 'test' is hard coded into declRule class as rep(0,10)
@@ -1243,7 +1243,7 @@ test_that("calculate works correctly for SSM recursion", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
     calcRange <- modelDef$calcRules[['test2']]$rules[[4]]$generateCalcRange(
                                         varRangeClass$new(list(
                                         newIndexRange(c(3,1)), newIndexRange(quote(3:4)))))

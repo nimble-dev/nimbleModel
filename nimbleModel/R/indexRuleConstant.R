@@ -43,7 +43,7 @@ indexRuleConstant_setup <- function(toIndexExprList,
         return(NULL)
 
     if(is.list(constants))
-        constants <- list2env(constants, parent = baseenv())
+        constants <- list2env(constants, parent = getDefaultNamespace())
 
     if(!length(toIndexExprList)) {  # no indexing; handled by indexRuleNone
         return(NULL)

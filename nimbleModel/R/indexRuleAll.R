@@ -41,7 +41,7 @@ indexRuleAll_setup <- function(toIndexExprList,
         return(NULL)
     
     if(is.list(constants))
-        constants <- list2env(constants, parent = baseenv())
+        constants <- list2env(constants, parent = getDefaultNamespace())
     
     ## Try to handle single index, simple increment case expeditiously.
     ## The second condition excludes non-sequential indexing in for loop.

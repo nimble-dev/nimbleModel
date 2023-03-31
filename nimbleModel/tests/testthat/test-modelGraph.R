@@ -11,7 +11,7 @@ test_that("graph processing for basic model works", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     expect_identical(length(modelDef$downstreamRules), 3L)
     expect_identical(length(modelDef$downstreamRules[['mu0']]$rules), 1L)
@@ -67,7 +67,7 @@ test_that("graph processing for basic model with deterministic nodes works", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
     
     expect_identical(length(modelDef$downstreamRules), 6L)
     
@@ -160,7 +160,7 @@ test_that("graph processing for model with various parents in a declaration work
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     expect_identical(length(modelDef$downstreamRules), 3L)
     expect_identical(length(modelDef$downstreamRules[['mu']]$rules), 1L)
@@ -190,7 +190,7 @@ test_that("graph processing with split latent node", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     expect_identical(length(modelDef$downstreamRules), 2L)
     
@@ -240,7 +240,7 @@ test_that("graph processing with split LHS node", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     expect_identical(length(modelDef$calcRules), 2L)
 
@@ -294,7 +294,7 @@ test_that("graph processing with triangular dependency structure", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     tmp <- unlist(sapply(modelDef$calcRules, function(rule) rule$rules))
     ids <- sapply(tmp, function(x) x$ID)
@@ -349,7 +349,7 @@ test_that("graph processing and top/end nodes with deterministic nodes", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     var <- "z"
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('top'), TRUE)
@@ -392,7 +392,7 @@ test_that("graph processing and top/end nodes with deterministic nodes", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     var <- "z"
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$is('top'), TRUE)
@@ -436,7 +436,7 @@ test_that("graph processing with various types of multivariate nodes", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     tmp <- unlist(sapply(modelDef$calcRules, function(rule) rule$rules))
     ids <- sapply(tmp, function(x) x$ID)
@@ -474,7 +474,7 @@ test_that("graph processing with various types of multivariate nodes", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     tmp <- unlist(sapply(modelDef$calcRules, function(rule) rule$rules))
     ids <- sapply(tmp, function(x) x$ID)
@@ -510,7 +510,7 @@ test_that("graph processing with various types of multivariate nodes", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     tmp <- unlist(sapply(modelDef$calcRules, function(rule) rule$rules))
     ids <- sapply(tmp, function(x) x$ID)
@@ -546,7 +546,7 @@ test_that("graph processing with various types of multivariate nodes", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     expect_identical(length(modelDef$calcRules), 2L)
 
@@ -573,7 +573,7 @@ test_that("graph processing for complicated multiple mv LHS nodes", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     tmp <- unlist(sapply(modelDef$calcRules, function(rule) rule$rules))
     ids <- sapply(tmp, function(x) x$ID)
@@ -601,7 +601,7 @@ test_that("graph processing for complicated multiple mv LHS nodes", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     var <- "mu"
     expect_identical(length(modelDef$calcRules[[var]]$rules), 3L)
@@ -631,7 +631,7 @@ test_that("graph processing for RHS var used twice", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
     
     expect_identical(length(modelDef$rhsOnlyRules), 3L)
 
@@ -655,7 +655,7 @@ test_that("graph processing for basic RHS exclusion and LHS fracturing", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     expect_identical(length(modelDef$calcRules), 2L)
 
@@ -725,7 +725,7 @@ test_that("graph processing for basic RHS exclusion and LHS fracturing", {
     modelDef <- modelDefClass$new(code, constants = list(k1 = c(1,2,4), k2 = c(1,2,4)))
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
     
     expect_identical(length(modelDef$calcRules), 2L)
     var <- "mu"
@@ -743,7 +743,7 @@ test_that("graph processing for basic RHS exclusion and LHS fracturing", {
     modelDef <- modelDefClass$new(code, constants = list(k1 = c(1,2,4), k2 = c(3,5,7)))
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
     
     expect_identical(length(modelDef$calcRules), 2L)
     var <- "mu"
@@ -762,7 +762,7 @@ test_that("graph processing error trapping for cycles", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    expect_error(modelDef$generateGraphInfo(), "Cycle found")
+    expect_error(modelDef$makeGraphInfo(), "Cycle found")
 
     code <- quote({
         y ~ dnorm(y, 1)
@@ -771,7 +771,7 @@ test_that("graph processing error trapping for cycles", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    expect_error(modelDef$generateGraphInfo(), "Cycle found")
+    expect_error(modelDef$makeGraphInfo(), "Cycle found")
 })
 
 test_that("graph processing for model with overlapping RHS works", {
@@ -789,7 +789,7 @@ test_that("graph processing for model with overlapping RHS works", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     var <- 'mu'
     expect_identical(length(modelDef$rhsOnlyRules[[var]]$rules), 3L)
@@ -812,7 +812,7 @@ test_that("graph processing for model with overlapping RHS works", {
     modelDef <- modelDefClass$new(code, constants = list(k1 = c(1,3,4), k2 = c(1,2,5)))
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
     
     expect_identical(length(modelDef$rhsOnlyRules[['mu']]$rules), 2L)
     expect_identical(length(modelDef$rhsOnlyRules[['theta']]$rules), 1L)
@@ -834,7 +834,7 @@ test_that("graph processing for model with overlapping RHS works", {
     modelDef <- modelDefClass$new(code, constants = list(k1 = c(1,3,4), k2 = c(1,2,5), k3 = c(3,5,7)))
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
     
     expect_identical(length(modelDef$rhsOnlyRules[['mu']]$rules), 2L)
     expect_identical(length(modelDef$rhsOnlyRules[['theta']]$rules), 1L)
@@ -857,7 +857,7 @@ test_that("graph processing for model with overlapping RHS works", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     var <- 'mu'
     expect_identical(length(modelDef$rhsOnlyRules[[var]]$rules), 2L)
@@ -879,7 +879,7 @@ test_that("graph processing for model with overlapping RHS works", {
     modelDef <- modelDefClass$new(code, constants = list(k1 = c(2,4), k2 = c(4,6)))
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     var <- 'mu'
     expect_identical(length(modelDef$rhsOnlyRules[[var]]$rules), 2L)
@@ -913,7 +913,7 @@ test_that("graph processing for model with overlapping RHS works", {
     modelDef <- modelDefClass$new(code, constants = list(k1 = c(2,4), k2 = c(4,6)))
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     var <- 'mu'
     expect_identical(length(modelDef$rhsOnlyRules[[var]]$rules), 2L)
@@ -947,7 +947,7 @@ test_that("graph processing for multiple RHS only cases", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
 
     var <- 'mu'
@@ -974,7 +974,7 @@ test_that("graph processing for state-space model", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     expect_identical(length(modelDef$rhsOnlyRules), 1L)
     expect_identical(length(modelDef$rhsOnlyRules[['y']]$rules), 1L)
@@ -1019,7 +1019,7 @@ test_that("basic check of graph interface", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     result <- getNodes(modelDef)
     expect_identical(sapply(result, function(node) node$varName),
@@ -1093,7 +1093,7 @@ test_that("basic check of graph interface", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
     
     result <- getDependencies(modelDef, 'mu0')
     expect_identical(sapply(result, function(node) node$varName),
@@ -1120,7 +1120,7 @@ test_that("getDependencies deals with repeated children", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     result <- getDependencies(modelDef, c('tau','mu'))
     expect_identical(sapply(result, function(node) node$varName),
@@ -1137,7 +1137,7 @@ test_that("getDependencies deals with repeated parents", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     result <- getParents(modelDef, c('y','z'))
     expect_identical(sapply(result, function(node) node$varName),
@@ -1155,7 +1155,7 @@ test_that("getDependencies with multiple children", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     result <- getDependencies(modelDef, 'mu')
     expect_identical(sapply(result, function(node) node$varName),
@@ -1179,7 +1179,7 @@ test_that("getParents traversal with mix of stoch/determ edges", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     result <- getParents(modelDef, 'y')
     expect_identical(sapply(result, function(node) node$varName),
@@ -1194,7 +1194,7 @@ test_that("same dependent on RHS", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     result <- getParents(modelDef, 'y')
     expect_identical(sapply(result, function(node) node$varName),
@@ -1218,7 +1218,7 @@ test_that("basic hierarchical models", {
     modelDef <- modelDefClass$new(code, constants = list(k = k))
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     result <- getNodes(modelDef)
     expect_identical(sapply(result, function(node) node$varName),
@@ -1321,7 +1321,7 @@ test_that("basic hierarchical models", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     result <- getNodes(modelDef, 'pr[2,2]')
     expect_identical(sapply(result, function(node) node$varName),
@@ -1371,7 +1371,7 @@ test_that("basic hierarchical models", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     result <- getNodes(modelDef, 'y')
     expect_identical(result[[1]]$indexRanges, 
@@ -1419,7 +1419,7 @@ test_that("state-space model", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     result <- getNodes(modelDef, 'y')
     expect_identical(result[[1]]$indexRanges, 
@@ -1476,7 +1476,7 @@ test_that("state-space model", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     result <- getNodes(modelDef, topOnly = TRUE)
     expect_length(result, 3)
@@ -1523,7 +1523,7 @@ test_that("error trapping for unexpected vars/nodes", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     expect_null(getNodes(modelDef, 'x'))
     expect_null(getNodes(modelDef, 'x[3]'))
@@ -1546,7 +1546,7 @@ test_that("getNodes handles a split variable", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     result <- getNodes(modelDef, 'theta[1:3]')
     expect_length(result, 2)
@@ -1577,7 +1577,7 @@ test_that("complicated input varRange", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     vr <- varRangeClass$new(list(indexRange(quote(2:3)),
                                  indexRange(matrix(c(2,4,5,1), nrow = 2))),
@@ -1626,7 +1626,7 @@ test_that("one-lag Markov structure handled correctly", {
    modelDef <- modelDefClass$new(code)
    modelDef$processModelCode()
    modelDef$processDecls()
-   modelDef$generateGraphInfo()
+   modelDef$makeGraphInfo()
    sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
    topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
    endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
@@ -1645,7 +1645,7 @@ test_that("one-lag Markov structure handled correctly", {
    modelDef <- modelDefClass$new(code)
    modelDef$processModelCode()
    modelDef$processDecls()
-   modelDef$generateGraphInfo()
+   modelDef$makeGraphInfo()
    sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
    topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
    endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
@@ -1668,7 +1668,7 @@ test_that("standard one-lag SSM handled correctly", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
@@ -1698,7 +1698,7 @@ test_that("one-lag SSM with complicated dependencies handled correctly", {
     modelDef <- modelDefClass$new(code, constants = list(k = c(5,3,1,2,4)))
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
@@ -1728,7 +1728,7 @@ test_that("one-lag Markov structure with intermediate variable handled correctly
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
@@ -1760,7 +1760,7 @@ test_that("one-lag Markov structure with two intermediate variables, multivariat
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
@@ -1792,7 +1792,7 @@ test_that("AR(p) cases", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
@@ -1820,7 +1820,7 @@ test_that("AR(p) cases", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
@@ -1850,7 +1850,7 @@ test_that("AR(p) cases", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
@@ -1881,7 +1881,7 @@ test_that("only two-lag SSM", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
@@ -1910,7 +1910,7 @@ test_that("standard one-lag SSM with two parts (two focalRules but on one variab
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
@@ -1942,7 +1942,7 @@ test_that("two unrelated cycles", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
@@ -1973,7 +1973,7 @@ test_that("complicated cyclic dependency", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
@@ -2001,7 +2001,7 @@ test_that("complicated cyclic dependency", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
@@ -2028,7 +2028,7 @@ test_that("complicated cyclic dependency", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
@@ -2056,7 +2056,7 @@ test_that("complicated cyclic dependency", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
@@ -2087,7 +2087,7 @@ test_that("fully unrolled cases", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    expect_warning(modelDef$generateGraphInfo(), "Detected cycle or state-space type structure")
+    expect_warning(modelDef$makeGraphInfo(), "Detected cycle or state-space type structure")
 
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
@@ -2110,7 +2110,7 @@ test_that("fully unrolled cases", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    expect_warning(modelDef$generateGraphInfo(), "Detected cycle or state-space type structure")
+    expect_warning(modelDef$makeGraphInfo(), "Detected cycle or state-space type structure")
 
     ## This unrolls because don't know what to set as sign for mu rule
     code <- quote({
@@ -2122,7 +2122,7 @@ test_that("fully unrolled cases", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    expect_warning(modelDef$generateGraphInfo(), "Detected cycle or state-space type structure")
+    expect_warning(modelDef$makeGraphInfo(), "Detected cycle or state-space type structure")
 
     code <- quote({
         for(j in 1:5) {
@@ -2140,7 +2140,7 @@ test_that("fully unrolled cases", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    expect_warning(modelDef$generateGraphInfo(), "Detected cycle or state-space type structure")
+    expect_warning(modelDef$makeGraphInfo(), "Detected cycle or state-space type structure")
 
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
@@ -2168,7 +2168,7 @@ test_that("SSM using arbitrary indexing", {
     modelDef <- modelDefClass$new(code, constants = list(k = c(2,3,4,5,6)))
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
@@ -2188,7 +2188,7 @@ test_that("top/end nodes for SSM with deterministic relationships", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
     expect_identical(topRules, list('y' = rep(TRUE, 3)))
@@ -2205,7 +2205,7 @@ test_that("actual cycle is trapped", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    expect_error(modelDef$generateGraphInfo(), "Cycle found")
+    expect_error(modelDef$makeGraphInfo(), "Cycle found")
 
     code <- quote({
         for(i in 2:5) 
@@ -2217,7 +2217,7 @@ test_that("actual cycle is trapped", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    expect_error(modelDef$generateGraphInfo(), "Cycle found")
+    expect_error(modelDef$makeGraphInfo(), "Cycle found")
   
     code <- quote({
         for(i in 2:5)
@@ -2228,7 +2228,7 @@ test_that("actual cycle is trapped", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    expect_error(modelDef$generateGraphInfo(), "Cycle found")
+    expect_error(modelDef$makeGraphInfo(), "Cycle found")
 })
 
 test_that("for loops with arbitrary sets", {
@@ -2240,7 +2240,7 @@ test_that("for loops with arbitrary sets", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
     
     yNodes <- getNodes(modelDef, 'y')
     expect_equal(yNodes[[1]]$indexRanges[[1]],
@@ -2252,7 +2252,7 @@ test_that("for loops with arbitrary sets", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     getNodes(modelDef, 'y')
     expect_equal(yNodes[[1]]$indexRanges[[1]],
@@ -2284,7 +2284,7 @@ test_that("SSM with additional pieces handled", {
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     expect_equal(getDependencies(modelDef, 'sigma', self = FALSE),
                  list(varRangeClass$new(list(newIndexRange(quote(1:5))), varName = 'y',

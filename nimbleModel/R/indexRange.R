@@ -44,7 +44,7 @@ newIndexRange <- function(expr) {
                identical(start, round(start)) && identical(end, round(end))) {
                 return(indexRangeSequenceClass$new(start, end))
             } else 
-                stop("indexRange: an indexRange sequence must involve two positive, non-decreasing, integer-valued endpoints.")
+                stop("newIdexRange: an indexRange sequence must involve two positive, non-decreasing, integer-valued endpoints.")
         } else {
             ## An expression like c(2,4,6) or matrix(...).
 
@@ -61,7 +61,7 @@ newIndexRange <- function(expr) {
                 dimnames(mat) <- NULL
                 return(indexRangeMatrixClass$new(mat))
             } else
-                stop("indexRange: an indexRange matrix must involve positive, integer-valued indices.")
+                stop("newIndexRange: an indexRange matrix must involve positive, integer-valued indices.")
         }
     } else {
         if(length(expr)) {
@@ -77,9 +77,9 @@ newIndexRange <- function(expr) {
                     dimnames(expr) <- NULL
                     return(indexRangeMatrixClass$new(expr))
                 }
-                stop("indexRange: an indexRange cannot be an array.")
+                stop("newIndexRange: an indexRange cannot be an array.")
             } else
-                stop("indexRange: an indexRange with a single index must be a positive, integer-valued number.")
+                stop("newIndexRange: an indexRange with a single index must be a positive, integer-valued number.")
         } else {
             return(NULL)
         }

@@ -155,7 +155,7 @@ test_that("processDecls works", {
     expect_identical(length(modelDef$declInfo[[1]]$rhsOriginalRules), 2L)
 })
 
-test_that("generateGraphInfo works", {
+test_that("makeGraphInfo works", {
     modelCode <- quote({
         for(i in 1:10) {
             a[i] ~ dnorm(mu[i], tau)
@@ -165,7 +165,7 @@ test_that("generateGraphInfo works", {
     modelDef <- modelDefClass$new(modelCode)
     modelDef$processModelCode()
     modelDef$processDecls()
-    modelDef$generateGraphInfo()
+    modelDef$makeGraphInfo()
 
     expect_identical(sort(names(modelDef$calcRules)), c('a','mu'))
     expect_identical(sort(names(modelDef$downstreamRules)), c('mu','mu0','tau'))

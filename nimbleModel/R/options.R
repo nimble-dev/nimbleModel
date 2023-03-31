@@ -1,7 +1,12 @@
 .nimbleModelOptions <- as.environment(
     list(
         allowDynamicIndexing = TRUE,
-        prioritizeColonLikeBUGS = TRUE ## if FALSE, 1:2 + 1 evaluates to 2:3, consistent with R.  If TRUE, it evalutes to 1:3, consistent with BUGS
+        prioritizeColonLikeBUGS = TRUE, ## if FALSE, 1:2 + 1 evaluates to 2:3, consistent with R.  If TRUE, it evalutes to 1:3, consistent with BUGS
+        ## TODO: if set to FALSE, will invoke seqNoDecrease, which won't be found
+        ## based on new rigorous scoping behavior because eval code in env't
+        ## whose parent is baseenv(). Would like parent to be nimble namespace
+        ## but this has .GlobalEnv as a parent.
+        processBackwardsModelIndexRanges = TRUE 
     )
 )
 

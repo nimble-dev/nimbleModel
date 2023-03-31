@@ -1,7 +1,12 @@
 ## Tests to assess if we successfully isolate model-building related
 ## steps from R's global environment.
 
-## FUTURE: We migth expand this to include other aspects of NIMBLE.
+## We should always produce an error if a user tries to use an
+## object from the global environment (instead of passed via
+## constants) for indexing in model code or specifying model
+## variables/nodes.
+
+## FUTURE: We might expand this to include other aspects of NIMBLE.
 
 context("scoping")
 
@@ -41,8 +46,6 @@ test_that("avoid using indexing values from global", {
     modelDef$processModelCode()
     expect_error(modelDef$processDecls(), "not found")
 
-    ## HERE - error seqNoDecr
-    ## how get that into env? - use nimbleName space instead of baseenv?
     code <- quote({
         for(i in 1:3)
             for(j in 1:n[i])
@@ -52,9 +55,21 @@ test_that("avoid using indexing values from global", {
     n  <- c(1,3,2)
     modelDef <- modelDefClass$new(code)
     modelDef$processModelCode()
-    expect_error(modelDef$processDecls(), "not found")
+    expect_error(modelDef$processDecls(), "is indexing information provided")
 
+    code <- quote({
+        for(i in 1:5)
+            y[i] ~ dnorm(mu, 1)
+    })
+    
+    modelDef <- modelDefClass$new(code)
+    modelDef$processModelCode()
+    modelDef$processDecls()
+    modelDef$makeGraphInfo()
 
+    p <- 3
+    expect_error(getNodes(modelDef, 'y[1:p]'), "must involve two positive")
+    expect_error(getDependencies(modelDef, 'y[1:p]'), "must involve two positive")
     
 })
    
