@@ -9,7 +9,7 @@ indexRuleArbitraryClass <- R6Class(
         initialize = function(toIndexExprList,
                               fromIndexExprList,
                               context,
-                              constants = list()
+                              constants
                               ) {
            setupResults <<-
                 indexRuleArbitrary_setup(toIndexExprList,
@@ -34,14 +34,10 @@ indexRuleArbitraryClass <- R6Class(
 indexRuleArbitrary_setup <- function(toIndexExprList,
                                      fromIndexExprList,
                                      context,
-                                     constants = list()
-                                     ) {
+                                     constants) {
     ## Valid only when indexing in both to and from.
     if(!length(toIndexExprList) || !length(fromIndexExprList)) 
         return(NULL)
-
-    if(is.list(constants))
-        constants <- list2env(constants, parent = getDefaultNamespace())
 
     allReplacements <- c(toIndexExprList, fromIndexExprList)
     toIndexNames <- lapply(names(toIndexExprList), as.name)
@@ -55,7 +51,7 @@ indexRuleArbitrary_setup <- function(toIndexExprList,
             allReplacements = allReplacements,
             allReplacementNameExpr = allIndexNames,
             context = context,
-            constantsEnv = constants
+            constants = constants
         )
 
     ## Extract the results from the environment.

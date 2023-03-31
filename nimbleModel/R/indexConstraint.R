@@ -227,7 +227,7 @@ makeIndicesMatrix <- function(fromIndexExprs, context, constants) {
             allReplacements = fromIndexExprs,
             allReplacementNameExpr = fromIndexNames,
             context = context,
-            constantsEnv = constants
+            constants = constants
         )
     fromUnrolledResults <-
         lapply(names(fromIndexExprs),

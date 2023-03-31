@@ -52,7 +52,7 @@ graphRuleClass <- R6Class(
         toVarName = NULL,
         stoch = logical(),
         
-        initialize = function(toExpr, fromExpr, context, constants = list(), stoch = NULL) {
+        initialize = function(toExpr, fromExpr, context, constants = new.env(parent = getDefaultNamespace()), stoch = NULL) {
             stoch <<- stoch
             fromVarName <<- deparse(ifelse(length(fromExpr) > 1, fromExpr[[2]], fromExpr))
             toVarName <<- deparse(ifelse(length(toExpr) > 1, toExpr[[2]], toExpr))
@@ -257,19 +257,14 @@ modifyContextForFromOnlyRules <- function(LHS, RHS, context, constants) {
         varsInExpr <- NULL
         if(length(RHS) > 1)
             varsInExpr <- all.vars(RHS[2:length(RHS)]) 
-        indexVarsInExpr <- varsInExpr[!varsInExpr %in% constants]
+        indexVarsInExpr <- varsInExpr[!varsInExpr %in% names(constants)]
         context <- modelContextClass$new(context$singleContexts[names(context$singleContexts) %in% indexVarsInExpr])
     }
     return(context)
 }
 
 ## Make indexRules and indexConstraints based on the indexSets.
-makeIndexRules <- function(toExpr, fromExpr, indexSets, context, constants = list()) {
-    constantsEnv <- if(is.environment(constants))
-                        constants
-                    else
-                        list2env(constants, parent = getDefaultNamespace())
-    
+makeIndexRules <- function(toExpr, fromExpr, indexSets, context, constants) {
     if(length(toExpr) >= 3 && toExpr[[1]] == '[') {
         toIndexExprs <- as.list(toExpr[-c(1,2)])
     } else if(length(toExpr) == 1) toIndexExprs <- list() else
@@ -318,7 +313,7 @@ makeIndexRules <- function(toExpr, fromExpr, indexSets, context, constants = lis
         if(length(thisContext) && !length(thisToIndexExprs) && length(thisFromIndexExprs)) {
             slots <- which(indexSets$fromIndexSlotToSet == iSet)
             indexConstraints[[length(indexConstraints)+1]]  <-
-                newIndexConstraint_fromUnrolling(thisFromIndexExprs, slots, thisContext, constantsEnv)
+                newIndexConstraint_fromUnrolling(thisFromIndexExprs, slots, thisContext, constants)
             next
         }
         
@@ -329,14 +324,14 @@ makeIndexRules <- function(toExpr, fromExpr, indexSets, context, constants = lis
                                                toIndexExprList = thisToIndexExprs,
                                                fromIndexExprList = thisFromIndexExprs,
                                                context = thisContext,
-                                               constants = constantsEnv)
+                                               constants = constants)
         ## y[i] <- x[i] block case
         if(is.null(thisIndexRule$setupResults)) {
             thisIndexRule <- indexRuleBlockClass$new(
                                                      toIndexExprList = thisToIndexExprs,
                                                      fromIndexExprList = thisFromIndexExprs,
                                                      context = thisContext,
-                                                     constants = constantsEnv)
+                                                     constants = constants)
         }
         ## catch-all, e.g., y[i] <- x[block[i]]
         if(is.null(thisIndexRule$setupResults)) {
@@ -344,7 +339,7 @@ makeIndexRules <- function(toExpr, fromExpr, indexSets, context, constants = lis
                                                          toIndexExprList = thisToIndexExprs,
                                                          fromIndexExprList = thisFromIndexExprs,
                                                          context = thisContext,
-                                                         constants = constantsEnv)
+                                                         constants = constants)
         }
         indexRules[[iSet]] <- thisIndexRule
     }
@@ -365,7 +360,7 @@ makeIndexRules <- function(toExpr, fromExpr, indexSets, context, constants = lis
                                                          toIndexExprList = thisToIndexExprs,
                                                          fromIndexExprList = character(0),
                                                          context = modelContextClass$new(),
-                                                         constants = constantsEnv)
+                                                         constants = constants)
         iSet <- iSet + 1
     }
     
@@ -376,7 +371,7 @@ makeIndexRules <- function(toExpr, fromExpr, indexSets, context, constants = lis
                                                      toIndexExprList = character(0),
                                                      fromIndexExprList = character(0),
                                                      context = modelContextClass$new(),
-                                                     constants = constantsEnv)
+                                                     constants = constants)
 
     return(list(
         indexRules = indexRules,

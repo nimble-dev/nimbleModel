@@ -14,6 +14,7 @@ modelDeclClass <- R6Class(
         context = NULL,
         sourceLineNumber = NULL,
         code = NULL,
+        constants = NULL,
         stoch = NULL,
         valueExpr = NULL,
         targetExpr = NULL,
@@ -34,32 +35,32 @@ modelDeclClass <- R6Class(
         ## Figure out the parts of the declaration.
         setup = function(code,
                          context,
-                         constants = list(),
+                         constants,
                          sourceLineNumber,
                          truncated = FALSE,
                          boundExprs = NULL) {
             modelDeclClass_setup(self,
                                  code,
                                  context,
+                                 constants,
                                  sourceLineNumber,
                                  truncated,
                                  boundExprs)
         },
 
         ## Create declRule and declaration-specific graph and RHS rules.
-        makeRules = function(constants, nimFunNames) {
+        makeRules = function(nimFunNames) {
             ## Placeholder to get things going. For now assume `code` is simple cases
             ## that can be handed by declRuleClass initialization.
             declRule <<- declRuleClass$new(code, sourceLineNumber, context, constants)
 
-            makeSymbolicParentNodes(constants, nimFunNames)
-            makeGraphRules(constants)
-            makeRHSoriginalRules(constants)
+            makeSymbolicParentNodes(nimFunNames)
+            makeGraphRules()
+            makeRHSoriginalRules()
         },
 
         ## Determine RHS pieces.
-        makeSymbolicParentNodes = function(constants,
-                                          nimFunNames) {
+        makeSymbolicParentNodes = function(nimFunNames) {
             constantsNamesList <- lapply(names(constants), as.name)
             symbolicParentNodes <<- unique(
                 getSymbolicParentNodes(valueExpr,
@@ -69,7 +70,7 @@ modelDeclClass <- R6Class(
             ) 
         },
         
-        makeGraphRules = function(constants) {
+        makeGraphRules = function() {
             downstreamRules <<- vector('list',
                                       length(symbolicParentNodes))
             upstreamRules <<- vector('list',
@@ -93,7 +94,7 @@ modelDeclClass <- R6Class(
         },
 
         ## Make an initial RHSrule for each RHS piece. 
-        makeRHSoriginalRules = function(constants) {
+        makeRHSoriginalRules = function() {
             rhsOriginalRules <<- vector('list',
                                       length(symbolicParentNodes))
             for(i in seq_along(symbolicParentNodes)) {
@@ -108,10 +109,12 @@ modelDeclClass <- R6Class(
 modelDeclClass_setup <- function(modelDecl,
                                  code,
                                  context,
+                                 constants,
                                  sourceLineNumber,
                                  truncated = FALSE,
                                  boundExprs = NULL) {
-        
+
+    modelDecl$constants <- constants
     modelDecl$context <- context
     modelDecl$sourceLineNumber <- sourceLineNumber
     modelDecl$code <- code

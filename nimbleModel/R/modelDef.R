@@ -11,7 +11,7 @@ modelDefClass <- R6Class(
     public = list(
         modelCode = NULL,
         contexts = list(),
-        constants = list(),
+        constants = NULL,  # an environment (formerly `constantsEnv`)
         declInfo = list(),
         downstreamRules = NULL,
         upstreamRules = NULL,
@@ -23,12 +23,28 @@ modelDefClass <- R6Class(
         endRules = NULL,
         varNames = NULL,
         
-        initialize = function(modelCode = NULL, constants = list()) {
-            modelCode <<- modelCode
-            constants <<- constants
+        initialize = function(code = NULL, constants = list(), userEnv = parent.frame()) {
+            assignConstants(constants)
+            ## Process if-then-else. Note that need input `constants` list as `self$constants` has wrong enclosing env't.
+            modelCode <<- codeProcessIfThenElse(code, constants, userEnv)  
+            modelCode <<- nimble:::nf_changeNimKeywords(modelCode)   ## was in assignBUGScode()
             initializeContexts()
         },
-        
+
+        ## Set up environment of constants; needed as we do various `eval`s that make use of `constants`.
+        assignConstants = function(constants) {
+            if(!is.list(constants) || (length(constants) && is.null(names(constants))))
+                stop('modelDefClass$assignConstants: `constants` must be a named list.')
+            if(length(names(constants))) {
+                  constantsInCode <- names(constants) %in% all.vars(code)
+                if(!all(constantsInCode)) 
+                    for(constName in names(constants)[!constantsInCode])
+                        messageIfVerbose("  [Note] '", constName,
+                                         "' is provided in `constants` but not used in the model code and is being ignored.") 
+            }
+            constants <<- list2env(constants, parent = getDefaultNamespace())
+        },
+    
         ## Process raw code to determine declarations and contexts.
         processModelCode = function(code = NULL, contextID = 1, lineNumber = 0, userEnv = NULL) {
             recursiveCall <- lineNumber != 0
@@ -136,7 +152,7 @@ modelDefClass <- R6Class(
             nimFunNames <- list(as.name(':'), as.name('dmnorm'), as.name('dnorm'), as.name('dunif'), as.name('dwish'))
             ## Placeholder until we add in constants processing
             for(i in seq_along(declInfo)) {
-                declInfo[[i]]$makeRules(constants, nimFunNames)
+                declInfo[[i]]$makeRules(nimFunNames)
             }
             invisible(NULL)
         },
@@ -310,3 +326,42 @@ getNodes <- function(modelDef, nodes = NULL,
 
 }
 
+
+
+## Evaluates `if` statements in model code to generate actual model code
+## without any `if` statements.
+codeProcessIfThenElse <- function(code, constants, envir = parent.frame()) {
+    if(is.list(constants))
+        constants <- list2env(constants, parent = envir)
+    
+    codeLength <- length(code)
+    if(is.name(code))
+        stop("Incomplete declaration found: '", safeDeparse(code), "'.")
+        
+    if(code[[1]] == '{') {
+        if(codeLength > 1)
+            for(i in 2:codeLength)
+                code[[i]] <- codeProcessIfThenElse(code[[i]], constants, envir)
+        return(code)
+    }
+    
+    if(code[[1]] == 'for') {
+        code[[4]] <- codeProcessIfThenElse(code[[4]], constants, envir)
+        return(code)
+    }
+    
+    if(code[[1]] == 'if') {
+         evaluatedCondition <- try(eval(code[[2]], constants), silent = TRUE)
+        if(inherits(evaluatedCondition, "try-error")) 
+            stop("codeProcessIfThenElse: cannot evaluate condition of `if` statement: `",
+                 safeDeparse(code[[2]]),
+                 "`.\nCondition must be able to be evaluated based on values in `constants` or environment from which model is created.")
+        if(evaluatedCondition) {
+            return(codeProcessIfThenElse(code[[3]], constants, envir))
+        } else {
+            if(length(code) == 4)
+                return(codeProcessIfThenElse(code[[4]], constants, envir))
+            else return(quote({}))
+        }
+    } else return(code)
+}

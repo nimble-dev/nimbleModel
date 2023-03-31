@@ -21,7 +21,7 @@ indexRuleClass <- R6Class(
 
 getOffset <- function(indexExpr,
                       indexVarName,
-                      constantsEnv = new.env(parent = getDefaultNamespace())) {
+                      constants = new.env(parent = getDefaultNamespace())) {
     offset <- 0
 
     if(is.name(indexExpr)) {   # `i`
@@ -42,7 +42,7 @@ getOffset <- function(indexExpr,
         indexNameInExpr <- as.character(indexExpr[[indexSlot]])
         offsetExpr <- indexExpr
         offsetExpr[[indexSlot]] <- 0
-        offset <- try(eval(offsetExpr, envir = constantsEnv), silent = TRUE)
+        offset <- try(eval(offsetExpr, envir = constants), silent = TRUE)
         ## Check whether can resolve offset (will fail when there is another index
         ## in the expression).
         if(inherits(offset, "try-error")) 

@@ -120,10 +120,10 @@ modelContextClass <- R6Class(
 
 
 ## Evaluate loops in context to determine unrolled index information.
-expandContextAndReplacements <- function(allReplacements, allReplacementNameExprs, context, constantsEnv) {
+expandContextAndReplacements <- function(allReplacements, allReplacementNameExprs, context, constants) {
     ## `allReplacements` is a list like `list(i = i, i_plus_1 = i+1, mean_x_1to5 = mean(x[1:5]))`
     ## `context` is a `modelContextClass` object
-    ## `constantsEnv` is an environment with constants that can be used to permanently replace values in the `allReplacements` code
+    ## `constants` is an environment with constants that can be used to permanently replace values in the `allReplacements` code
 
     numContexts <- length(context$singleContexts)
     if(!numContexts) { ## No indices or known indices
@@ -134,8 +134,8 @@ expandContextAndReplacements <- function(allReplacements, allReplacementNameExpr
     }
     
     ## When done, we will have created a new environment and want to remove the constants from it.
-    namesToRemoveAtEnd <- ls(constantsEnv)
-    constantsEnvCopy <- list2env(as.list(constantsEnv, all.names = TRUE),
+    namesToRemoveAtEnd <- ls(constants)
+    constantsCopy <- list2env(as.list(constants, all.names = TRUE),
                                  parent = getDefaultNamespace())
     ## Some replacements like min(j:100) should no longer be needed but are still there.
 
@@ -175,21 +175,21 @@ expandContextAndReplacements <- function(allReplacements, allReplacementNameExpr
 
     innerLoopCode <- context$embedCodeInForLoop(innerLoopCode, useContext)
     ## At this point `innerLoopCode` has the full loop
-    outputSize <- determineContextSize(context, useContext, constantsEnvCopy)
+    outputSize <- determineContextSize(context, useContext, constantsCopy)
     for(i in seq_along(context$singleContexts)) {
         if(useContext[i])
-            assign(valueVarNames[i], numeric(outputSize), constantsEnvCopy)
+            assign(valueVarNames[i], numeric(outputSize), constantsCopy)
     }
     for(i in seq_along(replacementRecordingCode)) {
         if(useReplacement[i])
-            assign(names(allReplacements)[i], vector('list', length = outputSize), constantsEnvCopy)
+            assign(names(allReplacements)[i], vector('list', length = outputSize), constantsCopy)
     }
-    assign("iAns", 1, constantsEnvCopy)
-    eval(innerLoopCode, constantsEnvCopy)
+    assign("iAns", 1, constantsCopy)
+    eval(innerLoopCode, constantsCopy)
     for(i in seq_along(context$singleContexts)){
         if(useContext[i]) {
-            constantsEnvCopy[[ as.character(context$singleContexts[[i]]$indexVarExpr) ]] <- constantsEnvCopy[[ valueVarNames[i] ]]
-            rm(list = valueVarNames[i], envir = constantsEnvCopy)
+            constantsCopy[[ as.character(context$singleContexts[[i]]$indexVarExpr) ]] <- constantsCopy[[ valueVarNames[i] ]]
+            rm(list = valueVarNames[i], envir = constantsCopy)
         }
     }
     ## Turn lists into vectors when all elements are scalars.
@@ -206,13 +206,13 @@ expandContextAndReplacements <- function(allReplacements, allReplacementNameExpr
                 }
                 rm(FOO_allScalar)
             }, list(VARNAME = allReplacementNameExprs[[i]]) )
-            eval(unlistScalarCode, envir = constantsEnvCopy)
+            eval(unlistScalarCode, envir = constantsCopy)
         }
     }
 
-    rm(list = c(namesToRemoveAtEnd, 'iAns'), envir = constantsEnvCopy)
-    assign("outputSize", outputSize, constantsEnvCopy)
-    return(constantsEnvCopy)   ## becomes replacementsEnv
+    rm(list = c(namesToRemoveAtEnd, 'iAns'), envir = constantsCopy)
+    assign("outputSize", outputSize, constantsCopy)
+    return(constantsCopy)   ## becomes replacementsEnv
 }
 
 ## Determines number of index elements in the nested looping by creating and

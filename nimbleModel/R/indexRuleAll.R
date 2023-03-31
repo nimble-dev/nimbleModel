@@ -10,8 +10,7 @@ indexRuleAllClass <- R6Class(
         initialize = function(toIndexExprList,
                               fromIndexExprList,
                               context,
-                              constants = list()
-                              ) {
+                              constants) {
             setupResults <<-
                 indexRuleAll_setup(toIndexExprList,
                                     fromIndexExprList,
@@ -34,14 +33,11 @@ indexRuleAllClass <- R6Class(
 indexRuleAll_setup <- function(toIndexExprList,
                                fromIndexExprList,
                                context,
-                               constants = list()) {
+                               constants) {
     ## Only valid if no `from` indexing using the `to` index.
     if(length(fromIndexExprList) || !length(toIndexExprList) ||
        !length(context$singleContexts)) 
         return(NULL)
-    
-    if(is.list(constants))
-        constants <- list2env(constants, parent = getDefaultNamespace())
     
     ## Try to handle single index, simple increment case expeditiously.
     ## The second condition excludes non-sequential indexing in for loop.
@@ -71,7 +67,7 @@ indexRuleAll_setup <- function(toIndexExprList,
             allReplacements = toIndexExprList,
             allReplacementNameExpr = toIndexNames,
             context = context,
-            constantsEnv = constants
+            constants = constants
         )
     unrolledResults <-
         lapply(names(toIndexExprList),

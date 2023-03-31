@@ -74,3 +74,19 @@ test_that("avoid using indexing values from global", {
 })
    
     
+test_that("scoping when processing if-then-else", {
+
+    code <- quote({
+        y ~ dnorm(x, 1)
+        if(useX)
+            x ~ dnorm(0, 1)
+    })
+
+    expect_error(modelDef <- modelDefClass$new(code), "cannot evaluate condition")
+ 
+    expect_silent(modelDef <- modelDefClass$new(code, constants = list(useX = TRUE)))
+
+    useX <- TRUE
+    assign('useX', useX, globalenv())
+    expect_silent(modelDef <- modelDefClass$new(code))
+})
