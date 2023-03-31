@@ -24,6 +24,7 @@ modelDefClass <- R6Class(
         varNames = NULL,
         
         initialize = function(code = NULL, constants = list(), userEnv = parent.frame()) {
+            ## Create environment of constants and check for unused constants.
             assignConstants(constants)
             ## Process if-then-else. Note that need input `constants` list as `self$constants` has wrong enclosing env't.
             modelCode <<- codeProcessIfThenElse(code, constants, userEnv)  
