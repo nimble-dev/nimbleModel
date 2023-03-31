@@ -20,7 +20,7 @@ distributionsClass <- setRefClass(
             names(distObjects) <<- names(dil)
             namesVector <<- names(dil)
             namesExprList <<- lapply(namesVector, as.name)
-            matchCallEnv <<- new.env()
+            matchCallEnv <<- new.env(parent = baseenv())
             for(distName in namesVector)     assign(distName, distObjects[[distName]]$makeMatchCallFunction(), matchCallEnv)
             translations <<- lapply(distObjects, function(d) c(d$densityName, d$simulateName))
         },

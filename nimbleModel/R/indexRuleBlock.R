@@ -49,7 +49,7 @@ indexRuleBlock_setup <- function(toIndexExprList,
         return(NULL)
 
     if(is.list(constants))
-        constants <- list2env(constants)
+        constants <- list2env(constants, parent = baseenv())
     toIndexExpr <- toIndexExprList[[1]]
     fromIndexExpr <- fromIndexExprList[[1]]
     indexVarName <- context$indexVarNames[1]

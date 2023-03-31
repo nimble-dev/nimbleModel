@@ -268,7 +268,7 @@ makeIndexRules <- function(toExpr, fromExpr, indexSets, context, constants = lis
     constantsEnv <- if(is.environment(constants))
                         constants
                     else
-                        list2env(constants)
+                        list2env(constants, parent = baseenv())
     
     if(length(toExpr) >= 3 && toExpr[[1]] == '[') {
         toIndexExprs <- as.list(toExpr[-c(1,2)])

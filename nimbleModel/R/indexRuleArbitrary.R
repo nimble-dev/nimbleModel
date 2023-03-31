@@ -41,7 +41,7 @@ indexRuleArbitrary_setup <- function(toIndexExprList,
         return(NULL)
 
     if(is.list(constants))
-        constants <- list2env(constants)
+        constants <- list2env(constants, parent = baseenv())
 
     allReplacements <- c(toIndexExprList, fromIndexExprList)
     toIndexNames <- lapply(names(toIndexExprList), as.name)

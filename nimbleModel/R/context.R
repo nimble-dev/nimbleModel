@@ -135,7 +135,8 @@ expandContextAndReplacements <- function(allReplacements, allReplacementNameExpr
     
     ## When done, we will have created a new environment and want to remove the constants from it.
     namesToRemoveAtEnd <- ls(constantsEnv)
-    constantsEnvCopy <- list2env(as.list(constantsEnv, all.names = TRUE))
+    constantsEnvCopy <- list2env(as.list(constantsEnv, all.names = TRUE),
+                                 parent = baseenv())
     ## Some replacements like min(j:100) should no longer be needed but are still there.
 
     ## If this all works, `useContext` can be removed.
@@ -217,7 +218,7 @@ expandContextAndReplacements <- function(allReplacements, allReplacementNameExpr
 ## Determines number of index elements in the nested looping by creating and
 ## executing nested for loops.
 determineContextSize <- function(context, useContext = rep(TRUE, length(context$singleContexts)),
-                                 evalEnv = new.env()) {
+                                 evalEnv = new.env(parent = baseenv())) {
     ## FUTURE: Could improve this by checking for nested loops that don't use indices from outer loops.
     innerLoopCode <- quote(iAns <- iAns + 1)
     innerLoopCode <- context$embedCodeInForLoop(innerLoopCode, useContext)

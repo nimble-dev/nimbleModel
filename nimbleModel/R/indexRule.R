@@ -21,7 +21,7 @@ indexRuleClass <- R6Class(
 
 getOffset <- function(indexExpr,
                       indexVarName,
-                      constantsEnv = new.env()) {
+                      constantsEnv = new.env(parent = baseenv())) {
     offset <- 0
 
     if(is.name(indexExpr)) {   # `i`

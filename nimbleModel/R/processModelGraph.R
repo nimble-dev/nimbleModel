@@ -253,9 +253,9 @@ traverseGraph <- function(streamRules, declRules,
             selfRangeFromCharRanges <- NULL
         selfRangeFromNodes <- lapply(nodes[!vars & !charRanges],
                                      function(node)
-                                         if(is(node, 'nodeRangeClass') {
+                                         if(is(node, 'nodeRangeClass')) {
                                              return(node$toVarRange())
-                                         } else return(node)))
+                                         } else return(node))
         results <- c(selFRangeFromNodes, selfRangeFromVars, selfRangeFromCharRanges, results)
     }
     
