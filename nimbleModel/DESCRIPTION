@@ -11,6 +11,7 @@ Encoding: UTF-8
 LazyData: true
 Collate:
     aaa.R
+    all_utils.R
     context.R
     distributions_inputList.R
     distributions_processInputList.R
@@ -23,6 +24,7 @@ Collate:
     indexConstraint.R
     getSymbolicParentNodes.R
     graphRules.R
+    mathCompatibility.R
     modelDecl.R
     modelDef.R
     nodeRules.R

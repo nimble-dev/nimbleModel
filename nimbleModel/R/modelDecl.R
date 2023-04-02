@@ -16,6 +16,7 @@ modelDeclClass <- R6Class(
         code = NULL,
         constants = NULL,
         stoch = NULL,
+        distributionName = NULL,
         valueExpr = NULL,
         targetExpr = NULL,
         transExpr = NULL,
@@ -23,7 +24,8 @@ modelDeclClass <- R6Class(
         targetVarExpr = NULL,
         targetNodeExpr = NULL,
         targetVarName = NULL,
-        targetNodeName = NULL, 
+        targetNodeName = NULL,
+        indexVariableExprs = NULL,
         truncated = NULL,
         boundExprs = NULL,
         symbolicParentNodes = NULL,
@@ -33,6 +35,8 @@ modelDeclClass <- R6Class(
         declRule = NULL,
 
         ## Figure out the parts of the declaration.
+        ## TODO: any reason not to have `$setup` become `$initialize`?
+        ## TODO: does setup need `userEnv` input?
         setup = function(code,
                          context,
                          constants,
@@ -62,12 +66,13 @@ modelDeclClass <- R6Class(
         ## Determine RHS pieces.
         makeSymbolicParentNodes = function(nimFunNames) {
             constantsNamesList <- lapply(names(constants), as.name)
-            symbolicParentNodes <<- unique(
-                getSymbolicParentNodes(valueExpr,
-                                       constantsNamesList,
-                                       context$indexVarExprs,
-                                       nimFunNames)
-            ) 
+            symbolicParentNodes <<-
+                unique(
+                    getSymbolicParentNodes(valueExpr,
+                                           constantsNamesList,
+                                           context$indexVarExprs,
+                                           nimFunNames)
+                ) 
         },
         
         makeGraphRules = function() {
@@ -101,6 +106,10 @@ modelDeclClass <- R6Class(
                 rhsOriginalRules[[i]] <<-
                     rhsRuleClass$new(symbolicParentNodes[[i]], NULL, context, constants)
             }
+        },
+
+        setIndexVariableExprs = function(exprs) {
+            indexVariableExprs <<- exprs
         }
     )
 )
@@ -137,6 +146,11 @@ modelDeclClass_setup <- function(modelDecl,
     targetExpr <- code[[2]]
     valueExpr <- code[[3]]
     
+    if(modelDecl$stoch)
+        modelDecl$distributionName <- as.character(valueExpr[[1]])
+    else
+        modelDecl$distributionName <- NA
+
     transExpr <- NULL
     indexExpr <- NULL
         

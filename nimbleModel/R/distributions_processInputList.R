@@ -31,11 +31,8 @@ distributionsClass <- setRefClass(
               dupl <- which(nms %in% getAllDistributionsInfo('namesVector', userOnly = TRUE))
               if(length(dupl)) {
                   for(i in seq_along(dupl)) remove(nms[dupl])
-                  ## distObjects[dupl] <<- NULL
-                  ## namesVector <<- namesVector[-dupl]
-                  ## namesExprList[dupl] <<- NULL
-                  ## translations[dupl] <<- NULL
-                  cat("Overwriting the following user-supplied distributions:", nms[dupl], ".\n", sep = " ")
+                  messageIfVerbose("   [Note] Overwriting the following user-supplied distributions: `",
+                                   paste0(nms[dupl], collapse = "`, "), "`.\n")
               }
               for(i in seq_along(dil))     distObjectsNew[[i]] <- distClass(dil[[i]], nms[i])
               names(distObjectsNew) <- nms
@@ -103,7 +100,8 @@ distClass <- setRefClass(
             types <<- list()
             BUGSdistName <<- BUGSdistName
             BUGSdistExpr <<- parse(text=distInputList$BUGSdist)[[1]]
-            if(BUGSdistExpr[[1]] != BUGSdistName)   stop(paste0('inconsistent BUGS distribution names for distribution: ', BUGSdistName))
+            if(BUGSdistExpr[[1]] != BUGSdistName)
+                stop("distClass$new: inconsistent distribution names for distribution: `", BUGSdistName, "`."))
             RdistTextVector <- if(is.null(distInputList$Rdist)) character() else distInputList$Rdist
             RdistExprList <<- lapply(RdistTextVector, function(t) parse(text=t)[[1]])
             numAlts <<- length(RdistExprList)
@@ -132,9 +130,9 @@ distClass <- setRefClass(
                 reqdArgsList <- lapply(paramsText, function(pt) init_getReqdArgs(pt))
                 densityNamesList <- lapply(RdistExprList, function(expr) as.character(expr[[1]]))
                 if(length(unique(reqdArgsList)) > 1)
-                    stop('R/NIMBLE parameter names and order not consistent across alternative parameterizations')
+                    stop("distClass$new: R/NIMBLE parameter names and order not consistent across alternative parameterizations.")
                 if(length(unique(densityNamesList)) > 1)
-                    stop('R/NIMBLE density names not consistent across alternative parameterizations')
+                    stop("distClass$new: R/NIMBLE density names not consistent across alternative parameterizations.")
                 reqdArgs <<- reqdArgsList[[1]]
                 densityName <<- densityNamesList[[1]]
                 for(i in seq_along(params)) {
@@ -158,7 +156,7 @@ distClass <- setRefClass(
         init_range = function(distInputList) {
             if(!is.null(distInputList$range)) {
                 if(length(distInputList$range) != 2)
-                    stop("'Range' element of ", BUGSdistExpr[[1]], " must be a vector of length two.")
+                    stop("distClass$new: `range` element of `", BUGSdistExpr[[1]], "` must be a vector of length two.")
                 if(is.numeric(distInputList$range)) {
                     range <<-list(lower = distInputList$range[1], upper = distInputList$range[2])
                 } else {  
@@ -166,7 +164,7 @@ distClass <- setRefClass(
                     range <<- lapply(parsedRangeArg, function(x) x[[3]])
                     names(range) <<- unlist(lapply(parsedRangeArg, function(x) x[[2]]))
                     if(!identical(names(range), c('lower', 'upper')))
-                        stop("'Range' element of ", BUGSdistExpr[[1]], " expected to contain 'lower' and 'upper'.")
+                        stop("distClass$new: `range` element of `", BUGSdistExpr[[1]], "` expected to contain `lower` and `upper`.")
                 }
             } else range <<- list(lower = -Inf, upper = Inf)
         },
@@ -183,12 +181,12 @@ distClass <- setRefClass(
         init_types = function(distInputList) {
             typeArgCharVector <- if(!is.null(distInputList$types)) distInputList$types else character(0)
             typeArgList <- init_types_makeArgList(typeArgCharVector)
-            if('value' %in% c(reqdArgs, names(altParams)))    stop('going to have a name conflict with \'value\' in distribution declaration')
+            if('value' %in% c(reqdArgs, names(altParams)))    stop("distClass$new: distribution parameters cannot be named `value`.")
             allTypeNames <- c('value', reqdArgs, names(altParams))
             for(typeName in allTypeNames) {
-                typeList <- if(typeName %in% names(typeArgList))     typeArgList[[typeName]]     else     list(type='double', nDim=0)   # default type
-                if(!(typeList$type %in% c('double', 'integer', 'logical')))     stop(paste0('unknown type specified in distribution: ', typeList$type))
-                if(!(typeList$nDim %in% 0:1000))     stop(paste0('unknown nDim specified in distribution: ', typeList$nDim))  ## yes, specificying maximum dimension of 1000
+                typeList <- if(typeName %in% names(typeArgList))     typeArgList[[typeName]]     else     list(type='double', nDim=0L)   # default type
+                if(!(typeList$type %in% c('double', 'integer', 'logical')))     stop("distClass$new: unknown type specified in distribution: `", typeList$type, "`.")
+                if(!(typeList$nDim %in% 0:1000))     stop("distClass$new: unknown `nDim` specified in distribution: `", typeList$nDim, "`.")  ## yes, specifying maximum dimension of 1000
                 types[[typeName]] <<- typeList
             }            
         },
@@ -683,7 +681,7 @@ evalInDistsMatchCallEnv <- function(expr) {
     if(exists('distributions', nimbleUserNamespace) &&
        dist %in% nimbleUserNamespace$distributions$namesVector)
         return(eval(expr, nimbleUserNamespace$distributions$matchCallEnv))
-    stop(paste0("evalInDistsMatchCallEnv: ", dist, " is not a distribution provided by NIMBLE or supplied by the user."))
+    stop("evalInDistsMatchCallEnv: `", dist, "` is not a distribution provided by NIMBLE or supplied by the user."))
 }
 
 stripPrefix <- function(vec, prefix = "d")
