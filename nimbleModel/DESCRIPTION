@@ -27,6 +27,7 @@ Collate:
     mathCompatibility.R
     modelDecl.R
     modelDef.R
+    model_utils.R
     nodeRules.R
     options.R       
     originalIndexingRules.R
