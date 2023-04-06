@@ -43,8 +43,7 @@ modelDefClass <- R6Class(
             addMissingIndexing()
             processBoundsAndTruncation()
             expandDistributions()
-            if(getNimbleOption('disallow_multivariate_argument_expressions'))
-                checkMultivarExpr()             
+            checkMultivarExpr()             
             processLinks()
             reparameterizeDists()
             replaceAllConstants()
@@ -52,25 +51,27 @@ modelDefClass <- R6Class(
             addRemainingDotParams()
             replaceAllConstants()     ## CHECK: why need to do again?
             addIndexVarsToDeclInfo()  # Must be done after overwrites of declInfo.
-            processDecls()            # Create declRules and set up symbolicParentNodes.
+            processDecls(userEnv)            # Create declRules and set up symbolicParentNodes.
 
             genReplacementsAndCodeReplaced(userEnv)  ## e.g. y[k[i]] -> y[k_oBi_cB]
             genAltParamsModifyCodeReplaced()
             genBounds()
             genReplacedTargetValueAndParentInfo() 
 
-            insertFullIndexingForDynamicallyIndexedParents()  # should this create dynamicIndexInfo?
+            insertFullIndexingForDynamicallyIndexedParents() 
 
+            makeRHSoriginalRules()  ## this also strips out USED_IN_INDEX, which we need to do before makeGraphRules
             makeGraphRules()
             makeGraphInfo()
-            makeRHSoriginalRules()
 
+            ## genVarInfo3?
+            
             ## TODO: add later
             ## buildSymbolTable()                    ## 
             ## genIsDataVarInfo()                    ## only the maxs is ever used, in newModel
             ## genVarNames()                         ## sets varNames <<- c(names(varInfo), names(logProbVarInfo))
 
-            warnRHSonlyDynIdx()   ## need to be reworked? how know what is dynamically indexed if don't have dynamicIndexInfo.
+            warnRHSonlyDynamicIndexing()  
             invisible(NULL)
         },
 
@@ -319,7 +320,7 @@ modelDefClass <- R6Class(
                 }
                 newDecl <- modelDeclClass$new()
                 newDecl$setup(decl$code, decl$context, decl$sourceLineNumber, truncated, boundExprs)
-                declInfo[[i]] <<- declClassObject
+                declInfo[[i]] <<- newDecl
             }
             invisible(NULL)
         },
@@ -334,46 +335,49 @@ modelDefClass <- R6Class(
                 newCode[[3]] <- evalInDistsMatchCallEnv(decl$valueExpr)
 
                 newDecl <- modelDeclClass$new()
-                newDecl$setup(newCode, decl$contextID, decl$sourceLineNumber, decl$truncated, decl$boundExprs, userEnv = decl$envir)
+                newDecl$setup(newCode, decl$contextID, decl$sourceLineNumber, decl$truncated, decl$boundExprs)
                 declInfo[[i]] <<- newDecl
             }
             invisible(NULL)
         },
 
         ## Check that multivariate params are not expressions.
+        ## TODO: move decl-spec processing into modelDecl method and have checkForExpr as global function
         checkMultivarExpr = function() {
-            checkForExpr <- function(expr) {
-                if(length(expr) == 1 && (inherits(expr, "name") || inherits(expr, "numeric")))
-                    return(FALSE)
-                if(!safeDeparse(expr[[1]], warn = TRUE) == '[')
-                    return(TRUE)
-                ## Recurse only on the first argument of the `[`.
-                return(checkForExpr(expr[[2]]))
-                ## Previously we recursed more completely.  Now we stop because expressions
-                ## inside `[` are allowed.
-                ## if(!deparse(expr[[1]]) %in% c('[', ':')) return(TRUE)
-                ## for(i in 2:length(expr)) 
-                ##     if(checkForExpr(expr[[i]])) output <- TRUE
-                ## return(output)
-            }
+            if(getNimbleOption('disallow_multivariate_argument_expressions')) {
+                checkForExpr <- function(expr) {
+                    if(length(expr) == 1 && (inherits(expr, "name") || inherits(expr, "numeric")))
+                        return(FALSE)
+                    if(!safeDeparse(expr[[1]], warn = TRUE) == '[')
+                        return(TRUE)
+                    ## Recurse only on the first argument of the `[`.
+                    return(checkForExpr(expr[[2]]))
+                    ## Previously we recursed more completely.  Now we stop because expressions
+                    ## inside `[` are allowed.
+                    ## if(!deparse(expr[[1]]) %in% c('[', ':')) return(TRUE)
+                    ## for(i in 2:length(expr)) 
+                    ##     if(checkForExpr(expr[[i]])) output <- TRUE
+                    ## return(output)
+                }
 
-            for(i in seq_along(declInfo)) {
-                decl <- declInfo[[i]]
-                if(decl$type != 'stoch') next
-                dist <- decl$distributionName
-                types <- nimble:::distributions[[dist]]$types
-                if(is.null(types)) next
-                if(length(decl$valueExpr) > 1) {
-                    for(k in 2:length(decl$valueExpr)) {
-                        paramName <- names(decl$valueExpr)[k]
-                        nDim <- types[[paramName]][['nDim']]
-                        if(is.numeric(nDim))
-                            if(nDim == 0) next
-                        if(checkForExpr(decl$valueExpr[[k]])) {
-                            ## Draft gentler warning for possible future adoption: message("Warning about parameter '", names(decl$valueExpr)[k], "' of distribution '", dist, "': This multivariate parameter is provided as an expression.  If this is a costly calculation, try making it a separate model declaration for it to improve efficiency.")
-                            stop("Error with parameter `", names(decl$valueExpr)[k], "` of distribution `",
-                                 dist, "`: multivariate parameters cannot be expressions; please define the expression as a separate deterministic variable\n",
-                                 "and use that variable as the parameter.")  
+                for(i in seq_along(declInfo)) {
+                    decl <- declInfo[[i]]
+                    if(!decl$stoch) next
+                    dist <- decl$distributionName
+                    types <- nimble:::distributions[[dist]]$types
+                    if(is.null(types)) next
+                    if(length(decl$valueExpr) > 1) {
+                        for(k in 2:length(decl$valueExpr)) {
+                            paramName <- names(decl$valueExpr)[k]
+                            nDim <- types[[paramName]][['nDim']]
+                            if(is.numeric(nDim))
+                                if(nDim == 0) next
+                            if(checkForExpr(decl$valueExpr[[k]])) {
+                                ## Draft gentler warning for possible future adoption: message("Warning about parameter '", names(decl$valueExpr)[k], "' of distribution '", dist, "': This multivariate parameter is provided as an expression.  If this is a costly calculation, try making it a separate model declaration for it to improve efficiency.")
+                                stop("checkMultivarExpr: Error with parameter `", names(decl$valueExpr)[k], "` of distribution `",
+                                     dist, "`: multivariate parameters cannot be expressions; please define the expression as a separate deterministic variable\n",
+                                     "and use that variable as the parameter.")  
+                            }
                         }
                     }
                 }
@@ -399,13 +403,13 @@ modelDefClass <- R6Class(
                     newRHS[[2]] <- code[[2]]
                     newCode <- substitute(A <- B, list(A = decl$targetNodeExpr, B = newRHS))
                     
-                    declClassObject <- modelDeclClass$new()
-                    declClassObject$setup(code, decl$context, decl$sourceLineNumber, decl$truncated, decl$boundExprs)
-                    newDeclInfo[[nextNewDeclInfoIndex]] <- declClassObject
+                    newDecl <- modelDeclClass$new()
+                    newDecl$setup(code, decl$context, decl$sourceLineNumber, decl$truncated, decl$boundExprs)
+                    newDeclInfo[[nextNewDeclInfoIndex]] <- newDecl
                     
-                    declClassObject <- modelDeclClass$new()
-                    declClassObject$setup(newCode, decl$context, decl$sourceLineNumber, decl$truncated, decl$boundExprs)
-                    newDeclInfo[[nextNewDeclInfoIndex + 1]] <- declClassObject
+                    newDecl <- modelDeclClass$new()
+                    newDecl$setup(newCode, decl$context, decl$sourceLineNumber, decl$truncated, decl$boundExprs)
+                    newDeclInfo[[nextNewDeclInfoIndex + 1]] <- newDecl
                     
                 } else {    # deterministic declaration
                     newRHS <- linkInverses[[linkText]]
@@ -413,9 +417,9 @@ modelDefClass <- R6Class(
                     newLHS <- decl$targetNodeExpr
                     newCode <- substitute(A <- B, list(A = newLHS, B = newRHS))
                     
-                    declClassObject <- modelDeclClass$new()
-                    declClassObject$setup(newCode, decl$context, decl$sourceLineNumber, decl$truncated, decl$boundExprs)
-                    newDeclInfo[[nextNewDeclInfoIndex]] <- declClassObject
+                    newDecl <- modelDeclClass$new()
+                    newDecl$setup(newCode, decl$context, decl$sourceLineNumber, decl$truncated, decl$boundExprs)
+                    newDeclInfo[[nextNewDeclInfoIndex]] <- newDecl
                 }
             }  # close loop over declInfo
             declInfo <<- newDeclInfo
@@ -570,10 +574,10 @@ modelDefClass <- R6Class(
                         identicalNewDecl <- checkForDuplicateNodeDeclaration(newNodeCode, newNodeNameExprIndexed, newDeclInfo)
                         
                         if(!identicalNewDecl) {
-                            declClassObject <- modelDeclClass$new()
+                            newDecl <- modelDeclClass$new()
                             # Keep new declaration in the same context, regardless of presence/absence of indexing.
-                            declClassObject$setup(newNodeCode, decl$context, decl$sourceLineNumber, FALSE, NULL)   
-                            newDeclInfo[[nextNewDeclInfoIndex]] <- declClassObject
+                            newDecl$setup(newNodeCode, decl$context, decl$sourceLineNumber, FALSE, NULL)   
+                            newDeclInfo[[nextNewDeclInfoIndex]] <- newDecl
                             
                             nextNewDeclInfoIndex <- nextNewDeclInfoIndex + 1     # Update for lifting other nodes, and re-adding decl at the end.
                         }
@@ -628,10 +632,10 @@ modelDefClass <- R6Class(
         
         ## Create declaration rule and declaration-specific graphRules and various kinds of node rules
         ## for each declaration.
-        processDecls = function() {
+        processDecls = function(userEnv) {
             nimFunNames <- getAllDistributionsInfo('namesExprList')
             for(i in seq_along(declInfo)) {
-                declInfo[[i]]$processDecl(nimFunNames)
+                declInfo[[i]]$processDecl(nimFunNames, userEnv)
                 
             }
             invisible(NULL)
@@ -667,67 +671,25 @@ modelDefClass <- R6Class(
             invisible(NULL)
         },
 
-        ## HERE
         insertFullIndexingForDynamicallyIndexedParents = function() {
-            if(nimbleOptions()$allowDynamicIndexing) {
-                for(iDI in seq_along(declInfo)) {
-                    declInfo[[iDI]]$dynamicIndexInfo <<- list()
-                    for(iSPN in seq_along(declInfo[[iDI]]$symbolicParentNodesReplaced)) {
-                        symbolicParent <- declInfo[[iDI]]$symbolicParentNodesReplaced[[iSPN]]
-                        dynamicIndexes <- detectDynamicIndexes(symbolicParent)
-                        ## We do not yet check bounds of inner indexes in nested indexing. To do so we need to
-                        ## find dynamic indexing within a USED_IN_INDEX() and add to dynamicIndexInfo;
-                        ## then in nodeFunctions we need nested if statements so inner index is checked first.
-                        ## That being said, compiled execution will error out with appropriate out of bounds error
-                        ## because C++ will put an out-of-bound value in for 'k' in k[d[0]] or k[d[1342134]].
-                        if(any(dynamicIndexes)) {
-                            indexedVar <- stripUnknownIndexFromVarName(safeDeparse(symbolicParent[[2]], warn = TRUE))
-                            numSPNR <- length(declInfo[[iDI]]$symbolicParentNodesReplaced)
-                            for(iIndex in which(dynamicIndexes)) {
-                                declInfo[[iDI]]$dynamicIndexInfo[[length(declInfo[[iDI]]$dynamicIndexInfo) + 1]] <<-
-                                    list(indexCode = stripDynamicallyIndexedWrapping(symbolicParent[[2+iIndex]]),
-                                         lower = varInfo[[indexedVar]]$mins[iIndex],
-                                         upper = varInfo[[indexedVar]]$maxs[iIndex])
-                                declInfo[[iDI]]$symbolicParentNodes[[iSPN]][[2+iIndex]] <<- as.numeric(NA) ## Indexing code is not needed anymore.
-                                if(iSPN <= numSPNR)
-                                    declInfo[[iDI]]$symbolicParentNodesReplaced[[iSPN]][[2+iIndex]] <<- as.numeric(NA) ## Indexing code is not needed anymore.
-                            }
-                        }
-                    }
-                    declInfo[[iDI]]$symbolicParentNodes <<- lapply(declInfo[[iDI]]$symbolicParentNodes, stripIndexWrapping)
-                    declInfo[[iDI]]$symbolicParentNodesReplaced <<- lapply(declInfo[[iDI]]$symbolicParentNodesReplaced, stripIndexWrapping)
+            if(nimbleOptions()$allowDynamicIndexing) 
+                for(i in seq_along(declInfo)) {
+                    declInfo[[i]]$insertFullIndexingForDynamicallyIndexedParents()
                 }
-                for(iDI in seq_along(declInfo)) {
-                    if(declInfo[[iDI]]$type == "unknownIndex") {
-                        parentExpr <- declInfo[[iDI]]$symbolicParentNodes[[1]]
-                        parentExprReplaced <- declInfo[[iDI]]$symbolicParentNodesReplaced[[1]]
-                        targetExpr <- declInfo[[iDI]]$targetExpr
-                        targetExprReplaced <- declInfo[[iDI]]$targetExprReplaced
-                        varName <- declInfo[[iDI]]$rhsVars[1] # deparse(parentExpr[[2]])
-                        dynamicIndices <- detectDynamicIndexes(parentExpr)
-                        ranges <- data.frame(rbind(varInfo[[varName]]$mins[dynamicIndices], varInfo[[varName]]$maxs[dynamicIndices]))
-                        if(any(ranges[2, ] == 1))
-                            stop("Variable ", varName, " is dynamically-indexed but has at least one dimension of length one, probably because NIMBLE could not automatically determine its dimensionality. Please provide dimensions via the 'dimensions' argument.")
-                        fullExtent <- lapply(ranges, function(x) 
-                            substitute(X:Y, list(X = x[1], Y = x[2])))
-                        parentExpr[which(dynamicIndices)+2] <- fullExtent
-                        parentExprReplaced[which(dynamicIndices)+2] <- fullExtent
-                        targetExpr[which(dynamicIndices)+2] <- fullExtent
-                        targetExprReplaced[which(dynamicIndices)+2] <- fullExtent
-                        declInfo[[iDI]]$symbolicParentNodes[[1]] <<- parentExpr
-                        declInfo[[iDI]]$symbolicParentNodesReplaced[[1]] <<- parentExprReplaced
-                        declInfo[[iDI]]$targetExpr <<- targetExpr
-                        declInfo[[iDI]]$targetExprReplaced <<- targetExprReplaced
-                        count <- 1
-                        for(p in seq_along(declInfo[[iDI]]$parentIndexNamePieces[[1]])) # only one parent by construction
-                            if(dynamicIndices[p]) {
-                                declInfo[[iDI]]$parentIndexNamePieces[[1]][[p]] <<- as.list(ranges[[count]])
-                                count <- count + 1
-                            }
-                    } 
+            invisible(NULL)
+        },
+
+        warnRHSonlyDynamicIndexing = function() {
+            if(nimbleOptions()$allowDynamicIndexing) {
+                ind <- sapply(rhsOnlyRules, function(rule) rule$isUsedInIndex)
+                if(sum(ind)) {
+                    varRangeChars <- sapply(rhsOnlyRules[ind], function(range) range$toVarRange()$toChar())
+                    messageIfVerbose("  [Note] Detected use of non-constant indices: `", paste0(varRangeChars, collapse = "`, "),
+                                     "`.\n         For computational efficiency we recommend specifying these in `constants`.")
                 }
             }
-        }, 
+            invisible(NULL)
+        },
 
         ## Create calcRules and full sets of declRules and graphRules based on all declarations.
         makeGraphInfo = function() {

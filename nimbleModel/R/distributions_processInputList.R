@@ -101,7 +101,7 @@ distClass <- setRefClass(
             BUGSdistName <<- BUGSdistName
             BUGSdistExpr <<- parse(text=distInputList$BUGSdist)[[1]]
             if(BUGSdistExpr[[1]] != BUGSdistName)
-                stop("distClass$new: inconsistent distribution names for distribution: `", BUGSdistName, "`."))
+                stop("distClass$new: inconsistent distribution names for distribution: `", BUGSdistName, "`.")
             RdistTextVector <- if(is.null(distInputList$Rdist)) character() else distInputList$Rdist
             RdistExprList <<- lapply(RdistTextVector, function(t) parse(text=t)[[1]])
             numAlts <<- length(RdistExprList)
@@ -681,7 +681,7 @@ evalInDistsMatchCallEnv <- function(expr) {
     if(exists('distributions', nimbleUserNamespace) &&
        dist %in% nimbleUserNamespace$distributions$namesVector)
         return(eval(expr, nimbleUserNamespace$distributions$matchCallEnv))
-    stop("evalInDistsMatchCallEnv: `", dist, "` is not a distribution provided by NIMBLE or supplied by the user."))
+    stop("evalInDistsMatchCallEnv: `", dist, "` is not a distribution provided by NIMBLE or supplied by the user.")
 }
 
 stripPrefix <- function(vec, prefix = "d")

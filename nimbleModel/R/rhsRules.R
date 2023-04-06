@@ -12,8 +12,16 @@ rhsRuleClass <- R6Class(
     portable = FALSE,
     inherit = nodeRuleClass,
     public = list(
-
-        initialize = function(expr, ID = NULL, context = modelContextClass$new(), constants = list()) {
+        isUsedInIndex = FALSE,  # allows tracking of use as dynamic index
+        
+        initialize = function(expr, ID = NULL, context = modelContextClass$new(), constants = list(), isUsedInIndex = FALSE) {
+            isUsedInIndex <<- isUsedInIndex
+            ## Process any dynamic indexing.
+            if(nimbleOptions()$allowDynamicIndexing && usedInIndex(expr)) {
+                isUsedInIndex <<- TRUE
+                expr <- stripIndexWrapping(expr)
+            }
+            
             ## Transform constants into sequences.
             if(length(expr) > 1 && expr[[1]] == "[") {
                 scalarConstants <- sapply(3:length(expr),
@@ -119,7 +127,7 @@ exclude <- function(rhsRule, excludingRule) {
             oldConstants[names(oldConstants) %in% names(constants)] <- NULL
 
             resultRule <- rhsRuleClass$new(expr, context = modelContextClass$new(newSingleContexts),
-                                           constants = c(constants, oldConstants))
+                                           constants = c(constants, oldConstants), isUsedInIndex = rhsRule$isUsedInIndex)
             return(list(resultRule))
         } else {  # seq+seq or seq+scalar
             if(is(int, "indexRangeScalarClass"))  # convert to sequence to avoid special case code
@@ -139,7 +147,8 @@ exclude <- function(rhsRule, excludingRule) {
                     indexRangeExpr = substitute(A:B, list(A = RHS$start, B = RHS$end)))
                 expr[[nonIdenticalIndices+2]] <- newSingleContexts[[length(newSingleContexts)]]$indexVarExpr
 
-                resultRule <- rhsRuleClass$new(expr, context = modelContextClass$new(newSingleContexts), constants = rhsRule$constants)
+                resultRule <- rhsRuleClass$new(expr, context = modelContextClass$new(newSingleContexts),
+                                               constants = rhsRule$constants, isUsedInIndex = rhsRule$isUsedInIndex)
                 return(list(resultRule))
             } else {
                 ## Modify rhsRule expr and context to create two new rules.
@@ -157,8 +166,10 @@ exclude <- function(rhsRule, excludingRule) {
                     indexRangeExpr = substitute(A:B, list(A = int$end+1, B = RHS$end)))
                 expr2[[nonIdenticalIndices+2]] <- newSingleContexts2[[length(newSingleContexts2)]]$indexVarExpr
                
-                resultRule1 <- rhsRuleClass$new(expr1, context = modelContextClass$new(newSingleContexts1), constants = rhsRule$constants)
-                resultRule2 <- rhsRuleClass$new(expr2, context = modelContextClass$new(newSingleContexts2), constants = rhsRule$constants)
+                resultRule1 <- rhsRuleClass$new(expr1, context = modelContextClass$new(newSingleContexts1),
+                                                constants = rhsRule$constants, isUsedInIndex = rhsRule$isUsedInIndex)
+                resultRule2 <- rhsRuleClass$new(expr2, context = modelContextClass$new(newSingleContexts2),
+                                                constants = rhsRule$constants, isUsedInIndex = rhsRule$isUsedInIndex)
                 return(list(resultRule1, resultRule2))
             }
         }
@@ -198,7 +209,7 @@ exclude <- function(rhsRule, excludingRule) {
         oldConstants <- rhsRule$constants
         oldConstants[names(oldConstants) %in% names(constants)] <- NULL
         resultRule <- rhsRuleClass$new(expr, context = modelContextClass$new(newSingleContexts),
-                                       constants = c(constants, oldConstants))
+                                       constants = c(constants, oldConstants), isUsedInIndex = rhsRule$isUsedInIndex)
         return(list(resultRule))
      }
 }

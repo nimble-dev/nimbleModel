@@ -45,7 +45,7 @@ modelDeclClass <- R6Class(
         rhsVars = NULL,
         targetIndexNamePieces = NULL,
         parentIndexNamePieces = NULL,
-        
+        dynamicIndexInfo = NULL,
 
         ## Figure out the parts of the declaration.
         ## TODO: any reason not to have `$setup` become `$initialize`?
@@ -66,21 +66,22 @@ modelDeclClass <- R6Class(
         },
 
         ## Create declRule and declaration-specific graph and RHS rules.
-        processDecl = function(nimFunNames) {
+        processDecl = function(nimFunNames, envir = .GlobalEnv) {
             declRule <<- declRuleClass$new(code, sourceLineNumber, context, constants)
-            makeSymbolicParentNodes(nimFunNames)
+            makeSymbolicParentNodes(nimFunNames, envir)
             invisible(NULL)
         },
 
         ## Determine RHS pieces.
-        makeSymbolicParentNodes = function(nimFunNames) {
+        makeSymbolicParentNodes = function(nimFunNames, envir = .GlobalEnv) {
             constantsNamesList <- lapply(names(constants), as.name)
             symbolicParentNodes <<-
                 unique(
                     getSymbolicParentNodes(valueExpr,
                                            constantsNamesList,
                                            context$indexVarExprs,
-                                           nimFunNames)
+                                           nimFunNames,
+                                           envir)
                 )
             invisible(NULL)
         },
@@ -326,6 +327,38 @@ modelDeclClass <- R6Class(
                            }
                            )
             invisible(NULL)
+        },
+
+        insertFullIndexingForDynamicallyIndexedParents = function() {
+            dynamicIndexInfo <<- list()
+            for(iSPN in seq_along(symbolicParentNodesReplaced)) {
+                symbolicParent <- symbolicParentNodesReplaced[[iSPN]]
+                dynamicIndices <- detectDynamicIndexes(symbolicParent)
+                ## We do not yet check bounds of inner indexes in nested indexing. To do so we need to
+                ## find dynamic indexing within a USED_IN_INDEX() and add to dynamicIndexInfo;
+                ## then in nodeFunctions we need nested if statements so inner index is checked first.
+                ## That being said, compiled execution will error out with appropriate out of bounds error
+                ## because C++ will put an out-of-bound value in for 'k' in k[d[0]] or k[d[1342134]].
+                if(any(dynamicIndices)) {
+                    indexedVar <- stripUnknownIndexFromVarName(safeDeparse(symbolicParent[[2]], warn = TRUE))
+                    numSPNR <- length(symbolicParentNodesReplaced)
+                    for(iIndex in which(dynamicIndices)) {
+                        lower <- varInfo[[indexedVar]]$mins[iIndex]
+                        upper <- varInfo[[indexedVar]]$maxs[iIndex]                        
+                        dynamicIndexInfo[[length(declInfo[[iDI]]$dynamicIndexInfo) + 1]] <<-
+                            list(indexCode = stripDynamicallyIndexedWrapping(symbolicParent[[2+iIndex]]),
+                                 lower = lower,
+                                 upper = upper)
+                        fullExtent <- substitute(A:B, list(A = lower, B = upper))
+                        symbolicParentNodes[[iSPN]][[2+iIndex]] <<- fullExtent
+                        if(iSPN <= numSPNR)
+                            symbolicParentNodesReplaced[[iSPN]][[2+iIndex]] <<- fullExtent
+                    }
+                }
+            }
+            symbolicParentNodes <<- lapply(symbolicParentNodes, stripIndexWrapping)
+            symbolicParentNodesReplaced <<- lapply(symbolicParentNodesReplaced, stripIndexWrapping)
+            invisible(NULL)
         }
     )
 )
@@ -480,7 +513,7 @@ genReplacementsAndCodeRecurse <- function(code,
                             genReplacementsAndCodeRecurse(code[[2]],
                                                           constAndIndexNames,
                                                           nimbleFunctionNames,
-                                                          replaceVariableLHS = FALSE, debug,
+                                                          replaceVariableLHS = FALSE,
                                                           envir = envir)
                         ),
                         lapply(
@@ -489,7 +522,6 @@ genReplacementsAndCodeRecurse <- function(code,
                                 genReplacementsAndCodeRecurse(x,
                                                               constAndIndexNames,
                                                               nimbleFunctionNames,
-                                                              debug = debug,
                                                               envir = envir))
                     )
             } else {
@@ -499,7 +531,6 @@ genReplacementsAndCodeRecurse <- function(code,
                         genReplacementsAndCodeRecurse(x,
                                                       constAndIndexNames,
                                                       nimbleFunctionNames,
-                                                      debug = debug,
                                                       envir = envir))
             }
             contentsCodeReplaced <- lapply(contents, function(x) x$codeReplaced)
@@ -546,7 +577,7 @@ genReplacementsAndCodeRecurse <- function(code,
                                 contentsReplaceable,
                                 startingAt = 2))
     }
-    stop("genReplacementsAndCodeRecurse: processing error in `", safeDeparse(code), "`."))
+    stop("genReplacementsAndCodeRecurse: processing error in `", safeDeparse(code), "`.")
 }
 
 genLogProbNodeExprAndReplacements <- function(code,

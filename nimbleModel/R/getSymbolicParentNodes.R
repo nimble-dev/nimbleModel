@@ -72,7 +72,8 @@ getSymbolicParentNodes <- function(code,
                                    constNames = list(),
                                    indexNames = list(),
                                    nimbleFunctionNames = list(),
-                                   addDistNames = FALSE) {
+                                   addDistNames = FALSE,
+                                   envir = .GlobalEnv) {
     ## We previously propagated a contextID through this
     ## recursive system.  It was used only for a piece of the label
     ## for unknown indices and seemed unnecessary.
@@ -82,14 +83,16 @@ getSymbolicParentNodes <- function(code,
     ans <- getSymbolicParentNodesRecurse(code,
                                          constNames,
                                          indexNames,
-                                         nimbleFunctionNames)
+                                         nimbleFunctionNames,
+                                         envir)
     return(ans$code)
 }
 
 getSymbolicParentNodesRecurse <- function(code,
                                           constNames = list(),
                                           indexNames = list(),
-                                          nimbleFunctionNames = list()) {
+                                          nimbleFunctionNames = list(),
+                                          envir = .GlobalEnv) {
     ## This takes as input some code and returns the variables in it.
     ## It expects one line of code, not a '{' expression.
     ##
@@ -176,7 +179,8 @@ getSymbolicParentNodesRecurse <- function(code,
                            getSymbolicParentNodesRecurse(x,
                                                          constNames,
                                                          indexNames,
-                                                         nimbleFunctionNames
+                                                         nimbleFunctionNames,
+                                                         envir
                                                          )
                        )
             ## Unpack the codes returned from recursion.
@@ -197,7 +201,8 @@ getSymbolicParentNodesRecurse <- function(code,
                 getSymbolicParentNodesRecurse(code[[2]],
                                               constNames,
                                               indexNames,
-                                              nimbleFunctionNames
+                                              nimbleFunctionNames,
+                                              envir
                                               )
 
             ## Error if it looks like mu[i][j] where i is a for-loop index
@@ -243,7 +248,7 @@ getSymbolicParentNodesRecurse <- function(code,
                         if(any(sapply(contentsCode, detectNonscalarIndex)))
                             stop("getSymbolicParentNodesRecurse: only scalar random indices are allowed; vector random indexing found in `", deparse(code), "`.")
                         indexedVariable <- deparse(code[[2]])
-                        dynamicIndexParent <- addUnknownIndexToVarNameInBracketExpr(code)
+                        dynamicIndexParent <- deparse(code) # addUnknownIndexToVarNameInBracketExpr(code)
                         ## Instead of inserting NA, leave indexing
                         ## code but with indication it is a dynamic
                         ## index so we can detect that later. We need
@@ -268,7 +273,8 @@ getSymbolicParentNodesRecurse <- function(code,
                                            getSymbolicParentNodesRecurse(x,
                                                                          constNames,
                                                                          indexNames,
-                                                                         nimbleFunctionNames)
+                                                                         nimbleFunctionNames,
+                                                                         envir)
                                        )
                 else ## foo(x): recurse on x
                     contents <- lapply(code[-1],
@@ -276,7 +282,8 @@ getSymbolicParentNodesRecurse <- function(code,
                                            getSymbolicParentNodesRecurse(x,
                                                                          constNames,
                                                                          indexNames,
-                                                                         nimbleFunctionNames)
+                                                                         nimbleFunctionNames,
+                                                                         envir)
                                        )
                 ## Unpack results of recursion.
                 contentsCode <- unlist(
@@ -302,7 +309,7 @@ getSymbolicParentNodesRecurse <- function(code,
             ## Check if the function can be called only in R, not NIMBLE.
             isRfunction <- !any(code[[1]] == nimbleFunctionNames)
             funName <- deparse(code[[1]])
-            isRonly <- isRfunction & (!checkNimbleOrRfunctionNames(funName))
+            isRonly <- isRfunction & (!checkNimbleOrRfunctionNames(funName, envir))
             ## If it can be called only in R but not all contents are replaceable, generate error.
             if(isRonly & !allContentsReplaceable) {
                 if(!exists(funName))
@@ -324,10 +331,10 @@ getSymbolicParentNodesRecurse <- function(code,
     stop("getSymbolicParentNodesRecurse: `", deparse(code), "` cannot be evaluated.")
 }
 
-checkNimbleOrRfunctionNames <- function(functionName) {
+checkNimbleOrRfunctionNames <- function(functionName, envir) {
     if(any(functionName == nimbleOrRfunctionNames))
         return(TRUE)
-    if(exists(functionName) && is.rcf(get(functionName)))
+    if(exists(functionName, envir) && is.rcf(get(functionName, envir)))
         return(TRUE)  ## FUTURE: Would like to do this by R's scoping rules.
     return(FALSE)
 }
