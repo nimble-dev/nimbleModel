@@ -10,7 +10,6 @@ modelDeclClass <- R6Class(
     classname = 'modelDeclClass',
     portable = FALSE,
     public = list(
-        ## In current NIMBLE we hold `contextID` here, but context itself is needed.
         context = NULL,
         sourceLineNumber = NULL,
         code = NULL,
@@ -27,7 +26,7 @@ modelDeclClass <- R6Class(
         targetNodeName = NULL,
         indexVariableExprs = NULL,
         truncated = NULL,
-        boundExprs = NULL,
+        boundExprs = 'ANY',
         symbolicParentNodes = NULL,
         downstreamRules = NULL,
         upstreamRules = NULL,
@@ -47,22 +46,72 @@ modelDeclClass <- R6Class(
         parentIndexNamePieces = NULL,
         dynamicIndexInfo = NULL,
 
-        ## Figure out the parts of the declaration.
-        ## TODO: any reason not to have `$setup` become `$initialize`?
+        ## Determines the parts of a declaration from the raw `code`.
         ## TODO: does setup need `userEnv` input?
-        setup = function(code,
-                         context,
+        initialize = function(code,
+                         context, 
                          constants,
                          sourceLineNumber,
                          truncated = FALSE,
                          boundExprs = NULL) {
-            modelDeclClass_setup(self,
-                                 code,
-                                 context,
-                                 constants,
-                                 sourceLineNumber,
-                                 truncated,
-                                 boundExprs)
+
+            context <<- context
+            constants <<- constants
+            sourceLineNumber <<- sourceLineNumber
+            code <<- code
+            truncated <<- truncated
+            boundExprs <<- boundExprs
+            
+            if(code[[1]] == '~') {
+                stoch <<- TRUE
+                ## Check for legitimate densities or for truncation.
+                if(!is.call(code[[3]]) ||
+                   (!any(code[[3]][[1]] == getAllDistributionsInfo('namesVector')) &&
+                    code[[3]][[1]] != "T" &&
+                    code[[3]][[1]] != "I"))
+                    stop("modelDeclClass$new: Improper syntax for stochastic declaration: `", deparse(code), "`.")
+            } else if(code[[1]] == '<<-') {
+                stoch <<- FALSE
+            } else 
+                stop("modelDeclClass$new: Improper syntax for declaration: `", deparse(code), "`.")
+            
+            targetExpr <<- code[[2]]
+            valueExpr <<- code[[3]]
+            
+            if(stoch)
+                distributionName <<- as.character(valueExpr[[1]])
+            else
+                distributionName <<- NA
+
+            transExpr <<- NULL
+            indexExpr <<- NULL
+            
+            if(length(targetExpr) > 1) {
+                ## There is a tranformation and/or a subscript.
+                if(targetExpr[[1]] == '[') {
+                    ## It is a subscript only.
+                    indexExpr <<- as.list(targetExpr[-c(1,2)]) 
+                    targetVarExpr <<- targetExpr[[2]]
+                    targetNodeExpr <<- targetExpr
+                } else {
+                    ## There is a transformation, possibly with a subscript.
+                    transExpr <<- targetExpr[[1]]
+                    targetNodeExpr <<- targetExpr[[2]]
+                    if(length(targetNodeExpr)>1) {
+                        ## There are subscripts inside the transformation
+                        if(targetNodeExpr[[1]] != '[') 
+                            stop("modelDeclClass$new: Invalid subscripting for `", deparse(targetExpr), "`.")
+                        indexExpr <<- as.list(targetNodeExpr[-c(1,2)])
+                        targetVarExpr <<- targetNodeExpr[[2]]
+                    } else {
+                        targetVarExpr <<- targetNodeExpr
+                    }
+                }
+            } else {
+                ## No tranformation or subscript present.
+                targetVarExpr <<- targetExpr
+                targetNodeExpr <<- targetVarExpr
+            }
         },
 
         ## Create declRule and declaration-specific graph and RHS rules.
@@ -81,7 +130,7 @@ modelDeclClass <- R6Class(
                                            constantsNamesList,
                                            context$indexVarExprs,
                                            nimFunNames,
-                                           envir)
+                                           envir = envir)
                 )
             invisible(NULL)
         },
@@ -121,12 +170,7 @@ modelDeclClass <- R6Class(
             invisible(NULL)
         },
 
-        setIndexVariableExprs = function(exprs) {
-            indexVariableExprs <<- exprs
-            invisible(NULL)
-        },
-
-        genReplacementsAndCodeReplaced = function(nimFunNames, envir = .GlobalEnv) {
+        genReplacementsAndCodeReplaced = function(nimFunNames, context, envir = .GlobalEnv) {
             constantsNamesList <- lapply(names(constants), as.name)
             replacementsAndCode <-
                 genReplacementsAndCodeRecurse(code,
@@ -255,10 +299,9 @@ modelDeclClass <- R6Class(
                                            c(context$indexVarExprs,
                                              replacementNameExprs),
                                            nimFunNames,
-                                           context = context,
                                            envir = envir)
                 )
-            if(!nimbleOptions()$allowDynamicIndexing) {
+            if(!nimble::nimbleOptions()$allowDynamicIndexing) {
                 rhsVars <<-
                     unlist(
                         lapply(
@@ -305,7 +348,7 @@ modelDeclClass <- R6Class(
                 stop("genReplacedTargetValueAndParentInfo: Cannot process `",
                      safeDeparse(targetExprReplaced), "`.",
                      call. = FALSE)
-            if(!nimbleOptions()$allowDynamicIndexing) {
+            if(!nimble::nimbleOptions()$allowDynamicIndexing) {
                 parentIndexNamePieces <<-
                     lapply(symbolicParentNodesReplaced,
                            function(x)
@@ -333,7 +376,7 @@ modelDeclClass <- R6Class(
             dynamicIndexInfo <<- list()
             for(iSPN in seq_along(symbolicParentNodesReplaced)) {
                 symbolicParent <- symbolicParentNodesReplaced[[iSPN]]
-                dynamicIndices <- detectDynamicIndexes(symbolicParent)
+                dynamicIndices <- detectDynamicIndices(symbolicParent)
                 ## We do not yet check bounds of inner indexes in nested indexing. To do so we need to
                 ## find dynamic indexing within a USED_IN_INDEX() and add to dynamicIndexInfo;
                 ## then in nodeFunctions we need nested if statements so inner index is checked first.
@@ -363,83 +406,6 @@ modelDeclClass <- R6Class(
     )
 )
 
-## Determines the parts of a declaration from the raw `code`.
-modelDeclClass_setup <- function(modelDecl,
-                                 code,
-                                 context,
-                                 constants,
-                                 sourceLineNumber,
-                                 truncated = FALSE,
-                                 boundExprs = NULL) {
-
-    modelDecl$constants <- constants
-    modelDecl$context <- context
-    modelDecl$sourceLineNumber <- sourceLineNumber
-    modelDecl$code <- code
-    modelDecl$truncated <- truncated
-    modelDecl$boundExprs <- boundExprs
-    
-    if(code[[1]] == '~') {
-        modelDecl$stoch <- TRUE
-        ## Check for legitimate densities or for truncation.
-        if(!is.call(code[[3]]) ||
-           (!any(code[[3]][[1]] == getAllDistributionsInfo('namesVector')) &&
-            code[[3]][[1]] != "T" &&
-            code[[3]][[1]] != "I"))
-            stop("modelDeclClass$new: Improper syntax for stochastic declaration: `", deparse(code), "`.")
-    } else if(code[[1]] == '<-') {
-        modelDecl$stoch <- FALSE
-    } else 
-        stop("modelDeclClass$new: Improper syntax for declaration: `", deparse(code), "`.")
-    
-    targetExpr <- code[[2]]
-    valueExpr <- code[[3]]
-    
-    if(modelDecl$stoch)
-        modelDecl$distributionName <- as.character(valueExpr[[1]])
-    else
-        modelDecl$distributionName <- NA
-
-    transExpr <- NULL
-    indexExpr <- NULL
-        
-    if(length(targetExpr) > 1) {
-        ## There is a tranformation and/or a subscript.
-        if(targetExpr[[1]] == '[') {
-            ## It is a subscript only.
-            indexExpr <- as.list(targetExpr[-c(1,2)]) 
-            targetVarExpr <- targetExpr[[2]]
-            targetNodeExpr <- targetExpr
-        } else {
-            ## There is a transformation, possibly with a subscript.
-            transExpr <- targetExpr[[1]]
-            targetNodeExpr <- targetExpr[[2]]
-            if(length(targetNodeExpr)>1) {
-                ## There are subscripts inside the transformation
-                if(targetNodeExpr[[1]] != '[') 
-                    stop("modelDeclClass$new: Invalid subscripting for `", deparse(targetExpr), "`.")
-                indexExpr <- as.list(targetNodeExpr[-c(1,2)])
-                targetVarExpr <- targetNodeExpr[[2]]
-            } else {
-                targetVarExpr <- targetNodeExpr
-            }
-        }
-    } else {
-        ## No tranformation or subscript present.
-        targetVarExpr <- targetExpr
-        targetNodeExpr <- targetVarExpr
-    }
-
-    modelDecl$targetExpr <- targetExpr
-    modelDecl$valueExpr <- valueExpr
-    modelDecl$transExpr <- transExpr
-    modelDecl$indexExpr <- indexExpr
-    modelDecl$targetVarExpr <- targetVarExpr
-    modelDecl$targetNodeExpr <- targetNodeExpr
-    modelDecl$targetVarName <- deparse(targetVarExpr)
-    modelDecl$targetNodeName <- deparse(targetNodeExpr)
-    invisible(NULL)
-}
 
 genReplacementsAndCodeRecurse <- function(code,
                                           constAndIndexNames,
@@ -447,7 +413,7 @@ genReplacementsAndCodeRecurse <- function(code,
                                           replaceVariableLHS = TRUE,
                                           envir = .GlobalEnv) {
     if(is.numeric(code) || is.logical(code) ||
-       (nimbleOptions()$allowDynamicIndexing &&
+       (nimble::nimbleOptions()$allowDynamicIndexing &&
                        length(code) > 1 &&
                        code[[1]] == '.DYN_INDEXED')
        )
@@ -559,7 +525,7 @@ genReplacementsAndCodeRecurse <- function(code,
                                     contentsReplacements,
                                     contentsReplaceable,
                                     startingAt=2))
-        isRfunction <- !code[[1]] %in% nimbleFunctionNames
+        isRfunction <- !any(code[[1]] == nimbleFunctionNames) # Can't use `%in%` as nFN is a list.
         isRonly <-
             isRfunction &
             !checkNimbleOrRfunctionNames(safeDeparse(code[[1]], warn = TRUE), envir)
@@ -571,7 +537,7 @@ genReplacementsAndCodeRecurse <- function(code,
                         "` has non-replaceable node values as arguments. It must be a nimbleFunction.")
         if(isRfunction & allContentsReplaceable)
             return(replaceAllCodeSuccessfully(code))
-        return(replacePossible(code,
+        return(replaceWhatPossible(code,
                                 contentsCodeReplaced,
                                 contentsReplacements,
                                 contentsReplaceable,
@@ -648,6 +614,53 @@ replaceWhatPossible <- function(code,
     return(list(codeReplaced = codeReplaced,
              replacements = replacements,
              replaceable = replaceable))
+}
+
+makeIndexNamePieces <- function(indexCode) {
+    indexCode <- stripParentheses(indexCode)
+    if(length(indexCode) == 1)
+        return(
+            if(is.numeric(indexCode))
+                indexCode
+            else
+                as.character(indexCode))
+    if(nimble::nimbleOptions('allowDynamicIndexing')) {
+        ## It is easiest to have indexNamePieces be NA when
+        ## dynamically indexed rather than retaining the indexing
+        ## code.
+        if(length(indexCode) == 2 &&
+           indexCode[[1]] == ".DYN_INDEXED")
+            return(as.numeric(NA))
+    } 
+    if(as.character(indexCode[[1]] != ':'))
+        stop("makeIndexNamePieces: cannot process the index `",
+                    safeDeparse(indexCode),
+                    "`.\nIndexing in model code requires this syntax: `(start expression):(end expression)`.",
+             call. = FALSE)
+    p1 <- indexCode[[2]]
+    p2 <- indexCode[[3]]
+    return(list(
+        if(is.numeric(p1))
+            p1
+        else
+            as.character(p1),
+        if(is.numeric(p2))
+            p2
+        else
+            as.character(p2)))
+}
+
+stripParentheses <- function(code) {
+    if(is.call(code)) {
+        if(code[[1]] == "(")
+            return(stripParentheses(code[[2]]))
+    }
+    return(code)
+}
+
+detectDynamicIndices <- function(expr) {
+    if(length(expr) == 1 || expr[[1]] != "[") return(FALSE) 
+    return(sapply(expr[3:length(expr)], isDynamicIndex)) 
 }
 
 functionsThatShouldNeverBeReplacedInModelCode <- c(':','nimC','nimRep','nimSeq', 'diag',

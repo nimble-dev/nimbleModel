@@ -50,18 +50,16 @@ modelDefClass <- R6Class(
             liftExpressionArgs()  
             addRemainingDotParams()
             replaceAllConstants()     ## CHECK: why need to do again?
-            addIndexVarsToDeclInfo()  # Must be done after overwrites of declInfo.
             processDecls(userEnv)            # Create declRules and set up symbolicParentNodes.
 
             genReplacementsAndCodeReplaced(userEnv)  ## e.g. y[k[i]] -> y[k_oBi_cB]
             genAltParamsModifyCodeReplaced()
             genBounds()
-            genReplacedTargetValueAndParentInfo() 
+            genReplacedTargetValueAndParentInfo(userEnv) 
 
             insertFullIndexingForDynamicallyIndexedParents() 
 
-            makeRHSoriginalRules()  ## this also strips out USED_IN_INDEX, which we need to do before makeGraphRules
-            makeGraphRules()
+            makeRules()   ## this also strips out USED_IN_INDEX, which we need to do before makeGraphRules
             makeGraphInfo()
 
             ## genVarInfo3?
@@ -164,7 +162,6 @@ modelDefClass <- R6Class(
                 lineNumber <- lineNumber + 1
                 if(code[[i]][[1]] == '~' || code[[i]][[1]] == '<-') {  ## a declaration
                     iAns <- length(declInfo) + 1
-                    modelDeclClassObject <- modelDeclClass$new()
                     if(FALSE) {
                         if(code[[i]][[1]] == '~') {
                             code[[i]] <- replaceDistributionAliases(code[[i]])
@@ -177,11 +174,10 @@ modelDefClass <- R6Class(
                                        'checkUserDefinedDistribution, and\n',
                                        'checkForDeterministicDorR back on.'))
                     
-                    modelDeclClassObject$setup(code[[i]],
+                    declInfo[[iAns]] <<- modelDeclClass$new(code[[i]],
                                                contexts[[contextID]],
                                                constants,
                                                lineNumber)
-                    declInfo[[iAns]] <<- modelDeclClassObject
                 }
                 if(code[[i]][[1]] == 'for') {
                     ## e.g. (for i in 1:N).  New context (for-loop info) needed.
@@ -193,7 +189,7 @@ modelDefClass <- R6Class(
                                 "` used multiple times as for loop index in nested loops.",
                                 "If your model has macros or if-then-else blocks,",
                                 "you can inspect the processed model code by running ",
-                                "`nimbleOptions(stop_after_processing_model_code = TRUE)`",
+                                "`nimble::nimbleOptions(stop_after_processing_model_code = TRUE)`",
                                 "before calling nimbleModel.",
                             call. = FALSE)
                     }
@@ -259,7 +255,7 @@ modelDefClass <- R6Class(
                 vars <- sapply(declInfo, function(x) x$targetVarName)
                 newDataVars <- constantsNames[constantsNames %in% vars]
                 if(length(newDataVars)) {
-                    if(nimbleOptions('verbose'))
+                    if(nimble::nimbleOptions('verbose'))
                         message("  [Note] Using `", paste(newDataVars, collapse = '`, `'),
                                 "` (given within `constants`) as data.")
                     for(varName in newDataVars)
@@ -274,9 +270,7 @@ modelDefClass <- R6Class(
             for(i in seq_along(declInfo)) {
                 decl <- declInfo[[i]]
                 newCode <- addMissingIndexingRecurse(decl$code, dimensionsList)
-                newDecl <- modelDeclClass$new()
-                newDecl$setup(newCode, decl$context, decl$constants, decl$sourceLineNumber)
-                declInfo[[i]] <<- newDecl
+                declInfo[[i]] <<- modelDeclClass$new(newCode, decl$context, decl$constants, decl$sourceLineNumber)
             }
             invisible(NULL)
         },
@@ -318,9 +312,8 @@ modelDefClass <- R6Class(
                     
                     decl$code <- newCode
                 }
-                newDecl <- modelDeclClass$new()
-                newDecl$setup(decl$code, decl$context, decl$sourceLineNumber, truncated, boundExprs)
-                declInfo[[i]] <<- newDecl
+                declInfo[[i]] <<- modelDeclClass$new(decl$code, decl$context, decl$constants,
+                                                     decl$sourceLineNumber, truncated, boundExprs)
             }
             invisible(NULL)
         },
@@ -333,10 +326,8 @@ modelDefClass <- R6Class(
 
                 newCode <- decl$code
                 newCode[[3]] <- evalInDistsMatchCallEnv(decl$valueExpr)
-
-                newDecl <- modelDeclClass$new()
-                newDecl$setup(newCode, decl$contextID, decl$sourceLineNumber, decl$truncated, decl$boundExprs)
-                declInfo[[i]] <<- newDecl
+                declInfo[[i]] <<- modelDeclClass$new(newCode, decl$context, decl$constants,
+                                                     decl$sourceLineNumber, decl$truncated, decl$boundExprs)
             }
             invisible(NULL)
         },
@@ -403,23 +394,19 @@ modelDefClass <- R6Class(
                     newRHS[[2]] <- code[[2]]
                     newCode <- substitute(A <- B, list(A = decl$targetNodeExpr, B = newRHS))
                     
-                    newDecl <- modelDeclClass$new()
-                    newDecl$setup(code, decl$context, decl$sourceLineNumber, decl$truncated, decl$boundExprs)
-                    newDeclInfo[[nextNewDeclInfoIndex]] <- newDecl
+                    newDeclInfo[[nextNewDeclInfoIndex]] <- modelDeclClass$new(code, decl$context, decl$constants,
+                                                                              decl$sourceLineNumber, decl$truncated, decl$boundExprs)
                     
-                    newDecl <- modelDeclClass$new()
-                    newDecl$setup(newCode, decl$context, decl$sourceLineNumber, decl$truncated, decl$boundExprs)
-                    newDeclInfo[[nextNewDeclInfoIndex + 1]] <- newDecl
+                    newDeclInfo[[nextNewDeclInfoIndex + 1]] <- modelDeclClass$new(newCode, decl$context, decl$constants,
+                                                                                  decl$sourceLineNumber, decl$truncated, decl$boundExprs)
                     
                 } else {    # deterministic declaration
                     newRHS <- linkInverses[[linkText]]
                     newRHS[[2]] <- decl$code[[3]]
                     newLHS <- decl$targetNodeExpr
                     newCode <- substitute(A <- B, list(A = newLHS, B = newRHS))
-                    
-                    newDecl <- modelDeclClass$new()
-                    newDecl$setup(newCode, decl$context, decl$sourceLineNumber, decl$truncated, decl$boundExprs)
-                    newDeclInfo[[nextNewDeclInfoIndex]] <- newDecl
+                    newDeclInfo[[nextNewDeclInfoIndex]] <- modelDeclClass$new(newCode, decl$context, decl$constants,
+                                                                              decl$sourceLineNumber, decl$truncated, decl$boundExprs)
                 }
             }  # close loop over declInfo
             declInfo <<- newDeclInfo
@@ -514,10 +501,8 @@ modelDefClass <- R6Class(
                 newCode <- decl$code
                 newCode[[3]] <- newValueExpr
                 
-                newDecl <- modelDeclClass$new()
                 ## Note at this point `boundExprs` set back to NULL as all info in `lower` , `upper` in `valueExpr`.
-                newDecl$setup(newCode, decl$context, decl$sourceLineNumber, decl$truncated, NULL)
-                declInfo[[i]] <<- newDecl
+                declInfo[[i]] <<- modelDeclClass$new(newCode, decl$context, decl$constants, decl$sourceLineNumber, decl$truncated, NULL)
             }  # close loop over declInfo
             invisible(NULL)
         },
@@ -526,10 +511,8 @@ modelDefClass <- R6Class(
         replaceAllConstants = function() {
             for(i in seq_along(declInfo)) {
                 newCode <- replaceConstantsRecurse(declInfo[[i]]$code, constants)$code
-                
-                newDecl <- modelDeclClass$new()
-                newDecl$setup(newCode, declInfo[[i]]$context, declInfo[[i]]$sourceLineNumber, declInfo[[i]]$truncated, declInfo[[i]]$boundExprs)
-                declInfo[[i]] <<- newDecl
+                declInfo[[i]] <<- modelDeclClass$new(newCode, declInfo[[i]]$context, declInfo[[i]]$constants, declInfo[[i]]$sourceLineNumber,
+                                                     declInfo[[i]]$truncated, declInfo[[i]]$boundExprs)
             }
             invisible(NULL)
         },
@@ -556,7 +539,7 @@ modelDefClass <- R6Class(
                         paramExpr <- params[[iParam]]
                         paramName <- paramNames[iParam]
                         if(!isExprLiftable(paramExpr, types[[paramName]]))    next     ## If this param isn't an expression, skip.
-                        requireNewAndUniqueDecl <- any(contexts[[decl$contextID]]$indexVarNames %in% all.vars(paramExpr))
+                        requireNewAndUniqueDecl <- any(decl$context$indexVarNames %in% all.vars(paramExpr))
                         uniquePiece <- if(requireNewAndUniqueDecl) paste0("_L", decl$sourceLineNumber) else ""
                         ## Pass through `Rname2CppName` twice (creating new variable name) so that long names truncated if adding 'lifted_' puts them over nchar limit.
                         newNodeNameExpr <- as.name(paste0(Rname2CppName(paste0('lifted_',
@@ -564,7 +547,7 @@ modelDefClass <- R6Class(
                         if(safeDeparse(paramExpr[[1]], warn = TRUE) %in% liftedCallsDoNotAddIndexing) {   # Skip adding indexing to mixed-size calls.
                             newNodeNameExprIndexed <- newNodeNameExpr
                         } else {
-                            newNodeNameExprIndexed <- addNecessaryIndexingToNewNode(newNodeNameExpr, paramExpr, contexts[[decl$contextID]]$indexVarExprs)  # Add indexing if necessary.
+                            newNodeNameExprIndexed <- addNecessaryIndexingToNewNode(newNodeNameExpr, paramExpr, decl$context$indexVarExprs)  # Add indexing if necessary.
                         }
                         
                         newValueExpr[[iParam + 1]] <- newNodeNameExprIndexed  
@@ -574,10 +557,9 @@ modelDefClass <- R6Class(
                         identicalNewDecl <- checkForDuplicateNodeDeclaration(newNodeCode, newNodeNameExprIndexed, newDeclInfo)
                         
                         if(!identicalNewDecl) {
-                            newDecl <- modelDeclClass$new()
                             # Keep new declaration in the same context, regardless of presence/absence of indexing.
-                            newDecl$setup(newNodeCode, decl$context, decl$sourceLineNumber, FALSE, NULL)   
-                            newDeclInfo[[nextNewDeclInfoIndex]] <- newDecl
+                            newDeclInfo[[nextNewDeclInfoIndex]] <- modelDeclClass$new(newNodeCode, decl$context,
+                                                                                      decl$constants, decl$sourceLineNumber, FALSE, NULL)   
                             
                             nextNewDeclInfoIndex <- nextNewDeclInfoIndex + 1     # Update for lifting other nodes, and re-adding decl at the end.
                         }
@@ -585,10 +567,9 @@ modelDefClass <- R6Class(
                 }        
                 newCode <- decl$code
                 newCode[[3]] <- newValueExpr
-                
-                newDecl <- modelDeclClass$new()
-                newDecl$setup(newCode, decl$context, decl$sourceLineNumber, decl$truncated, decl$boundExprs)
-                newDeclInfo[[nextNewDeclInfoIndex]] <- newDecl    # Regardless of anything, add decl itself in.
+                newDeclInfo[[nextNewDeclInfoIndex]] <- modelDeclClass$new(newCode, decl$context, decl$constants,
+                                                                          decl$sourceLineNumber,
+                                                                          decl$truncated, decl$boundExprs)    # Regardless of anything, add decl itself in.
             }   # closes loop over declInfo
             declInfo <<- newDeclInfo
             invisible(NULL)
@@ -615,21 +596,12 @@ modelDefClass <- R6Class(
                 }
                 newCode <- decl$code
                 newCode[[3]] <- newValueExpr
-                newDecl <- modelDeclClass$new()
-                newDecl$setup(newCode, decl$context, decl$sourceLineNumber, decl$truncated, decl$boundExprs)
-                declInfo[[iDecl]] <<- newDecl
+                declInfo[[iDecl]] <<- modelDeclClass$new(newCode, decl$context, decl$constants,
+                                                         decl$sourceLineNumber, decl$truncated, decl$boundExprs)
             }
             invisible(NULL)
         },
 
-        ## Sets field `indexVariableExprs` from contexts. 
-        addIndexVarsToDeclInfo = function() {
-            for(i in seq_along(declInfo)) {
-                declInfo[[i]]$setIndexVariableExprs(contexts[[declInfo[[i]]$contextID]]$indexVarExprs)
-            }
-            invisible(NULL)
-        },
-        
         ## Create declaration rule and declaration-specific graphRules and various kinds of node rules
         ## for each declaration.
         processDecls = function(userEnv) {
@@ -663,34 +635,30 @@ modelDefClass <- R6Class(
              invisible(NULL)
         },
 
-        genReplacedTargetValueAndParentInfo = function() {
+        genReplacedTargetValueAndParentInfo = function(userEnv) {
             nimFunNames <- getAllDistributionsInfo('namesExprList')
             for(i in seq_along(declInfo)) {
-                declInfo[[i]]$genReplacedTargetValueAndParentInfo(nimFunNames)
+                declInfo[[i]]$genReplacedTargetValueAndParentInfo(nimFunNames, userEnv)
             }
             invisible(NULL)
         },
 
         insertFullIndexingForDynamicallyIndexedParents = function() {
-            if(nimbleOptions()$allowDynamicIndexing) 
+            if(nimble::nimbleOptions()$allowDynamicIndexing) 
                 for(i in seq_along(declInfo)) {
                     declInfo[[i]]$insertFullIndexingForDynamicallyIndexedParents()
                 }
             invisible(NULL)
         },
 
-        warnRHSonlyDynamicIndexing = function() {
-            if(nimbleOptions()$allowDynamicIndexing) {
-                ind <- sapply(rhsOnlyRules, function(rule) rule$isUsedInIndex)
-                if(sum(ind)) {
-                    varRangeChars <- sapply(rhsOnlyRules[ind], function(range) range$toVarRange()$toChar())
-                    messageIfVerbose("  [Note] Detected use of non-constant indices: `", paste0(varRangeChars, collapse = "`, "),
-                                     "`.\n         For computational efficiency we recommend specifying these in `constants`.")
-                }
+        makeRules = function() {
+            for(i in seq_along(declInfo)) {
+                declInfo[[i]]$makeRHSoriginalRules()
+                declInfo[[i]]$makeGraphRules()
             }
             invisible(NULL)
         },
-
+        
         ## Create calcRules and full sets of declRules and graphRules based on all declarations.
         makeGraphInfo = function() {
             declRules <<- lapply(declInfo, function(x) x$declRule)
@@ -772,7 +740,23 @@ modelDefClass <- R6Class(
             contextClassObject <- modelContextClass$new()
             contexts[[1]] <<- contextClassObject
             invisible(NULL)
+        },
+
+        warnRHSonlyDynamicIndexing = function() {
+            ## rhsOnlyRules are nested
+            if(nimble::nimbleOptions()$allowDynamicIndexing) {
+                for(i in seq_along(rhsOnlyRules)) {
+                    ind <- sapply(rhsOnlyRules[[i]]$rules, function(rule) rule$isUsedInIndex)
+                    if(sum(ind)) {
+                        varRangeChars <- sapply(rhsOnlyRules[[i]]$rules[ind], function(range) range$toVarRange()$toChar())
+                        messageIfVerbose("  [Note] Detected use of non-constant indices: `", paste0(varRangeChars, collapse = "`, "),
+                                         "`.\n         For computational efficiency we recommend specifying these in `constants`.")
+                    }
+                }
+            }
+            invisible(NULL)
         }
+        
     )
 )
 

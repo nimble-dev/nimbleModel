@@ -13,6 +13,101 @@ is.rcf <- function(x, inputIsName = FALSE, where = -1) {
     return(FALSE)
 }
 
+nimblePreevaluationFunctionNames <- c('+',
+                                      '-',
+                                      '/',
+                                      '*',
+                                      'exp',
+                                      'log',
+                                      'pow',
+                                      '^',
+                                      '%%',
+                                      'equals',
+                                      'nimEquals',
+                                      'sqrt',
+                                      'logit',
+                                      'expit',
+                                      'ilogit',
+                                      'probit',
+                                      'iprobit',
+                                      'phi',
+                                      'cloglog',
+                                      'icloglog',
+                                      'step',
+                                      'nimStep',
+                                      'sin',
+                                      'cos',
+                                      'tan',
+                                      'asin',
+                                      'acos',
+                                      'atan',
+                                      'cosh',
+                                      'sinh',
+                                      'tanh',
+                                      'asinh',
+                                      'acosh',
+                                      'atanh',
+                                      'cube',
+                                      'abs',
+                                      'lgamma',
+                                      'loggam',
+                                      'log1p',
+                                      'lfactorial',
+                                      'besselK',
+                                      'ceiling',
+                                      'floor',
+                                      'round',
+                                      'nimRound',
+                                      'trunc',
+                                      '>',
+                                      '<',
+                                      '>=',
+                                      '<=',
+                                      '==',
+                                      '!=',
+                                      '[',
+                                      '(',
+                                      '%*%',
+                                      't',
+                                      'inprod',
+                                      'optim',
+                                      'nimOptim',
+                                      'optimDefaultControl',
+                                      'nimOptimDefaultControl',
+                                      'mean',
+                                      'sum',
+                                      'sd',
+                                      'var',
+                                      'max',
+                                      'min',
+                                      'pmin',
+                                      'pmax',
+                                      'prod',
+                                      'asRow',
+                                      'asCol',
+                                      'logdet',    
+                                      'chol',
+                                      'inverse',
+                                      'forwardsolve',
+                                      'backsolve',
+                                      'solve',
+                                      'nimEigen',
+                                      'nimSvd',  
+                                      '&',
+                                      '|',
+                                      '$',
+                                      det_distributionFuns,
+                                        # these are allowed in DSL as special
+                                        # cases even though exp_nimble and
+                                        # t_nonstandard are the canonical NIMBLE
+                                        # distribution functions
+                                      paste0(c('d','q','p'), 't'),
+                                      paste0(c('d','q','p'), 'exp'),
+                                      'nimC', 'nimRep', 'nimSeq', 'diag',
+                                      'nimNumeric','nimMatrix','nimArray',
+                                      'length'
+                                      )
+
 nimbleOrRfunctionNames <- c('[', '(',
                             '+', '-', '/', '*',
                             'exp', 'log',
@@ -242,7 +337,7 @@ getSymbolicParentNodesRecurse <- function(code,
                     if(!nimbleModelOptions('allowDynamicIndexing')) {
                         warning("It appears you are trying to use dynamic indexing (i.e., the index of a variable is determined by something that is not a constant) in: ",
                                 deparse(code),
-                                ". Please set `nimbleOptions(allowDynamicIndexing = TRUE)`.")
+                                ". Please set `nimble::nimbleOptions(allowDynamicIndexing = TRUE)`.")
                         dynamicIndexParent <- code[[2]]
                     } else {
                         if(any(sapply(contentsCode, detectNonscalarIndex)))
@@ -340,6 +435,7 @@ checkNimbleOrRfunctionNames <- function(functionName, envir) {
 }
 
 
+## CHECK: these next two fxns may not be needed anymore.
 addUnknownIndexToVarName <- function(varName,
                                      extraText) {
     return(
@@ -487,7 +583,7 @@ deparse <- function(...) {
 ## are cases where not modifying the nlines behavior may be best. 
 safeDeparse <- function(..., warn = FALSE) {
     out <- deparse(...)
-    if(TRUE) { ## TODO: nimbleOptions('useSafeDeparse')) {
+    if(TRUE) { ## TODO: nimble::nimbleOptions('useSafeDeparse')) {
         dotArgs <- list(...)
         if("nlines" %in% names(dotArgs))
             nlines <- dotArgs$nlines else nlines <- 1L

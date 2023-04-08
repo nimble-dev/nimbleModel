@@ -496,7 +496,7 @@ registerDistributions <- function(distributionsInput, userEnv = parent.frame()) 
          } else {
             nms <- names(distributionsInput)
           }
-        if(nimbleOptions('verbose'))
+        if(nimble::nimbleOptions('verbose'))
             cat("Registering the following user-provided distributions:", nms, ".\n")
         dupl <- nms[nms %in% getAllDistributionsInfo('namesVector', nimbleOnly = TRUE)]
         if(length(dupl)) {
@@ -861,6 +861,7 @@ pqDists <- BUGSdistToRdist(pqAvail, dIncluded = TRUE)
 distribution_pFuns <- gsub("^d", "p", pqDists)
 distribution_qFuns <- gsub("^d", "q", pqDists)
 
+det_distributionFuns <- c(distribution_dFuns, distribution_pFuns, distribution_qFuns)
 distributionFuns <- c(distribution_dFuns, distribution_rFuns, distribution_pFuns, distribution_qFuns)
 
 ## following sections are added for use in genCpp_operatorLists and other places.  Slightly different need is to have separate list of scalar distributions and to use Rdist names
