@@ -32,7 +32,7 @@ distributionsClass <- setRefClass(
               if(length(dupl)) {
                   for(i in seq_along(dupl)) remove(nms[dupl])
                   messageIfVerbose("   [Note] Overwriting the following user-supplied distributions: `",
-                                   paste0(nms[dupl], collapse = "`, "), "`.\n")
+                                   paste0(nms[dupl], collapse = "`, `"), "`.\n")
               }
               for(i in seq_along(dil))     distObjectsNew[[i]] <- distClass(dil[[i]], nms[i])
               names(distObjectsNew) <- nms
@@ -496,7 +496,7 @@ registerDistributions <- function(distributionsInput, userEnv = parent.frame()) 
          } else {
             nms <- names(distributionsInput)
           }
-        if(nimble::nimbleOptions('verbose'))
+        if(nimbleModelOptions('verbose'))
             cat("Registering the following user-provided distributions:", nms, ".\n")
         dupl <- nms[nms %in% getAllDistributionsInfo('namesVector', nimbleOnly = TRUE)]
         if(length(dupl)) {

@@ -184,6 +184,10 @@ indexRangeScalarClass <- R6Class(
             return(indexRangeMatrixClass$new(matrix(value)))
         },
 
+        getMinMax = function() {
+            return(c(value, value))
+        },
+
         toExpr = function() {
             return(value)
         }
@@ -228,6 +232,10 @@ indexRangeSequenceClass <- R6Class(
                 lapply(as.numeric(seq.int(start, end)), matrix)))
         },
 
+        getMinMax = function() {
+            return(c(start, end))
+        },
+
         toExpr = function() {
             return(substitute(A:B, list(A = start, B = end)))
         }
@@ -268,6 +276,10 @@ indexRangeMatrixClass <- R6Class(
                 return(.self)
             } else
                 return(indexRangeMatrixClass$new(values[indices, , drop = FALSE]))
+        },
+
+        getMinMax = function() {
+            return(t(apply(values, 2, range)))  # Each row is a dimension.
         },
 
         toMatrix = function() {

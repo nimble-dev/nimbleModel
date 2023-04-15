@@ -6,7 +6,8 @@
         ## based on new rigorous scoping behavior because eval code in env't
         ## whose parent is baseenv(). Would like parent to be nimble namespace
         ## but this has .GlobalEnv as a parent.
-        processBackwardsModelIndexRanges = TRUE 
+        processBackwardsModelIndexRanges = TRUE ,
+        verbose = TRUE
     )
 )
 

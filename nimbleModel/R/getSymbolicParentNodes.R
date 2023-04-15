@@ -337,13 +337,13 @@ getSymbolicParentNodesRecurse <- function(code,
                     if(!nimbleModelOptions('allowDynamicIndexing')) {
                         warning("It appears you are trying to use dynamic indexing (i.e., the index of a variable is determined by something that is not a constant) in: ",
                                 deparse(code),
-                                ". Please set `nimble::nimbleOptions(allowDynamicIndexing = TRUE)`.")
+                                ". Please set `nimbleModelOptions(allowDynamicIndexing = TRUE)`.")
                         dynamicIndexParent <- code[[2]]
                     } else {
                         if(any(sapply(contentsCode, detectNonscalarIndex)))
                             stop("getSymbolicParentNodesRecurse: only scalar random indices are allowed; vector random indexing found in `", deparse(code), "`.")
                         indexedVariable <- deparse(code[[2]])
-                        dynamicIndexParent <- deparse(code) # addUnknownIndexToVarNameInBracketExpr(code)
+                        dynamicIndexParent <- code # addUnknownIndexToVarNameInBracketExpr(code)
                         ## Instead of inserting NA, leave indexing
                         ## code but with indication it is a dynamic
                         ## index so we can detect that later. We need
@@ -583,7 +583,7 @@ deparse <- function(...) {
 ## are cases where not modifying the nlines behavior may be best. 
 safeDeparse <- function(..., warn = FALSE) {
     out <- deparse(...)
-    if(TRUE) { ## TODO: nimble::nimbleOptions('useSafeDeparse')) {
+    if(TRUE) { ## TODO: nimbleModelOptions('useSafeDeparse')) {
         dotArgs <- list(...)
         if("nlines" %in% names(dotArgs))
             nlines <- dotArgs$nlines else nlines <- 1L

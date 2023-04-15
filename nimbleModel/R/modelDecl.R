@@ -112,6 +112,9 @@ modelDeclClass <- R6Class(
                 targetVarExpr <<- targetExpr
                 targetNodeExpr <<- targetVarExpr
             }
+            targetVarName <<- safeDeparse(targetVarExpr, warn = TRUE)
+            targetNodeName <<- safeDeparse(targetNodeExpr, warn = TRUE)
+
         },
 
         ## Create declRule and declaration-specific graph and RHS rules.
@@ -301,7 +304,7 @@ modelDeclClass <- R6Class(
                                            nimFunNames,
                                            envir = envir)
                 )
-            if(!nimble::nimbleOptions()$allowDynamicIndexing) {
+            if(!nimbleModelOptions()$allowDynamicIndexing) {
                 rhsVars <<-
                     unlist(
                         lapply(
@@ -348,7 +351,7 @@ modelDeclClass <- R6Class(
                 stop("genReplacedTargetValueAndParentInfo: Cannot process `",
                      safeDeparse(targetExprReplaced), "`.",
                      call. = FALSE)
-            if(!nimble::nimbleOptions()$allowDynamicIndexing) {
+            if(!nimbleModelOptions()$allowDynamicIndexing) {
                 parentIndexNamePieces <<-
                     lapply(symbolicParentNodesReplaced,
                            function(x)
@@ -413,7 +416,7 @@ genReplacementsAndCodeRecurse <- function(code,
                                           replaceVariableLHS = TRUE,
                                           envir = .GlobalEnv) {
     if(is.numeric(code) || is.logical(code) ||
-       (nimble::nimbleOptions()$allowDynamicIndexing &&
+       (nimbleModelOptions()$allowDynamicIndexing &&
                        length(code) > 1 &&
                        code[[1]] == '.DYN_INDEXED')
        )
@@ -624,7 +627,7 @@ makeIndexNamePieces <- function(indexCode) {
                 indexCode
             else
                 as.character(indexCode))
-    if(nimble::nimbleOptions('allowDynamicIndexing')) {
+    if(nimbleModelOptions('allowDynamicIndexing')) {
         ## It is easiest to have indexNamePieces be NA when
         ## dynamically indexed rather than retaining the indexing
         ## code.

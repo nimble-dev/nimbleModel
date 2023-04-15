@@ -17,7 +17,7 @@ rhsRuleClass <- R6Class(
         initialize = function(expr, ID = NULL, context = modelContextClass$new(), constants = list(), isUsedInIndex = FALSE) {
             isUsedInIndex <<- isUsedInIndex
             ## Process any dynamic indexing.
-            if(nimble::nimbleOptions()$allowDynamicIndexing && usedInIndex(expr)) {
+            if(nimbleModelOptions()$allowDynamicIndexing && usedInIndex(expr)) {
                 isUsedInIndex <<- TRUE
                 expr <- stripIndexWrapping(expr)
             }

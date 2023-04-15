@@ -6,7 +6,7 @@ test_that('varRangeClass', {
     
     ## 0D
     xVar1 <- varRangeClass$new('x')
-    xVar2 <- varRangeClass$new(list(indexRange(NULL)), varName = 'x')
+    xVar2 <- varRangeClass$new(list(newIndexRange(NULL)), varName = 'x')
     expect_true(nimbleModel:::varRange_isEqual(xVar1, xVar2))
     expect_true(xVar1$isNone())
     expect_true(is(xVar1$indexRanges[[1]], "indexRangeNoneClass"))
@@ -16,7 +16,7 @@ test_that('varRangeClass', {
 
     expr <- quote(x[2])
     xVar1 <- varRangeClass$new(deparse(expr))
-    xVar2 <- varRangeClass$new(list(indexRange(expr[[3]])), varName = as.name(expr[[2]]))
+    xVar2 <- varRangeClass$new(list(newIndexRange(expr[[3]])), varName = as.name(expr[[2]]))
     expect_true(nimbleModel:::varRange_isEqual(xVar1, xVar2))
     expect_identical(sapply(xVar1$indexRanges, function(x) class(x)[1]),
                      'indexRangeScalarClass')
@@ -26,7 +26,7 @@ test_that('varRangeClass', {
     
     expr <- quote(x[2:4])
     xVar1 <- varRangeClass$new(deparse(expr))
-    xVar2 <- varRangeClass$new(list(indexRange(expr[[3]])), varName = as.name(expr[[2]]))
+    xVar2 <- varRangeClass$new(list(newIndexRange(expr[[3]])), varName = as.name(expr[[2]]))
     expect_true(nimbleModel:::varRange_isEqual(xVar1, xVar2))
     expect_identical(sapply(xVar1$indexRanges, function(x) class(x)[1]),
                      'indexRangeSequenceClass')
@@ -36,7 +36,7 @@ test_that('varRangeClass', {
     
     expr <- quote(x[c(2,3,5)])
     xVar1 <- varRangeClass$new(deparse(expr))
-    xVar2 <- varRangeClass$new(list(indexRange(expr[[3]])), varName = as.name(expr[[2]]))
+    xVar2 <- varRangeClass$new(list(newIndexRange(expr[[3]])), varName = as.name(expr[[2]]))
     expect_true(nimbleModel:::varRange_isEqual(xVar1, xVar2))
     expect_identical(sapply(xVar1$indexRanges, function(x) class(x)[1]),
                      'indexRangeMatrixClass')
@@ -54,7 +54,7 @@ test_that('varRangeClass', {
     
     expr <- quote(x[2:4, 3:5])
     xVar1 <- varRangeClass$new(deparse(expr))
-    xVar2 <- varRangeClass$new(list(indexRange(expr[[3]]), indexRange(expr[[4]])),
+    xVar2 <- varRangeClass$new(list(newIndexRange(expr[[3]]), newIndexRange(expr[[4]])),
                                varName = as.name(expr[[2]]))
     expect_true(nimbleModel:::varRange_isEqual(xVar1, xVar2))
     expect_identical(sapply(xVar1$indexRanges, function(x) class(x)[1]),
@@ -65,7 +65,7 @@ test_that('varRangeClass', {
     
     expr <- quote(x[c(2,3,5), c(1,4)])
     xVar1 <- varRangeClass$new(deparse(expr))
-    xVar2 <- varRangeClass$new(list(indexRange(expr[[3]]),indexRange(expr[[4]])),
+    xVar2 <- varRangeClass$new(list(newIndexRange(expr[[3]]),newIndexRange(expr[[4]])),
                                varName = as.name(expr[[2]]))
     expect_true(nimbleModel:::varRange_isEqual(xVar1, xVar2))
     expect_identical(sapply(xVar1$indexRanges, function(x) class(x)[1]),
@@ -74,7 +74,7 @@ test_that('varRangeClass', {
     expect_identical(xVar2$indexID_2_rangeID, 1:2)
     expect_identical(xVar2$toExpr(), expr)
 
-    xVar <- varRangeClass$new(list(indexRange(matrix(c(2,3,5,1,2,4), ncol = 2))),
+    xVar <- varRangeClass$new(list(newIndexRange(matrix(c(2,3,5,1,2,4), ncol = 2))),
                                varName = 'x')
     expect_identical(sapply(xVar$indexRanges, function(x) class(x)[1]),
                      'indexRangeMatrixClass')
@@ -86,8 +86,8 @@ test_that('varRangeClass', {
 
     ## 3D
     
-    xVar <- varRangeClass$new(list(indexRange(matrix(c(2,3,5,1,2,4), ncol = 2)),
-                                   indexRange(quote(2:3))),
+    xVar <- varRangeClass$new(list(newIndexRange(matrix(c(2,3,5,1,2,4), ncol = 2)),
+                                   newIndexRange(quote(2:3))),
                                     varName = 'x')
     expect_identical(sapply(xVar$indexRanges, function(x) class(x)[1]),
                      c('indexRangeMatrixClass', 'indexRangeSequenceClass'))
@@ -97,8 +97,8 @@ test_that('varRangeClass', {
     expr[[3]] <- expr[[4]] <- quote(...)
     expect_identical(xVar$toExpr(), expr)
 
-    xVar <- varRangeClass$new(list(indexRange(matrix(c(2,3,5,1,2,4), ncol = 2)),
-                                    indexRange(quote(2:3))), rangeToIndex = list(c(3,1),2),
+    xVar <- varRangeClass$new(list(newIndexRange(matrix(c(2,3,5,1,2,4), ncol = 2)),
+                                    newIndexRange(quote(2:3))), rangeToIndex = list(c(3,1),2),
                                     varName = 'x')
     expect_identical(sapply(xVar$indexRanges, function(x) class(x)[1]),
                      c('indexRangeMatrixClass', 'indexRangeSequenceClass'))
@@ -112,55 +112,63 @@ test_that('varRangeClass', {
 
 test_that("extractIndexRange", {
     
-lnm('refactor');library(testthat)
-
     xVar <- varRangeClass$new("x[2:4]")
 
     result <- xVar$extractIndexRange(2)
-    expect_equal(result, indexRange(NULL))
+    expect_equal(result, newIndexRange(NULL))
 
     result <- xVar$extractIndexRange(1)
-    expect_equal(result, indexRange(quote(2:4)))
+    expect_equal(result, newIndexRange(quote(2:4)))
     
     expr <- quote(x[c(2,3,5), 3:4])
     xVar <- varRangeClass$new(deparse(expr))
     result <- xVar$extractIndexRange(2)
-    expect_equal(result, indexRange(expr[[4]]))
+    expect_equal(result, newIndexRange(expr[[4]]))
     
     result <- xVar$extractIndexRange(1:2)
-    expect_equal(result, indexRange(as.matrix(expand.grid(eval(expr[[3]]), eval(expr[[4]])))))
+    expect_equal(result, newIndexRange(as.matrix(expand.grid(eval(expr[[3]]), eval(expr[[4]])))))
 
     vals <- matrix(c(2,3,5,1,2,4), ncol = 2)
-    xVar <- varRangeClass$new(list(indexRange(vals),
-                                   indexRange(quote(2:3))), rangeToIndex = list(c(3,1),2),
+    xVar <- varRangeClass$new(list(newIndexRange(vals),
+                                   newIndexRange(quote(2:3))), rangeToIndex = list(c(3,1),2),
                                    varName = 'x')
     fullResult <- xVar$extractIndexRange(1:3)
     mat <- expand.grid(seq_len(nrow(vals)), 2:3)
     mat <- cbind(vals[mat[ , 1], ], mat[ , 2])
-    fullExpected <- indexRange(mat[ , c(2,3,1)])
+    fullExpected <- newIndexRange(mat[ , c(2,3,1)])
     expect_equal(fullResult, fullExpected)
 
     ## various orderings and breaking up matrix range
     inds <- c(3,1,2)
     result <- xVar$extractIndexRange(inds)
-    expect_equal(result, indexRange(fullExpected$values[ , inds]))
+    expect_equal(result, newIndexRange(fullExpected$values[ , inds]))
 
     inds <- c(2,3)
     result <- xVar$extractIndexRange(inds)
-    expect_equal(result, indexRange(fullExpected$values[ , inds]))
+    expect_equal(result, newIndexRange(fullExpected$values[ , inds]))
 
     inds <- c(3,2)
     result <- xVar$extractIndexRange(inds)
-    expect_equal(result, indexRange(fullExpected$values[ , inds]))    
+    expect_equal(result, newIndexRange(fullExpected$values[ , inds]))    
 
     inds <- c(1,3)
     result <- xVar$extractIndexRange(inds)
-    expect_equal(result, indexRange(unique(fullExpected$values[ , inds])))
+    expect_equal(result, newIndexRange(unique(fullExpected$values[ , inds])))
 
     inds <- c(3,1)
     result <- xVar$extractIndexRange(inds)
-    expect_equal(result, indexRange(unique(fullExpected$values[ , inds])))
+    expect_equal(result, newIndexRange(unique(fullExpected$values[ , inds])))
 
 })
 
+
+test_that("getMinMax", {
+        xVar <- varRangeClass$new(list(newIndexRange(matrix(c(2,3,5,4,1,2), ncol = 2)),
+                                       newIndexRange(quote(2:7))),
+                                  rangeToIndexSlot = list(c(3,1), 2),
+                                  varName = 'x')
+        result <- xVar$getMinMax()
+        expect_identical(result,
+                         matrix(c(1,2,2,4,7,5), 3))
+})
 

@@ -146,6 +146,16 @@ varRangeClass <- R6Class(
             } else return(list(indexRange = indexRangeResult, usedRanges = usedRanges))
         },
 
+        ## TODO: perhaps return list(min = ..., max = ...)?
+        getMinMax = function() {
+            ranges <- lapply(indexRanges, function(x) x$getMinMax())
+            result <- matrix(0, length(indexSlotToRange), 2)
+            for(i in seq_along(ranges)) {
+                result[rangeToIndexSlot[[i]], ] <- ranges[[i]]
+            }
+            return(result)
+        },
+
         isEmpty = function() {
             return(any(sapply(self$indexRanges,
                               function(x) is(x, "indexRangeEmptyClass"))))

@@ -22,6 +22,8 @@ modelDefClass <- R6Class(
         latentRules = NULL,
         endRules = NULL,
         varNames = NULL,
+        varInfo = NULL,
+        logProbVarInfo = NULL,
         
         initialize = function(code = NULL, constants = list(), dimensions = list(),
                               initsList = list(), dataList = list(), userEnv = parent.frame()) {
@@ -57,17 +59,18 @@ modelDefClass <- R6Class(
             genBounds()
             genReplacedTargetValueAndParentInfo(userEnv) 
 
+            ## need declRules and rhsOriginalRules (need to move creation of that up to before here)
+            genVarInfo()
+            
             insertFullIndexingForDynamicallyIndexedParents() 
 
             makeRules()   ## this also strips out USED_IN_INDEX, which we need to do before makeGraphRules
             makeGraphInfo()
-
-            ## genVarInfo3?
             
             ## TODO: add later
             ## buildSymbolTable()                    ## 
             ## genIsDataVarInfo()                    ## only the maxs is ever used, in newModel
-            ## genVarNames()                         ## sets varNames <<- c(names(varInfo), names(logProbVarInfo))
+            genVarNames()                 
 
             warnRHSonlyDynamicIndexing()  
             invisible(NULL)
@@ -189,7 +192,7 @@ modelDefClass <- R6Class(
                                 "` used multiple times as for loop index in nested loops.",
                                 "If your model has macros or if-then-else blocks,",
                                 "you can inspect the processed model code by running ",
-                                "`nimble::nimbleOptions(stop_after_processing_model_code = TRUE)`",
+                                "`nimbleModelOptions(stop_after_processing_model_code = TRUE)`",
                                 "before calling nimbleModel.",
                             call. = FALSE)
                     }
@@ -255,8 +258,8 @@ modelDefClass <- R6Class(
                 vars <- sapply(declInfo, function(x) x$targetVarName)
                 newDataVars <- constantsNames[constantsNames %in% vars]
                 if(length(newDataVars)) {
-                    if(nimble::nimbleOptions('verbose'))
-                        message("  [Note] Using `", paste(newDataVars, collapse = '`, `'),
+                    if(nimbleModelOptions('verbose'))
+                        message("  [Note] Using `", paste0(newDataVars, collapse = '`, `'),
                                 "` (given within `constants`) as data.")
                     for(varName in newDataVars)
                         eval(substitute(rm(varName, envir = constants), list(varName = varName)))
@@ -643,8 +646,141 @@ modelDefClass <- R6Class(
             invisible(NULL)
         },
 
+        ## CHECK: need to set up `type`?
+        genVarInfo = function() {
+            ## First set up varInfo's for all LHS variables and collect anyStoch.
+            ## That allows determination of when logProb information needs to be collected
+            for(iDI in seq_along(declInfo)) {
+                decl <- declInfo[[iDI]]
+                ## TODO: what is this case and how handle with new nimbleModel?
+                ## if(decl$numUnrolledNodes == 0) next
+                ## LHS:
+                lhsVar <- decl$targetVarName
+                if(!(lhsVar %in% names(varInfo))) {
+                    nDim <- if(length(decl$targetNodeExpr) == 1) 0 else length(decl$targetNodeExpr)-2
+                    varInfo[[lhsVar]] <<- varInfoClass$new(varName = lhsVar,
+                                                           mins = rep(Inf, nDim),
+                                                           maxs = rep(0, nDim),
+                                                           nDim = nDim,
+                                                           anyStoch = FALSE)
+                }
+                varInfo[[lhsVar]]$anyStoch <<- varInfo[[lhsVar]]$anyStoch | decl$stoch
+            }
+            
+            anyStoch = unlist(lapply(varInfo, `[[`, 'anyStoch'))
+            logProbVarInfo <<- lapply(varInfo[anyStoch], function(x)
+                varInfoClass$new(varName = makeLogProbName(x$varName),
+                                 mins = rep(Inf, x$nDim),
+                                 maxs = rep(0, x$nDim),
+                                 nDim = x$nDim,
+                                 anyStoch = FALSE))
+            names(logProbVarInfo) <<- lapply(logProbVarInfo, `[[`, 'varName')
+            
+            for(iDI in seq_along(declInfo)) {
+                decl <- declInfo[[iDI]]
+                ## TODO: what is this case and how handle with new nimbleModel?
+                ## if(decl$numUnrolledNodes == 0) next  
+                ## LHS:
+                lhsVar <- decl$targetVarName
+                anyStoch <- varInfo[[lhsVar]]$anyStoch
+                if(anyStoch) lhsLogProbVar <- makeLogProbName(lhsVar)
+                if(varInfo[[lhsVar]]$nDim > 0) {
+                    newMinMax <- decl$declRule$getFullRange()$getMinMax()
+                    varInfo[[lhsVar]]$mins <- pmin(varInfo[[lhsVar]]$mins, newMinMax[ , 1])
+                    varInfo[[lhsVar]]$maxs <- pmin(varInfo[[lhsVar]]$maxs, newMinMax[ , 2])
+                    if(anyStoch) {
+                        logProbVarInfo[[lhsVar]]$mins <- pmin(logProbVarInfo[[lhsVar]]$mins, newMinMax[ , 1])
+                        logProbVarInfo[[lhsVar]]$maxs <- pmin(logProbVarInfo[[lhsVar]]$maxs, newMinMax[ , 2])
+                    }
+                }
+
+                for(iRHR in seq_along(decl$rhsOriginalRules)) {
+                    rhsRule <- decl$rhsOriginalRules[[iRHR]]
+                    rhsVar <- rhsRule$varName
+                    if(!(rhsVar %in% names(varInfo))) {
+                        if(!nimbleModelOptions()$allowDynamicIndexing) {
+                            nDim <- if(length(decl$symbolicParentNodes[[iV]]) == 1)
+                                        0
+                                    else 
+                                        length(decl$symbolicParentNodes[[iV]]) - 2
+                        } else {
+                            tmp <- stripIndexWrapping(decl$symbolicParentNodes[[iV]])
+                            nDim <- if(length(tmp) == 1) 0 else length(tmp) - 2
+                            
+                        }
+                        varInfo[[rhsVar]] <<- varInfoClass$new(varName = rhsVar,
+                                                               mins = rep(Inf, nDim),
+                                                               maxs = rep(0, nDim),
+                                                               nDim = nDim,
+                                                               anyStoch = FALSE)
+                    }
+                    if(varInfo[[rhsVar]]$nDim > 0) {
+                        ## If the index is dynamic, there is nothing to learn about index range of the variable.
+                        if(nimbleModelOptions()$allowDynamicIndexing)
+                            if(isDynamicIndex(rhsRule$code)) {
+                                varInfo[[rhsVar]]$mins[iDim] <<- min(varInfo[[rhsVar]]$mins[iDim], 1) # o.w., never changed from Inf if only on RHS and in 'dimensions' input.
+                                varInfo[[rhsVar]]$maxs[iDim] <<- max(varInfo[[rhsVar]]$maxs[iDim], 1) # o.w., can end up with (1,0) as (min,max) before 'dimensions' are used.
+                                next
+                            }
+                        ## Otherwise extend the range of known mins and maxs.
+                        newMinMax <- rhsRule$getFullRange()$getMinMax()
+                        varInfo[[rhsVar]]$mins <- pmin(varInfo[[rhsVar]]$mins, newMinMax[ , 1])
+                        varInfo[[rhsVar]]$maxs <- pmin(varInfo[[rhsVar]]$maxs, newMinMax[ , 2])
+                    }
+                }
+            }
+
+            
+            ## Now use `dimensionsList`, to check / update varInfo.
+            for(i in seq_along(dimensionsList)) {
+                dimVarName <- names(dimensionsList)[i]
+                if(!(dimVarName %in% names(varInfo))) next
+                if(length(dimensionsList[[dimVarName]]) != varInfo[[dimVarName]]$nDim)
+                    stop("genVarInfo: inconsistent dimensions for variable `", dimVarName, "`.")
+                if(any(dimensionsList[[dimVarName]] < varInfo[[dimVarName]]$maxs))
+                    stop("genVarInfo: dimensions specified are smaller than model specification for variable `", dimVarName, "`.")
+                varInfo[[dimVarName]]$maxs <<- dimensionsList[[dimVarName]]
+            }
+
+            ## Check for maxs < mins; this would generally be from a model syntax error,
+            ## e.g., for(i in 1:4) y[k] ~ dnorm(0,1);
+            ## in some cases these would be caught by the check for mins or maxs zero or less,
+            ## but this error message is more informative.
+            invalidRange <- sapply(varInfo, function(x) length(x$mins) && length(x$maxs) &&
+                                               any(x$mins > x$maxs))
+            if(any(invalidRange)) {
+                problemVars <- which(invalidRange)
+                stop("genVarInfo: indexing error found for model variable(s): `",
+                     paste0(names(varInfo)[problemVars], collapse = "`, `"),
+                           "`. Please check that variables used for indexing are properly defined in the relevant for loop(s).")
+            }
+        
+            ## Check for mins or maxs zero or less (these trigger various errors including R crashes).
+            invalidMins <- sapply(varInfo, function(x) length(x$mins) && min(x$mins) < 1)
+            invalidMaxs <- sapply(varInfo, function(x) length(x$maxs) && min(x$maxs) < 1)
+            if(any(invalidMins) || any(invalidMaxs)) {
+                problemVars <- c(which(invalidMins), which(invalidMaxs))
+                stop("genVarInfo: index value of zero or less found for model variable(s): `",
+                     paste0(names(varInfo)[problemVars], collapse = "`, `"), "`.")
+            }
+
+            ## Flag variables as being dynamically indexed.
+            if(nimbleModelOptions()$allowDynamicIndexing) {
+                nimFunNames <- getAllDistributionsInfo('namesExprList')
+                for(i in seq_along(declInfo)){
+                    for(p in seq_along(declInfo[[i]]$symbolicParentNodes)) {
+                        parentExpr <- stripIndexWrapping(declInfo[[i]]$symbolicParentNodes[[p]])
+                        dynamicIndices <- detectDynamicIndexes(parentExpr)
+                        if(sum(dynamicIndices) && !any(sapply(declInfo, function(x) identical(x$targetExpr, parentExpr)))) {
+                            varInfo[[getVarName(parentExpr)]]$anyDynamicallyIndexed <- TRUE
+                        }
+                    }
+                }
+            }
+        },
+        
         insertFullIndexingForDynamicallyIndexedParents = function() {
-            if(nimble::nimbleOptions()$allowDynamicIndexing) 
+            if(nimbleModelOptions()$allowDynamicIndexing) 
                 for(i in seq_along(declInfo)) {
                     declInfo[[i]]$insertFullIndexingForDynamicallyIndexedParents()
                 }
@@ -735,6 +871,10 @@ modelDefClass <- R6Class(
             
             invisible(NULL)
         },
+
+        genVarNames = function() {
+            varNames <<- c(names(varInfo), names(logProbVarInfo))
+        },
         
         initializeContexts = function() {
             contextClassObject <- modelContextClass$new()
@@ -744,12 +884,12 @@ modelDefClass <- R6Class(
 
         warnRHSonlyDynamicIndexing = function() {
             ## rhsOnlyRules are nested
-            if(nimble::nimbleOptions()$allowDynamicIndexing) {
+            if(nimbleModelOptions()$allowDynamicIndexing) {
                 for(i in seq_along(rhsOnlyRules)) {
                     ind <- sapply(rhsOnlyRules[[i]]$rules, function(rule) rule$isUsedInIndex)
                     if(sum(ind)) {
                         varRangeChars <- sapply(rhsOnlyRules[[i]]$rules[ind], function(range) range$toVarRange()$toChar())
-                        messageIfVerbose("  [Note] Detected use of non-constant indices: `", paste0(varRangeChars, collapse = "`, "),
+                        messageIfVerbose("  [Note] Detected use of non-constant indices: `", paste0(varRangeChars, collapse = "`, `"),
                                          "`.\n         For computational efficiency we recommend specifying these in `constants`.")
                     }
                 }
@@ -1149,3 +1289,34 @@ checkForDuplicateNodeDeclaration <- function(newNodeCode, newNodeNameExprIndexed
     }
     return(FALSE)     # A duplicate node entry was *not* found.
 }
+
+stripUnknownIndexFromVarName <- function(varName) {
+    if(length(grep("^\\..+_unknownIndex.*", varName))) {
+        tmp <- sub("_unknownIndex.*", "", varName)
+        return(sub("^\\.", "", tmp))
+    } else return(varName)
+}
+
+## A small class for information deduced about a variable in a model.
+varInfoClass <- R6Class(
+    'varInfoClass',
+    portable = FALSE,
+    public = list(
+        varName = 'ANY',
+        mins = 'ANY',
+        maxs = 'ANY',
+        nDim = 'ANY',
+        anyStoch = 'ANY',
+        anyDynamicallyIndexed = 'ANY',
+
+        initialize = function(varName, mins, maxs, nDim, anyStoch, anyDynamicallyIndexed = FALSE) {
+            varName <<- varName
+            mins <<- mins
+            maxs <<- maxs
+            nDim <<- nDim
+            anyStoch <<- anyStoch
+            anyDynamicallyIndexed <<- anyDynamicallyIndexed
+        }
+    )
+)
+    
