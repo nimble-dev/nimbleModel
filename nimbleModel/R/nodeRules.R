@@ -26,7 +26,7 @@ nodeRuleClass <- R6Class(
     public = list(
         context = NULL,
         expr = NULL,  
-        constants = NULL,
+        constants = NULL,  # in the form of a list for easier processing
         ID = character(),  # need to look up calcRules by name not position
         varName = character(),
         fullRule = NULL,

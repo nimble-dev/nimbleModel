@@ -265,6 +265,7 @@ modifyContextForFromOnlyRules <- function(LHS, RHS, context, constants) {
 
 ## Make indexRules and indexConstraints based on the indexSets.
 makeIndexRules <- function(toExpr, fromExpr, indexSets, context, constants) {
+    constantsEnv <- list2env(constants)
     if(length(toExpr) >= 3 && toExpr[[1]] == '[') {
         toIndexExprs <- as.list(toExpr[-c(1,2)])
     } else if(length(toExpr) == 1) toIndexExprs <- list() else
@@ -278,7 +279,7 @@ makeIndexRules <- function(toExpr, fromExpr, indexSets, context, constants) {
     ## Create simple constraints.
     fromConstantIndexSlots <- which(indexSets$fromIndexSlotToSet == 0)
     indexConstraints <- lapply(fromConstantIndexSlots, function(idx)
-        newIndexConstraint_fromSimple(fromIndexExprs[[idx]], idx, constants))
+        newIndexConstraint_fromSimple(fromIndexExprs[[idx]], idx, constantsEnv))
 
    
     ## `indexRules` will have one rule per set with a `NULL` for `indexRuleAny` cases
@@ -313,7 +314,7 @@ makeIndexRules <- function(toExpr, fromExpr, indexSets, context, constants) {
         if(length(thisContext) && !length(thisToIndexExprs) && length(thisFromIndexExprs)) {
             slots <- which(indexSets$fromIndexSlotToSet == iSet)
             indexConstraints[[length(indexConstraints)+1]]  <-
-                newIndexConstraint_fromUnrolling(thisFromIndexExprs, slots, thisContext, constants)
+                newIndexConstraint_fromUnrolling(thisFromIndexExprs, slots, thisContext, constantsEnv)
             next
         }
         
@@ -324,14 +325,14 @@ makeIndexRules <- function(toExpr, fromExpr, indexSets, context, constants) {
                                                toIndexExprList = thisToIndexExprs,
                                                fromIndexExprList = thisFromIndexExprs,
                                                context = thisContext,
-                                               constants = constants)
+                                               constants = constantsEnv)
         ## y[i] <- x[i] block case
         if(is.null(thisIndexRule$setupResults)) {
             thisIndexRule <- indexRuleBlockClass$new(
                                                      toIndexExprList = thisToIndexExprs,
                                                      fromIndexExprList = thisFromIndexExprs,
                                                      context = thisContext,
-                                                     constants = constants)
+                                                     constants = constantsEnv)
         }
         ## catch-all, e.g., y[i] <- x[block[i]]
         if(is.null(thisIndexRule$setupResults)) {
@@ -339,7 +340,7 @@ makeIndexRules <- function(toExpr, fromExpr, indexSets, context, constants) {
                                                          toIndexExprList = thisToIndexExprs,
                                                          fromIndexExprList = thisFromIndexExprs,
                                                          context = thisContext,
-                                                         constants = constants)
+                                                         constants = constantsEnv)
         }
         indexRules[[iSet]] <- thisIndexRule
     }
@@ -360,7 +361,7 @@ makeIndexRules <- function(toExpr, fromExpr, indexSets, context, constants) {
                                                          toIndexExprList = thisToIndexExprs,
                                                          fromIndexExprList = character(0),
                                                          context = modelContextClass$new(),
-                                                         constants = constants)
+                                                         constants = constantsEnv)
         iSet <- iSet + 1
     }
     
@@ -371,7 +372,7 @@ makeIndexRules <- function(toExpr, fromExpr, indexSets, context, constants) {
                                                      toIndexExprList = character(0),
                                                      fromIndexExprList = character(0),
                                                      context = modelContextClass$new(),
-                                                     constants = constants)
+                                                     constants = constantsEnv)
 
     return(list(
         indexRules = indexRules,

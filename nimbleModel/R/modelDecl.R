@@ -13,7 +13,6 @@ modelDeclClass <- R6Class(
         context = NULL,
         sourceLineNumber = NULL,
         code = NULL,
-        constants = NULL,
         stoch = NULL,
         distributionName = NULL,
         valueExpr = NULL,
@@ -50,13 +49,11 @@ modelDeclClass <- R6Class(
         ## TODO: does setup need `userEnv` input?
         initialize = function(code,
                          context, 
-                         constants,
                          sourceLineNumber,
                          truncated = FALSE,
                          boundExprs = NULL) {
 
             context <<- context
-            constants <<- constants
             sourceLineNumber <<- sourceLineNumber
             code <<- code
             truncated <<- truncated
@@ -118,14 +115,14 @@ modelDeclClass <- R6Class(
         },
 
         ## Create declRule and declaration-specific graph and RHS rules.
-        processDecl = function(nimFunNames, envir = .GlobalEnv) {
-            declRule <<- declRuleClass$new(code, sourceLineNumber, context, constants)
-            makeSymbolicParentNodes(nimFunNames, envir)
+        processDecl = function(nimFunNames, constants = list(), envir = .GlobalEnv) {
+            declRule <<- declRuleClass$new(code, sourceLineNumber, context)
+            makeSymbolicParentNodes(nimFunNames, constants, envir)
             invisible(NULL)
         },
 
         ## Determine RHS pieces.
-        makeSymbolicParentNodes = function(nimFunNames, envir = .GlobalEnv) {
+        makeSymbolicParentNodes = function(nimFunNames, constants = list(), envir = .GlobalEnv) {
             constantsNamesList <- lapply(names(constants), as.name)
             symbolicParentNodes <<-
                 unique(
@@ -138,7 +135,7 @@ modelDeclClass <- R6Class(
             invisible(NULL)
         },
         
-        makeGraphRules = function() {
+        makeGraphRules = function(constants = list()) {
             downstreamRules <<- vector('list',
                                       length(symbolicParentNodes))
             upstreamRules <<- vector('list',
@@ -163,7 +160,7 @@ modelDeclClass <- R6Class(
         },
 
         ## Make an initial RHSrule for each RHS piece. 
-        makeRHSoriginalRules = function() {
+        makeRHSoriginalRules = function(constants = list()) {
             rhsOriginalRules <<- vector('list',
                                       length(symbolicParentNodes))
             for(i in seq_along(symbolicParentNodes)) {
@@ -173,7 +170,7 @@ modelDeclClass <- R6Class(
             invisible(NULL)
         },
 
-        genReplacementsAndCodeReplaced = function(nimFunNames, context, envir = .GlobalEnv) {
+        genReplacementsAndCodeReplaced = function(nimFunNames, constants = list(), envir = .GlobalEnv) {
             constantsNamesList <- lapply(names(constants), as.name)
             replacementsAndCode <-
                 genReplacementsAndCodeRecurse(code,
@@ -282,7 +279,7 @@ modelDeclClass <- R6Class(
             invisible(NULL)
         },
         
-        genReplacedTargetValueAndParentInfo = function(nimFunNames, envir = .GlobalEnv) {
+        genReplacedTargetValueAndParentInfo = function(nimFunNames, constants = list(), envir = .GlobalEnv) {
             constantsNamesList <- lapply(names(constants), as.name)
 
             ## This assumes codeReplaced is there.
@@ -415,6 +412,7 @@ genReplacementsAndCodeRecurse <- function(code,
                                           nimbleFunctionNames,
                                           replaceVariableLHS = TRUE,
                                           envir = .GlobalEnv) {
+    ## CHECK: do we need this if don't have unknownIndex declarations?
     if(is.numeric(code) || is.logical(code) ||
        (nimbleModelOptions()$allowDynamicIndexing &&
                        length(code) > 1 &&
