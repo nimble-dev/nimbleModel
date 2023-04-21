@@ -125,6 +125,7 @@ expandContextAndReplacements <- function(allReplacements, allReplacementNameExpr
     ## `context` is a `modelContextClass` object
     ## `constants` is an environment with constants that can be used to permanently replace values in the `allReplacements` code
 
+    
     numContexts <- length(context$singleContexts)
     if(!numContexts) { ## No indices or known indices
         if(!length(allReplacements)) {
@@ -136,7 +137,7 @@ expandContextAndReplacements <- function(allReplacements, allReplacementNameExpr
     ## When done, we will have created a new environment and want to remove the constants from it.
     namesToRemoveAtEnd <- ls(constants)
     constantsCopy <- list2env(as.list(constants, all.names = TRUE),
-                                 parent = getDefaultNamespace())
+                              parent = getDefaultNamespace())
     ## Some replacements like min(j:100) should no longer be needed but are still there.
 
     ## If this all works, `useContext` can be removed.

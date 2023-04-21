@@ -37,7 +37,7 @@ nodeRuleClass <- R6Class(
         numInternalIndexRules = 0,
         indexSlotToSet = NULL,
 
-        initialize = function(expr, ID, context = modelContextClass$new(), constants = list()) {
+        initialize = function(expr, ID, context = modelContextClass$new(), constants = list(), isRHS = FALSE) {
             varName <<- getVarName(expr)
             ID <<- as.character(ID)
             context <<- context
@@ -46,7 +46,7 @@ nodeRuleClass <- R6Class(
             ## Note: this is awkward to go into the data structures and modify them
 
             ## We'll use graphRules, though only have a single side of declaration.
-            fullRule <<- graphRuleClass$new(expr, expr, context, constants)
+            fullRule <<- graphRuleClass$new(expr, expr, context, constants, checkVars = !isRHS)
             indexSlotToSet <<- fullRule$indexSets$toIndexSlotToSet
 
             if(length(fullRule$indexRules)) {  # if any indexing
@@ -264,9 +264,9 @@ calcRuleClass <- R6Class(
         },
 
         ## Check for only constants on RHS, in which case this is a top rule.
-        checkAllRHSconstants = function() {
+        checkAllRHSconstants = function(constants) {
             vars <- all.vars(declRule$decl[[3]])
-            if(all(vars %in% c(names(declRule$constants), declRule$context$indexVarNames)))
+            if(all(vars %in% c(names(constants), declRule$context$indexVarNames)))
                 return(TRUE) else return(FALSE)
         },
 
@@ -553,7 +553,7 @@ nodeRange_isEqual <- function(nr1, nr2) {
 ##  - a subset of the original rule and a rule created from the fracturingRange, or
 ##  - two subsets of original rule and a rule created from the fracturingRange
 ##    (when dealing with a sequence that is split)
-fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL, currentRules = NULL) {
+fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL, currentRules = NULL, constants = list()) {
      
     ## Get full nodeRange of the rule.
     LHSrange <- LHSrule$apply()
@@ -657,7 +657,7 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
             constants2 <- list(valsFrac)
             names(constants1) <- paste0(".idx", nonIdenticalIndexSlots)
             names(constants2) <- paste0(".idx", nonIdenticalIndexSlots)
-            oldConstants <- LHSrule$constants
+            oldConstants <- constants
             oldConstants[names(oldConstants) %in% names(constants1)] <- NULL
 
             resultRule <- calcRuleClass$new(LHSrule$declRule, expr, currentID + 1,
@@ -771,7 +771,7 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
         names(constants1) <- paste0(".idx", nonIdenticalIndexSlots)
         constants2 <- lapply(seq_len(ncol(mat2)), function(i) mat2[, i])
         names(constants2) <- paste0(".idx", nonIdenticalIndexSlots)
-        oldConstants <- LHSrule$constants
+        oldConstants <- constants
         oldConstants[names(oldConstants) %in% names(constants1)] <- NULL
       
         fracturingRule <- calcRuleClass$new(LHSrule$declRule, expr, currentID + 1,

@@ -7,7 +7,7 @@
 ## CHECK: Not clear we need to generate RHSonlyRules
 ## There may be some non-uniqueness if we don't combine the results of
 ## running `exclude` on a rhsRule applied to another rhsRule.
-makeRHSonlyRules <- function(rhsOriginalRules, declRules) {
+makeRHSonlyRules <- function(rhsOriginalRules, declRules, constants = list()) {
     rhsOnlyRules <- rhsOriginalRules
 
     ## Step 1: exclude elements of each rhsRule that overlap with 'earlier' rhsRules.
@@ -20,7 +20,7 @@ makeRHSonlyRules <- function(rhsOriginalRules, declRules) {
         for(i in (pos+1):mx) {
             if(rhsOnlyRules[[i]]$varName == rhsOnlyRules[[pos]]$varName) {
                 ## `exclude` gives back what needs to be kept - either the original rule or part of it.
-                result <- exclude(rhsOnlyRules[[i]], rhsOnlyRules[[pos]])
+                result <- exclude(rhsOnlyRules[[i]], rhsOnlyRules[[pos]], constants)
                 if(!is.null(result)) {  # some or no overlap
                     newRules <- c(newRules, result)
                     ## FUTURE: combine result and rhsOnlyRules[[pos]] (for sequence rules and maybe matrix rules)
@@ -39,7 +39,7 @@ makeRHSonlyRules <- function(rhsOriginalRules, declRules) {
         newRules <- NULL
         for(i in seq_along(rhsOnlyRules)) {
             if(rhsOnlyRules[[i]]$varName == declRules[[pos]]$varName) {
-                result <- exclude(rhsOnlyRules[[i]], declRules[[pos]])
+                result <- exclude(rhsOnlyRules[[i]], declRules[[pos]], constants)
                 if(!is.null(result)) {
                     newRules <- c(newRules, result)
                 }
@@ -57,7 +57,7 @@ makeRHSonlyRules <- function(rhsOriginalRules, declRules) {
 
 ## Split original calcRules based on intersections with RHS rules and with dependents of other LHS rules.
 ## This is needed so that we can determine top/end/latent nodes.
-makeCalcRules <- function(calcRules, rhsOriginalRules, graphRules, recurseFracturing = FALSE) {
+makeCalcRules <- function(calcRules, rhsOriginalRules, graphRules, recurseFracturing = FALSE, constants = list()) {
     ## Step 1: fracture LHS with rhsOriginalRules for same variable.
     ## e.g., mu[i] ~ dnorm(z[i], 1); y[2:3] <- mu[2:3]
     ## I.e., fracture based on pieces of variable potentially having different children.
@@ -80,7 +80,7 @@ makeCalcRules <- function(calcRules, rhsOriginalRules, graphRules, recurseFractu
             for(i in seq_along(calcRules)) {
                 if(!fracturedRules[i] && rhsRange$varName == calcRules[[i]]$varName) {
                     result <- fracture(calcRules[[i]], rhsRange, currentID = currentID,
-                                       parentRule = NULL, currentRules = calcRules)
+                                       parentRule = NULL, currentRules = calcRules, constants)
                     
                     ## NULL result indicates complete overlap or no overlap, so leave as is.
                     ## If fracturing has occurred, add nodes to end.
@@ -99,7 +99,7 @@ makeCalcRules <- function(calcRules, rhsOriginalRules, graphRules, recurseFractu
 
     calcRules <- calcRules[!fracturedRules]
     ## Determine rules that must be top rules as don't need to try to fracture those.
-    knownTopRules <- sapply(calcRules, function(rule) rule$checkAllRHSconstants())
+    knownTopRules <- sapply(calcRules, function(rule) rule$checkAllRHSconstants(constants))
     start <- sum(knownTopRules) + 1 # first index of rules to be fractured
     calcRules <- c(calcRules[knownTopRules], calcRules[!knownTopRules])
 
@@ -123,7 +123,7 @@ makeCalcRules <- function(calcRules, rhsOriginalRules, graphRules, recurseFractu
                 for(i in start:length(calcRules)) {
                     if(!fracturedRules[i] && deps[[d]]$varName == calcRules[[i]]$varName) {
                         result <- fracture(calcRules[[i]], deps[[d]], currentID = currentID,
-                                           parentRule = calcRules[[pos]], currentRules = calcRules)
+                                           parentRule = calcRules[[pos]], currentRules = calcRules, constants)
                         
                         ## NULL result indicates complete overlap or no overlap, so leave as is.
                         ## If fracturing has occurred, add nodes to end.

@@ -1013,6 +1013,46 @@ test_that("graph processing for block models with fixed indexing", {
     expect_identical(modelDef$calcRules[['mu']]$rules[[2]]$isOfType('top'), TRUE)
 }
 
+test_that("graph processing for dynamic indexing", {
+    code <- quote({
+        for(i in 1:10) {
+            y[i] ~ dnorm(mu[k[i]],1)
+            mu[i]~dnorm(mu0,1)
+            k[i] ~ dcat(p[1:10])
+        }})
+    
+    k=c(1:3,1:3,1:3,2)
+    
+    modelDef <- modelDefClass$new(code, inits = list(k=k))
+
+    expect_identical(length(modelDef$calcRules), 3L)
+    expect_identical(length(modelDef$calcRules[['y']]$rules), 1L)
+    expect_identical(length(modelDef$calcRules[['mu']]$rules), 1L)
+    expect_identical(length(modelDef$calcRules[['k']]$rules), 1L)
+    
+    y_id <- sapply(modelDef$calcRules[['y']]$rules, function(rule) rule$ID)
+    names(y_id) <- NULL
+    mu_id <- sapply(modelDef$calcRules[['mu']]$rules, function(rule) rule$ID)
+    names(mu_id) <- NULL
+    k_id <- sapply(modelDef$calcRules[['k']]$rules, function(rule) rule$ID)
+    names(k_id) <- NULL
+    
+    expect_identical(modelDef$calcRules[['y']]$rules[[1]]$children, numeric(0))
+    expect_identical(modelDef$calcRules[['y']]$rules[[1]]$parents, c(mu_id, k_id))
+    
+    expect_identical(modelDef$calcRules[['mu']]$rules[[1]]$children, y_id)
+    expect_identical(modelDef$calcRules[['mu']]$rules[[1]]$parents, numeric(0))
+    expect_identical(modelDef$calcRules[['k']]$rules[[1]]$children, y_id)
+    expect_identical(modelDef$calcRules[['k']]$rules[[1]]$parents, numeric(0))
+
+    expect_true(is(modelDef$downstreamRules$mu$rules[[1]]$indexRules[[1]], 'indexRuleAllClass'))
+    expect_true(is(modelDef$downstreamRules$mu$rules[[1]]$indexConstraints[[1]],
+                   'indexConstraintSequenceClass'))
+    expect_identical(modelDef$downstreamRules$mu$rules[[1]]$indexConstraints[[1]]$end,
+                     as.numeric(.Machine$integer.max))
+})
+
+
 test_that("graph processing for state-space model", {
 
     ## basic dependence within a variable

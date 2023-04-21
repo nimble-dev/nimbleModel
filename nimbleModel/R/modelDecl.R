@@ -372,7 +372,7 @@ modelDeclClass <- R6Class(
             invisible(NULL)
         },
 
-        insertFullIndexingForDynamicallyIndexedParents = function() {
+        insertFullIndexingForDynamicallyIndexedParents = function(varInfo) {
             dynamicIndexInfo <<- list()
             for(iSPN in seq_along(symbolicParentNodesReplaced)) {
                 symbolicParent <- symbolicParentNodesReplaced[[iSPN]]
@@ -388,8 +388,8 @@ modelDeclClass <- R6Class(
                     for(iIndex in which(dynamicIndices)) {
                         lower <- varInfo[[indexedVar]]$mins[iIndex]
                         upper <- varInfo[[indexedVar]]$maxs[iIndex]                        
-                        dynamicIndexInfo[[length(declInfo[[iDI]]$dynamicIndexInfo) + 1]] <<-
-                            list(indexCode = stripDynamicallyIndexedWrapping(symbolicParent[[2+iIndex]]),
+                        dynamicIndexInfo[[length(dynamicIndexInfo) + 1]] <<-
+                            list(indexCode = stripIndexWrapping(symbolicParent[[2+iIndex]]),
                                  lower = lower,
                                  upper = upper)
                         fullExtent <- substitute(A:B, list(A = lower, B = upper))

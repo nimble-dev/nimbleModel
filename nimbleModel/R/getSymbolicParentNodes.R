@@ -476,11 +476,18 @@ usedInIndex <- function(expr)
     return(length(expr) > 1 && expr[[1]] == ".USED_IN_INDEX")
 
 isDynamicIndex <- function(expr) {
+    ## TODO: see if `NA_real_` is ever inserted in new processing.
     return(
     (length(expr) > 1 && expr[[1]] == ".DYN_INDEXED") ||
     identical(expr, quote(NA_real_))
     )
 }
+
+expandDynamicIndex <- function(expr) {
+    if(length(expr) > 1 && expr[[1]] == ".DYN_INDEXED")
+        return(substitute(1:M, list(M = .Machine$integer.max))) else return(expr)
+}
+
 
 stripIndexWrapping <- function(expr) { 
     if(length(expr) == 1 || !usedInIndex(expr))
@@ -595,3 +602,4 @@ safeDeparse <- function(..., warn = FALSE) {
     }
     return(out)
 }
+

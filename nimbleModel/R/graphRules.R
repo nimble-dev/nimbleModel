@@ -52,12 +52,14 @@ graphRuleClass <- R6Class(
         toVarName = NULL,
         stoch = logical(),
         
-        initialize = function(toExpr, fromExpr, context, constants = list(), stoch = NULL) {
+        initialize = function(toExpr, fromExpr, context, constants = list(), stoch = NULL, checkVars =  TRUE) {
             stoch <<- stoch
             fromVarName <<- deparse(ifelse(length(fromExpr) > 1, fromExpr[[2]], fromExpr))
             toVarName <<- deparse(ifelse(length(toExpr) > 1, toExpr[[2]], toExpr))
 
-            checkForVars(toExpr, fromExpr, context, constants)
+            ## Don't want to check for index values if could be dynamically indexed.
+            if(checkVars || !nimbleModelOptions('allowDynamicIndexing'))
+                checkForVars(toExpr, fromExpr, context, constants)
 
             ## RHSonlyRules can involve fewer single contexts than the full declaration (e.g., mu[i] <- tau)
             ## Need to remove unneeded contexts or the indexSets won't be correct.

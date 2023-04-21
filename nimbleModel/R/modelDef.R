@@ -117,8 +117,8 @@ modelDefClass <- R6Class(
         
             ## Add dimensions of any *non-scalar* inits to dimensionsList.
             ## We'll try to be smart about this: check for duplicate names in inits and dimensions, and make sure they agree.
-            for(initsName in names(initsList)) {
-                initDim <- dimOrLength(initsList[[initsName]], scalarize = FALSE)  # Don't scalarize as want to preserve dims as provided by user, e.g. for 1x1 matrices.
+            for(initName in names(initsList)) {
+                initDim <- dimOrLength(initsList[[initName]], scalarize = FALSE)  # Don't scalarize as want to preserve dims as provided by user, e.g. for 1x1 matrices.
                 if(!(length(initDim) == 1 && initDim == 1)) {  # E.e., non-scalar inits; 1-length vectors treated as scalars and not passed along as dimension info to avoid conflicts between scalars and one-length vectors/matrices/arrays in various places.
                     if(initName %in% names(dL)) {
                         if(!identical(as.integer(dL[[initName]]), as.integer(initDim))) {
@@ -782,7 +782,7 @@ modelDefClass <- R6Class(
         insertFullIndexingForDynamicallyIndexedParents = function() {
             if(nimbleModelOptions()$allowDynamicIndexing) 
                 for(i in seq_along(declInfo)) {
-                    declInfo[[i]]$insertFullIndexingForDynamicallyIndexedParents()
+                    declInfo[[i]]$insertFullIndexingForDynamicallyIndexedParents(varInfo)
                 }
             invisible(NULL)
         },
@@ -842,7 +842,7 @@ modelDefClass <- R6Class(
             names(initialCalcRules) <- sapply(initialCalcRules, function(rule) rule$ID)
 
             allCalcRules <- makeCalcRules(initialCalcRules, rhsOriginalRules, downstreamRules,
-                                          recurseFracturing = sorted)
+                                          recurseFracturing = sorted, constants)
             sorted <- setSortIDs(allCalcRules)
             
             if(!sorted) {  ## SSM case
