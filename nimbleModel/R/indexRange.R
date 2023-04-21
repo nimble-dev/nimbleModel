@@ -282,6 +282,11 @@ indexRangeMatrixClass <- R6Class(
             return(t(apply(values, 2, range)))  # Each row is a dimension.
         },
 
+        removeDuplicates = function() {
+            if(anyDuplicated(values)) # Much faster than `unique`.
+                values <<- unique(values)
+        },
+
         toMatrix = function() {
             return(self)
         },

@@ -52,7 +52,7 @@ graphRuleClass <- R6Class(
         toVarName = NULL,
         stoch = logical(),
         
-        initialize = function(toExpr, fromExpr, context, constants = new.env(parent = getDefaultNamespace()), stoch = NULL) {
+        initialize = function(toExpr, fromExpr, context, constants = list(), stoch = NULL) {
             stoch <<- stoch
             fromVarName <<- deparse(ifelse(length(fromExpr) > 1, fromExpr[[2]], fromExpr))
             toVarName <<- deparse(ifelse(length(toExpr) > 1, toExpr[[2]], toExpr))
@@ -524,10 +524,14 @@ applyGraphRule <- function(fromVarRange, rule, varName = NULL) {
                 finalIndexRanges[[iAns]] <- ansIndexRanges[[sets]]
                 ## Simplify to a matrix indexRange.
                 if(is(finalIndexRanges[[iAns]], 'indexRangeMatrixListClass'))  
-                    finalIndexRanges[[iAns]] <-finalIndexRanges[[iAns]]$toMatrix()
+                    finalIndexRanges[[iAns]] <- finalIndexRanges[[iAns]]$toMatrix()
                 finalRangeToIndexSlot[[iAns]] <- ansRangeToIndexSlot[[sets]]
             }
-            
+
+            ## Remove duplicate rows in matrix indexRanges.
+            ## Can only do this after matrixLists have been combined.
+            if(is(finalIndexRanges[[iAns]], 'indexRangeMatrixClass'))
+                finalIndexRanges[[iAns]]$removeDuplicates()
  
             iAns <- iAns + 1
         }

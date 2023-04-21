@@ -180,7 +180,6 @@ modelDefClass <- R6Class(
                     
                     declInfo[[iAns]] <<- modelDeclClass$new(code[[i]],
                                                contexts[[contextID]],
-                                               constants,
                                                lineNumber)
                 }
                 if(code[[i]][[1]] == 'for') {
@@ -274,7 +273,7 @@ modelDefClass <- R6Class(
             for(i in seq_along(declInfo)) {
                 decl <- declInfo[[i]]
                 newCode <- addMissingIndexingRecurse(decl$code, dimensionsList)
-                declInfo[[i]] <<- modelDeclClass$new(newCode, decl$context, constants, decl$sourceLineNumber)
+                declInfo[[i]] <<- modelDeclClass$new(newCode, decl$context, decl$sourceLineNumber)
             }
             invisible(NULL)
         },
@@ -316,8 +315,9 @@ modelDefClass <- R6Class(
                     
                     decl$code <- newCode
                 }
-                declInfo[[i]] <<- modelDeclClass$new(decl$code, decl$context, constants,
-                                                     decl$sourceLineNumber, truncated, boundExprs)
+                declInfo[[i]] <<- modelDeclClass$new(decl$code, decl$context,
+                                                     decl$sourceLineNumber,
+                                                     truncated, boundExprs)
             }
             invisible(NULL)
         },
@@ -330,8 +330,9 @@ modelDefClass <- R6Class(
 
                 newCode <- decl$code
                 newCode[[3]] <- evalInDistsMatchCallEnv(decl$valueExpr)
-                declInfo[[i]] <<- modelDeclClass$new(newCode, decl$context, constants,
-                                                     decl$sourceLineNumber, decl$truncated, decl$boundExprs)
+                declInfo[[i]] <<- modelDeclClass$new(newCode, decl$context, 
+                                                     decl$sourceLineNumber,
+                                                     decl$truncated, decl$boundExprs)
             }
             invisible(NULL)
         },
@@ -398,19 +399,22 @@ modelDefClass <- R6Class(
                     newRHS[[2]] <- code[[2]]
                     newCode <- substitute(A <- B, list(A = decl$targetNodeExpr, B = newRHS))
                     
-                    newDeclInfo[[nextNewDeclInfoIndex]] <- modelDeclClass$new(code, decl$context, constants,
-                                                                              decl$sourceLineNumber, decl$truncated, decl$boundExprs)
+                    newDeclInfo[[nextNewDeclInfoIndex]] <- modelDeclClass$new(code, decl$context, 
+                                                                              decl$sourceLineNumber,
+                                                                              decl$truncated, decl$boundExprs)
                     
-                    newDeclInfo[[nextNewDeclInfoIndex + 1]] <- modelDeclClass$new(newCode, decl$context, constants,
-                                                                                  decl$sourceLineNumber, decl$truncated, decl$boundExprs)
+                    newDeclInfo[[nextNewDeclInfoIndex + 1]] <- modelDeclClass$new(newCode, decl$context, 
+                                                                                  decl$sourceLineNumber,
+                                                                                  decl$truncated, decl$boundExprs)
                     
                 } else {    # deterministic declaration
                     newRHS <- linkInverses[[linkText]]
                     newRHS[[2]] <- decl$code[[3]]
                     newLHS <- decl$targetNodeExpr
                     newCode <- substitute(A <- B, list(A = newLHS, B = newRHS))
-                    newDeclInfo[[nextNewDeclInfoIndex]] <- modelDeclClass$new(newCode, decl$context, constants,
-                                                                              decl$sourceLineNumber, decl$truncated, decl$boundExprs)
+                    newDeclInfo[[nextNewDeclInfoIndex]] <- modelDeclClass$new(newCode, decl$context, 
+                                                                              decl$sourceLineNumber,
+                                                                              decl$truncated, decl$boundExprs)
                 }
             }  # close loop over declInfo
             declInfo <<- newDeclInfo
@@ -506,16 +510,19 @@ modelDefClass <- R6Class(
                 newCode[[3]] <- newValueExpr
                 
                 ## Note at this point `boundExprs` set back to NULL as all info in `lower` , `upper` in `valueExpr`.
-                declInfo[[i]] <<- modelDeclClass$new(newCode, decl$context, constants, decl$sourceLineNumber, decl$truncated, NULL)
+                declInfo[[i]] <<- modelDeclClass$new(newCode, decl$context,
+                                                     decl$sourceLineNumber, decl$truncated, NULL)
             }  # close loop over declInfo
             invisible(NULL)
         },
 
         ## Overwrite declInfo (both LHS and RHS) with constants replaced; only replaces scalar constants.
         replaceAllConstants = function() {
+            constantsEnv <- list2env(constants)
             for(i in seq_along(declInfo)) {
-                newCode <- replaceConstantsRecurse(declInfo[[i]]$code, constants)$code
-                declInfo[[i]] <<- modelDeclClass$new(newCode, declInfo[[i]]$context, constants, declInfo[[i]]$sourceLineNumber,
+                newCode <- replaceConstantsRecurse(declInfo[[i]]$code, constantsEnv)$code
+                declInfo[[i]] <<- modelDeclClass$new(newCode, declInfo[[i]]$context,
+                                                     declInfo[[i]]$sourceLineNumber,
                                                      declInfo[[i]]$truncated, declInfo[[i]]$boundExprs)
             }
             invisible(NULL)
@@ -563,7 +570,7 @@ modelDefClass <- R6Class(
                         if(!identicalNewDecl) {
                             # Keep new declaration in the same context, regardless of presence/absence of indexing.
                             newDeclInfo[[nextNewDeclInfoIndex]] <- modelDeclClass$new(newNodeCode, decl$context,
-                                                                                      constants, decl$sourceLineNumber, FALSE, NULL)   
+                                                                                      decl$sourceLineNumber, FALSE, NULL)   
                             
                             nextNewDeclInfoIndex <- nextNewDeclInfoIndex + 1     # Update for lifting other nodes, and re-adding decl at the end.
                         }
@@ -571,7 +578,7 @@ modelDefClass <- R6Class(
                 }        
                 newCode <- decl$code
                 newCode[[3]] <- newValueExpr
-                newDeclInfo[[nextNewDeclInfoIndex]] <- modelDeclClass$new(newCode, decl$context, constants,
+                newDeclInfo[[nextNewDeclInfoIndex]] <- modelDeclClass$new(newCode, decl$context,
                                                                           decl$sourceLineNumber,
                                                                           decl$truncated, decl$boundExprs)    # Regardless of anything, add decl itself in.
             }   # closes loop over declInfo
@@ -600,8 +607,9 @@ modelDefClass <- R6Class(
                 }
                 newCode <- decl$code
                 newCode[[3]] <- newValueExpr
-                declInfo[[iDecl]] <<- modelDeclClass$new(newCode, decl$context, constants,
-                                                         decl$sourceLineNumber, decl$truncated, decl$boundExprs)
+                declInfo[[iDecl]] <<- modelDeclClass$new(newCode, decl$context,
+                                                         decl$sourceLineNumber,
+                                                         decl$truncated, decl$boundExprs)
             }
             invisible(NULL)
         },
@@ -1112,14 +1120,14 @@ addMissingIndexingRecurse <- function(code, dimensionsList) {
 ## Replace constants that involve no indexing with actual values of constants.
 ## E.g., `dnorm(x[N], sd)` , where `N` is a constant, gets `N` replaced.
 ## but `dnorm(x[blockID[i]], sd)`, where `i` is a for-loop index, does not get replaced at this step.
-replaceConstantsRecurse <- function(code, constants, do.eval = TRUE) {
+replaceConstantsRecurse <- function(code, constantsEnv, do.eval = TRUE) {
     cLength <- length(code)
     if(cLength == 1) {
         if(is.name(code)) {
-            if( any(code == names(constants))) {                
+            if( any(code == names(constantsEnv))) {                
                 if(do.eval) {
                     origCode <- code
-                    code <- as.numeric(eval(code, constants))
+                    code <- as.numeric(eval(code, constantsEnv))
                     if(length(code) != 1)
                         messageIfVerbose("   [Warning] Code `", safeDeparse(origCode), "` was given as known but evaluates to a non-scalar. This is probably not what you want.")
                 }
@@ -1137,16 +1145,16 @@ replaceConstantsRecurse <- function(code, constants, do.eval = TRUE) {
     if(is.call(code)) {
         if(code[[1]] == '[') {
             replacements <- lapply(code[-c(1,2)],
-                                   function(x) replaceConstantsRecurse(x, constants))
+                                   function(x) replaceConstantsRecurse(x, constantsEnv))
             for(i in 1:length(replacements)) {
                 code[[i+2]] <- replacements[[i]]$code
             }
             replaceables <- unlist(lapply(replacements, function(x) x$replaceable))
             allReplaceable <- all(replaceables) & do.eval
-            repVar <- replaceConstantsRecurse(code[[2]], constants, FALSE)
+            repVar <- replaceConstantsRecurse(code[[2]], constantsEnv, FALSE)
             code[[2]] <- repVar$code
             if(allReplaceable & repVar$replaceable) {
-                testcode <- as.numeric(eval(code, constants))
+                testcode <- as.numeric(eval(code, constantsEnv))
                 if(length(testcode) == 1) code <- testcode
             }
             return(list(code = code,
@@ -1155,11 +1163,11 @@ replaceConstantsRecurse <- function(code, constants, do.eval = TRUE) {
         ## A call that is not '['.
         if(cLength > 1) {
             if(as.character(code[[1]]) %in% c('<-', '~')) {
-                replacements <- c(list(replaceConstantsRecurse(code[[2]], constants, FALSE)),
-                                  lapply(code[-c(1,2)], function(x) replaceConstantsRecurse(x, constants) ) )
+                replacements <- c(list(replaceConstantsRecurse(code[[2]], constantsEnv, FALSE)),
+                                  lapply(code[-c(1,2)], function(x) replaceConstantsRecurse(x, constantsEnv) ) )
                 replacements[[1]]$replaceable <- FALSE
             } else {
-                replacements <- lapply(code[-1], function(x) replaceConstantsRecurse(x, constants))
+                replacements <- lapply(code[-1], function(x) replaceConstantsRecurse(x, constantsEnv))
             }
             for(i in 1:length(replacements)) {
                 code[[i+1]] <- replacements[[i]]$code
@@ -1172,12 +1180,12 @@ replaceConstantsRecurse <- function(code, constants, do.eval = TRUE) {
         if(allReplaceable) {
             if(!any(code[[1]] == getAllDistributionsInfo('namesVector'))) {
                 callChar <- as.character(code[[1]])
-                if(exists(callChar, constants)) {
+                if(exists(callChar, constantsEnv)) {
                     if(!is.vectorized(code)) {
                         if(is.null(neverReplaceable[[callChar]])) {
                             if(isTRUE(callChar %in% nimblePreevaluationFunctionNames)) {
-                                if(inherits(get(callChar, constants),'function')) {
-                                    testcode <- as.numeric(eval(code, constants))
+                                if(inherits(get(callChar, constantsEnv),'function')) {
+                                    testcode <- as.numeric(eval(code, constantsEnv))
                                     if(length(testcode) == 1) code <- testcode
                                 }
                             }

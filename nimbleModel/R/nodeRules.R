@@ -26,7 +26,6 @@ nodeRuleClass <- R6Class(
     public = list(
         context = NULL,
         expr = NULL,  
-        constants = NULL,  # in the form of a list for easier processing
         ID = character(),  # need to look up calcRules by name not position
         varName = character(),
         fullRule = NULL,
@@ -43,7 +42,6 @@ nodeRuleClass <- R6Class(
             ID <<- as.character(ID)
             context <<- context
             expr <<- expr
-            constants <<- constants
 
             ## Note: this is awkward to go into the data structures and modify them
 
@@ -627,8 +625,16 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
                               indexRangeSequenceClass = as.numeric(frac$start:frac$end),
                               stop("fracture: `frac` type not found.")
                               )
-            valsLHS <- valsLHS[!valsLHS %in% valsFrac]  # values for new rule are those that don't overlap
+            valsLHS <- valsLHS[!valsLHS %in% valsFrac]  # Values for new rule are those that don't overlap.
 
+            if(!length(valsLHS)) {  # No overlap (not caught previously if, e.g., LHS is seq and fracturer is matrix). 
+                if(!is.null(parentRule)) {  # If parent is not RHS.
+                    parentRule$setChildren(LHSrule$ID)
+                    LHSrule$setParents(parentRule$ID)
+                }
+                return(NULL)
+            }
+            
             ## Modify LHSrule expr and context to insert vector of relevant values for
             ## one rule with non-overlapped index values and one rule with overlapped values.
             newSingleContexts1 <- singleContexts[!focalContext]

@@ -969,6 +969,49 @@ test_that("graph processing for multiple RHS only cases", {
                      newIndexRange(quote(1:4)))
 })
 
+test_that("graph processing for block models with fixed indexing", {
+    code <- quote({
+        for(i in 1:10) {
+            y[i] ~ dnorm(mu[k[i]],1)
+            mu[i]~dnorm(mu0,1)
+        }})
+    
+    k <- c(1,3,2,1,1,2,2,3,3,1)
+
+    modelDef <- modelDefClass$new(code, constants = list(k=k))
+    
+    expect_identical(length(modelDef$calcRules), 2L)
+    expect_identical(length(modelDef$calcRules[['y']]$rules), 1L)
+    expect_identical(length(modelDef$calcRules[['mu']]$rules), 2L)
+
+    expect_equal(modelDef$calcRules[['y']]$rules[[1]]$getFullRange(),
+                     varRangeClass$new(list(newIndexRange(quote(1:10))), varName = 'y'))
+    expect_equal(modelDef$calcRules[['mu']]$rules[[1]]$getFullRange(),
+                     varRangeClass$new(list(newIndexRange(quote(1:3))), varName = 'mu'))
+    expect_equal(modelDef$calcRules[['mu']]$rules[[2]]$getFullRange(),
+                     varRangeClass$new(list(newIndexRange(quote(4:10))), varName = 'mu'))
+
+    y_ids <- sapply(modelDef$calcRules[['y']]$rules, function(rule) rule$ID)
+    names(y_ids) <- NULL
+    mu_ids <- sapply(modelDef$calcRules[['mu']]$rules, function(rule) rule$ID)
+    names(mu_ids) <- NULL
+    
+    expect_identical(modelDef$calcRules[['y']]$rules[[1]]$children, numeric(0))
+    expect_identical(modelDef$calcRules[['y']]$rules[[1]]$parents, mu_ids[1])
+    
+    expect_identical(modelDef$calcRules[['mu']]$rules[[1]]$children, y_ids[1])
+    expect_identical(modelDef$calcRules[['mu']]$rules[[1]]$parents, numeric(0))
+    expect_identical(modelDef$calcRules[['mu']]$rules[[2]]$children, numeric(0))
+    expect_identical(modelDef$calcRules[['mu']]$rules[[2]]$parents, numeric(0))
+
+    expect_identical(modelDef$calcRules[['y']]$rules[[1]]$isOfType('end'), TRUE)
+    expect_identical(modelDef$calcRules[['y']]$rules[[1]]$isOfType('top'), FALSE)
+   
+    expect_identical(modelDef$calcRules[['mu']]$rules[[1]]$isOfType('end'), FALSE)
+    expect_identical(modelDef$calcRules[['mu']]$rules[[1]]$isOfType('top'), TRUE)
+    expect_identical(modelDef$calcRules[['mu']]$rules[[2]]$isOfType('end'), TRUE)
+    expect_identical(modelDef$calcRules[['mu']]$rules[[2]]$isOfType('top'), TRUE)
+}
 
 test_that("graph processing for state-space model", {
 

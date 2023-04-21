@@ -67,7 +67,7 @@ modelDeclClass <- R6Class(
                     code[[3]][[1]] != "T" &&
                     code[[3]][[1]] != "I"))
                     stop("modelDeclClass$new: Improper syntax for stochastic declaration: `", deparse(code), "`.")
-            } else if(code[[1]] == '<<-') {
+            } else if(code[[1]] == '<-') {
                 stoch <<- FALSE
             } else 
                 stop("modelDeclClass$new: Improper syntax for declaration: `", deparse(code), "`.")
@@ -116,7 +116,7 @@ modelDeclClass <- R6Class(
 
         ## Create declRule and declaration-specific graph and RHS rules.
         processDecl = function(nimFunNames, constants = list(), envir = .GlobalEnv) {
-            declRule <<- declRuleClass$new(code, sourceLineNumber, context)
+            declRule <<- declRuleClass$new(code, sourceLineNumber, context, constants)
             makeSymbolicParentNodes(nimFunNames, constants, envir)
             invisible(NULL)
         },
