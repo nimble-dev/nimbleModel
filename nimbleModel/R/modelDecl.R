@@ -14,16 +14,14 @@ modelDeclClass <- R6Class(
         sourceLineNumber = NULL,
         code = NULL,
         stoch = NULL,
-        distributionName = NULL,
+        distributionName = NA,
         valueExpr = NULL,
         targetExpr = NULL,
         transExpr = NULL,
         indexExpr = NULL,
-        targetVarExpr = NULL,
         targetNodeExpr = NULL,
         targetVarName = NULL,
         targetNodeName = NULL,
-        indexVariableExprs = NULL,
         truncated = NULL,
         boundExprs = 'ANY',
         symbolicParentNodes = NULL,
@@ -34,15 +32,9 @@ modelDeclClass <- R6Class(
 
         replacements = NULL,
         codeReplaced = NULL,
-        symbolicParentNodesReplaced = NULL,
         logProbNodeExpr = NULL,
         replacementNameExprs = NULL,
         altParamExprs = NULL,
-        targetExprReplaced = NULL,
-        valueExprReplaced = NULL,
-        rhsVars = NULL,
-        targetIndexNamePieces = NULL,
-        parentIndexNamePieces = NULL,
         dynamicIndexInfo = NULL,
 
         ## Determines the parts of a declaration from the raw `code`.
@@ -77,8 +69,6 @@ modelDeclClass <- R6Class(
             
             if(stoch)
                 distributionName <<- as.character(valueExpr[[1]])
-            else
-                distributionName <<- NA
 
             transExpr <<- NULL
             indexExpr <<- NULL
@@ -88,7 +78,7 @@ modelDeclClass <- R6Class(
                 if(targetExpr[[1]] == '[') {
                     ## It is a subscript only.
                     indexExpr <<- as.list(targetExpr[-c(1,2)]) 
-                    targetVarExpr <<- targetExpr[[2]]
+                    targetVarExpr <- targetExpr[[2]]
                     targetNodeExpr <<- targetExpr
                 } else {
                     ## There is a transformation, possibly with a subscript.
@@ -99,14 +89,14 @@ modelDeclClass <- R6Class(
                         if(targetNodeExpr[[1]] != '[') 
                             stop("modelDeclClass$new: Invalid subscripting for `", deparse(targetExpr), "`.")
                         indexExpr <<- as.list(targetNodeExpr[-c(1,2)])
-                        targetVarExpr <<- targetNodeExpr[[2]]
+                        targetVarExpr <- targetNodeExpr[[2]]
                     } else {
-                        targetVarExpr <<- targetNodeExpr
+                        targetVarExpr <- targetNodeExpr
                     }
                 }
             } else {
                 ## No tranformation or subscript present.
-                targetVarExpr <<- targetExpr
+                targetVarExpr <- targetExpr
                 targetNodeExpr <<- targetVarExpr
             }
             targetVarName <<- safeDeparse(targetVarExpr, warn = TRUE)
@@ -279,103 +269,10 @@ modelDeclClass <- R6Class(
             invisible(NULL)
         },
         
-        genReplacedTargetValueAndParentInfo = function(nimFunNames, constants = list(), envir) {
-            constantsNamesList <- lapply(names(constants), as.name)
-
-            ## This assumes codeReplaced is there.
-            ## Generate hasBracket info.
-            targetExprReplaced <<- codeReplaced[[2]]
-            ## `targetExprReplaced` shouldn't have any link functions at this point.
-            valueExprReplaced <<- codeReplaced[[3]]
-            if(stoch)
-                distributionName <<- as.character(valueExprReplaced[[1]])
-            else
-                distributionName <<- NA
-            
-            symbolicParentNodesReplaced <<-
-                unique(
-                    getSymbolicParentNodes(valueExprReplaced,
-                                           constantsNamesList,
-                                           c(context$indexVarExprs,
-                                             replacementNameExprs),
-                                           nimFunNames,
-                                           envir = envir)
-                )
-            if(!getNimbleModelOption('allowDynamicIndexing')) {
-                rhsVars <<-
-                    unlist(
-                        lapply(
-                            symbolicParentNodesReplaced,
-                            function(x) 
-                                if(length(x) == 1)
-                                    as.character(x)
-                                else
-                                    as.character(x[[2]])
-                        )
-                    )
-            } else {
-                ## This use of symbolicParentNodes and not
-                ## symbolicParentNodesReplaced deals with fact that 'd' is
-                ## inserted in front of digits in symbolicParentNodesReplaced
-                ## in naming when we have something like k[9-i] but not in
-                ## symbolicParentNodes or in varInfo names.
-                rhsVars <<- unlist(
-                    lapply(
-                        symbolicParentNodes[seq_along(symbolicParentNodesReplaced)],
-                        function(x) {
-                            x <- stripIndexWrapping(x) ## handles dynamic index wrapping
-                            if(length(x) == 1) as.character(x) else as.character(x[[2]])
-                        })
-                )
-            }
-
-            ## Note that makeIndexNamePieces is designed only for indices that
-            ##     are a single name or number, a `:` operator with single
-            ##     name or number for each argument, or an NA (for a dynamic
-            ##     index).  This relies on the fact that any expression will
-            ##     have been lifted by this point and what it has been
-            ##     replaced with is simply a name.  This means
-            ##     makeIndexNamePieces can include a diagnostic.
-            targetIndexNamePieces <<-
-                try(
-                    if(length(targetExprReplaced) > 1)
-                        lapply(targetExprReplaced[-c(1,2)],
-                               makeIndexNamePieces)
-                    else
-                        NULL
-                )
-            if(inherits(targetIndexNamePieces, 'try-error'))
-                stop("genReplacedTargetValueAndParentInfo: Cannot process `",
-                     safeDeparse(targetExprReplaced), "`.",
-                     call. = FALSE)
-            if(!getNimbleModelOption('allowDynamicIndexing')) {
-                parentIndexNamePieces <<-
-                    lapply(symbolicParentNodesReplaced,
-                           function(x)
-                               if(length(x) > 1)
-                                   lapply(x[-c(1,2)],
-                                          makeIndexNamePieces)
-                               else
-                                   NULL
-                           )
-            } else
-                parentIndexNamePieces <<-
-                    lapply(symbolicParentNodesReplaced,
-                           function(x) {
-                               x <- stripIndexWrapping(x)
-                               if(length(x) > 1)
-                                   lapply(x[-c(1,2)], makeIndexNamePieces)
-                               else
-                                   NULL
-                           }
-                           )
-            invisible(NULL)
-        },
-
         replaceDynamicIndexingInParents = function(varInfo) {
             dynamicIndexInfo <<- list()
-            for(iSPN in seq_along(symbolicParentNodesReplaced)) {
-                symbolicParent <- symbolicParentNodesReplaced[[iSPN]]
+            for(iSPN in seq_along(symbolicParentNodes)) {
+                symbolicParent <- symbolicParentNodes[[iSPN]]
                 dynamicIndices <- detectDynamicIndices(symbolicParent)
                 ## We do not yet check bounds of inner indexes in nested indexing. To do so we need to
                 ## find dynamic indexing within a USED_IN_INDEX() and add to dynamicIndexInfo;
@@ -394,12 +291,10 @@ modelDeclClass <- R6Class(
                         fullExtent <- substitute(A:B, list(A = lower, B = upper))
                         ## Indexing code not needed anymore.
                         symbolicParentNodes[[iSPN]][[2+iIndex]] <<- fullExtent
-                        symbolicParentNodesReplaced[[iSPN]][[2+iIndex]] <<- fullExtent
                     }
                 }
             }
             symbolicParentNodes <<- lapply(symbolicParentNodes, stripIndexWrapping)
-            symbolicParentNodesReplaced <<- lapply(symbolicParentNodesReplaced, stripIndexWrapping)
             invisible(NULL)
         }
     )
@@ -517,7 +412,7 @@ genReplacementsAndCodeRecurse <- function(code,
                                     contentsCodeReplaced,
                                     contentsReplacements,
                                     contentsReplaceable,
-                                    startingAt=2))
+                                    startingAt = 2))
         isRfunction <- !any(code[[1]] == nimbleFunctionNames) # Can't use `%in%` as nFN is a list.
         isRonly <-
             isRfunction &
@@ -609,47 +504,6 @@ replaceWhatPossible <- function(code,
              replaceable = replaceable))
 }
 
-makeIndexNamePieces <- function(indexCode) {
-    indexCode <- stripParentheses(indexCode)
-    if(length(indexCode) == 1)
-        return(
-            if(is.numeric(indexCode))
-                indexCode
-            else
-                as.character(indexCode))
-    if(getNimbleModelOption('allowDynamicIndexing')) {
-        ## It is easiest to have indexNamePieces be NA when
-        ## dynamically indexed rather than retaining the indexing
-        ## code.
-        if(length(indexCode) == 2 &&
-           indexCode[[1]] == ".DYN_INDEXED")
-            return(as.numeric(NA))
-    } 
-    if(as.character(indexCode[[1]] != ':'))
-        stop("makeIndexNamePieces: cannot process the index `",
-                    safeDeparse(indexCode),
-                    "`.\nIndexing in model code requires this syntax: `(start expression):(end expression)`.",
-             call. = FALSE)
-    p1 <- indexCode[[2]]
-    p2 <- indexCode[[3]]
-    return(list(
-        if(is.numeric(p1))
-            p1
-        else
-            as.character(p1),
-        if(is.numeric(p2))
-            p2
-        else
-            as.character(p2)))
-}
-
-stripParentheses <- function(code) {
-    if(is.call(code)) {
-        if(code[[1]] == "(")
-            return(stripParentheses(code[[2]]))
-    }
-    return(code)
-}
 
 detectDynamicIndices <- function(expr) {
     if(length(expr) == 1 || expr[[1]] != "[") return(FALSE) 

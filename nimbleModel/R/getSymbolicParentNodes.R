@@ -221,9 +221,8 @@ getSymbolicParentNodesRecurse <- function(code,
         return(list(code = NULL,
                     replaceable = TRUE,
                     hasIndex = FALSE))
-    cLength <- length(code)
     ## a single name:
-    if(cLength == 1) {
+    if(length(code) == 1) {
         if(is.name(code)) {
             ## Is this for a blank index? E.g., from first index of
             ## x[, j].  At this point indices have been filled so
@@ -353,7 +352,7 @@ getSymbolicParentNodesRecurse <- function(code,
             }
         } else {
             ## a regular call like foo(x)
-            if(cLength > 1) {
+            if(length(code) > 1) {
                 if(code[[1]] == '$') ## `a$x`: recurse on `a`. 
                     contents <- lapply(code[2],
                                        function(x)
@@ -453,10 +452,7 @@ isUsedInIndex <- function(expr)
     return(length(expr) > 1 && expr[[1]] == ".USED_IN_INDEX")
 
 isDynamicIndex <- function(expr) {
-    ## TODO: see if `NA_real_` is ever inserted in new processing.
-    return((length(expr) > 1 && expr[[1]] == ".DYN_INDEXED") ||
-           identical(expr, quote(NA_real_))
-           )
+    return(length(expr) > 1 && expr[[1]] == ".DYN_INDEXED")
 }
 
 expandDynamicIndex <- function(expr) {

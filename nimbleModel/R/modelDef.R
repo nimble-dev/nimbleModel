@@ -55,13 +55,11 @@ modelDefClass <- R6Class(
 
             ## CHECK: how much of this is still needed?
             genReplacementsAndCodeReplaced(userEnv)  ## e.g. y[k[i]] -> y[k_oBi_cB]
-            genAltParams()                ## Create altParam expressions.
+            genAltParams()                ## Create altParam expressions and remove altParams from `codeReplaced`.
             genBounds()                   ## Create bound expressions.
-            ## CHECK: how much of this is still needed?
-            genReplacedTargetValueAndParentInfo(userEnv) 
 
             makeRHSoriginalRules()  
-            makeVarInfo()  ## This requires `rhsOriginalRules`.
+            makeVarInfo()  ## This requires `rhsOriginalRules` and `symbolicParentNodes`.
 
             ## Change dynamic indices to full extent.
             ## (e.g., `mu[k[i]]` to `mu[1:10]`, as needed for setting up graphRules.
@@ -648,14 +646,6 @@ modelDefClass <- R6Class(
                 declInfo[[i]]$genBounds()
              }
              invisible(NULL)
-        },
-
-        genReplacedTargetValueAndParentInfo = function(envir) {
-            nimFunNames <- getAllDistributionsInfo('namesExprList')
-            for(i in seq_along(declInfo)) {
-                declInfo[[i]]$genReplacedTargetValueAndParentInfo(nimFunNames, constants, envir)
-            }
-            invisible(NULL)
         },
 
         makeVarInfo = function() {
