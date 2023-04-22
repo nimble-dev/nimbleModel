@@ -218,7 +218,7 @@ getSymbolicParentNodesRecurse <- function(code,
     ##                indexing, not dynamic indexing
     ## - hasIndex: is there an index inside numeric constant
     if(is.numeric(code) ||
-       (nimbleModelOptions('allowDynamicIndexing') &&
+       (getNimbleModelOption('allowDynamicIndexing') &&
                        length(code) > 1 &&
                        code[[1]] == ".DYN_INDEXED")
        ) 
@@ -334,7 +334,7 @@ getSymbolicParentNodesRecurse <- function(code,
                                 replaceable = FALSE,
                                 hasIndex = any(contentsHasIndex)))
                 } else { ## Non-replaceable indices are dynamic indices.
-                    if(!nimbleModelOptions('allowDynamicIndexing')) {
+                    if(!getNimbleModelOption('allowDynamicIndexing')) {
                         warning("It appears you are trying to use dynamic indexing (i.e., the index of a variable is determined by something that is not a constant) in: ",
                                 deparse(code),
                                 ". Please set `nimbleModelOptions(allowDynamicIndexing = TRUE)`.")
@@ -596,7 +596,7 @@ safeDeparse <- function(..., warn = FALSE) {
             nlines <- dotArgs$nlines else nlines <- 1L
         if(nlines != -1L && length(out) > nlines) {
             if(warn)
-                message("  [Note] safeDeparse: truncating deparse output to ", nlines, " lines.")
+                messageIfVerbose("  [Note] safeDeparse: truncating deparse output to ", nlines, " lines.")
             out <- out[1:nlines]
         }
     }

@@ -70,7 +70,7 @@ varRangeClass <- R6Class(
                     varName <<- nameFromExpr
                 } else {
                     if(!identical(varName, nameFromExpr)) {
-                        message("varRange: `varName` does not match variable name in input expression. Using name from expression.")
+                        messageIfVerbose("  [Warning] Variable name `", varName, "` does not match variable name `", nameFromExpr, "` in input expression. Using name from expression.")
                         varName <<- nameFromExpr
                     } else varName <<- varName
                 }

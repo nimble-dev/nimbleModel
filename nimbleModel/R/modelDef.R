@@ -192,12 +192,12 @@ modelDefClass <- R6Class(
                                 "` used multiple times as for loop index in nested loops.",
                                 "If your model has macros or if-then-else blocks,",
                                 "you can inspect the processed model code by running ",
-                                "`nimbleModelOptions(stop_after_processing_model_code = TRUE)`",
+                                "`setNimbleModelOptions('stop_after_processing_model_code', TRUE)`",
                                 "before calling nimbleModel.",
                             call. = FALSE)
                     }
                     indexRangeExpr <- code[[i]][[3]] ## This is the `1:N`.
-                    if(nimbleModelOptions()$prioritizeColonLikeBUGS)
+                    if(getNimbleModelOption('prioritizeColonLikeBUGS'))
                         indexRangeExpr <- reprioritizeColonOperator(indexRangeExpr)
                     
                     nextContextID <- length(contexts) + 1
@@ -258,9 +258,8 @@ modelDefClass <- R6Class(
                 vars <- sapply(declInfo, function(x) x$targetVarName)
                 newDataVars <- constantsNames[constantsNames %in% vars]
                 if(length(newDataVars)) {
-                    if(nimbleModelOptions('verbose'))
-                        message("  [Note] Using `", paste0(newDataVars, collapse = '`, `'),
-                                "` (given within `constants`) as data.")
+                    messageIfVerbose("  [Note] Using `", paste0(newDataVars, collapse = '`, `'),
+                                     "` (given within `constants`) as data.")
                     for(varName in newDataVars)
                         constants[[varName]] <<- NULL
                 }
@@ -292,7 +291,7 @@ modelDefClass <- R6Class(
                 } else {
                     truncated <- TRUE
                     if(callName == "I")
-                        message("  [Note] Interpreting `I(,)` as truncation (equivalent to `T(,)`) in `", safeDeparse(decl$code), "`; this is only valid when ", safeDeparse(decl$targetExpr), " has no unobserved (stochastic) parents.")
+                        messageIfVerbose("  [Note] Interpreting `I(,)` as truncation (equivalent to `T(,)`) in `", safeDeparse(decl$code), "`; this is only valid when ", safeDeparse(decl$targetExpr), " has no unobserved (stochastic) parents.")
                     
                     newCode <- decl$code
                     newCode[[3]] <- decl$valueExpr[[2]]  # insert the core density function call
@@ -717,7 +716,7 @@ modelDefClass <- R6Class(
                     if(varInfo[[rhsVar]]$nDim) {
                         ## If the index is dynamic, there is nothing to learn about index range of the variable.
                         ## Replace initial (Inf, 0) placeholders as needed.
-                        if(nimbleModelOptions()$allowDynamicIndexing && isDynamicIndex(rhsRule$code)) {
+                        if(getNimbleModelOption('allowDynamicIndexing') && isDynamicIndex(rhsRule$code)) {
                             varInfo[[rhsVar]]$mins[iDim] <<- min(varInfo[[rhsVar]]$mins[iDim], 1)
                             varInfo[[rhsVar]]$maxs[iDim] <<- max(varInfo[[rhsVar]]$maxs[iDim], 1) 
                             next
@@ -765,7 +764,7 @@ modelDefClass <- R6Class(
             }
 
             ## Flag variables as being dynamically indexed.
-            if(nimbleModelOptions()$allowDynamicIndexing) {
+            if(getNimbleModelOption('allowDynamicIndexing')) {
                 nimFunNames <- getAllDistributionsInfo('namesExprList')
                 for(i in seq_along(declInfo)){
                     for(p in seq_along(declInfo[[i]]$symbolicParentNodes)) {
@@ -780,7 +779,7 @@ modelDefClass <- R6Class(
         },
         
         insertFullIndexingForDynamicallyIndexedParents = function() {
-            if(nimbleModelOptions()$allowDynamicIndexing) 
+            if(getNimbleModelOption('allowDynamicIndexing')) 
                 for(i in seq_along(declInfo)) {
                     declInfo[[i]]$insertFullIndexingForDynamicallyIndexedParents(varInfo)
                 }
@@ -890,11 +889,12 @@ modelDefClass <- R6Class(
 
         warnRHSonlyDynamicIndexing = function() {
             ## rhsOnlyRules are nested
-            if(nimbleModelOptions()$allowDynamicIndexing) {
+            if(getNimbleModelOption('allowDynamicIndexing')) {
                 for(i in seq_along(rhsOnlyRules)) {
                     ind <- sapply(rhsOnlyRules[[i]]$rules, function(rule) rule$isUsedInIndex)
                     if(sum(ind)) {
-                        varRangeChars <- sapply(rhsOnlyRules[[i]]$rules[ind], function(range) range$toVarRange()$toChar())
+                        varRangeChars <- sapply(rhsOnlyRules[[i]]$rules[ind], function(rule)
+                            rule$getFullRange()$toChar())
                         messageIfVerbose("  [Note] Detected use of non-constant indices: `", paste0(varRangeChars, collapse = "`, `"),
                                          "`.\n         For computational efficiency we recommend specifying these in `constants`.")
                     }

@@ -48,5 +48,9 @@ resetLabelFunctionCreators <- function() {
     }
 }
 
+#' @export
+messageIfVerbose <- function(...) 
+    if(getNimbleModelOption('verbose')) message(...)
+
 nimbleUniqueID <- labelFunctionCreator("UID")
 nimbleModelID  <- labelFunctionCreator("MID")

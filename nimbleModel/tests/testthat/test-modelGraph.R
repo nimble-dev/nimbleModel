@@ -1050,8 +1050,29 @@ test_that("graph processing for dynamic indexing", {
                    'indexConstraintSequenceClass'))
     expect_identical(modelDef$downstreamRules$mu$rules[[1]]$indexConstraints[[1]]$end,
                      as.numeric(.Machine$integer.max))
+
+    expect_true(modelDef$varInfo$mu$anyDynamicallyIndexed)
+    expect_false(modelDef$varInfo$y$anyDynamicallyIndexed)
+    expect_false(modelDef$varInfo$mu0$anyDynamicallyIndexed)
+    expect_false(modelDef$varInfo$k$anyDynamicallyIndexed)
+    expect_false(modelDef$varInfo$p$anyDynamicallyIndexed)
+    
 })
 
+
+test_that("graph processing for dynamic indexing", {
+    code <- quote({
+        for(i in 1:10) {
+            y[i] ~ dnorm(mu[k[i]],1)
+            mu[i]~dnorm(mu0,1)
+        }})
+    
+    k=c(1:3,1:3,1:3,2)
+    
+    expect_warning(modelDef <- modelDefClass$new(code, inits = list(k=k)),
+                   "Detected use of non-constant indices")
+
+})
 
 test_that("graph processing for state-space model", {
 

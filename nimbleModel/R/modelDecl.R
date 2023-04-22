@@ -301,7 +301,7 @@ modelDeclClass <- R6Class(
                                            nimFunNames,
                                            envir = envir)
                 )
-            if(!nimbleModelOptions()$allowDynamicIndexing) {
+            if(!getNimbleModelOption('allowDynamicIndexing')) {
                 rhsVars <<-
                     unlist(
                         lapply(
@@ -348,7 +348,7 @@ modelDeclClass <- R6Class(
                 stop("genReplacedTargetValueAndParentInfo: Cannot process `",
                      safeDeparse(targetExprReplaced), "`.",
                      call. = FALSE)
-            if(!nimbleModelOptions()$allowDynamicIndexing) {
+            if(!getNimbleModelOption('allowDynamicIndexing')) {
                 parentIndexNamePieces <<-
                     lapply(symbolicParentNodesReplaced,
                            function(x)
@@ -414,7 +414,7 @@ genReplacementsAndCodeRecurse <- function(code,
                                           envir = .GlobalEnv) {
     ## CHECK: do we need this if don't have unknownIndex declarations?
     if(is.numeric(code) || is.logical(code) ||
-       (nimbleModelOptions()$allowDynamicIndexing &&
+       (getNimbleModelOption('allowDynamicIndexing') &&
                        length(code) > 1 &&
                        code[[1]] == '.DYN_INDEXED')
        )
@@ -625,7 +625,7 @@ makeIndexNamePieces <- function(indexCode) {
                 indexCode
             else
                 as.character(indexCode))
-    if(nimbleModelOptions('allowDynamicIndexing')) {
+    if(getNimbleModelOption('allowDynamicIndexing')) {
         ## It is easiest to have indexNamePieces be NA when
         ## dynamically indexed rather than retaining the indexing
         ## code.

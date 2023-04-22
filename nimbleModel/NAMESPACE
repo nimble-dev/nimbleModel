@@ -60,3 +60,5 @@ export(`[.varStoreClass`)
 export(`[<-.varStoreClass`)
 
 export(seqNoDecrease)
+
+export(messageIfVerbose)

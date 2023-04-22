@@ -58,7 +58,7 @@ graphRuleClass <- R6Class(
             toVarName <<- deparse(ifelse(length(toExpr) > 1, toExpr[[2]], toExpr))
 
             ## Don't want to check for index values if could be dynamically indexed.
-            if(checkVars || !nimbleModelOptions('allowDynamicIndexing'))
+            if(checkVars || !getNimbleModelOption('allowDynamicIndexing'))
                 checkForVars(toExpr, fromExpr, context, constants)
 
             ## RHSonlyRules can involve fewer single contexts than the full declaration (e.g., mu[i] <- tau)

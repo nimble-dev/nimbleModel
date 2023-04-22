@@ -17,14 +17,14 @@ rhsRuleClass <- R6Class(
         initialize = function(expr, ID = NULL, context = modelContextClass$new(), constants = list(), isUsedInIndex = FALSE) {
             isUsedInIndex <<- isUsedInIndex
             ## Process any dynamic indexing.
-            if(nimbleModelOptions()$allowDynamicIndexing && usedInIndex(expr)) {
+            if(getNimbleModelOption('allowDynamicIndexing') && usedInIndex(expr)) {
                 isUsedInIndex <<- TRUE
                 expr <- stripIndexWrapping(expr)
             }
 
             ## Indices for dynamically-indexed RHS vars cannot be determined
             ## so set to some very large value (can't use `1:Inf`).
-            if(nimbleModelOptions()$allowDynamicIndexing) 
+            if(getNimbleModelOption('allowDynamicIndexing')) 
                 if(length(expr) == 3 && isDynamicIndex(expr[[3]])) {
                     expr[[3]] <- quote(1:2)
                     expr[[3]][[3]] <- .Machine$integer.max
