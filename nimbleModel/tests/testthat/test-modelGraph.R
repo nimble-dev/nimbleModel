@@ -1017,7 +1017,7 @@ test_that("graph processing for dynamic indexing", {
     code <- quote({
         for(i in 1:10) {
             y[i] ~ dnorm(mu[k[i]],1)
-            mu[i]~dnorm(mu0,1)
+            mu[i] ~ dnorm(mu0,1)
             k[i] ~ dcat(p[1:10])
         }})
     
@@ -1060,7 +1060,9 @@ test_that("graph processing for dynamic indexing", {
 })
 
 
-test_that("graph processing for dynamic indexing", {
+
+
+test_that("warning of non-constant indices without priors", {
     code <- quote({
         for(i in 1:10) {
             y[i] ~ dnorm(mu[k[i]],1)
@@ -1072,6 +1074,29 @@ test_that("graph processing for dynamic indexing", {
     expect_warning(modelDef <- modelDefClass$new(code, inits = list(k=k)),
                    "Detected use of non-constant indices")
 
+    code = quote({
+        for(i in 1:3) {
+            y[i] ~ dnorm(mu[block[k[i]]], 1)
+        }
+        for(i in 1:20)
+            mu[i] ~ dnorm(0,1)
+    })
+    
+    expect_warning(modelDef <- modelDefClass$new(code,
+                                                 constants = list(block=sample(1:20,3))),
+                   "Detected use of non-constant indices")
+
+    code = quote({
+        for(i in 1:3) {
+            y[i] ~ dnorm(mu[block[k[i]]], 1)
+        }
+        for(i in 1:20)
+            mu[i] ~ dnorm(0,1)
+    })
+    
+    expect_warning(modelDef <- modelDefClass$new(code,
+                                                 constants = list(k = 1:3)),
+                   "Detected use of non-constant indices")
 })
 
 test_that("graph processing for state-space model", {

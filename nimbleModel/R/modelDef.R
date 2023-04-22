@@ -1,8 +1,8 @@
 ## A class representing a model definition; i.e., the model declarations
 ## and graph structure of a model.
 
-## Contains sets of graphRules (upstream/parent and downstream/child) and sets of various
-## kinds of nodeRules.
+## Contains sets of graphRules (upstream/parent and downstream/child)
+## and sets of various kinds of nodeRules.
 ## {top,end,latent}Rules are just lists of pointers/shallow copies of calcRules.
 
 modelDefClass <- R6Class(
@@ -32,46 +32,48 @@ modelDefClass <- R6Class(
 
             ## Process if-then-else. 
             modelCode <<- codeProcessIfThenElse(code, constants, userEnv)  
-            modelCode <<- nimble:::nf_changeNimKeywords(modelCode)   ## was in assignBUGScode()
+            modelCode <<- nimble:::nf_changeNimKeywords(modelCode)   ## Formerly in `assignBUGScode`.
 
             ## TODO: add this later.
             ## setModelValuesClassName()
             
-            ## TODO: add comments here from BUGS_modelDef.R
             assignDimensions(dimensions, initsList, dataList)
-            initializeContexts()
-            processModelCode()
-            splitConstantsAndData()
-            addMissingIndexing()
+            initializeContexts()          ## Creates empty context.
+            processModelCode()            ## Determines declarations and contexts.
+            splitConstantsAndData()       ## Remove LHS variables from constants.
+            addMissingIndexing()          ## Fill in missing indexing using `dimensions`.
             processBoundsAndTruncation()
-            expandDistributions()
-            checkMultivarExpr()             
+            expandDistributions()         ## Handle parameterizations.
+            checkMultivarExpr()           ## Check that multivariate params are not expressions.
             processLinks()
             reparameterizeDists()
             replaceAllConstants()
             liftExpressionArgs()  
-            addRemainingDotParams()
-            replaceAllConstants()     ## CHECK: why need to do again?
-            processDecls(userEnv)            # Create declRules and set up symbolicParentNodes.
-            # .DYN and .USED should be added here
-            
+            addRemainingDotParams()       ## Add additional altParams as needed.
+            replaceAllConstants()         ## Simplify expressions introduced in `addRemainingDotParams`.
+            processDecls(userEnv)         ## Create declRules and set up symbolicParentNodes (and flags dynamic indexing).
+
+            ## CHECK: how much of this is still needed?
             genReplacementsAndCodeReplaced(userEnv)  ## e.g. y[k[i]] -> y[k_oBi_cB]
-            genAltParamsModifyCodeReplaced()
-            genBounds()
+            genAltParams()                ## Create altParam expressions.
+            genBounds()                   ## Create bound expressions.
+            ## CHECK: how much of this is still needed?
             genReplacedTargetValueAndParentInfo(userEnv) 
 
             makeRHSoriginalRules()  
-            genVarInfo()  # needs rhsOriginalRules
-            
-            insertFullIndexingForDynamicallyIndexedParents()  ## change mu[k[i]] to mu[1:10]
+            makeVarInfo()  ## This requires `rhsOriginalRules`.
 
-            makeGraphRules()   ## this also strips out USED_IN_INDEX, which we need to do before makeGraphRules
-            makeGraphInfo()
+            ## Change dynamic indices to full extent.
+            ## (e.g., `mu[k[i]]` to `mu[1:10]`, as needed for setting up graphRules.
+            replaceDynamicIndexingInParents()  
+
+            makeGraphRules()              ## Create declaration-specific graphRules.
+            makeGraphInfo()               ## Create calcRules and rhsOnlyRules.
             
             ## TODO: add later
-            ## buildSymbolTable()            
-            ## genIsDataVarInfo()                    ## only the maxs is ever used, in newModel
-            genVarNames()                 
+            ## buildSymbolTable()           
+            ## genIsDataVarInfo()                   
+            makeVarNames()                 
 
             warnRHSonlyDynamicIndexing()  
             invisible(NULL)
@@ -92,6 +94,7 @@ modelDefClass <- R6Class(
             invisible(NULL)
         },
 
+        ## Check dimensions and add into class field.
         assignDimensions = function(dimensions, initsList, dataList) {    
             ## First, add the provided dimensions.
             dL <- dimensions
@@ -153,7 +156,7 @@ modelDefClass <- R6Class(
         },
         
         ## Process raw code to determine declarations and contexts.
-        processModelCode = function(code = NULL, contextID = 1, lineNumber = 0, userEnv = .GlobalEnv) {
+        processModelCode = function(code = NULL, contextID = 1, lineNumber = 0, envir) {
             recursiveCall <- lineNumber != 0
             if(is.null(code)) {
                 code <- modelCode
@@ -169,7 +172,7 @@ modelDefClass <- R6Class(
                     if(FALSE) {
                         if(code[[i]][[1]] == '~') {
                             code[[i]] <- replaceDistributionAliases(code[[i]])
-                            checkUserDefinedDistribution(code[[i]], userEnv)
+                            checkUserDefinedDistribution(code[[i]], envir)
                         }
                         if(code[[i]][[1]] == '<-')
                             checkForDeterministicDorR(code[[i]])
@@ -228,7 +231,7 @@ modelDefClass <- R6Class(
                             recurseCode,
                             nextContextID,
                             lineNumber = lineNumber,
-                            userEnv = userEnv)
+                            envir = envir)
                 }
                 if(code[[i]][[1]] == '{') {
                     ## Recursive call to a block contained in a `{}`,
@@ -238,7 +241,7 @@ modelDefClass <- R6Class(
                             code[[i]],
                             contextID,
                             lineNumber = lineNumber,
-                            userEnv = userEnv)
+                            envir = envir)
                 }
                 if(!deparse(code[[i]][[1]]) %in% c('~', '<-', 'for', '{')) 
                     stop("modelDefClass$processModelCode: `",
@@ -249,9 +252,8 @@ modelDefClass <- R6Class(
             invisible(lineNumber)
         },
 
-        ## Remove items from `constants` that appear as variables in `declInfo`.
-        ## Also, move detected data to `data`.
-        ## This deals with case when `data` are passed in as `constants`.
+        ## Remove items from `constants` that appear as LHS variables (i.e., `data`).
+        ## CHECK: are there any cases where this deals with something other than 'data'?
         splitConstantsAndData = function() {
             constantsNames <- names(constants)
             if(length(constantsNames)) {
@@ -585,10 +587,11 @@ modelDefClass <- R6Class(
             invisible(NULL)
         },
 
+        ## Add additional altParams not already addressed in getting canonical params.
         addRemainingDotParams = function() {
             for(iDecl in seq_along(declInfo)) {
                 decl <- declInfo[[iDecl]]  
-                if(!decl$stoch)  next         # skip deterministic nodes
+                if(!decl$stoch)  next        
                 valueExpr <- decl$valueExpr   # Grab the RHS (distribution).
                 newValueExpr <- valueExpr
                 defaultParamExprs <- getDistributionInfo(as.character(newValueExpr[[1]]))$altParams
@@ -613,32 +616,33 @@ modelDefClass <- R6Class(
             invisible(NULL)
         },
 
-        ## Create declaration rule and declaration-specific graphRules and various kinds of node rules
-        ## for each declaration.
-        processDecls = function(userEnv) {
+        ## Create declaration rule and determines symbolic parent nodes (RHS pieces) for each declaration.
+        processDecls = function(envir) {
             nimFunNames <- getAllDistributionsInfo('namesExprList')
             for(i in seq_along(declInfo)) {
-                declInfo[[i]]$processDecl(nimFunNames, constants, userEnv)
+                declInfo[[i]]$processDecl(nimFunNames, constants, envir)
                 
             }
             invisible(NULL)
         },
 
-        genReplacementsAndCodeReplaced = function(userEnv) {
+        genReplacementsAndCodeReplaced = function(envir) {
             nimFunNames <- getAllDistributionsInfo('namesExprList')
             for(i in seq_along(declInfo)) {
-                declInfo[[i]]$genReplacementsAndCodeReplaced(nimFunNames, constants, userEnv)
+                declInfo[[i]]$genReplacementsAndCodeReplaced(nimFunNames, constants, envir)
             }
             invisible(NULL)
         },
 
-        genAltParamsModifyCodeReplaced = function() {
+        ## Create altParam expressions and remove altParams from `codeReplaced`.
+        genAltParams = function() {
             for(i in seq_along(declInfo)) {
-                declInfo[[i]]$genAltParamsModifyCodeReplaced()
+                declInfo[[i]]$genAltParams()
             }
             invisible(NULL)
         },
 
+        ## Create bound expressions and remove bounds from `codeReplaced`.
         genBounds = function() {
              for(i in seq_along(declInfo)) {
                 declInfo[[i]]$genBounds()
@@ -646,15 +650,15 @@ modelDefClass <- R6Class(
              invisible(NULL)
         },
 
-        genReplacedTargetValueAndParentInfo = function(userEnv) {
+        genReplacedTargetValueAndParentInfo = function(envir) {
             nimFunNames <- getAllDistributionsInfo('namesExprList')
             for(i in seq_along(declInfo)) {
-                declInfo[[i]]$genReplacedTargetValueAndParentInfo(nimFunNames, constants, userEnv)
+                declInfo[[i]]$genReplacedTargetValueAndParentInfo(nimFunNames, constants, envir)
             }
             invisible(NULL)
         },
 
-        genVarInfo = function() {
+        makeVarInfo = function() {
             ## First set up `varInfo`s for all LHS variables and collect `anyStoch`.
             ## That allows determination of when logProb information needs to be collected.
             for(iDI in seq_along(declInfo)) {
@@ -778,10 +782,10 @@ modelDefClass <- R6Class(
             }
         },
         
-        insertFullIndexingForDynamicallyIndexedParents = function() {
+        replaceDynamicIndexingInParents = function() {
             if(getNimbleModelOption('allowDynamicIndexing')) 
                 for(i in seq_along(declInfo)) {
-                    declInfo[[i]]$insertFullIndexingForDynamicallyIndexedParents(varInfo)
+                    declInfo[[i]]$replaceDynamicIndexingInParents(varInfo)
                 }
             invisible(NULL)
         },
@@ -877,7 +881,7 @@ modelDefClass <- R6Class(
             invisible(NULL)
         },
 
-        genVarNames = function() {
+        makeVarNames = function() {
             varNames <<- c(names(varInfo), names(logProbVarInfo))
         },
         
@@ -891,7 +895,7 @@ modelDefClass <- R6Class(
             ## rhsOnlyRules are nested
             if(getNimbleModelOption('allowDynamicIndexing')) {
                 for(i in seq_along(rhsOnlyRules)) {
-                    ind <- sapply(rhsOnlyRules[[i]]$rules, function(rule) rule$isUsedInIndex)
+                    ind <- sapply(rhsOnlyRules[[i]]$rules, function(rule) rule$usedInIndex)
                     if(sum(ind)) {
                         varRangeChars <- sapply(rhsOnlyRules[[i]]$rules[ind], function(rule)
                             rule$getFullRange()$toChar())
@@ -902,7 +906,6 @@ modelDefClass <- R6Class(
             }
             invisible(NULL)
         }
-        
     )
 )
 
@@ -994,8 +997,9 @@ getNodes <- function(modelDef, nodes = NULL,
 
 
 ## Evaluates `if` statements in model code to generate actual model code
-## without any `if` statements.
-codeProcessIfThenElse <- function(code, constants, envir = parent.frame()) {
+## without any `if` statements. Condition of if statement can use variables
+## from the user's environment or from constants.
+codeProcessIfThenElse <- function(code, constants, envir) {
     if(is.list(constants))
         constants <- list2env(constants, parent = envir)
     
@@ -1294,13 +1298,6 @@ checkForDuplicateNodeDeclaration <- function(newNodeCode, newNodeNameExprIndexed
         }
     }
     return(FALSE)     # A duplicate node entry was *not* found.
-}
-
-stripUnknownIndexFromVarName <- function(varName) {
-    if(length(grep("^\\..+_unknownIndex.*", varName))) {
-        tmp <- sub("_unknownIndex.*", "", varName)
-        return(sub("^\\.", "", tmp))
-    } else return(varName)
 }
 
 ## A small class for information deduced about a variable in a model.

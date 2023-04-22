@@ -168,7 +168,7 @@ getSymbolicParentNodes <- function(code,
                                    indexNames = list(),
                                    nimbleFunctionNames = list(),
                                    addDistNames = FALSE,
-                                   envir = .GlobalEnv) {
+                                   envir) {
     ## We previously propagated a contextID through this
     ## recursive system.  It was used only for a piece of the label
     ## for unknown indices and seemed unnecessary.
@@ -187,7 +187,7 @@ getSymbolicParentNodesRecurse <- function(code,
                                           constNames = list(),
                                           indexNames = list(),
                                           nimbleFunctionNames = list(),
-                                          envir = .GlobalEnv) {
+                                          envir) {
     ## This takes as input some code and returns the variables in it.
     ## It expects one line of code, not a '{' expression.
     ##
@@ -217,13 +217,7 @@ getSymbolicParentNodesRecurse <- function(code,
     ##                Something replaceable in an index represents static
     ##                indexing, not dynamic indexing
     ## - hasIndex: is there an index inside numeric constant
-    if(is.numeric(code) ||
-       (getNimbleModelOption('allowDynamicIndexing') &&
-                       length(code) > 1 &&
-                       code[[1]] == ".DYN_INDEXED")
-       ) 
-        ## Check for .DYN_INDEXED deals with processing of code when
-        ## we add unknownIndex declarations.
+    if(is.numeric(code))
         return(list(code = NULL,
                     replaceable = TRUE,
                     hasIndex = FALSE))
@@ -275,8 +269,7 @@ getSymbolicParentNodesRecurse <- function(code,
                                                          constNames,
                                                          indexNames,
                                                          nimbleFunctionNames,
-                                                         envir
-                                                         )
+                                                         envir)
                        )
             ## Unpack the codes returned from recursion.
             contentsCode <-
@@ -297,8 +290,7 @@ getSymbolicParentNodesRecurse <- function(code,
                                               constNames,
                                               indexNames,
                                               nimbleFunctionNames,
-                                              envir
-                                              )
+                                              envir)
 
             ## Error if it looks like mu[i][j] where i is a for-loop index
             if(variable$hasIndex)
@@ -434,31 +426,8 @@ checkNimbleOrRfunctionNames <- function(functionName, envir) {
     return(FALSE)
 }
 
-
-## CHECK: these next two fxns may not be needed anymore.
-addUnknownIndexToVarName <- function(varName,
-                                     extraText) {
-    return(
-        paste0(".",
-               varName,
-               "_unknownIndex_",
-               extraText)
-    )
-    ## We previously appended a contextID to this string.
-}
-
-
-addUnknownIndexToVarNameInBracketExpr <- function(parentExpr) {
-    parentExpr[[2]] <-
-        as.name(
-            addUnknownIndexToVarName(parentExpr[[2]],
-                                     Rname2CppName(parentExpr))
-        )
-    return(parentExpr)
-}
-
 detectNonscalarIndex <- function(expr) {
-    if(usedInIndex(expr) || length(expr) == 1)
+    if(isUsedInIndex(expr) || length(expr) == 1)
         return(FALSE)  ## The condition is needed because recursion
                        ## means that we might already have processed
                        ## the dynamic index.
@@ -472,15 +441,22 @@ detectNonscalarIndex <- function(expr) {
     )
 }
 
-usedInIndex <- function(expr)
+isVectorIndex <- function(expr) {
+    if(isDynamicIndex(expr))
+        return(FALSE)
+    if(length(expr) > 1 && expr[[1]] == ":")
+        return(TRUE)
+    return(FALSE)
+}
+
+isUsedInIndex <- function(expr)
     return(length(expr) > 1 && expr[[1]] == ".USED_IN_INDEX")
 
 isDynamicIndex <- function(expr) {
     ## TODO: see if `NA_real_` is ever inserted in new processing.
-    return(
-    (length(expr) > 1 && expr[[1]] == ".DYN_INDEXED") ||
-    identical(expr, quote(NA_real_))
-    )
+    return((length(expr) > 1 && expr[[1]] == ".DYN_INDEXED") ||
+           identical(expr, quote(NA_real_))
+           )
 }
 
 expandDynamicIndex <- function(expr) {
@@ -488,20 +464,11 @@ expandDynamicIndex <- function(expr) {
         return(substitute(1:M, list(M = .Machine$integer.max))) else return(expr)
 }
 
-
 stripIndexWrapping <- function(expr) { 
-    if(length(expr) == 1 || !usedInIndex(expr))
+    if(length(expr) == 1 || !isUsedInIndex(expr))
         return(expr)
     else
         return(expr[[2]])
-}
-
-isVectorIndex <- function(expr) {
-    if(isDynamicIndex(expr))
-        return(FALSE)
-    if(length(expr) > 1 && expr[[1]] == ":")
-        return(TRUE)
-    return(FALSE)
 }
 
 addIndexWrapping <- function(expr) {

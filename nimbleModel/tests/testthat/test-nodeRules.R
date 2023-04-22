@@ -1054,6 +1054,8 @@ test_that("declaration-specific calculate generated correctly", {
 })
 
 
+## TODO: need to switch calculate() tests to be on log scale
+
 test_that("calculate works correctly with univariate nodes", {
     ## This implicitly tests `indexRange$getNext()` (and `getItem`), which is not tested elsewhere.
     ## NOTE: until nodeFun generation and model building are integrated, this testing relies on

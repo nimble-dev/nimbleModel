@@ -115,14 +115,14 @@ modelDeclClass <- R6Class(
         },
 
         ## Create declRule and declaration-specific graph and RHS rules.
-        processDecl = function(nimFunNames, constants = list(), envir = .GlobalEnv) {
+        processDecl = function(nimFunNames, constants = list(), envir) {
             declRule <<- declRuleClass$new(code, sourceLineNumber, context, constants)
             makeSymbolicParentNodes(nimFunNames, constants, envir)
             invisible(NULL)
         },
 
         ## Determine RHS pieces.
-        makeSymbolicParentNodes = function(nimFunNames, constants = list(), envir = .GlobalEnv) {
+        makeSymbolicParentNodes = function(nimFunNames, constants = list(), envir) {
             constantsNamesList <- lapply(names(constants), as.name)
             symbolicParentNodes <<-
                 unique(
@@ -170,7 +170,7 @@ modelDeclClass <- R6Class(
             invisible(NULL)
         },
 
-        genReplacementsAndCodeReplaced = function(nimFunNames, constants = list(), envir = .GlobalEnv) {
+        genReplacementsAndCodeReplaced = function(nimFunNames, constants = list(), envir) {
             constantsNamesList <- lapply(names(constants), as.name)
             replacementsAndCode <-
                 genReplacementsAndCodeRecurse(code,
@@ -200,7 +200,7 @@ modelDeclClass <- R6Class(
             invisible(NULL)
         },
 
-        genAltParamsModifyCodeReplaced = function() {
+        genAltParams = function() {
             altParamExprs <<- list()
             if(stoch) {
                 RHSreplaced <- codeReplaced[[3]]
@@ -279,7 +279,7 @@ modelDeclClass <- R6Class(
             invisible(NULL)
         },
         
-        genReplacedTargetValueAndParentInfo = function(nimFunNames, constants = list(), envir = .GlobalEnv) {
+        genReplacedTargetValueAndParentInfo = function(nimFunNames, constants = list(), envir) {
             constantsNamesList <- lapply(names(constants), as.name)
 
             ## This assumes codeReplaced is there.
@@ -372,7 +372,7 @@ modelDeclClass <- R6Class(
             invisible(NULL)
         },
 
-        insertFullIndexingForDynamicallyIndexedParents = function(varInfo) {
+        replaceDynamicIndexingInParents = function(varInfo) {
             dynamicIndexInfo <<- list()
             for(iSPN in seq_along(symbolicParentNodesReplaced)) {
                 symbolicParent <- symbolicParentNodesReplaced[[iSPN]]
@@ -383,8 +383,7 @@ modelDeclClass <- R6Class(
                 ## That being said, compiled execution will error out with appropriate out of bounds error
                 ## because C++ will put an out-of-bound value in for 'k' in k[d[0]] or k[d[1342134]].
                 if(any(dynamicIndices)) {
-                    indexedVar <- stripUnknownIndexFromVarName(safeDeparse(symbolicParent[[2]], warn = TRUE))
-                    numSPNR <- length(symbolicParentNodesReplaced)
+                    indexedVar <- safeDeparse(symbolicParent[[2]])
                     for(iIndex in which(dynamicIndices)) {
                         lower <- varInfo[[indexedVar]]$mins[iIndex]
                         upper <- varInfo[[indexedVar]]$maxs[iIndex]                        
@@ -393,9 +392,9 @@ modelDeclClass <- R6Class(
                                  lower = lower,
                                  upper = upper)
                         fullExtent <- substitute(A:B, list(A = lower, B = upper))
+                        ## Indexing code not needed anymore.
                         symbolicParentNodes[[iSPN]][[2+iIndex]] <<- fullExtent
-                        if(iSPN <= numSPNR)
-                            symbolicParentNodesReplaced[[iSPN]][[2+iIndex]] <<- fullExtent
+                        symbolicParentNodesReplaced[[iSPN]][[2+iIndex]] <<- fullExtent
                     }
                 }
             }
@@ -411,15 +410,8 @@ genReplacementsAndCodeRecurse <- function(code,
                                           constAndIndexNames,
                                           nimbleFunctionNames,
                                           replaceVariableLHS = TRUE,
-                                          envir = .GlobalEnv) {
-    ## CHECK: do we need this if don't have unknownIndex declarations?
-    if(is.numeric(code) || is.logical(code) ||
-       (getNimbleModelOption('allowDynamicIndexing') &&
-                       length(code) > 1 &&
-                       code[[1]] == '.DYN_INDEXED')
-       )
-        ## Check for .DYN_INDEXED deals with processing of code when
-        ## we add unknownIndex declarations.
+                                          envir) {
+    if(is.numeric(code) || is.logical(code))
         return(list(codeReplaced = code,
                     replacements = list(),
                     replaceable = TRUE))
