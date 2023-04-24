@@ -1,6 +1,9 @@
 ## A class representing a model definition; i.e., the model declarations
 ## and graph structure of a model.
 
+## Some modelDefClass methods loop over modelDeclClass objects and create new/modified
+## ones, hence they do not call out to methods of modelDeclClass.
+
 ## Contains sets of graphRules (upstream/parent and downstream/child)
 ## and sets of various kinds of nodeRules.
 ## {top,end,latent}Rules are just lists of pointers/shallow copies of calcRules.
@@ -52,14 +55,11 @@ modelDefClass <- R6Class(
             addRemainingDotParams()       ## Add additional altParams as needed.
             replaceAllConstants()         ## Simplify expressions introduced in `addRemainingDotParams`.
             processDecls(userEnv)         ## Create declRules and set up symbolicParentNodes (and flags dynamic indexing).
-
-            ## CHECK: how much of this is still needed?
-            genReplacementsAndCodeReplaced(userEnv)  ## e.g. y[k[i]] -> y[k_oBi_cB]
-            genAltParams()                ## Create altParam expressions and remove altParams from `codeReplaced`.
-            genBounds()                   ## Create bound expressions.
+            genAltParams()                ## Create altParam expressions and create `calculateCode` (without altParams).
+            genBounds()                   ## Create bound expressions (modifying `calculateCode`).
 
             makeRHSoriginalRules()  
-            makeVarInfo()  ## This requires `rhsOriginalRules` and `symbolicParentNodes`.
+            makeVarInfo()  # This requires `rhsOriginalRules` and `symbolicParentNodes`.
 
             ## Change dynamic indices to full extent.
             ## (e.g., `mu[k[i]]` to `mu[1:10]`, as needed for setting up graphRules.
@@ -323,7 +323,8 @@ modelDefClass <- R6Class(
             invisible(NULL)
         },
 
-        ## Overwrite `declInfo` for stochastic nodes: calls `match.call()` on RHS (using `distributions$matchCallEnv`).
+        ## Overwrite `declInfo` for stochastic nodes:
+        ## calls `match.call()` on RHS (using `distributions$matchCallEnv`)
         expandDistributions = function() {
             for(i in seq_along(declInfo)) {
                 decl <- declInfo[[i]]
@@ -339,44 +340,10 @@ modelDefClass <- R6Class(
         },
 
         ## Check that multivariate params are not expressions.
-        ## TODO: move decl-spec processing into modelDecl method and have checkForExpr as global function
         checkMultivarExpr = function() {
-            if(getNimbleOption('disallow_multivariate_argument_expressions')) {
-                checkForExpr <- function(expr) {
-                    if(length(expr) == 1 && (inherits(expr, "name") || inherits(expr, "numeric")))
-                        return(FALSE)
-                    if(!safeDeparse(expr[[1]], warn = TRUE) == '[')
-                        return(TRUE)
-                    ## Recurse only on the first argument of the `[`.
-                    return(checkForExpr(expr[[2]]))
-                    ## Previously we recursed more completely.  Now we stop because expressions
-                    ## inside `[` are allowed.
-                    ## if(!deparse(expr[[1]]) %in% c('[', ':')) return(TRUE)
-                    ## for(i in 2:length(expr)) 
-                    ##     if(checkForExpr(expr[[i]])) output <- TRUE
-                    ## return(output)
-                }
-
+            if(getNimbleModelOption('disallowMultivariateArgumentExpressions')) {
                 for(i in seq_along(declInfo)) {
-                    decl <- declInfo[[i]]
-                    if(!decl$stoch) next
-                    dist <- decl$distributionName
-                    types <- nimble:::distributions[[dist]]$types
-                    if(is.null(types)) next
-                    if(length(decl$valueExpr) > 1) {
-                        for(k in 2:length(decl$valueExpr)) {
-                            paramName <- names(decl$valueExpr)[k]
-                            nDim <- types[[paramName]][['nDim']]
-                            if(is.numeric(nDim))
-                                if(nDim == 0) next
-                            if(checkForExpr(decl$valueExpr[[k]])) {
-                                ## Draft gentler warning for possible future adoption: message("Warning about parameter '", names(decl$valueExpr)[k], "' of distribution '", dist, "': This multivariate parameter is provided as an expression.  If this is a costly calculation, try making it a separate model declaration for it to improve efficiency.")
-                                stop("checkMultivarExpr: Error with parameter `", names(decl$valueExpr)[k], "` of distribution `",
-                                     dist, "`: multivariate parameters cannot be expressions; please define the expression as a separate deterministic variable\n",
-                                     "and use that variable as the parameter.")  
-                            }
-                        }
-                    }
+                    declInfo[[i]]$checkMultivarExpr()
                 }
             }
             invisible(NULL)
@@ -626,15 +593,7 @@ modelDefClass <- R6Class(
             invisible(NULL)
         },
 
-        genReplacementsAndCodeReplaced = function(envir) {
-            nimFunNames <- getAllDistributionsInfo('namesExprList')
-            for(i in seq_along(declInfo)) {
-                declInfo[[i]]$genReplacementsAndCodeReplaced(nimFunNames, constants, envir)
-            }
-            invisible(NULL)
-        },
-
-        ## Create altParam expressions and remove altParams from `codeReplaced`.
+        ## Create altParam expressions and `canonicalCode` (without altParams, used in `calculate`).
         genAltParams = function() {
             for(i in seq_along(declInfo)) {
                 declInfo[[i]]$genAltParams()
@@ -642,7 +601,7 @@ modelDefClass <- R6Class(
             invisible(NULL)
         },
 
-        ## Create bound expressions and remove bounds from `codeReplaced`.
+        ## Create bound expressions and remove bounds from `calculateCode`.
         genBounds = function() {
              for(i in seq_along(declInfo)) {
                 declInfo[[i]]$genBounds()
@@ -650,6 +609,7 @@ modelDefClass <- R6Class(
              invisible(NULL)
         },
 
+        ## Create an object storing variable-level information, including variable extents (mins, maxs).
         makeVarInfo = function() {
             ## First set up `varInfo`s for all LHS variables and collect `anyStoch`.
             ## That allows determination of when logProb information needs to be collected.
@@ -895,6 +855,13 @@ modelDefClass <- R6Class(
                                          "`.\n         For computational efficiency we recommend specifying these in `constants`.")
                     }
                 }
+            }
+            invisible(NULL)
+        },
+
+        buildFunctions = function() {
+            for(i in seq_along(declInfo)) {
+                declInfo[[i]]$buildFunctions()
             }
             invisible(NULL)
         }

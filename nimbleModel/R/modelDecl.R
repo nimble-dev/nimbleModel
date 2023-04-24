@@ -1,19 +1,16 @@
 ## Class for representing information in a single declaration, replacing `BUGSdeclClass`.
-## Class methods process the code to generate information about the node dependencies
+## Class methods process the code to generate information about the dependencies
 ## set up by the declaration.
-
-## There are components not yet moved from current nimble that will be needed.
-## They will probably not include the various *replacements*.
 
 modelDeclClass <- R6Class(
     classname = 'modelDeclClass',
     portable = FALSE,
     public = list(
-        context = NULL,
+        context = NULL,           # FUTURE: might just use declRule$context
         sourceLineNumber = NULL,
+        stoch = FALSE,            # Need this here as used before declRule created.
         code = NULL,
-        stoch = NULL,
-        distributionName = NA,
+        distributionName = NA,  
         valueExpr = NULL,
         targetExpr = NULL,
         transExpr = NULL,
@@ -28,11 +25,7 @@ modelDeclClass <- R6Class(
         upstreamRules = NULL,
         rhsOriginalRules = NULL,
         declRule = NULL,
-
-        replacements = NULL,
-        codeReplaced = NULL,
-        logProbNodeExpr = NULL,
-        replacementNameExprs = NULL,
+        calculateCode = NULL,
         altParamExprs = NULL,
         dynamicIndexInfo = NULL,
 
@@ -50,24 +43,21 @@ modelDeclClass <- R6Class(
             boundExprs <<- boundExprs
             
             if(code[[1]] == '~') {
-                stoch <<- TRUE
                 ## Check for legitimate densities or for truncation.
                 if(!is.call(code[[3]]) ||
                    (!any(code[[3]][[1]] == getAllDistributionsInfo('namesVector')) &&
                     code[[3]][[1]] != "T" &&
                     code[[3]][[1]] != "I"))
                     stop("modelDeclClass$new: Improper syntax for stochastic declaration: `", deparse(code), "`.")
-            } else if(code[[1]] == '<-') {
-                stoch <<- FALSE
-            } else 
+                distributionName <<- as.character(valueExpr[[1]])
+                stoch <<- TRUE
+            } else if(code[[1]] != '<-') {
                 stop("modelDeclClass$new: Improper syntax for declaration: `", deparse(code), "`.")
+            }                 
             
             targetExpr <<- code[[2]]
             valueExpr <<- code[[3]]
             
-            if(stoch)
-                distributionName <<- as.character(valueExpr[[1]])
-
             transExpr <<- NULL
             indexExpr <<- NULL
             
@@ -102,14 +92,35 @@ modelDeclClass <- R6Class(
 
         },
 
-        ## Create declRule and declaration-specific graph and RHS rules.
+        ## We require multivariate parameters be defined as separate deterministic variables.
+        checkMultivarExpr = function() {
+            if(!stoch) next
+            types <- nimble:::distributions[[distributionName]]$types
+            if(is.null(types)) next
+            if(length(valueExpr) > 1) {
+                for(k in 2:length(valueExpr)) {
+                    paramName <- names(valueExpr)[k]
+                    nDim <- types[[paramName]][['nDim']]
+                    if(is.numeric(nDim) && nDim == 0) next
+                    if(checkForExpr(valueExpr[[k]])) {
+                        ## Draft gentler warning for possible future adoption: message("Warning about parameter '", names(decl$valueExpr)[k], "' of distribution '", dist, "': This multivariate parameter is provided as an expression. If this is a costly calculation, try making it a separate model declaration for it to improve efficiency.")
+                        stop("checkMultivarExpr: Error with parameter `", names(valueExpr)[k], "` of distribution `",
+                             distributionName, "`: multivariate parameters cannot be expressions; please define the expression as a separate deterministic variable\n",
+                             "and use that variable as the parameter.")  
+                    }
+                }
+            }
+            invisible(NULL)
+        },
+
+        ## Create declRule and symbolic RHS pieces.
         processDecl = function(nimFunNames, constants = list(), envir) {
             declRule <<- declRuleClass$new(code, sourceLineNumber, context, constants)
             makeSymbolicParentNodes(nimFunNames, constants, envir)
             invisible(NULL)
         },
 
-        ## Determine RHS pieces.
+        ## Determine RHS pieces (expressed symbolically), needed to create graphRules.
         makeSymbolicParentNodes = function(nimFunNames, constants = list(), envir) {
             constantsNamesList <- lapply(names(constants), as.name)
             symbolicParentNodes <<-
@@ -122,7 +133,8 @@ modelDeclClass <- R6Class(
                 )
             invisible(NULL)
         },
-        
+
+        ## Make all up- and down-stream rules for the declaration.
         makeGraphRules = function(constants = list()) {
             downstreamRules <<- vector('list',
                                       length(symbolicParentNodes))
@@ -135,13 +147,13 @@ modelDeclClass <- R6Class(
                                        symbolicParentNodes[[i]],
                                        context,
                                        constants,
-                                       stoch)
+                                       declRule$stoch)
                 upstreamRules[[i]] <<-
                     graphRuleClass$new(symbolicParentNodes[[i]],
                                        targetNodeExpr,
                                        context,
                                        constants,
-                                       stoch)
+                                       declRule$stoch)
                 
             }
             invisible(NULL)
@@ -157,48 +169,19 @@ modelDeclClass <- R6Class(
             }
             invisible(NULL)
         },
-
-        genReplacementsAndCodeReplaced = function(nimFunNames, constants = list(), envir) {
-            constantsNamesList <- lapply(names(constants), as.name)
-            replacementsAndCode <-
-                genReplacementsAndCodeRecurse(code,
-                                              c(constantsNamesList, context$indexVarExprs),
-                                              nimFunNames,
-                                              envir = envir)
-            replacements <<- replacementsAndCode$replacements
-            codeReplaced <<- replacementsAndCode$codeReplaced
-            
-            if(stoch) {
-                logProbNodeExprAndReplacements <-
-                    genLogProbNodeExprAndReplacements(code,
-                                                      codeReplaced,
-                                                      context$indexVarExprs)
-                logProbNodeExpr <<-
-                    logProbNodeExprAndReplacements$logProbNodeExpr
-                replacements <<-
-                    c(replacements, logProbNodeExprAndReplacements$replacements)
-            } else logProbNodeExpr <<- NULL
-            
-            replacementNameExprs <<-
-                lapply(
-                    as.list(names(replacements)),
-                    as.name
-                )
-            names(replacementNameExprs) <<- names(replacements)
-            invisible(NULL)
-        },
-
+        
         genAltParams = function() {
             altParamExprs <<- list()
-            if(stoch) {
-                RHSreplaced <- codeReplaced[[3]]
+            calculateCode <<- code
+            if(declRule$stoch) {
+                RHSreplaced <- code[[3]]
                 if(length(RHSreplaced) > 1) { # It actually has argument(s).
                     paramNamesAll <- names(RHSreplaced)
                     paramNamesDotLogicalVector <- grepl('^\\.', paramNamesAll)
                     ## Remove all parameters whose name begins with '.' from distribution.
                     RHSreplacedWithoutDotParams <-
                         RHSreplaced[!paramNamesDotLogicalVector]
-                    codeReplaced[[3]] <<- RHSreplacedWithoutDotParams
+                    calculateCode[[3]] <<- RHSreplacedWithoutDotParams
                     
                     altParamExprs <<-
                         if(any(paramNamesDotLogicalVector))
@@ -215,8 +198,8 @@ modelDeclClass <- R6Class(
 
         genBounds = function() {
             boundExprs <<- list()
-            if(stoch) {
-                RHSreplaced <- codeReplaced[[3]]
+            if(declRule$stoch) {
+                RHSreplaced <- calculateCode[[3]]
                 if(length(RHSreplaced) > 1) { # It actually has argument(s).
                     boundNames <- c('lower_', 'upper_')
                     boundExprs <<- as.list(RHSreplaced[boundNames])
@@ -235,24 +218,24 @@ modelDeclClass <- R6Class(
                            is.numeric(boundExprs$upper_) &&
                            boundExprs$lower_ >= boundExprs$upper_)
                             messageIfVerbose("   [Warning] Lower bound is greater than or equal to upper bound in `",
-                                           safeDeparse(codeReplaced),
+                                           safeDeparse(calculateCode),
                                            "`. Proceeding anyway, but this is likely to cause numerical issues.")
                         if(is.numeric(boundExprs$lower_) &&
                            is.numeric(distRange$lower) &&
-                           boundExprs$lower_ < distRange$lower) {
+                           boundExprs$lower_< distRange$lower) {
                             messageIfVerbose("   [Warning] Lower bound is less than or equal to distribution lower bound in `",
-                                           safeDeparse(codeReplaced), "`. Ignoring user-provided lower bound.")
+                                           safeDeparse(calculateCode), "`. Ignoring user-provided lower bound.")
                             boundExprs$lower_ <<- distRange$lower
-                            codeReplaced[[3]]['lower_'] <<- distRange$lower
+                            calculateCode[[3]]['lower_'] <<- distRange$lower
                         }
                         if(is.numeric(boundExprs$upper_) &&
                            is.numeric(distRange$upper) &&
                            boundExprs$upper_ > distRange$upper) {
                             messageIfVerbose("   [Warning] Upper bound is greater than or equal to distribution upper bound in `",
-                                           safeDeparse(codeReplaced),
+                                           safeDeparse(calculateCode),
                                            "`. Ignoring user-provided upper bound.")
                             boundExprs$upper_ <<- distRange$upper
-                            codeReplaced[[3]]['upper_'] <<- distRange$upper
+                            calculateCode[[3]]['upper_'] <<- distRange$upper
                         }
                     }
                     if(!truncated) {
@@ -260,13 +243,15 @@ modelDeclClass <- R6Class(
                             names(RHSreplaced) %in% boundNames
                         RHSreplacedWithoutBounds <-
                             RHSreplaced[!boundNamesLogicalVector]    
-                        codeReplaced[[3]] <<- RHSreplacedWithoutBounds
+                        calculateCode[[3]] <<- RHSreplacedWithoutBounds
                     }
                 }
             }
             invisible(NULL)
         },
-        
+
+        ## Replace dynamic indexing with maximal range (e.g., mu[k[i]] -> mu[1:2147483647],
+        ## needed for setting up graphRules, as we don't dynamically determine dependents.
         replaceDynamicIndexingInParents = function(varInfo) {
             dynamicIndexInfo <<- list()
             for(iSPN in seq_along(symbolicParentNodes)) {
@@ -294,219 +279,62 @@ modelDeclClass <- R6Class(
             }
             symbolicParentNodes <<- lapply(symbolicParentNodes, stripIndexWrapping)
             invisible(NULL)
-        }
+        },
+
+        buildFunctions = function() {
+            declRule$buildFunctions(calculateCode, genLogProbExpr())
+        },
+
+        genLogProbExpr = function() {
+            if(declRule$stoch) {
+                logProbExpr <- code[[2]]   
+                if(length(logProbExpr) == 1) {  # No indexing present.
+                    logProbExpr <- as.name(makeLogProbName(logProbExpr))   
+                } else {  # Indexing on the LHS node.
+                    if(logProbExpr[[1]] != '[')
+                        stop("genLogProbExpr: cannot process `", safeDeparse(logProbExpr), "`.")
+                    logProbExpr[[2]] <- as.name(makeLogProbName(logProbExpr[[2]]))
+                    
+                    origLHS <- code[[2]]
+                    for(i in seq_along(origLHS)[-c(1,2)]) {
+                        origIndex <- origLHS[[i]]
+                        if(is.vectorized(origIndex)) {
+                            if(any(context$indexVarExprs %in% all.vars(origIndex))) {
+                                ## The vectorized index includes a loop-indexing
+                                ## variable; we will create a replacement, for a
+                                ## memberData, for each nodeFunction.
+                                replacementExpr <- substitute(min(EXPR),
+                                                              list(EXPR = origIndex))
+                                replacementName <- Rname2CppName(replacementExpr,
+                                                                 colonsOK = TRUE)
+                                logProbExpr[[i]] <- as.name(replacementName)
+                            } else {
+                                ## No loop-indexing variables present in the vectorized index.
+                                ## This index should be constant for all instances of this nodeFunction.
+                                logProbIndexValue <- as.numeric(min(eval(origIndex)))   # eval() should not cause an error...
+                                logProbExpr[[i]] <- logProbIndexValue
+                            }
+                        }
+                    }
+                }
+            } else logProbExpr <- NULL
+            return(logProbExpr)
+        }        
     )
 )
 
 
-genReplacementsAndCodeRecurse <- function(code,
-                                          constAndIndexNames,
-                                          nimbleFunctionNames,
-                                          replaceVariableLHS = TRUE,
-                                          envir) {
-    if(is.numeric(code) || is.logical(code))
-        return(list(codeReplaced = code,
-                    replacements = list(),
-                    replaceable = TRUE))
-    cLength <- length(code)
-    if(cLength == 1) {
-        if(is.name(code)) {
-            if(any(code == constAndIndexNames) && replaceVariableLHS)
-                return(replaceAllCodeSuccessfully(code))
-            else
-                return(list(codeReplaced = code,
-                            replacements = list(),
-                            replaceable = FALSE))
-        }
-    }
-    if(is.call(code)) {
-        indexingBracket <- code[[1]] == '['
-        if(indexingBracket) {
-            if(is.call(code[[2]])) indexingBracket <- FALSE # Treat like any other function.
-        }
-        if(indexingBracket) { 
-            contents <- lapply(
-                code[-c(1,2)],
-                function(x)
-                    genReplacementsAndCodeRecurse(x,
-                                                  constAndIndexNames,
-                                                  nimbleFunctionNames,
-                                                  envir = envir)
-            )
-            contentsCodeReplaced <-
-                lapply(contents, function(x) x$codeReplaced)
-            contentsReplacements <-
-                lapply(contents, function(x) x$replacements)
-            contentsReplaceable  <-
-                unlist(lapply(contents, function(x) x$replaceable))
-            if(replaceVariableLHS) {
-                variable <-
-                    genReplacementsAndCodeRecurse(code[[2]],
-                                                  constAndIndexNames,
-                                                  nimbleFunctionNames,
-                                                  envir = envir)
-                if(variable$replaceable &&
-                   all(contentsReplaceable))
-                    return(replaceAllCodeSuccessfully(code))
-            }
-            return(replaceWhatPossible(code,
-                                    contentsCodeReplaced,
-                                    contentsReplacements,
-                                    contentsReplaceable,
-                                    startingAt=3))
-        }
-        assignment <- any(code[[1]] == c('<-', '~'))
-        if(cLength > 1) {
-            if(assignment) {
-                ## In an assignment, prevent the outermost variable on the LHS from being replaced.
-                contents <-
-                    c(
-                        list(
-                            genReplacementsAndCodeRecurse(code[[2]],
-                                                          constAndIndexNames,
-                                                          nimbleFunctionNames,
-                                                          replaceVariableLHS = FALSE,
-                                                          envir = envir)
-                        ),
-                        lapply(
-                            code[-c(1,2)],
-                            function(x)
-                                genReplacementsAndCodeRecurse(x,
-                                                              constAndIndexNames,
-                                                              nimbleFunctionNames,
-                                                              envir = envir))
-                    )
-            } else {
-                contents <- lapply(
-                    code[-1],
-                    function(x)
-                        genReplacementsAndCodeRecurse(x,
-                                                      constAndIndexNames,
-                                                      nimbleFunctionNames,
-                                                      envir = envir))
-            }
-            contentsCodeReplaced <- lapply(contents, function(x) x$codeReplaced)
-            contentsReplacements <- lapply(contents, function(x) x$replacements)
-            contentsReplaceable  <- unlist(lapply(contents, function(x) x$replaceable))
-            allContentsReplaceable <- all(contentsReplaceable)
-        } else {
-            contentsCodeReplaced <- list()
-            contentsReplacements <- list()
-            contentsReplaceable  <- list()
-            allContentsReplaceable <- TRUE
-        }
-        ## Do not replace if it is from a special set of functions
-        ## or is a nimbleFunction (specifically, an RCfunction).
-        funName <- safeDeparse(code[[1]], warn = TRUE)
-        if(funName %in% functionsThatShouldNeverBeReplacedInModelCode ||
-                (exists(funName, envir) && is.rcf(get(funName, envir))))             
-           return(replaceWhatPossible(code,
-                                    contentsCodeReplaced,
-                                    contentsReplacements,
-                                    contentsReplaceable,
-                                    startingAt=2))
-        if(assignment)
-            return(replaceWhatPossible(code,
-                                    contentsCodeReplaced,
-                                    contentsReplacements,
-                                    contentsReplaceable,
-                                    startingAt = 2))
-        isRfunction <- !any(code[[1]] == nimbleFunctionNames) # Can't use `%in%` as nFN is a list.
-        isRonly <-
-            isRfunction &
-            !checkNimbleOrRfunctionNames(safeDeparse(code[[1]], warn = TRUE), envir)
-        if(safeDeparse(code[[1]], warn = TRUE) == '$')
-            isRonly <- FALSE
-        if(isRonly & !allContentsReplaceable)
-            stop("genReplacementsAndCodeRecurse: R function `", 
-                        safeDeparse(code[[1]]),
-                        "` has non-replaceable node values as arguments. It must be a nimbleFunction.")
-        if(isRfunction & allContentsReplaceable)
-            return(replaceAllCodeSuccessfully(code))
-        return(replaceWhatPossible(code,
-                                contentsCodeReplaced,
-                                contentsReplacements,
-                                contentsReplaceable,
-                                startingAt = 2))
-    }
-    stop("genReplacementsAndCodeRecurse: processing error in `", safeDeparse(code), "`.")
+checkForExpr <- function(expr) {
+    if(length(expr) == 1 && (inherits(expr, "name") || inherits(expr, "numeric")))
+        return(FALSE)
+    if(!safeDeparse(expr[[1]], warn = TRUE) == '[')
+        return(TRUE)
+    ## Recurse only on the first argument of the `[`.
+    return(checkForExpr(expr[[2]]))
+    ## Previously we recursed more completely.  Now we stop because expressions
+    ## inside `[` are allowed.
+    ## if(!deparse(expr[[1]]) %in% c('[', ':')) return(TRUE)
+    ## for(i in 2:length(expr)) 
+    ##     if(checkForExpr(expr[[i]])) output <- TRUE
+    ## return(output)
 }
-
-genLogProbNodeExprAndReplacements <- function(code,
-                                              codeReplaced,
-                                              indexVarExprs) {
-    logProbNodeExpr <- codeReplaced[[2]]   # Initially, use the replaced version.
-    replacements <- list()
-    
-    if(length(logProbNodeExpr) == 1) {  # No indexing present.
-        logProbNodeExpr <- as.name(makeLogProbName(logProbNodeExpr))   
-    } else {  # Indexing on the LHS node.
-        if(logProbNodeExpr[[1]] != '[')
-            stop("genLogProbNodeExprAndReplacements: cannot process `", safeDeparse(logProbNodeExpr), "`.")
-        logProbNodeExpr[[2]] <- as.name(makeLogProbName(logProbNodeExpr[[2]]))
-        
-        origLHS <- code[[2]]
-        for(i in seq_along(origLHS)[-c(1,2)]) {
-            origIndex <- origLHS[[i]]
-            if(is.vectorized(origIndex)) {
-                if(any(indexVarExprs %in% all.vars(origIndex))) {
-                    ## The vectorized index includes a loop-indexing
-                    ## variable; we will create a replacement, for a
-                    ## memberData, for each nodeFunction.
-                    replacementExpr <- substitute(min(EXPR),
-                                                  list(EXPR=origIndex))
-                    replacementName <- Rname2CppName(replacementExpr,
-                                                     colonsOK = TRUE)
-                    logProbNodeExpr[[i]] <- as.name(replacementName)
-                    replacements[[replacementName]] <- replacementExpr
-                } else {
-                    ## No loop-indexing variables present in the vectorized index.
-                    ## his index should be constant for all instances of this nodeFunction.
-                    logProbIndexValue <- as.numeric(min(eval(origIndex)))   # eval() should not cause an error...
-                    logProbNodeExpr[[i]] <- logProbIndexValue
-                }
-            }
-        }
-    }
-    return(list(logProbNodeExpr = logProbNodeExpr,
-         replacements = replacements))
-}
-
-
-replaceAllCodeSuccessfully <- function(code) {
-    deparsedCode <- Rname2CppName(code, colonsOK = TRUE)
-    replacements <- list()
-    replacements[[deparsedCode]] <- code
-    return(list(codeReplaced = as.name(deparsedCode),
-                replacements = replacements,
-                replaceable = TRUE))
-}
-
-replaceWhatPossible <- function(code,
-                             contentsCodeReplaced,
-                             contentsReplacements,
-                             contentsReplaceable,
-                             startingAt,
-                             replaceable = FALSE) {
-    replacements <- list()
-    codeReplaced <- code
-    if(length(code) >= startingAt)
-        for(i in seq_along(contentsReplaceable)) {
-            replacements <- c(replacements,
-                              contentsReplacements[[i]])
-            codeReplaced[[i+startingAt-1]] <- contentsCodeReplaced[[i]]
-        }
-    replacements <- replacements[unique(names(replacements))]
-    return(list(codeReplaced = codeReplaced,
-             replacements = replacements,
-             replaceable = replaceable))
-}
-
-
-detectDynamicIndices <- function(expr) {
-    if(length(expr) == 1 || expr[[1]] != "[") return(FALSE) 
-    return(sapply(expr[3:length(expr)], isDynamicIndex)) 
-}
-
-functionsThatShouldNeverBeReplacedInModelCode <- c(':','nimC','nimRep','nimSeq', 'diag',
-                                                  'nimNumeric', 'nimMatrix', 'nimArray')

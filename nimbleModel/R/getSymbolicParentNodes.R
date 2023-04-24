@@ -1,18 +1,3 @@
-## Temporarily here as need for initial testing of processing.
-is.rcf <- function(x, inputIsName = FALSE, where = -1) {
-    if(inputIsName)
-        x <- get(x, pos = where)
-    if(inherits(x, 'nfMethodRC'))
-        return(TRUE)
-    if(is.function(x)) {
-        if(is.null(environment(x)))
-            return(FALSE)
-        if(exists('nfMethodRCobject', envir = environment(x), inherits = FALSE))
-            return(TRUE)
-    }
-    return(FALSE)
-}
-
 nimblePreevaluationFunctionNames <- c('+',
                                       '-',
                                       '/',
@@ -161,17 +146,14 @@ nimbleOrRfunctionNames <- c('[', '(',
                             'length'
                             )
 
-functionsThatShouldNeverBeReplacedInModelCode <- c(':','nimC','nimRep','nimSeq', 'diag')
 
+## Determine the RHS pieces, expressed symbolically.
 getSymbolicParentNodes <- function(code,
                                    constNames = list(),
                                    indexNames = list(),
                                    nimbleFunctionNames = list(),
                                    addDistNames = FALSE,
                                    envir) {
-    ## We previously propagated a contextID through this
-    ## recursive system.  It was used only for a piece of the label
-    ## for unknown indices and seemed unnecessary.
     if(addDistNames)
         nimbleFunctionNames <- c(nimbleFunctionNames,
                                  getAllDistributionsInfo('namesExprList'))
@@ -189,34 +171,34 @@ getSymbolicParentNodesRecurse <- function(code,
                                           nimbleFunctionNames = list(),
                                           envir) {
     ## This takes as input some code and returns the variables in it.
-    ## It expects one line of code, not a '{' expression.
+    ## It expects one line of code, not a `{` expression.
     ##
-    ## However, indexNames (from for-loop indices) and constNames are
-    ## not identified as separate variables.  e.g. x[i] is returned as
-    ## 'x' and 'i' or as 'x[i]' if i is an indexName
+    ## However, `indexNames` (from for-loop indices) and `constNames` are
+    ## not identified as separate variables.  E.g., `x[i]` is returned as
+    ## `x` and `i` or as `x[i]` if `i` is an indexName
     ##
-    ## indexNames and constNames can be substituted at compile time,
+    ## `indexNames` and `constNames` can be substituted at compile time,
     ## such as a block index variable.
     ##
-    ## Every function EXCEPT those in nimbleFunctionNames can be
+    ## Every function EXCEPT those in `nimbleFunctionNames` can be
     ## evaluated at compile time.
     ##
-    ## constNames, indexNames and nimbleFunctionNames should be lists
+    ## `constNames`, `indexNames` and `nimbleFunctionNames` should be lists
     ## of names.
     ##
     ## details: each recursion returns a list with:
-    ## - code: a list of symbolicParentExprs
-    ## - replaceable: logical of whether it can be part of a partially
+    ## - `code`: a list of `symbolicParentExprs`
+    ## - `replaceable`: logical of whether it can be part of a partially
     ##                evaluated expression.
     ##                This includes numbers, constants, indices and
     ##                functions that can be evaluated in R.
     ##                Replacements aren't actually done but are used to
     ##                decide handling.
     ##                Something replaceable doesn't need to become a
-    ##                symbolicParentNode.
+    ##                `symbolicParentNode`.
     ##                Something replaceable in an index represents static
     ##                indexing, not dynamic indexing
-    ## - hasIndex: is there an index inside numeric constant
+    ## - `hasIndex`: is there an index inside numeric constant
     if(is.numeric(code))
         return(list(code = NULL,
                     replaceable = TRUE,
@@ -420,8 +402,9 @@ getSymbolicParentNodesRecurse <- function(code,
 checkNimbleOrRfunctionNames <- function(functionName, envir) {
     if(any(functionName == nimbleOrRfunctionNames))
         return(TRUE)
+    ## This is scoped to only look in environment from which model is being created.
     if(exists(functionName, envir) && is.rcf(get(functionName, envir)))
-        return(TRUE)  ## FUTURE: Would like to do this by R's scoping rules.
+        return(TRUE)  
     return(FALSE)
 }
 
@@ -448,11 +431,28 @@ isVectorIndex <- function(expr) {
     return(FALSE)
 }
 
+## Functionality used for handling dynamic indexing during model definition processing.
+
+addIndexWrapping <- function(expr) {
+    if(length(expr) > 1 && expr[[1]] == '.USED_IN_INDEX') ## nested random indexing
+        return(expr)
+    return(substitute(.USED_IN_INDEX(EXPR), list(EXPR = expr)))
+}
+
+addDynamicallyIndexedWrapping <- function(expr) {
+    return(substitute(.DYN_INDEXED(EXPR), list(EXPR = expr)))
+}
+
 isUsedInIndex <- function(expr)
     return(length(expr) > 1 && expr[[1]] == ".USED_IN_INDEX")
 
 isDynamicIndex <- function(expr) {
     return(length(expr) > 1 && expr[[1]] == ".DYN_INDEXED")
+}
+
+detectDynamicIndices <- function(expr) {
+    if(length(expr) == 1 || expr[[1]] != "[") return(FALSE) 
+    return(sapply(expr[3:length(expr)], isDynamicIndex)) 
 }
 
 expandDynamicIndex <- function(expr) {
@@ -465,104 +465,5 @@ stripIndexWrapping <- function(expr) {
         return(expr)
     else
         return(expr[[2]])
-}
-
-addIndexWrapping <- function(expr) {
-    if(length(expr) > 1 && expr[[1]] == '.USED_IN_INDEX') ## nested random indexing
-        return(expr)
-    return(substitute(.USED_IN_INDEX(EXPR), list(EXPR = expr)))
-}
-
-addDynamicallyIndexedWrapping <- function(expr) {
-    return(substitute(.DYN_INDEXED(EXPR), list(EXPR = expr)))
-}
-
-Rname2CppName <- function(rName, colonsOK = TRUE, maxLength = 250) {
-    ## This will serve to replace and combine our former `Rname2CppName` and `nameMashupFromExpr`,
-    ## which were largely redundant
-    if (!is.character(rName)) 
-        rName <- safeDeparse(rName)
-
-    if( colonsOK) {
-        # Substitute single colons but preserve double colons.
-        rName <- gsub('::', '_DOUBLE_COLON_', rName)
-        rName <- gsub(':', 'to', rName)  # replace colons with 'to'
-        rName <- gsub('_DOUBLE_COLON_', '::', rName)
-    } else if(grepl(':', rName)) {
-        stop("Rname2CppName: cannot generate name from expression with colon (\':\') in `", rName, "`.")
-    }
-    rName <- gsub(' ', '', rName)
-    rName <- gsub('\\.', '_dot_', rName) 
-    rName <- gsub("\"", "_quote_", rName)
-    rName <- gsub(',', '_comma_', rName)   
-    rName <- gsub("`", "_backtick_" , rName)
-    rName <- gsub('\\[', '_oB', rName)
-    rName <- gsub('\\]', '_cB', rName)
-    rName <- gsub('\\(', '_oP', rName)
-    rName <- gsub('\\)', '_cP', rName)
-    rName <- gsub('\\{', '_oC', rName)
-    rName <- gsub('\\}', '_cC', rName)
-    rName <- gsub("\\$", "_" , rName)
-    rName <- gsub(">=", "_gte_", rName)
-    rName <- gsub("<=", "_lte_", rName)
-    rName <- gsub("<=", "_eq_", rName)
-    rName <- gsub("!=", "_neq_", rName)
-    rName <- gsub(">", "_gt_", rName)
-    rName <- gsub("<", "_lt_", rName)
-    rName <- gsub("!", "_not_", rName)
-    rName <- gsub("\\|\\|", "_or2_", rName)
-    rName <- gsub("&&", "_and2_", rName)
-    rName <- gsub("\\|", "_or_", rName)
-    rName <- gsub("&", "_and_", rName)
-    rName <- gsub("%%", "_mod_", rName)
-    rName <- gsub("%\\*%", "_matmult_", rName)
-    rName <- gsub("=", "_eq_" , rName)
-    rName <- gsub("\\(", "_" , rName)
-    rName <- gsub("\\+", "_plus_" , rName)
-    rName <- gsub("-", "_minus_" , rName)
-    rName <- gsub("\\*", "_times_" , rName)
-    rName <- gsub("/", "_over_" , rName)
-    rName <- gsub('\\^', '_tothe_', rName)
-    rName <- gsub('^_+', '', rName) # Remove leading underscores, which can arise from, e.g., `(a+b)`.
-    rName <- gsub('^([[:digit:]])', 'd\\1', rName)   # If begins with a digit, add 'd' in front.
-    rName <- sapply(rName,
-                    function(x) {
-                        if(nchar(x) > maxLength &&
-                           !length(grep("___TRUNC___", x)) &&
-                           !length(grep("_Vec$", x))) ## When we add _Vec on we need it to stay on (issue #1216).
-                            ## Note this could break if a user has long syntax that ends in _Vec,
-                            ## but deal with that if it arises.
-                            x <- paste0(substring(x, 1, maxLength), CppNameLabelMaker())
-                        return(x)
-                    })
-    return(rName)    
-}
-
-
-# Simply adds width.cutoff = 500 as the default to deal with creation of long variable names from expressions.
-deparse <- function(...) {
-    if("width.cutoff" %in% names(list(...))) {
-        base::deparse(..., control = "digits17")
-    } else {
-        base::deparse(..., width.cutoff = 500L, control = "digits17")
-    }
-}
-
-## This version of deparse avoids splitting into multiple lines, which generally would lead to
-## problems. We keep the original nimble:::deparse above as deparse is widely used and there
-## are cases where not modifying the nlines behavior may be best. 
-safeDeparse <- function(..., warn = FALSE) {
-    out <- deparse(...)
-    if(TRUE) { ## TODO: nimbleModelOptions('useSafeDeparse')) {
-        dotArgs <- list(...)
-        if("nlines" %in% names(dotArgs))
-            nlines <- dotArgs$nlines else nlines <- 1L
-        if(nlines != -1L && length(out) > nlines) {
-            if(warn)
-                messageIfVerbose("  [Note] safeDeparse: truncating deparse output to ", nlines, " lines.")
-            out <- out[1:nlines]
-        }
-    }
-    return(out)
 }
 

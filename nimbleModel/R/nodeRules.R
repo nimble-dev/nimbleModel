@@ -121,60 +121,61 @@ declRuleClass <- R6Class(
     inherit = nodeRuleClass,
     public = list(
         stoch = logical(),
-        originalIndexingRule = NULL, # determines original indexing (based on context)
-        decl = NULL,
-        calculate = NULL,  ## generic function for calculation
+        originalIndexingRule = NULL, # Determines original indexing (based on context).
+        decl = NULL,                 # Full code of declaration (RHS and LHS); nodeRuleClass$expr is just LHS.
+        calculate = NULL,            # Generic function for calculation.
         ## TODO: remove this:
         test = rep(0, 10),  ## test element used for testing calculation while modelDef doesn't have acccess to a model
         test2 = matrix(0, 3, 5),
         
         initialize = function(decl, ID, context = modelContextClass$new(), constants = list()) {
             stoch <<- decl[[1]] == '~'
-            decl <<- decl
+            decl <<- decl        
             super$initialize(decl[[2]], ID, context = context, constants = constants)
 
-            buildCalculateFun(decl, context)
             ## `expr` in is parent class.
             originalIndexingRule <<- originalIndexingRuleClass$new(expr, context, constants)
         },
 
-        buildCalculateFun = function(decl, context) {
-            newDecl <- decl
-            if(newDecl[[1]] == '<-') {
-                newDecl  <- quote(A <<- B)
-                newDecl[2:3] <- decl[2:3]
+        buildFunctions = function(code, logProbExpr) {
+            buildCalculateFun(code, logProbExpr, context)
+        },
+
+        buildCalculateFun = function(code, logProbExpr, context) {
+            newCode <- code
+            if(newCode[[1]] == '<-') {
+                newCode  <- quote(A <<- B)
+                newCode[2:3] <- code[2:3]
             }
             replacements <- sapply(seq_along(context$singleContexts),
                                    function(i) parse(text = paste0('idx[',i,']'))[[1]])
             names(replacements) <- context$indexVarNames
             
             for(i in seq_along(context$singleContexts))
-                newDecl <- eval(substitute(substitute(e, replacements), list(e = newDecl)))
+                newCode <- eval(substitute(substitute(e, replacements), list(e = newCode)))
 
             if(stoch) {
                 ## Insert 'logProb_' and change to assignment, moving LHS in as first argument.
-                finalDecl <- quote(A <<- B)
-                finalDecl[[3]] <- newDecl[[3]]
-                replacements <- list(parse(text = paste0('logProb_', varName))[[1]])
-                names(replacements) <- varName
-                finalDecl[[2]] <- eval(substitute(substitute(e, replacements), list(e = newDecl[[2]])))
-                len <- length(finalDecl[[3]])
+                finalCode <- quote(A <<- B)
+                finalCode[[2]] <- logProbExpr
+                finalCode[[3]] <- newCode[[3]]
+                len <- length(finalCode[[3]])
                 if(len > 1) {
-                    finalDecl[[3]][3:(len+1)] <- finalDecl[[3]][2:len]
-                    names(finalDecl[[3]])[3:(len+1)] <- names(finalDecl[[3]])[2:len]
+                    finalCode[[3]][3:(len+1)] <- finalCode[[3]][2:len]
+                    names(finalCode[[3]])[3:(len+1)] <- names(finalCode[[3]])[2:len]
                 }
-                finalDecl[[3]][[2]] <- newDecl[[2]]
-                names(finalDecl[[3]])[2] <- ""
-                finalDecl[[3]][[len+2]] <- 1
-                names(finalDecl[[3]])[len+2] <- "log"
+                finalCode[[3]][[2]] <- newCode[[2]]
+                names(finalCode[[3]])[2] <- ""
+                finalCode[[3]][[len+2]] <- 1
+                names(finalCode[[3]])[len+2] <- "log"
                 calculate <<- function(idx) {
                     ## logProb_y <- array(0, rep(100, nvals))  # TODO: placeholder so logProb storage exists for testing
                 }
-                ## body(calculate)[[length(body(calculate))+1]] <<- finalDecl
-                body(calculate) <<- finalDecl
+                ## body(calculate)[[length(body(calculate))+1]] <<- finalCode
+                body(calculate) <<- finalCode
             } else {
                 calculate <<- function(idx) {}
-                body(calculate) <<- newDecl
+                body(calculate) <<- newCode
             }
             ## TODO: will need to deal with logProb for mv node having single value inserted.
             ## TODO: will need to deal with the various complexities we currently deal with - alt params, truncation, etc.
@@ -217,7 +218,6 @@ calcRuleClass <- R6Class(
 
             ## Full range, for use with calculate applied to full variable.
             canonicalRange <<- declRule$getFullRange()
-            context <<- context
             declRule <<- declRule
         },
         
