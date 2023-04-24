@@ -3,7 +3,6 @@
 ## set up by the declaration.
 
 ## There are components not yet moved from current nimble that will be needed.
-## These will probably include targetIndexNamePieces and parentIndexNamePieces.
 ## They will probably not include the various *replacements*.
 
 modelDeclClass <- R6Class(
@@ -38,7 +37,6 @@ modelDeclClass <- R6Class(
         dynamicIndexInfo = NULL,
 
         ## Determines the parts of a declaration from the raw `code`.
-        ## TODO: does setup need `userEnv` input?
         initialize = function(code,
                          context, 
                          sourceLineNumber,

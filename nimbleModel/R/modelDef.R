@@ -73,7 +73,9 @@ modelDefClass <- R6Class(
             ## genIsDataVarInfo()                   
             makeVarNames()                 
 
-            warnRHSonlyDynamicIndexing()  
+            warnRHSonlyDynamicIndexing()
+
+            buildFunctions()              ## Generate calculate and other functions.
             invisible(NULL)
         },
 
