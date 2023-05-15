@@ -42,6 +42,9 @@ modelDeclClass <- R6Class(
             truncated <<- truncated
             boundExprs <<- boundExprs
             
+            targetExpr <<- code[[2]]
+            valueExpr <<- code[[3]]
+
             if(code[[1]] == '~') {
                 ## Check for legitimate densities or for truncation.
                 if(!is.call(code[[3]]) ||
@@ -54,9 +57,6 @@ modelDeclClass <- R6Class(
             } else if(code[[1]] != '<-') {
                 stop("modelDeclClass$new: Improper syntax for declaration: `", deparse(code), "`.")
             }                 
-            
-            targetExpr <<- code[[2]]
-            valueExpr <<- code[[3]]
             
             transExpr <<- NULL
             indexExpr <<- NULL
@@ -94,14 +94,14 @@ modelDeclClass <- R6Class(
 
         ## We require multivariate parameters be defined as separate deterministic variables.
         checkMultivarExpr = function() {
-            if(!stoch) next
+            if(!stoch) invisible(NULL)
             types <- nimble:::distributions[[distributionName]]$types
-            if(is.null(types)) next
+            if(is.null(types)) invisible(NULL)
             if(length(valueExpr) > 1) {
                 for(k in 2:length(valueExpr)) {
                     paramName <- names(valueExpr)[k]
                     nDim <- types[[paramName]][['nDim']]
-                    if(is.numeric(nDim) && nDim == 0) next
+                    if(is.numeric(nDim) && nDim == 0) invisible(NULL)
                     if(checkForExpr(valueExpr[[k]])) {
                         ## Draft gentler warning for possible future adoption: message("Warning about parameter '", names(decl$valueExpr)[k], "' of distribution '", dist, "': This multivariate parameter is provided as an expression. If this is a costly calculation, try making it a separate model declaration for it to improve efficiency.")
                         stop("checkMultivarExpr: Error with parameter `", names(valueExpr)[k], "` of distribution `",
@@ -254,12 +254,12 @@ modelDeclClass <- R6Class(
         ## needed for setting up graphRules, as we don't dynamically determine dependents.
         replaceDynamicIndexingInParents = function(varInfo) {
             dynamicIndexInfo <<- list()
+            symbolicParentNodes <<- lapply(symbolicParentNodes, stripIndexWrapping)
             for(iSPN in seq_along(symbolicParentNodes)) {
                 symbolicParent <- symbolicParentNodes[[iSPN]]
                 dynamicIndices <- detectDynamicIndices(symbolicParent)
-                ## We do not yet check bounds of inner indexes in nested indexing. To do so we need to
-                ## find dynamic indexing within a USED_IN_INDEX() and add to dynamicIndexInfo;
-                ## then in nodeFunctions we need nested if statements so inner index is checked first.
+                ## We do not yet check bounds of inner indexes in nested indexing.
+                ## In nodeFunctions we would need nested if statements so inner index is checked first.
                 ## That being said, compiled execution will error out with appropriate out of bounds error
                 ## because C++ will put an out-of-bound value in for 'k' in k[d[0]] or k[d[1342134]].
                 if(any(dynamicIndices)) {
@@ -277,7 +277,6 @@ modelDeclClass <- R6Class(
                     }
                 }
             }
-            symbolicParentNodes <<- lapply(symbolicParentNodes, stripIndexWrapping)
             invisible(NULL)
         },
 

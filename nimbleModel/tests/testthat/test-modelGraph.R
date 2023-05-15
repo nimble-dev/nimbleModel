@@ -1060,8 +1060,6 @@ test_that("graph processing for dynamic indexing", {
 })
 
 
-
-
 test_that("warning of non-constant indices without priors", {
     code <- quote({
         for(i in 1:10) {
@@ -1097,6 +1095,100 @@ test_that("warning of non-constant indices without priors", {
     expect_warning(modelDef <- modelDefClass$new(code,
                                                  constants = list(k = 1:3)),
                    "Detected use of non-constant indices")
+})
+
+test_that("nested indexing", {
+
+    ## Both internal and external indices constants.
+    code <- quote({
+        for(i in 1:3) 
+            y[i] ~ dnorm(mu[block[k[i]]], 1)
+        for(i in 1:10) 
+            mu[i] ~ dnorm(0, 1)
+    })
+    modelDef <- modelDefClass$new(code, constants = list(k = c(2, 4, 5), block = c(3, 5, 7, 6, 6)))
+    result <- getDependencies(modelDef, 'mu[6]', self = FALSE)
+    expect_equal(result[[1]], varRangeClass$new(list(newIndexRange(quote(2:3))), varName = 'y',
+                                                fromStochRule = TRUE))
+
+    ## Internal index constant, external index dynamic.
+    code <- quote({
+        for(i in 1:3) 
+            y[i] ~ dnorm(mu[block[k[i]]], 1)
+        for(i in 1:10) 
+            mu[i] ~ dnorm(0, 1)
+        for(i in 1:5)
+            block[i] ~ dcat(p[1:10])
+    })
+    modelDef <- modelDefClass$new(code, constants = list(k = c(2, 4, 5)))
+    result <- getDependencies(modelDef, 'mu[6]', self = FALSE)
+    expect_equal(result[[1]], varRangeClass$new(list(newIndexRange(quote(1:3))), varName = 'y',
+                                                fromStochRule = TRUE))
+
+    ## External index constant, internal index dynamic.
+    code <- quote({
+        for(i in 1:3) 
+            y[i] ~ dnorm(mu[block[k[i]]], 1)
+        for(i in 1:10) 
+            mu[i] ~ dnorm(0, 1)
+        for(i in 1:3)
+            k[i] ~ dcat(p[1:5])
+    })
+    expect_error(modelDef <- modelDefClass$new(code, constants = list(block = c(3, 5, 7, 6, 6))),
+                 "dynamic indexing of constants is not allowed")
+
+    ##  Both internal and external indices dynamic.
+
+    code <- quote({
+        for(i in 1:3) 
+            y[i] ~ dnorm(mu[block[k[i]]], 1)
+        for(i in 1:10) 
+            mu[i] ~ dnorm(0, 1)
+        for(i in 1:3)
+            k[i] ~ dcat(p[1:5])
+        for(i in 1:5)
+            block[i] ~ dcat(p[1:10])
+    })
+    modelDef <- modelDefClass$new(code)
+
+    expect_identical(length(modelDef$declInfo[[1]]$dynamicIndexInfo), 2L)
+    expect_false(modelDef$varInfo$y$anyDynamicallyIndexed)
+    expect_false(modelDef$varInfo$k$anyDynamicallyIndexed)
+    expect_true(modelDef$varInfo$mu$anyDynamicallyIndexed)
+    expect_true(modelDef$varInfo$block$anyDynamicallyIndexed)
+    
+    result <- getDependencies(modelDef, 'mu[6]', self = FALSE)
+    expect_equal(result[[1]], varRangeClass$new(list(newIndexRange(quote(1:3))), varName = 'y',
+                                                fromStochRule = TRUE))
+
+    code <- quote({
+        for(i in 1:3) 
+            y[i] ~ dnorm(mu[block[k[i]]], 1)
+        for(i in 1:10) 
+            mu[i] ~ dnorm(0, 1)
+        for(i in 1:3)
+            k[i] ~ dcat(p[1:5])
+        for(i in 1:5)
+            block[i] ~ dcat(p[1:10])
+    })
+    modelDef <- modelDefClass$new(code, data = list(block = c(3, 5, 6, 5, 2)))
+
+    ## If `block` is not constant, we still have full set of dependencies set up.
+    result <- getDependencies(modelDef, 'mu[9]', self = FALSE)
+    expect_equal(result[[1]], varRangeClass$new(list(newIndexRange(quote(1:3))), varName = 'y',
+                                                fromStochRule = TRUE))
+
+    code <- quote({
+        for(i in 1:3) 
+            y[i] ~ dnorm(mu[block[k[i]]], 1)
+        for(i in 1:10) 
+            mu[i] ~ dnorm(0, 1)
+    })
+    expect_output(modelDef <- modelDefClass$new(code), "Detected use of non-constant")
+    result <- getDependencies(modelDef, 'mu[6]', self = FALSE)
+    expect_equal(result[[1]], varRangeClass$new(list(newIndexRange(quote(1:3))), varName = 'y',
+                                                fromStochRule = TRUE))
+                         
 })
 
 test_that("graph processing for state-space model", {

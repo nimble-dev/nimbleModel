@@ -282,6 +282,10 @@ getSymbolicParentNodesRecurse <- function(code,
             if(variable$replaceable) {
                 ## A case like `x[ block[i] ]`, dealing with the
                 ## `block[i]`, so `block` is replaceable.
+                if(!all(contentsReplaceable)) 
+                    ## dynamic index on a constant
+                    stop('getSymbolicParentNodesRecurse: dynamic indexing of constants is not allowed in `',
+                         safeDeparse(code), '`.')
                 boolIndexingBlock <-
                     unlist(lapply(code[-c(1,2)],
                                function(x)
@@ -451,8 +455,9 @@ isDynamicIndex <- function(expr) {
 }
 
 detectDynamicIndices <- function(expr) {
-    if(length(expr) == 1 || expr[[1]] != "[") return(FALSE) 
-    return(sapply(expr[3:length(expr)], isDynamicIndex)) 
+    if(length(expr) == 1 || expr[[1]] != "[")
+        return(FALSE)
+    return(sapply(expr[3:length(expr)], isDynamicIndex))
 }
 
 expandDynamicIndex <- function(expr) {

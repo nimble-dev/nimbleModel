@@ -29,7 +29,7 @@ modelDefClass <- R6Class(
         logProbVarInfo = NULL,
         
         initialize = function(code = NULL, constants = list(), dimensions = list(),
-                              initsList = list(), dataList = list(), userEnv = parent.frame()) {
+                              inits = list(), data = list(), userEnv = parent.frame()) {
             ## Check for unused constants.
             assignConstants(constants)
 
@@ -40,7 +40,7 @@ modelDefClass <- R6Class(
             ## TODO: add this later.
             ## setModelValuesClassName()
             
-            assignDimensions(dimensions, initsList, dataList)
+            assignDimensions(dimensions, inits, data)
             initializeContexts()          ## Creates empty context.
             processModelCode()            ## Determines declarations and contexts.
             splitConstantsAndData()       ## Remove LHS variables from constants.
@@ -139,7 +139,7 @@ modelDefClass <- R6Class(
             ## Main use case here is when user provides RHS only variable as data.
             for(dataName in names(dataList)) {
                 if(!is.null(dataName) && dataName != '') {
-                    dataDim <- dimOrLength(dataList[[i]], scalarize = FALSE)  ## Don't scalarize as want to preserve dims as provided by user, e.g. for 1x1 matrices.
+                    dataDim <- dimOrLength(dataList[[dataName]], scalarize = FALSE)  ## Don't scalarize as want to preserve dims as provided by user, e.g. for 1x1 matrices.
                     if(!(length(dataDim) == 1 && dataDim == 1)) {  # I.e., non-scalar data; 1-length vectors treated as scalars and not passed along as dimension info to avoid conflicts between scalars and one-length vectors/matrices/arrays in various places.
                         if(dataName %in% names(dL)) {
                             if(!identical(as.integer(dL[[dataName]]), as.integer(dataDim))) {
@@ -169,17 +169,12 @@ modelDefClass <- R6Class(
                 lineNumber <- lineNumber + 1
                 if(code[[i]][[1]] == '~' || code[[i]][[1]] == '<-') {  ## a declaration
                     iAns <- length(declInfo) + 1
-                    if(FALSE) {
-                        if(code[[i]][[1]] == '~') {
-                            code[[i]] <- replaceDistributionAliases(code[[i]])
-                            checkUserDefinedDistribution(code[[i]], envir)
-                        }
-                        if(code[[i]][[1]] == '<-')
-                            checkForDeterministicDorR(code[[i]])
-                    } else
-                        message(paste0('Need to turn replaceDistributionAliases,\n ',
-                                       'checkUserDefinedDistribution, and\n',
-                                       'checkForDeterministicDorR back on.'))
+                    if(code[[i]][[1]] == '~') {
+                        code[[i]] <- replaceDistributionAliases(code[[i]])
+                        checkUserDefinedDistribution(code[[i]], envir)
+                    }
+                    if(code[[i]][[1]] == '<-')
+                        checkForDeterministicDorR(code[[i]])
                     
                     declInfo[[iAns]] <<- modelDeclClass$new(code[[i]],
                                                contexts[[contextID]],
@@ -692,7 +687,8 @@ modelDefClass <- R6Class(
                 if(!(dimVarName %in% names(varInfo))) next
                 if(length(dimensionsList[[dimVarName]]) != varInfo[[dimVarName]]$nDim)
                     stop("genVarInfo: inconsistent dimensions for variable `", dimVarName, "`.")
-                if(any(dimensionsList[[dimVarName]] < varInfo[[dimVarName]]$maxs))
+                if(any(dimensionsList[[dimVarName]] < varInfo[[dimVarName]]$maxs &&
+                       varInfo[[dimVarName]]$maxs < .Machine$integer.max))
                     stop("genVarInfo: dimensions specified are smaller than model specification for variable `", dimVarName, "`.")
                 varInfo[[dimVarName]]$maxs <<- dimensionsList[[dimVarName]]
             }
@@ -848,7 +844,7 @@ modelDefClass <- R6Class(
             if(getNimbleModelOption('allowDynamicIndexing')) {
                 for(i in seq_along(rhsOnlyRules)) {
                     ind <- sapply(rhsOnlyRules[[i]]$rules, function(rule) rule$usedInIndex)
-                    if(sum(ind)) {
+                    if(sum(ind) && !rhsOnlyRules[[i]]$varName %in% names(declRules)) {
                         varRangeChars <- sapply(rhsOnlyRules[[i]]$rules[ind], function(rule)
                             rule$getFullRange()$toChar())
                         messageIfVerbose("  [Note] Detected use of non-constant indices: `", paste0(varRangeChars, collapse = "`, `"),
@@ -1258,6 +1254,53 @@ checkForDuplicateNodeDeclaration <- function(newNodeCode, newNodeNameExprIndexed
     }
     return(FALSE)     # A duplicate node entry was *not* found.
 }
+
+
+## Checks if distribution is defined and if not, attempts to register it.
+checkUserDefinedDistribution <- function(code, userEnv) {
+    dist <- as.character(code[[3]][[1]])
+    if(dist %in% c("T", "I")) 
+        dist <- as.character(code[[3]][[2]][[1]])
+    if(!dist %in% distributions$namesVector)
+        if(!exists('distributions', nimbleUserNamespace, inherits = FALSE) ||
+           !dist %in% nimbleUserNamespace$distributions$namesVector) {
+            messageIfVerbose("  [Note] Registering `", dist, "` as a distribution based on its use in BUGS code. If you make changes to the nimbleFunctions for the distribution, you must call `deregisterDistributions` before using the distribution in BUGS code for those changes to take effect.")
+            registerDistributions(dist, userEnv)
+        }
+}
+        
+
+replaceDistributionAliases <- function(code) {
+    if(length(code) < 3)
+        stop("Invalid model declaration: `", safeDeparse(code), "`.")
+    if(!is.call(code[[3]]))
+        stop("Invalid model declaration: `", safeDeparse(code), "` must call a density function.")
+    dist <- as.character(code[[3]][[1]])
+    trunc <- FALSE
+    if(dist %in% c("T", "I")) {
+        dist <- as.character(code[[3]][[2]][[1]])
+        trunc <- TRUE
+    }
+    if(dist %in% names(distributionAliases)) {
+        dist <- as.name(distributionAliases[dist])
+        if(trunc) code[[3]][[2]][[1]] <- dist else code[[3]][[1]] <- dist
+    }
+    return(code)
+}
+
+checkForDeterministicDorR <- function(code) {
+    if(is.call(code[[3]])) {
+        drFuns <- c(distribution_dFuns, distribution_rFuns)
+        if(exists("distributions", nimbleUserNamespace, inherits = FALSE)) {
+            dFunsUser <- get('namesVector', nimbleUserNamespace$distributions)
+            drFuns <- c(drFuns, dFunsUser, paste0("r", stripPrefix(dFunsUser)))
+        }
+        if(as.character(code[[3]][[1]]) %in% drFuns)
+            warning("Model includes deterministic assignment using '<-' of the result of a density ('d') or simulation ('r') calculation. This is likely not what you intended in: `", safeDeparse(code), "`.")
+    }
+    return(NULL)
+}
+
 
 ## A small class for information deduced about a variable in a model.
 varInfoClass <- R6Class(
