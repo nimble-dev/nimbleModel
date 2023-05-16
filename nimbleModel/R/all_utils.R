@@ -159,3 +159,16 @@ is.rcf <- function(x, inputIsName = FALSE, where = -1) {
 
 nimbleUniqueID <- labelFunctionCreator("UID")
 nimbleModelID  <- labelFunctionCreator("MID")
+
+## TODO: this is just a placeholder to avoid calling out to nimble.
+calc_dmnormAltParams <- function (cholesky, prec_param, return_prec) {
+    if (prec_param == return_prec) {
+        ans <- t(cholesky) %*% cholesky
+    }
+    else {
+        I <- diag(nimDim(cholesky)[1])
+        ans <- backsolve(cholesky, forwardsolve(t(cholesky), 
+            I))
+    }
+    return(ans)
+}

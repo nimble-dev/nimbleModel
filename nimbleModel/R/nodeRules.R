@@ -151,9 +151,11 @@ declRuleClass <- R6Class(
                                    function(i) parse(text = paste0('idx[',i,']'))[[1]])
             names(replacements) <- context$indexVarNames
             
-            for(i in seq_along(context$singleContexts))
+            for(i in seq_along(context$singleContexts)) {
                 newCode <- eval(substitute(substitute(e, replacements), list(e = newCode)))
-
+                logProbExpr <- eval(substitute(substitute(e, replacements), list(e = logProbExpr)))
+            }
+            
             if(stoch) {
                 ## Insert 'logProb_' and change to assignment, moving LHS in as first argument.
                 finalCode <- quote(A <<- B)

@@ -302,11 +302,9 @@ modelDeclClass <- R6Class(
                                 ## The vectorized index includes a loop-indexing
                                 ## variable; we will create a replacement, for a
                                 ## memberData, for each nodeFunction.
-                                replacementExpr <- substitute(min(EXPR),
-                                                              list(EXPR = origIndex))
-                                replacementName <- Rname2CppName(replacementExpr,
-                                                                 colonsOK = TRUE)
-                                logProbExpr[[i]] <- as.name(replacementName)
+                                if(origIndex[[1]] == ":") {
+                                    logProbExpr[[i]] <- origIndex[[2]] # generally the minimum
+                                } else stop("genLogProbExpr: Unexpected input in `", safeDeparse(origIndex), "`.")
                             } else {
                                 ## No loop-indexing variables present in the vectorized index.
                                 ## This index should be constant for all instances of this nodeFunction.

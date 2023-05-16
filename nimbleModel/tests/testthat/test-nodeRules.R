@@ -1035,24 +1035,70 @@ test_that("RHS exclusion works", {
                  "Constants may be incorrect size")
 })
 
-## FAILS for the moment because of logProb initialization currently hacked into $calculate (see next test)
+## Will FAIL if logProb initialization hacked into $calculate (see next test)
 test_that("declaration-specific calculate generated correctly", {
-    singleContext1 <-
-        singleContextClass$new(forCode = quote(for(i in 2:8){}))
-    singleContext2 <-
-        singleContextClass$new(forCode = quote(for(j in 1:4){}))
-    context_ij <- modelContextClass$new(list(singleContext1, singleContext2))
+    ## singleContext1 <-
+    ##     singleContextClass$new(forCode = quote(for(i in 2:8){}))
+    ## singleContext2 <-
+    ##     singleContextClass$new(forCode = quote(for(j in 1:4){}))
+    ## context_ij <- modelContextClass$new(list(singleContext1, singleContext2))
 
-    context_0 <- modelContextClass$new()
-    rule <- declRuleClass$new(quote(y ~ dnorm(mu, sigma)), 1, context_0)
-    expect_identical(body(rule$calculate), quote(logProb_y <<- dnorm(y, mu, sigma)))
+    ## context_0 <- modelContextClass$new()
+    ## rule <- declRuleClass$new(quote(y ~ dnorm(mu, sigma)), 1, context_0)
+    ## expect_identical(body(rule$calculate), quote(logProb_y <<- dnorm(y, mu, sigma)))
    
    
-    rule <- declRuleClass$new(quote(y[j,i] ~ dnorm(x[i], 1)), 1, context_ij)
-    expect_identical(body(rule$calculate), quote(logProb_y[idx[2], idx[1]] <<- dnorm(y[idx[2], idx[1]], x[idx[1]], 1)))
-    
+    ## rule <- declRuleClass$new(quote(y[j+1,i] ~ dnorm(x[i], 1)), 1, context_ij)
+    ## expect_identical(body(rule$calculate), quote(logProb_y[idx[2]+1, idx[1]] <<- dnorm(y[idx[2]+1, idx[1]], x[idx[1]], 1)))
+
+    code <- quote({y ~ dnorm(mu, sigma)})
+    modelDef <- modelDefClass$new(code)
+    expect_identical(body(modelDef$declRules$y$rules[[1]]$calculate),
+                     quote(logProb_y <<- dnorm(y, mean = mu, sd = lifted_d1_over_sqrt_oPsigma_cP, log = 1)))
+
+    code <- quote({
+        for(i in 1:3)
+            for(j in 2:4)
+                y[j+1,i] ~ dnorm(x[i], 1)})
+    modelDef <- modelDefClass$new(code)
+    expect_identical(body(modelDef$declRules$y$rules[[1]]$calculate),
+                     quote(logProb_y[idx[2]+1, idx[1]] <<- dnorm(y[idx[2]+1, idx[1]], mean = x[idx[1]], sd = 1, log = 1)))
+
+    code <- quote({
+        y[2:4] ~ dmulti(10, p[1:3])})
+    modelDef <- modelDefClass$new(code)
+    expect_identical(body(modelDef$declRules$y$rules[[1]]$calculate),
+                     quote(logProb_y[2] <<- dmulti(y[2:4], size = p[1:3], prob = 10, log = 1)))
+
+    ## Note that we assume `n1[i]` is the minimum of `n1[i]:n2[i]`, but it may not matter if not.
+    ## We just need a unique place to put the logProb.
+    code <- quote({
+        for(i in 1:3)
+            y[i, n1[i]:n2[i]] ~ dmulti(p[n1[i]:n2[i]], 10)})
+    modelDef <- modelDefClass$new(code, constants = list(n1=c(3,1,2),n2=c(5,2,2)))
+    expect_identical(body(modelDef$declRules$y$rules[[1]]$calculate),
+                     quote(logProb_y[idx[1], n1[idx[1]]] <<- dmulti(y[idx[1], n1[idx[1]]:n2[idx[1]]], size = 10, prob = p[n1[idx[1]]:n2[idx[1]]], log = 1)))
+
 })
 
+
+
+
+
+code <- quote({
+    for(i in 3:5)
+        for(j in 1:5)
+        y[i-1,j] ~ dnorm(mu[j+1+i, i+2],1)
+})
+modelDef <- modelDefClass$new(code)
+modelDef$declRules$y$rules[[1]]$calculate
+
+code <- quote({
+    for(i in 3:5)
+            y[2:4,i] ~ dnorm(z[1:3],pr[1:3,1:3])
+})
+modelDef <- modelDefClass$new(code)
+modelDef$declRules$y$rules[[1]]$calculate
 
 ## TODO: need to switch calculate() tests to be on log scale
 
@@ -1211,11 +1257,12 @@ test_that("calculate works correctly with multivariate nodes", {
     dmnorm <<- nimble:::dmnorm_chol  # so dmnorm can be used in calculate(); only works if chol=prec
     
     calcRule <- calcRuleClass$new(declRule, NULL, NULL, context_0)
-    calcRange <- calcRule$generateCalcRange(varRangeClass$new(list(newIndexRange(2))))
+    calcRange <- calcRule$makeCalcRange(varRangeClass$new(list(newIndexRange(2))))
     expect_identical(calcRange$calculate(), true_logProb_y)
     expect_identical(get('logProb_y', .GlobalEnv)[2], true_logProb_y)
 
 })
+
 
 
 test_that("calculate works correctly for SSM recursion", {
@@ -1311,7 +1358,7 @@ test_that("getFullRange works correctly", {
 
 
 test_that("nodeRange::print works correctly", {
-    ## We need to test result of `toChar` as no obvious way
+    ## This tests result of `toChar` as there is no obvious way
     ## to capture and check result of print method.
     singleContext1 <-
         singleContextClass$new(forCode = quote(for(i in 2:8){}))

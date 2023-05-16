@@ -259,7 +259,7 @@ makeIndicesMatrix <- function(fromIndexExprs, context, constants) {
         iRow2toIndices <- split(allIndices,
                                 iRows)
     }
-    result <- do.call(rbind, iRow2toIndices)
+    result <- as.matrix(do.call(rbind, iRow2toIndices))
     dimnames(result) <- NULL
     return(result)
     ## combineFun <- ifelse(length(iRow2toIndices[[1]]) == 1, c, rbind)

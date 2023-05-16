@@ -267,7 +267,8 @@ indexRuleArbitrary_applyMatrix <- function(indexRange,
     ## `toIndicesList` has the matrix of "to" indices for each fromFlat
     ## need NAs in places where input matches no output to be able to
     ## collapse via `collapse_indexRangeMatrices`.
-    NAs <- matrix(rep(as.numeric(NA), length(setupResults$iRow2toIndices[[1]])), nrow = 1)
+    NAs <- matrix(rep(as.numeric(NA), length(setupResults$iRow2toIndices[[1]])),
+                  nrow = nrow(setupResults$iRow2toIndices[[1]]))
     toIndicesList <<- lapply(iRowsList,
                              function(x) {
                                  result <- do.call('rbind',
