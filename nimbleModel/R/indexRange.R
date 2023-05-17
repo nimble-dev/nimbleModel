@@ -34,7 +34,7 @@ newIndexRange <- function(expr) {
     ## as calls to class-specific `initialize` will be done repeatedly and
     ## with only internal values (which should be guaranteed valid).
     if(length(expr) > 1) {
-        ## input expr is not just a name or number
+        ## Input expr is not just a name or number.
         if(identical(expr[[1]], as.name(":"))) {
             start <- intToNumeric(expr[[2]])
             end <- intToNumeric(expr[[3]])

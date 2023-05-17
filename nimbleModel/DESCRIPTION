@@ -25,6 +25,7 @@ Collate:
     getSymbolicParentNodes.R
     graphRules.R
     mathCompatibility.R
+    miscFunctions.R
     modelDecl.R
     modelDef.R
     model_utils.R

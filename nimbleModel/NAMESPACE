@@ -62,3 +62,5 @@ export(`[<-.varStoreClass`)
 export(seqNoDecrease)
 
 export(messageIfVerbose)
+
+export(calc_dmnormAltParams)

@@ -93,7 +93,7 @@ nimblePreevaluationFunctionNames <- c('+',
                                       'length'
                                       )
 
-nimbleOrRfunctionNames <- c('[', '(',
+nimbleOrRfunctionNames <- c(':', '[', '(',
                             '+', '-', '/', '*',
                             'exp', 'log',
                             'pow', '^',
@@ -190,8 +190,10 @@ getSymbolicParentNodesRecurse <- function(code,
     ## - `code`: a list of `symbolicParentExprs`
     ## - `replaceable`: logical of whether it can be part of a partially
     ##                evaluated expression.
-    ##                This includes numbers, constants, indices and
-    ##                functions that can be evaluated in R.
+    ##                This includes numbers, constants, and indices.
+    ##                This also used to include functions that can be evaluated in R,
+    ##                but since we are no longer unrolling, we can no longer
+    ##                precompute the results for eval'ing R-only functions.
     ##                Replacements aren't actually done but are used to
     ##                decide handling.
     ##                Something replaceable doesn't need to become a
@@ -381,20 +383,11 @@ getSymbolicParentNodesRecurse <- function(code,
             ## Check if the function can be called only in R, not NIMBLE.
             isRfunction <- !any(code[[1]] == nimbleFunctionNames)
             funName <- deparse(code[[1]])
-            isRonly <- isRfunction & (!checkNimbleOrRfunctionNames(funName, envir))
-            ## If it can be called only in R but not all contents are replaceable, generate error.
-            if(isRonly & !allContentsReplaceable) {
-                if(!exists(funName))
-                    stop("getSymbolicParentNodesRecurse: R function `", funName, "` does not exist.")
-                unreplaceable <-
-                    sapply(contents[!contentsReplaceable],
-                           function(x) as.character(x$code)
-                           )
-                stop("getSymbolicParentNodesRecurse: R function `", funName,
-                     "` has arguments that cannot be evaluated; either the function must be a nimbleFunction or values for the following inputs must be specified as constants in the model: `",
-                     paste(unreplaceable, collapse = ","),
-                     "`.")
-            }
+            isRonly <- isRfunction && (!checkNimbleOrRfunctionNames(funName, envir))
+            ## We can no longer handle R functions, even if all contents replaceable because we no longer unroll.
+            if(isRonly) 
+                stop("getSymbolicParentNodesRecurse: Detected use of an R function `", funName,
+                     "`. This function cannot be compiled; it must be a nimbleFunction.")
             return(list(code = contentsCode,
                         replaceable = allContentsReplaceable & isRfunction,
                         hasIndex = any(contentsHasIndex)))

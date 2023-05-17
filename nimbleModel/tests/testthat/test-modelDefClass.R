@@ -171,3 +171,4 @@ test_that("makeGraphInfo works", {
     expect_identical(sort(names(modelDef$rhsOnlyRules)), c('mu0','tau'))
    
 })
+

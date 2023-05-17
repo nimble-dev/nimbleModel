@@ -1635,6 +1635,18 @@ test_that("basic hierarchical models", {
     
 })
 
+test_that("mixed-length block dependences", {
+    code <- quote({
+        for(i in 1:3)
+            y[i, n1[i]:n2[i]] ~ dmulti(p[n1[i]:n2[i]], 10)
+    })
+    modelDef <- modelDefClass$new(code, constants = list(n1 = c(3,1,2), n2 = c(6,3,2)))
+    result <- getDependencies(modelDef, 'p[2]')
+    expect_equal(result[[1]]$indexRanges, list(newIndexRange(matrix(c(2,2,2,3,1,2,3,2), ncol = 2))))
+})
+
+
+need a check for duplicated nodes, e.g., y[k[i]] for k=c(1,1,2)
 
 test_that("state-space model", {
 
