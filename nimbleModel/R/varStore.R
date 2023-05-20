@@ -108,9 +108,9 @@ nimAllEqual <- function(value) {
         indices[indices == ""] <- sapply(self$dim, insertSequence)[indices == ""] # insert 1:n for missing indices
         ## FIXME: deparse(match.call()) prints out as function call not as user-friendly [ operator
         if(length(indices) > 1 && length(indices) != length(self$dim))
-            stop("Error in ", deparse(match.call()), ": incorrect number of dimensions")
+            stop("Error in ", safeDeparse(match.call()), ": incorrect number of dimensions")
         if(any(sapply(indices, getMaxIndex) > self$dim))
-            stop("Error in ", deparse(match.call()), ": subscript out of bounds")
+            stop("Error in ", safeDeparse(match.call()), ": subscript out of bounds")
         if(!expand) {
             return(self$value)
         } else {
@@ -132,9 +132,9 @@ nimAllEqual <- function(value) {
     indices <- as.list(args[names(args) == ""])  # unnamed arguments are indices from ...
     indices[indices == ""] <- sapply(self$dim, insertSequence)[indices == ""] # insert 1:n for missing indices
     if(length(indices) > 1 && length(indices) != length(self$dim))
-       stop("Error in ", deparse(match.call()), ": incorrect number of dimensions")
+       stop("Error in ", safeDeparse(match.call()), ": incorrect number of dimensions")
     if(any(sapply(indices, getMaxIndex) > self$dim))
-        stop("Error in ", deparse(match.call()), ": subscript out of bounds")
+        stop("Error in ", safeDeparse(match.call()), ": subscript out of bounds")
 
     if(!(self$allEqual && value[1] == self$value && length(unique(c(value))) == 1)) {
         if(self$allEqual) {

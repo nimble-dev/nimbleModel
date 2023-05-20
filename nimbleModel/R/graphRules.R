@@ -54,8 +54,8 @@ graphRuleClass <- R6Class(
         
         initialize = function(toExpr, fromExpr, context, constants = list(), stoch = NULL, checkVars =  TRUE) {
             stoch <<- stoch
-            fromVarName <<- deparse(ifelse(length(fromExpr) > 1, fromExpr[[2]], fromExpr))
-            toVarName <<- deparse(ifelse(length(toExpr) > 1, toExpr[[2]], toExpr))
+            fromVarName <<- safeDeparse(ifelse(length(fromExpr) > 1, fromExpr[[2]], fromExpr), warn = TRUE)
+            toVarName <<- safeDeparse(ifelse(length(toExpr) > 1, toExpr[[2]], toExpr), warn = TRUE)
 
             ## Don't want to check for index values if could be dynamically indexed.
             if(checkVars || !getNimbleModelOption('allowDynamicIndexing'))
@@ -70,7 +70,7 @@ graphRuleClass <- R6Class(
             if(numFromIndexSlots == -1)
                 numFromIndexSlots <<- 0
             if(numFromIndexSlots < 0)
-                stop("graphRuleClass: Unable to determine number of indices in ", deparse(fromExpr), ".")
+                stop("graphRuleClass: Unable to determine number of indices in ", safeDeparse(fromExpr), ".")
             output <- makeIndexRules(toExpr, fromExpr, indexSets, context, constants)
             indexRules <<- output$indexRules
             indexConstraints <<- output$indexConstraints
@@ -271,12 +271,12 @@ makeIndexRules <- function(toExpr, fromExpr, indexSets, context, constants) {
     if(length(toExpr) >= 3 && toExpr[[1]] == '[') {
         toIndexExprs <- as.list(toExpr[-c(1,2)])
     } else if(length(toExpr) == 1) toIndexExprs <- list() else
-        stop("graphRuleClass: '", deparse(toExpr), "' should be an index expression or variable name.")
+        stop("graphRuleClass: '", safeDeparse(toExpr), "' should be an index expression or variable name.")
 
     if(length(fromExpr) >= 3 && fromExpr[[1]] == '[') {
         fromIndexExprs <- as.list(fromExpr[-c(1,2)])
     } else if(length(fromExpr) == 1) fromIndexExprs <- list() else
-        stop("graphRuleClass: '", deparse(fromExpr), "' should be an index expression or variable name.") 
+        stop("graphRuleClass: '", safeDeparse(fromExpr), "' should be an index expression or variable name.") 
 
     ## Create simple constraints.
     fromConstantIndexSlots <- which(indexSets$fromIndexSlotToSet == 0)

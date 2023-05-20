@@ -533,7 +533,7 @@ nodeRangeClass <- R6Class(
             indexVars <- paste0("idx", seq_len(sum(boolExternalIndexRanges)))
             exprs[boolExternalIndexRanges] <- lapply(indexVars, as.name)
             forText <- paste(indexVars, "in", sv)
-            result <- deparse(do.call("call",
+            result <- safeDeparse(do.call("call",
                                       c(list("[", nm),
                                         exprs[indexSlotToRange]), quote = TRUE))
             if(sum(boolExternalIndexRanges))
@@ -612,7 +612,7 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
             nm %in% all.vars(expr[[2+nonIdenticalIndexSlots]]))
 
         if(sum(focalContext) != 1)
-            stop("fracture: unexpected number of contexts in ", deparse(expr), ".")
+            stop("fracture: unexpected number of contexts in ", safeDeparse(expr), ".")
 
         ## General strategy in cases below is to determine overlapped and non-overlapped
         ## index values and create new calcRules for these, modifying the

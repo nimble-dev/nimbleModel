@@ -1,10 +1,10 @@
 
-# the format of this list should be as follows:
-# the name of the element is the name of the BUGS density
-# the first string in each element is the BUGS density definition with the BUGS parameters as the first parameters, in order (the parameter names do NOT need to match the names in the BUGS manual since BUGS does not use parameter names), followed by any alternative parameter names
-# the second and subsequent strings in an element are any reparameterizations, with the density name as in R/NIMBLE and the canonical parameter names as used in R's math library (and NIMBLE extensions)
-# if R/NIMBLE uses the same parameterization (in the same order) and same density name, the element may simply be the BUGS density definition (e.g., dichisq())
-# if R/NIMBLE uses the same parameterization but in a different order, then one should define the reordering as a reparameterization (e.g., dbin())
+## The format of this list should be as follows:
+## The name of the element is the name of the BUGS density.
+## The first string in each element is the BUGS density definition with the BUGS parameters as the first parameters, in order (the parameter names do NOT need to match the names in the BUGS manual since BUGS does not use parameter names), followed by any alternative parameter names.
+## The second and subsequent strings in an element are any reparameterizations, with the density name as in R/NIMBLE and the canonical parameter names as used in R's math library (and NIMBLE extensions).
+## If R/NIMBLE uses the same parameterization (in the same order) and same density name, the element may simply be the BUGS density definition (e.g., dichisq()).
+## If R/NIMBLE uses the same parameterization but in a different order, then one should define the reordering as a reparameterization (e.g., dbin()).
 
 
 

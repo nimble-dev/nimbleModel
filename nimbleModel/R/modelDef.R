@@ -212,7 +212,7 @@ modelDefClass <- R6Class(
                     )
                     contexts[[nextContextID]] <<- modelContextClass$new(singleContexts = singleContexts)
                     if(length(code[[i]][[4]]) == 1) {
-                        stop("modelDefClass$processModelCode: cannot evaluate `", deparse(code[[i]]))
+                        stop("modelDefClass$processModelCode: cannot evaluate `", safeDeparse(code[[i]]))
                     }
                     recurseCode <- if(code[[i]][[4]][[1]] == '{') {
                                        code[[i]][[4]]
@@ -238,11 +238,11 @@ modelDefClass <- R6Class(
                             lineNumber = lineNumber,
                             envir = envir)
                 }
-                if(!deparse(code[[i]][[1]]) %in% c('~', '<-', 'for', '{')) 
+                if(!safeDeparse(code[[i]][[1]]) %in% c('~', '<-', 'for', '{')) 
                     stop("modelDefClass$processModelCode: `",
-                         deparse(code[[i]][[1]]),
+                         safeDeparse(code[[i]][[1]]),
                          " not allowed in model code in `",
-                         deparse(code[[i]]), "`.")
+                         safeDeparse(code[[i]]), "`.")
             }
             invisible(lineNumber)
         },
@@ -1264,7 +1264,7 @@ checkUserDefinedDistribution <- function(code, userEnv) {
     if(!dist %in% distributions$namesVector)
         if(!exists('distributions', nimbleUserNamespace, inherits = FALSE) ||
            !dist %in% nimbleUserNamespace$distributions$namesVector) {
-            messageIfVerbose("  [Note] Registering `", dist, "` as a distribution based on its use in BUGS code. If you make changes to the nimbleFunctions for the distribution, you must call `deregisterDistributions` before using the distribution in BUGS code for those changes to take effect.")
+            messageIfVerbose("  [Note] Registering `", dist, "` as a distribution based on its use in model code. If you make changes to the nimbleFunctions for the distribution, you must call `deregisterDistributions` before using the distribution in model code for those changes to take effect.")
             registerDistributions(dist, userEnv)
         }
 }

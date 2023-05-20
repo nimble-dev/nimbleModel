@@ -51,11 +51,11 @@ modelDeclClass <- R6Class(
                    (!any(code[[3]][[1]] == getAllDistributionsInfo('namesVector')) &&
                     code[[3]][[1]] != "T" &&
                     code[[3]][[1]] != "I"))
-                    stop("modelDeclClass$new: Improper syntax for stochastic declaration: `", deparse(code), "`.")
+                    stop("modelDeclClass$new: Improper syntax for stochastic declaration: `", safeDeparse(code), "`.")
                 distributionName <<- as.character(valueExpr[[1]])
                 stoch <<- TRUE
             } else if(code[[1]] != '<-') {
-                stop("modelDeclClass$new: Improper syntax for declaration: `", deparse(code), "`.")
+                stop("modelDeclClass$new: Improper syntax for declaration: `", safeDeparse(code), "`.")
             }                 
             
             transExpr <<- NULL
@@ -75,7 +75,7 @@ modelDeclClass <- R6Class(
                     if(length(targetNodeExpr)>1) {
                         ## There are subscripts inside the transformation
                         if(targetNodeExpr[[1]] != '[') 
-                            stop("modelDeclClass$new: Invalid subscripting for `", deparse(targetExpr), "`.")
+                            stop("modelDeclClass$new: Invalid subscripting for `", safeDeparse(targetExpr), "`.")
                         indexExpr <<- as.list(targetNodeExpr[-c(1,2)])
                         targetVarExpr <- targetNodeExpr[[2]]
                     } else {

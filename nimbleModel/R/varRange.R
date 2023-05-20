@@ -56,7 +56,7 @@ varRangeClass <- R6Class(
                     ## The expression must have some indexing so it must start with `[`.
                     if(!identical(indexInfo[[1]], as.name("[")))
                         stop("varRange: input is not a valid variable or variable range.")
-                    nameFromExpr <- deparse(indexInfo[[2]])
+                    nameFromExpr <- safeDeparse(indexInfo[[2]], warn = TRUE)
                     indexRangeExprs <<- as.list(indexInfo[-c(1,2)])
                     indexRanges <<- lapply(indexRangeExprs, newIndexRange)
                     
@@ -192,7 +192,7 @@ varRangeClass <- R6Class(
         ## character string of the original expression (or the imputed expression
         ## when initialized from a list of `indexRange`s).
         toChar = function() {
-            deparse(toExpr())
+            safeDeparse(toExpr(), warn = TRUE)
         },
 
         print = function() {
@@ -216,7 +216,7 @@ getVarName <- function(x) {
     if(is.character(x)) 
         x <- parse(text = x)[[1]]
     if(is.call(x) || is.name(x))
-        if(length(x) == 1) return(deparse(x)) else return(deparse(x[[2]]))
+        if(length(x) == 1) return(safeDeparse(x, warn = TRUE)) else return(safeDeparse(x[[2]], warn = TRUE))
     if(is.null(x)) return(NULL)
     stop("getVarName: unexpected input: `", x, "`.")
 }

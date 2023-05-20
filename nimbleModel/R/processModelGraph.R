@@ -536,7 +536,7 @@ followUpstream <- function(upstreamGraphRule, upstreamRules, childSortID, focalI
 }
 
 reprioritizeColonOperator <- function(code) {
-    split.code <- strsplit(deparse(code), ":")
+    split.code <- strsplit(safeDeparse(code, warn = TRUE), ":")
     if(length(split.code[[1]]) == 2)
         return(
             parse(
@@ -547,6 +547,6 @@ reprioritizeColonOperator <- function(code) {
                               ")"),
                 keep.source = FALSE)[[1]])
     if(length(split.code[[1]]) > 2)
-        stop("reprioritizeColonOperator: could not process colon operator in `", deparse(code), "`.")
+        stop("reprioritizeColonOperator: could not process colon operator in `", safeDeparse(code), "`.")
     return(code)
 }
