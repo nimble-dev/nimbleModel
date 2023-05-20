@@ -5,12 +5,10 @@ test_that('varRangeClass', {
                  "must be initialized from a list of indexRanges")
     
     ## 0D
-    xVar1 <- varRangeClass$new('x')
-    xVar2 <- varRangeClass$new(list(newIndexRange(NULL)), varName = 'x')
-    expect_true(nimbleModel:::varRange_isEqual(xVar1, xVar2))
-    expect_true(xVar1$isNone())
-    expect_true(is(xVar1$indexRanges[[1]], "indexRangeNoneClass"))
-    expect_identical(xVar1$toExpr(), quote(x))
+    xVar <- varRangeClass$new('x')
+    expect_true(xVar$isNone())
+    expect_identical(xVar$indexRanges, list())
+    expect_identical(xVar$toExpr(), quote(x))
     
     ## 1D
 

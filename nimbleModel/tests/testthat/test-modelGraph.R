@@ -1646,8 +1646,6 @@ test_that("mixed-length block dependences", {
 })
 
 
-need a check for duplicated nodes, e.g., y[k[i]] for k=c(1,1,2)
-
 test_that("state-space model", {
 
     ## basic dependence within a variable
@@ -1842,7 +1840,25 @@ test_that("complicated input varRange", {
                             varName = 'y', fromStochRule = TRUE))
 })
 
+test_that("duplicated RHS elements", {
+    code <- quote({
+        y ~ dnorm(mu, sd = mu)
+        mu ~ dnorm(0, 1)
+    })
+    
+    modelDef <- modelDefClass$new(code)
+    expect_equal(getParents(modelDef, 'y')[[1]],
+                 varRangeClass$new('mu', fromStochRule = TRUE))
 
+    deps <- getDependencies(modelDef, 'mu')
+    expect_identical(length(deps), 2L)
+    expect_equal(deps[[1]],
+                 varRangeClass$new('mu'))
+    expect_equal(deps[[2]],
+                 varRangeClass$new('y', fromStochRule = TRUE))
+    
+
+})
 
 extractRuleElement <- function(vr, nm) {
     tmp <- sapply(vr$rules, function(rule) rule[[nm]])
