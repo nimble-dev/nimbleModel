@@ -195,7 +195,7 @@ distClass <- setRefClass(
                 if(typeList$nDim > 0 && typeList$type != 'double') 
                     stop("Non-scalar integer or logical found in distribution function for distribution `", BUGSdistName, "`.\nPlease use type 'double' for all non-scalars in distribution functions.")
                 ## HERE
-                if(!(typeList$nDim %in% 0:1000))     stop('Unknown `nDim` specified in distribution `', typeList$nDim, '`.'))  ## yes, specifying maximum dimension of 1000
+                if(!(typeList$nDim %in% 0:1000))     stop('Unknown `nDim` specified in distribution `', typeList$nDim, '`.')  ## yes, specifying maximum dimension of 1000
                 types[[typeName]] <<- typeList
             }            
         },

@@ -94,9 +94,9 @@ modelDeclClass <- R6Class(
 
         ## We require multivariate parameters be defined as separate deterministic variables.
         checkMultivarExpr = function() {
-            if(!stoch) invisible(NULL)
+            if(!stoch) return(NULL)
             types <- nimble:::distributions[[distributionName]]$types
-            if(is.null(types)) invisible(NULL)
+            if(is.null(types)) return(NULL)
             if(length(valueExpr) > 1) {
                 for(k in 2:length(valueExpr)) {
                     paramName <- names(valueExpr)[k]

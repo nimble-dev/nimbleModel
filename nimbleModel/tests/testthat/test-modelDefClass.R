@@ -172,3 +172,44 @@ test_that("makeGraphInfo works", {
    
 })
 
+test_that("makeVarInfo works", {
+    modelCode <- quote({
+        for(i in 1:10) {
+            y[i] ~ dnorm(mu[i], sd = sigma[k[i]])
+            mu[i] ~ dnorm(mu0, 1)
+            sigma[i] ~ dunif(0, 10)
+            k[i] ~ dcat(p[1:10])
+        }
+        z[1:10] <- mu[1:10]
+        z[12] ~ dnorm(0, 1)
+        tau[1:10] <- 1/sigma[1:10]^2
+
+        w[1:3] ~ dmnorm(zeroes[1:3], pr[1:3,1:3])
+    })
+    
+    modelDef <- modelDefClass$new(modelCode)
+
+    vi <- modelDef$varInfo
+    
+    expect_true(vi$mu$anyStoch)
+    expect_false(vi$mu$anyDynamicallyIndexed)
+    expect_true(vi$sigma$anyStoch)
+    expect_true(vi$sigma$anyDynamicallyIndexed)
+    expect_true(vi$z$anyStoch)
+    expect_false(vi$z$anyDynamicallyIndexed)
+    expect_false(vi$tau$anyStoch)
+    expect_false(vi$tau$anyDynamicallyIndexed)
+
+    expect_identical(vi$mu$mins, 1)
+    expect_identical(vi$mu$maxs, 10)
+    expect_identical(vi$z$mins, 1)
+    expect_identical(vi$z$maxs, 12)
+    expect_identical(vi$sigma$mins, 1)
+    expect_identical(vi$sigma$maxs, as.numeric(.Machine$integer.max))
+    expect_identical(vi$pr$mins, rep(1, 2))
+    expect_identical(vi$pr$maxs, rep(3, 2))
+
+    expect_identical(vi$mu0$nDim, 0)
+    expect_identical(vi$mu$nDim, 1)
+    expect_identical(vi$pr$nDim, 2)
+})
