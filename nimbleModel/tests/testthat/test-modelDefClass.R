@@ -5,31 +5,13 @@ test_that("processModelCode works in simplest case", {
         a ~ dnorm(0, 1)
     })
     modelDef <- modelDefClass$new(modelCode)
-    modelDef$processModelCode()
     expect_equal(
         modelDef$declInfo[[1]]$symbolicParentNodes,
-        NULL
+        list()
     )
 })
 
 test_that("processModelCode works", {
-    modelCode <- quote({
-        for(i in 1:10)
-            logit(a[i]) ~ dnorm(mu[i], tau)
-    })
-    modelDef <- modelDefClass$new(modelCode)
-    modelDef$processModelCode()
-
-    expected <- modelDeclClass$new()
-    expected$setup(
-                 quote(logit(a[i]) ~ dnorm(mu[i], tau)),
-                 modelContextClass$new(list(
-                                           quote(for(i in (1):(10)){})
-                                       )),
-                 sourceLineNumber = 2)
-
-    expect_equal(modelDef$declInfo[[1]], expected) 
-
     ## Multiple lines; and check declRules
     modelCode <- quote({
         for(i in 1:10) {
@@ -40,35 +22,36 @@ test_that("processModelCode works", {
         theta <- thetaVal
     })
     modelDef <- modelDefClass$new(modelCode, constants = list(thetaVal = 7))
-    modelDef$processModelCode()
-    modelDef$processDecls()
 
     expect_identical(
-        modelDef$declInfo[[1]]$targetNodeExpr, quote(a[i]))
+        modelDef$declInfo[[2]]$targetNodeExpr, quote(a[i]))
+    expect_equal(
+        modelDef$declInfo[[2]]$valueExpr,
+        quote(dnorm(mean = mu[i], sd = lifted_d1_over_sqrt_oPtau_cP, lower_ = -Inf, 
+    upper_ = Inf, .tau = tau, .var = lifted_d1_over_sqrt_oPtau_cP * 
+        lifted_d1_over_sqrt_oPtau_cP)))
     expect_identical(
-        modelDef$declInfo[[1]]$valueExpr, quote(dnorm(mu[i],tau)))
+        modelDef$declInfo[[2]]$indexExpr, list(quote(i)))
     expect_identical(
-        modelDef$declInfo[[1]]$indexExpr, list(quote(i)))
-    expect_identical(
-        modelDef$declInfo[[1]]$stoch, TRUE)
+        modelDef$declInfo[[2]]$stoch, TRUE)
 
     expect_identical(
-        modelDef$declInfo[[4]]$targetNodeExpr, quote(theta))
+        modelDef$declInfo[[6]]$targetNodeExpr, quote(theta))
     expect_identical(
-        modelDef$declInfo[[4]]$valueExpr, quote(thetaVal))
+        modelDef$declInfo[[6]]$valueExpr, 7)
     expect_identical(
-        modelDef$declInfo[[4]]$indexExpr, NULL)
+        modelDef$declInfo[[6]]$indexExpr, NULL)
     expect_identical(
-        modelDef$declInfo[[4]]$stoch, FALSE)
+        modelDef$declInfo[[6]]$stoch, FALSE)
     
     expect_identical(
-        modelDef$declInfo[[1]]$declRule$varName, "a")
+        modelDef$declInfo[[2]]$declRule$varName, "a")
     expect_identical(
-        modelDef$declInfo[[1]]$declRule$stoch, TRUE)
+        modelDef$declInfo[[2]]$declRule$stoch, TRUE)
     expect_identical(
-        modelDef$declInfo[[4]]$declRule$varName, "theta")
+        modelDef$declInfo[[6]]$declRule$varName, "theta")
     expect_identical(
-        modelDef$declInfo[[4]]$declRule$stoch, FALSE)
+        modelDef$declInfo[[6]]$declRule$stoch, FALSE)
     
 })
 
@@ -84,34 +67,22 @@ test_that("makeRHSoriginalNodes works", {
                 y[i,j] ~ dnorm(mu0[i], 1)
     })
     modelDef <- modelDefClass$new(modelCode)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    
-    ## TODO: placeholder:
-    nimFunNames <- list(as.name(':'), as.name('dmnorm'), as.name('dnorm'), as.name('dunif'), as.name('dwish'))
-    
-    modelDef$declInfo[[1]]$makeRules(constants = list(), nimFunNames)
-    for(i in 1:4)
-        modelDef$declInfo[[i]]$makeRHSoriginalRules(constants = list())
+
     expect_identical(length(modelDef$declInfo[[1]]$rhsOriginalRules), 1L)
-    expect_identical(length(modelDef$declInfo[[2]]$rhsOriginalRules), 2L)
-    expect_identical(length(modelDef$declInfo[[3]]$rhsOriginalRules), 1L)
-    expect_identical(length(modelDef$declInfo[[4]]$rhsOriginalRules), 1L)     
+    expect_identical(length(modelDef$declInfo[[2]]$rhsOriginalRules), 1L)
+    expect_identical(length(modelDef$declInfo[[3]]$rhsOriginalRules), 3L)
+    expect_identical(length(modelDef$declInfo[[4]]$rhsOriginalRules), 1L)
+    expect_identical(length(modelDef$declInfo[[5]]$rhsOriginalRules), 1L)     
 })
 
+## HERE
 
-test_that("makeRules works", {
+test_that("makeGraphRules works", {
     modelCode <- quote({
         for(i in 1:10)
             a[i] ~ dnorm(mu[i], tau)
     })
     modelDef <- modelDefClass$new(modelCode)
-    modelDef$processModelCode()
-
-    ## TODO: placeholder:
-    nimFunNames <- list(as.name(':'), as.name('dmnorm'), as.name('dnorm'), as.name('dunif'), as.name('dwish'))
-    
-    modelDef$declInfo[[1]]$makeRules(constants = list(), nimFunNames)
 
     expect_identical(
         length(modelDef$declInfo[[1]]$downstreamRules), 2L)
@@ -119,6 +90,7 @@ test_that("makeRules works", {
               'indexRuleBlockClass')
     expect_is(modelDef$declInfo[[1]]$downstreamRules[[2]]$indexRules[[1]],
               'indexRuleAllClass')
+    expect_identical(length(modelDef$declInfo[[1]]$rhsOriginalRules), 2L)
 
     ## FIXME: LHS transformations not currently being processed correctly.
     modelCode <- quote({
@@ -126,9 +98,6 @@ test_that("makeRules works", {
             logit(a[i]) ~ dnorm(mu[i], tau)
     })
     modelDef <- modelDefClass$new(modelCode)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$declInfo[[1]]$makeRules(constants = list(), nimFunNames)
     
     result <- modelDeclClass$new()
     result$setup(
@@ -141,18 +110,6 @@ test_that("makeRules works", {
     expect_equal(modelDef$declInfo[[1]], result)
 })
 
-test_that("processDecls works", {
-    modelCode <- quote({
-        for(i in 1:10)
-            a[i] ~ dnorm(mu[i], tau)
-    })
-    modelDef <- modelDefClass$new(modelCode)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-
-    expect_identical(length(modelDef$declInfo[[1]]$downstreamRules), 2L)
-    expect_identical(length(modelDef$declInfo[[1]]$rhsOriginalRules), 2L)
-})
 
 test_that("makeGraphInfo works", {
     modelCode <- quote({
@@ -162,9 +119,6 @@ test_that("makeGraphInfo works", {
         }
     })
     modelDef <- modelDefClass$new(modelCode)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
 
     expect_identical(sort(names(modelDef$calcRules)), c('a','mu'))
     expect_identical(sort(names(modelDef$downstreamRules)), c('mu','mu0','tau'))

@@ -101,7 +101,7 @@ modelDeclClass <- R6Class(
                 for(k in 2:length(valueExpr)) {
                     paramName <- names(valueExpr)[k]
                     nDim <- types[[paramName]][['nDim']]
-                    if(is.numeric(nDim) && nDim == 0) invisible(NULL)
+                    if(is.numeric(nDim) && nDim == 0) return(NULL)
                     if(checkForExpr(valueExpr[[k]])) {
                         ## Draft gentler warning for possible future adoption: message("Warning about parameter '", names(decl$valueExpr)[k], "' of distribution '", dist, "': This multivariate parameter is provided as an expression. If this is a costly calculation, try making it a separate model declaration for it to improve efficiency.")
                         stop("checkMultivarExpr: Error with parameter `", names(valueExpr)[k], "` of distribution `",

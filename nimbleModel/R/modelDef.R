@@ -30,10 +30,8 @@ modelDefClass <- R6Class(
         
         initialize = function(code = NULL, constants = list(), dimensions = list(),
                               inits = list(), data = list(), userEnv = parent.frame()) {
-            ## Check for unused constants.
-            assignConstants(constants)
+            checkAndAssignConstants(constants, code)
 
-            ## Process if-then-else. 
             modelCode <<- codeProcessIfThenElse(code, constants, userEnv)  
             modelCode <<- nimble:::nf_changeNimKeywords(modelCode)   ## Formerly in `assignBUGScode`.
 
@@ -80,7 +78,7 @@ modelDefClass <- R6Class(
         },
 
         ## Check constants and assign into class.
-        assignConstants = function(constants) {
+        checkAndAssignConstants = function(constants, code) {
             if(!is.list(constants) || (length(constants) && is.null(names(constants))))
                 stop('modelDefClass$assignConstants: `constants` must be a named list.')
             if(length(names(constants))) {
