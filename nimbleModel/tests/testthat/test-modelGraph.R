@@ -2553,3 +2553,20 @@ test_that("SSM with additional pieces handled", {
                  varRangeClass$new(list(newIndexRange(quote(1))), varName = 'y2'))
     
 })
+
+
+test_that("duplicated nodes", {
+    code <- quote({
+        for(i in 1:3) {
+            y[i] ~ dnorm(mu[k[i]], 1)
+            mu[i] ~ dnorm(0, 1)
+        }
+    })
+    modelDef <- modelDefClass$new(code, constants = list(k = c(1,1,2)))
+    expect_equal(getParents(modelDef, 'y')[[1]],
+                 varRangeClass$new(list(newIndexRange(quote(1:2))),
+                                   varName = 'mu', fromStochRule = TRUE))
+    expect_equal(getDependencies(modelDef, 'mu[1]', self = FALSE)[[1]],
+                 varRangeClass$new(list(newIndexRange(quote(1:2))),
+                                   varName = 'y', fromStochRule = TRUE))
+})
