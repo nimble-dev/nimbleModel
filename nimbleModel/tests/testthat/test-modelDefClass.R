@@ -5,6 +5,7 @@ test_that("processModelCode works in simplest case", {
         a ~ dnorm(0, 1)
     })
     modelDef <- modelDefClass$new(modelCode)
+    expect_identical(length(modelDef$declInfo), 1L)
     expect_equal(
         modelDef$declInfo[[1]]$symbolicParentNodes,
         list()
@@ -72,15 +73,32 @@ test_that("makeRHSoriginalNodes works", {
     expect_identical(length(modelDef$declInfo[[2]]$rhsOriginalRules), 1L)
     expect_identical(length(modelDef$declInfo[[3]]$rhsOriginalRules), 3L)
     expect_identical(length(modelDef$declInfo[[4]]$rhsOriginalRules), 1L)
-    expect_identical(length(modelDef$declInfo[[5]]$rhsOriginalRules), 1L)     
-})
+    expect_identical(length(modelDef$declInfo[[5]]$rhsOriginalRules), 1L)
 
-## HERE
+    expect_equal(modelDef$declInfo[[1]]$rhsOriginalRules[[1]]$getFullRange(),
+                 varRangeClass$new(list(newIndexRange(quote(1:2))),
+                                        varName = 'phi'))
+    expect_equal(modelDef$declInfo[[2]]$rhsOriginalRules[[1]]$getFullRange(),
+                 varRangeClass$new(list(), varName = 'tau'))
+    expect_equal(modelDef$declInfo[[3]]$rhsOriginalRules[[1]]$getFullRange(),
+                 varRangeClass$new(list(newIndexRange(quote(1:10))), varName = 'mu'))
+    expect_equal(modelDef$declInfo[[3]]$rhsOriginalRules[[2]]$getFullRange(),
+                 varRangeClass$new(list(), varName = 'lifted_d1_over_sqrt_oPtau_cP'))
+    expect_equal(modelDef$declInfo[[3]]$rhsOriginalRules[[3]]$getFullRange(),
+                 varRangeClass$new(list(), varName = 'tau'))
+    expect_equal(modelDef$declInfo[[4]]$rhsOriginalRules[[1]]$getFullRange(),
+                 varRangeClass$new(list(), varName = 'tau2'))
+    expect_equal(modelDef$declInfo[[5]]$rhsOriginalRules[[1]]$getFullRange(),
+                 varRangeClass$new(list(newIndexRange(quote(1:2))), varName = 'mu0'))
+      
+})
 
 test_that("makeGraphRules works", {
     modelCode <- quote({
-        for(i in 1:10)
-            a[i] ~ dnorm(mu[i], tau)
+        for(i in 1:10) {
+            a[i] ~ dnorm(mu[i], sd = tau)
+            mu[i] ~ dnorm(0, 1)
+        }
     })
     modelDef <- modelDefClass$new(modelCode)
 
@@ -92,22 +110,35 @@ test_that("makeGraphRules works", {
               'indexRuleAllClass')
     expect_identical(length(modelDef$declInfo[[1]]$rhsOriginalRules), 2L)
 
-    ## FIXME: LHS transformations not currently being processed correctly.
+    expect_identical(
+        length(modelDef$declInfo[[1]]$upstreamRules), 2L)
+    expect_is(modelDef$declInfo[[1]]$upstreamRules[[1]]$indexRules[[1]],
+              'indexRuleBlockClass')
+    expect_identical(modelDef$declInfo[[1]]$upstreamRules[[2]]$indexRules,
+              list())
+    
+    
     modelCode <- quote({
         for(i in 1:10)
             logit(a[i]) ~ dnorm(mu[i], tau)
     })
     modelDef <- modelDefClass$new(modelCode)
     
-    result <- modelDeclClass$new()
-    result$setup(
-               quote(logit(a[i]) ~ dnorm(mu[i], tau)),
-               modelContextClass$new(list(
-                                         quote(for(i in (1):(10)){})
-                                     )),
-               sourceLineNumber = 2)
-    
-    expect_equal(modelDef$declInfo[[1]], result)
+    expect_identical(length(modelDef$declInfo), 3L)
+    expect_equal(
+        modelDef$declInfo[[2]]$targetExpr,
+        quote(logit_a[i]))
+    expect_equal(
+        modelDef$declInfo[[2]]$valueExpr,
+        quote(dnorm(mean = mu[i], sd = lifted_d1_over_sqrt_oPtau_cP, 
+                                 lower_ = -Inf, upper_ = Inf, .tau = tau,
+                                 .var = lifted_d1_over_sqrt_oPtau_cP * lifted_d1_over_sqrt_oPtau_cP)))
+    expect_equal(
+        modelDef$declInfo[[3]]$valueExpr,
+        quote(expit(logit_a[i])))
+    expect_equal(
+        modelDef$declInfo[[3]]$targetExpr,
+        quote(a[i]))
 })
 
 
@@ -120,8 +151,10 @@ test_that("makeGraphInfo works", {
     })
     modelDef <- modelDefClass$new(modelCode)
 
-    expect_identical(sort(names(modelDef$calcRules)), c('a','mu'))
-    expect_identical(sort(names(modelDef$downstreamRules)), c('mu','mu0','tau'))
+    expect_identical(sort(names(modelDef$calcRules)),
+                     c('a','lifted_d1_over_sqrt_oPtau_cP','mu'))
+    expect_identical(sort(names(modelDef$downstreamRules)),
+                     c('lifted_d1_over_sqrt_oPtau_cP','mu','mu0','tau'))
     expect_identical(sort(names(modelDef$rhsOnlyRules)), c('mu0','tau'))
    
 })
