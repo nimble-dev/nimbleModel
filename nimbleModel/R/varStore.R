@@ -32,7 +32,7 @@ varStoreClass <- R6Class(
             } else {
                 self$dim <- dimOrLength(value)
                 if(!missing(dim) && dim != self$dim)
-                    warning("varStoreClass: dimension of input not consistent with 'dim'; ignoring 'dim'.")
+                    messageIfVerbose("  [Warning] varStoreClass: dimension of input not consistent with `dim`; ignoring `dim`.")
                 if(nimAllEqual(value)) {  
                     self$allEqual <- TRUE
                     self$value <- value[1]

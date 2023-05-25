@@ -425,7 +425,7 @@ applyGraphRule <- function(fromVarRange, rule, varName = NULL) {
 
     ## For complicated crossing we first set up the fully-crossed inputs.
     if(complicatedCrossing) {
-        warning("applyGraphRule: Detected that not all indices in an indexRange are used in an indexRule that uses that indexRange, so fully crossing all inputs.")        
+        messageIfVerbose("  [Note] applyGraphRule: Detected that not all indices in an `indexRange` are used in an `indexRule` that uses that `indexRange`, so fully crossing all inputs.")        
         result <- fromVarRange$extractIndexRange(seq_len(numFromIndexSlots))
         fromVarRange <- varRangeClass$new(list(result))
         numIndexRanges <- 1

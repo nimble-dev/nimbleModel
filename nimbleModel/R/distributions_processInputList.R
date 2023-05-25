@@ -602,7 +602,7 @@ registerDistributions <- function(distributionsInput, userEnv = parent.frame(), 
 #' @export
 deregisterDistributions <- function(distributionsNames) {
     if(!exists('distributions', nimbleUserNamespace, inherits = FALSE)) 
-        warning("No user-supplied distributions are registered.")
+        warning("deregisterDistributions: No user-supplied distributions are registered.")
     matched <- distributionsNames %in% getAllDistributionsInfo('namesVector', userOnly = TRUE)
     if(sum(matched)) {
         distsMatched <- paste0(distributionsNames[matched], collapse = ', ')
@@ -610,7 +610,7 @@ deregisterDistributions <- function(distributionsNames) {
     }
     if(sum(!matched))
         for(nm in distributionsNames[!matched]) {
-            warning("Cannot deregister `", nm, "`, as it is not registered as a user-defined distribution.")
+            warning("deregisterDistributions: Cannot deregister `", nm, "`, as it is not registered as a user-defined distribution.")
         }
     
     distributionsNames <- distributionsNames[matched]
@@ -827,7 +827,7 @@ getDimension <- function(dist, params = NULL, valueOnly = is.null(params) &&
   }
   notFound <- which(! params %in% getParamNames(dist))
   if(length(notFound)) {
-    if('x' %in% params[notFound]) message("getDimension: use `value` instead of `x`.")
+    if('x' %in% params[notFound]) messageIfVerbose("  [Warning] getDimension: use `value` instead of `x`.")
     stop("getDimension: these parameter names not found: `", params[notFound], "`.")
   }
   out <- sapply(params, function(p) distInfo$types[[p]]$nDim)
@@ -855,7 +855,7 @@ getParamID <- function(dist, params = NULL, valueOnly = is.null(params) &&
   }
   notFound <- which(! params %in% getParamNames(dist))
   if(length(notFound)) {
-    if('x' %in% params[notFound]) message("getParamID: use `value` instead of `x`.")
+    if('x' %in% params[notFound]) messageIfVerbose("  [Warning] getParamID: use `value` instead of `x`.")
     stop("getParamID: these parameter names not found: `", params[notFound], "`.")
   }
   out <- distInfo$paramIDs[params]
@@ -885,7 +885,7 @@ getType <- function(dist, params = NULL, valueOnly = is.null(params) &&
   }
     notFound <- which(! params %in% getParamNames(dist))
     if(length(notFound)) {
-        if('x' %in% params[notFound]) message("getParamID: use `value` instead of `x`.")
+        if('x' %in% params[notFound]) messageIfVerbose("  [Warning] getParamID: use `value` instead of `x`.")
         stop("getType: these parameter names not found: `", params[notFound], "`.")
     }
     out <- sapply(params, function(p) distInfo$types[[p]]$type)

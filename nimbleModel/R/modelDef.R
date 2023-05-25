@@ -189,8 +189,7 @@ modelDefClass <- R6Class(
                                 "If your model has macros or if-then-else blocks,",
                                 "you can inspect the processed model code by running ",
                                 "`setNimbleModelOptions('stop_after_processing_model_code', TRUE)`",
-                                "before calling nimbleModel.",
-                            call. = FALSE)
+                                "before calling nimbleModel.")
                     }
                     indexRangeExpr <- code[[i]][[3]] ## This is the `1:N`.
                     if(getNimbleModelOption('prioritizeColonLikeBUGS'))
@@ -804,7 +803,7 @@ modelDefClass <- R6Class(
 
                 if(!sorted) {  # Complicated SSM-type cases or true cycles.
                     ## Fully fracture to try to handle complicated SSM cases.
-                    warning("Detected state-space type structure or cycle in model graph. Attempting to determine graph structure for non-cyclic cases. This may take some time. You may wish to alert the NIMBLE development team of your use case so that handling of such cases can be improved.")
+                    messageIfVerbose("  [Note] Detected state-space type structure or cycle in model graph. Attempting to determine graph structure for non-cyclic cases. This may take some time. You may wish to alert the NIMBLE development team of your use case so that handling of such cases can be improved.")
                     allCalcRules <- makeCalcRules(initialCalcRules, rhsOriginalRules, downstreamRules,
                                                   recurseFracturing = TRUE)
                     sorted <- setSortIDs(allCalcRules)
@@ -1294,7 +1293,7 @@ checkForDeterministicDorR <- function(code) {
             drFuns <- c(drFuns, dFunsUser, paste0("r", stripPrefix(dFunsUser)))
         }
         if(as.character(code[[3]][[1]]) %in% drFuns)
-            warning("Model includes deterministic assignment using '<-' of the result of a density ('d') or simulation ('r') calculation. This is likely not what you intended in: `", safeDeparse(code), "`.")
+            messageIfVerbose("  [Warning] Model includes deterministic assignment using '<-' of the result of a density ('d') or simulation ('r') calculation. This is likely not what you intended in: `", safeDeparse(code), "`.")
     }
     return(NULL)
 }
