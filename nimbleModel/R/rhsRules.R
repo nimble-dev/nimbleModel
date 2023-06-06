@@ -108,13 +108,13 @@ exclude <- function(rhsRule, excludingRule, constants = list()) {
                               indexRangeMatrixClass = RHS$values,
                               indexRangeScalarClass = RHS$value,
                               indexRangeSequenceClass = as.numeric(RHS$start:RHS$end),
-                              stop("exclude: `RHS` type not found.")
+                              stop("`RHS` type not found.")
                               )
             valsInt <- switch(class(int)[1],
                               indexRangeMatrixClass = int$values,
                               indexRangeScalarClass = int$value,
                               indexRangeSequenceClass = as.numeric(int$start:int$end),
-                              stop("exclude: `int` type not found.")
+                              stop("`int` type not found.")
                               )
             valsRHS <- valsRHS[!valsRHS %in% valsInt]
 
@@ -141,7 +141,7 @@ exclude <- function(rhsRule, excludingRule, constants = list()) {
             if(is(int, "indexRangeScalarClass"))  # convert to sequence to avoid special case code
                 int <- newIndexRange(substitute(A:A, list(A = int$value)))
             if(is(RHS, "indexRangeScalarClass"))
-                stop("exclude: Not expecting RHS to be a scalar.")  ## scalar RHS either fully intersected or not intersected
+                stop("not expecting RHS to be a scalar.")  ## scalar RHS either fully intersected or not intersected
 
             ## Now process two sequences.
             if(int$start == RHS$start || int$end == RHS$end) {

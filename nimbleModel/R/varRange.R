@@ -43,7 +43,7 @@ varRangeClass <- R6Class(
 
             fromStochRule <<- fromStochRule
             if(is(indexInfo, "indexRangeClass"))
-                stop("varRange must be initialized from a list of indexRanges not a single indexRange.")
+                stop("`varRange` must be initialized from a list of `indexRange`s not a single `indexRange`.")
             if(is.character(indexInfo))
                 indexInfo <- parse(text = indexInfo, keep.source = FALSE)[[1]]
             
@@ -55,7 +55,7 @@ varRangeClass <- R6Class(
                 } else {
                     ## The expression must have some indexing so it must start with `[`.
                     if(!identical(indexInfo[[1]], as.name("[")))
-                        stop("varRange: input is not a valid variable or variable range.")
+                        stop("input is not a valid variable or `varRange`.")
                     nameFromExpr <- safeDeparse(indexInfo[[2]], warn = TRUE)
                     indexRangeExprs <<- as.list(indexInfo[-c(1,2)])
                     indexRanges <<- lapply(indexRangeExprs, newIndexRange)
@@ -79,12 +79,12 @@ varRangeClass <- R6Class(
                 if(is.list(indexInfo)) {
                     if(length(indexInfo)) {
                         if(!all(sapply(indexInfo, function(x) is(x, "indexRangeClass"))))
-                            stop("varRange: `indexInfo` should be a list of `indexRange`s.")
+                            stop("`indexInfo` should be a list of `indexRange`s.")
                         setIndexRanges(indexInfo, rangeToIndexSlot)
                         indexRangeExprs <<- lapply(indexRanges, function(x) x$toExpr())
                     }
                     varName <<- varName
-                } else stop("varRange: unexpected input.")
+                } else stop("unexpected input.")
             }
             if(length(self$rangeToIndexSlot)) { 
                 rangeID <- rep(seq_along(self$rangeToIndexSlot), times = sapply(self$rangeToIndexSlot, length))
@@ -218,7 +218,7 @@ getVarName <- function(x) {
     if(is.call(x) || is.name(x))
         if(length(x) == 1) return(safeDeparse(x, warn = TRUE)) else return(safeDeparse(x[[2]], warn = TRUE))
     if(is.null(x)) return(NULL)
-    stop("getVarName: unexpected input: `", x, "`.")
+    stop("unexpected input: `", x, "`.")
 }
 
 ## Remove duplicates from an arbitrary set of varRanges.

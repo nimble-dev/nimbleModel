@@ -23,7 +23,7 @@ singleContextClass <- R6Class(
         initialize = function(indexVarExpr, indexRangeExpr, forCode) {
             if(missing(forCode)) {
                 if(missing(indexVarExpr) || missing(indexRangeExpr))
-                    stop("singleContext: either `forCode` or both `indexVarExpr` and `indexRangeExpr` must be provided.")
+                    stop("either `forCode` or both `indexVarExpr` and `indexRangeExpr` must be provided.")
                 forCode <<- substitute(for(III in VVV) {},
                                        list(III = indexVarExpr,
                                             VVV = indexRangeExpr))[1:3]
@@ -34,14 +34,14 @@ singleContextClass <- R6Class(
                     indexVarExpr <<- forCode[[2]]
                 } else {
                     if(!identical(indexVarExpr, forCode[[2]]))
-                        stop("singleContext: `indexVarExpr` does not match the index variable in `forCode`.")
+                        stop("`indexVarExpr` does not match the index variable in `forCode`.")
                     indexVarExpr <<- indexVarExpr
                 }
                 if(missing(indexRangeExpr)) {
                     indexRangeExpr <<- forCode[[3]]
                 } else {
                     if(!identical(indexRangeExpr, forCode[[3]]))
-                        stop("singleContext: `indexRangeExpr` does not match the index range in `forCode`.")
+                        stop("`indexRangeExpr` does not match the index range in `forCode`.")
                     indexRangeExpr <<- indexRangeExpr
                 }
                 ## Remove any code from body of loop.
@@ -71,7 +71,7 @@ modelContextClass <- R6Class(
                                                       singleContextClass$new(forCode = x)
                                                   } else if(is(x, "singleContextClass")) {
                                                       x
-                                                  } else stop("modelContextClass: `singleContexts` must be a list of `singleContextClass` objects or a list of for-loop code.")
+                                                  } else stop("`singleContexts` must be a list of `singleContextClass` objects or a list of for-loop code.")
                                               )
                     indexVarExprs <<- lapply(self$singleContexts,
                                              function(x) x$indexVarExpr)
@@ -227,7 +227,7 @@ determineContextSize <- function(context, useContext = rep(TRUE, length(context$
     assign("iAns", 0L, evalEnv)
     test <- try(eval(innerLoopCode, evalEnv))
     if(is(test, 'try-error'))
-        stop("determineContextSize: Could not evaluate loop syntax: is indexing information provided via `constants`?")
+        stop("could not evaluate loop syntax: is indexing information provided via `constants`?")
     ans <- evalEnv$iAns
     rm(list = c('iAns', context$indexVarNames[useContext]), envir = evalEnv)
     return(ans)

@@ -20,7 +20,7 @@ indexRuleArbitraryClass <- R6Class(
 
         apply = function(indexRange, collapse = TRUE) {
             if(!is(indexRange, 'indexRangeClass'))
-                stop("indexRuleArbitraryClass$apply: an index rule must be applied to an `indexRange`.")
+                stop("an index rule must be applied to an `indexRange`.")
             indexRuleArbitrary_applyMatrix(indexRange$toMatrix(), setupResults, collapse = collapse)
         },
  

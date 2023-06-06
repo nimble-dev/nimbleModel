@@ -28,7 +28,7 @@ indexRuleBlockClass <- R6Class(
                    indexRangeMatrixClass = indexRuleBlock_applyToMatrix(indexRange$values,
                                                                         setupResults,
                                                                         collapse = collapse),
-                   stop('indexRuleBlockClass$apply: an index rule must be applied to an `indexRange`.')
+                   stop('an index rule must be applied to an `indexRange`.')
                    )
         },
         

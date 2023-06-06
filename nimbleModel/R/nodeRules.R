@@ -90,7 +90,7 @@ nodeRuleClass <- R6Class(
 
             if(!(numExternalIndexRules + numInternalIndexRules) &&
                !varRange$isNone())
-                stop("nodeRuleClass$apply: incorrect number of input indices.")
+                stop("incorrect number of input indices in `varRange`.")
             
             ## Apply both the external and internal indexRules.
             if(numExternalIndexRules) {
@@ -229,7 +229,7 @@ calcRuleClass <- R6Class(
             if(is.null(inputRange))
                 inputRange <- canonicalRange
             if(!is.null(inputRange$varName) && !is.null(varName) && inputRange$varName != varName)
-                stop("makeCalcRange: inputRange varianble name does not match the calcRule variable name.")
+                stop("`inputRange` variable name does not match the `calcRule` variable name.")
 
             ## Need original indexing because nodeFunctions will use that indexing
             ## (e.g. `y[i+1]` needs value of `i`).
@@ -245,7 +245,7 @@ calcRuleClass <- R6Class(
                 end = return(end),
                 top = return(top),
                 latent = return(!end && !top),
-                stop("Invalid type ", type)
+                stop("invalid type, `", type, "`.")
             )
         },
 
@@ -255,7 +255,7 @@ calcRuleClass <- R6Class(
                 top = top <<- TRUE,
                 stochParent = stochParent <<- TRUE,
                 stochDep = stochDep <<- TRUE,
-                stop("Invalid type ", type)
+                stop("invalid type, `", type, "`.")
                 )
             return(TRUE)
         },
@@ -266,7 +266,7 @@ calcRuleClass <- R6Class(
                 top = top <<- FALSE,
                 stochParent = stochParent <<- FALSE,
                 stochDep = stochDep <<- FALSE,
-                stop("Invalid type ", type)
+                stop("invalid type, `", type, "`.")
                 )
             return(FALSE)
         },
@@ -279,11 +279,11 @@ calcRuleClass <- R6Class(
         },
 
         setParents = function(IDs) {
-            parents <<- c(parents, IDs)
+            parents <<- c(parents, IDs[!IDs %in% parents])
         },
         
         setChildren = function(IDs) {
-            children <<- c(children, IDs)
+            children <<- c(children, IDs[!IDs %in% children])
         },
 
         unsetParents = function(IDs) {
@@ -612,7 +612,7 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
             nm %in% all.vars(expr[[2+nonIdenticalIndexSlots]]))
 
         if(sum(focalContext) != 1)
-            stop("fracture: unexpected number of contexts in ", safeDeparse(expr), ".")
+            stop("unexpected number of contexts in `", safeDeparse(expr), "`.")
 
         ## General strategy in cases below is to determine overlapped and non-overlapped
         ## index values and create new calcRules for these, modifying the
@@ -625,13 +625,13 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
                               indexRangeMatrixClass = LHS$values,
                               indexRangeScalarClass = LHS$value,
                               indexRangeSequenceClass = as.numeric(LHS$start:LHS$end),
-                              stop("fracture: `LHS` type not found.")
+                              stop("`LHS` type not found.")
                               )
             valsFrac <- switch(class(frac)[1],
                               indexRangeMatrixClass = frac$values,
                               indexRangeScalarClass = frac$value,
                               indexRangeSequenceClass = as.numeric(frac$start:frac$end),
-                              stop("fracture: `frac` type not found.")
+                              stop("`frac` type not found.")
                               )
             valsLHS <- valsLHS[!valsLHS %in% valsFrac]  # Values for new rule are those that don't overlap.
 
@@ -682,7 +682,7 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
                 frac <- newIndexRange(substitute(A:A, list(A = frac$value)))
             ## Scalar LHS should either have no overlap or full overlap and have been handled at start.
             if(is(LHS, "indexRangeScalarClass"))
-                stop("fracture: Not expecting `LHS` to be a scalar.")
+                stop("not expecting `LHS` to be a scalar.")
           
             if(frac$start == LHS$start || frac$end == LHS$end) {
                 ## Shrink existing sequence.

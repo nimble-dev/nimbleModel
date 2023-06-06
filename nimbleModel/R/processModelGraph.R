@@ -226,7 +226,7 @@ traverseGraph <- function(streamRules, declRules,
     if(is(nodes, 'varRangeClass')) nodes <- list(nodes)  # We use `lapply` on 'nodes' later.
     
     if(!all(is.character(nodes) | sapply(nodes, function(node) is(node, 'varRangeClass'))))
-        stop("getNodes: `nodes` must be variable names or variable ranges.")
+        stop("`nodes` must be variable names or `varRange`s.")
 
     results <- traverseGraphRecurse(streamRules, nodes, down, follow, immediateOnly)
 
@@ -412,7 +412,7 @@ processCyclicRules <- function(allCalcRules, modelDef) {
     cyclicRules <- allCalcRules[cyclicRulesSet]
     numSortIDs <- cumsum(sapply(cyclicRules, function(rule) length(rule$sortID)))
     tmpSortIDs <- unlist(lapply(cyclicRules,
-                                function(rule) rule$sortID))
+                                function(rule) rule$sortID), use.names = FALSE)
     NAsortIDs <- is.na(tmpSortIDs)
     ## Can have ties if have distinct unrelated cycles. 
     rk <- rank(tmpSortIDs, ties.method = 'min')
@@ -431,7 +431,13 @@ processCyclicRules <- function(allCalcRules, modelDef) {
         if(i == 1) {
             cyclicRules[[i]]$sortID <- tmpSortIDs[1:numSortIDs[1]]
         } else cyclicRules[[i]]$sortID <- tmpSortIDs[(numSortIDs[i-1]+1):numSortIDs[i]]
+        ## Clean up unneeded NAs.
+        nonNAs <- which(!is.na(cyclicRules[[i]]$sortID))
+        if(length(nonNAs) == 1) {
+            cyclicRules[[i]]$sortID <- cyclicRules[[i]]$sortID[nonNAs]
+        } else cyclicRules[[i]]$sortID <- cyclicRules[[i]]$sortID[1:max(nonNAs)]
     })
+    
     allCalcRules[cyclicRulesSet] <- cyclicRules
     return(allCalcRules)
 }
@@ -547,6 +553,6 @@ reprioritizeColonOperator <- function(code) {
                               ")"),
                 keep.source = FALSE)[[1]])
     if(length(split.code[[1]]) > 2)
-        stop("reprioritizeColonOperator: could not process colon operator in `", safeDeparse(code), "`.")
+        stop("could not process colon operator in `", safeDeparse(code), "`.")
     return(code)
 }

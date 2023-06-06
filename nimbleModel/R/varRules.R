@@ -28,19 +28,19 @@ varRuleClass <- R6Class(
 ## Take a flat list of `nodeRule`s and divide up into one `varRule` per variable.
 newVarRules <- function(items, varNames = NULL, type = NULL) {
     if(!all(sapply(items, function(x) is(x, "nodeRuleClass") || is(x, "graphRuleClass"))))
-        stop("newVarRules: all elements of `items` must be `nodeRule`s or `graphRule`s.")
+        stop("all elements of `items` must be `nodeRule`s or `graphRule`s.")
     if(is.null(varNames)) {
         varNames <- sapply(items, function(item) item$varName)
     } else 
         if(length(varNames) != length(items))
-            stop("newVarRules: length of `varNames` must match length of `items`.")
+            stop("length of `varNames` must match length of `items`.")
     if(!is.null(type)) {
         include <- sapply(items, function(item) item$isOfType(type))
     } else include <- rep(TRUE, length(items))
     uniqVarNames <- unique(varNames)
     if(is(items[[1]], 'varRangeClass')) {
         ## TODO: why would we ever have a varRule of varRanges?
-        stop("newVarRules: unexpected input.")
+        stop("input cannot be a `varRange`.")
         result <- lapply(uniqVarNames, function(nm)
             items[varNames == nm & include])
     } else  

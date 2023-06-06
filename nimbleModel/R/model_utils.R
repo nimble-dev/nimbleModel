@@ -68,7 +68,7 @@ makeSizeAndDimList <- function(code, nodesToExtract, unrolledIndicesMatrix = NUL
             }
             thisCodeLength <- codeEndInds - codeStartInds + 1
             if(checkRagged && !all(thisCodeLength == thisCodeLength[1])){
-              stop("Error: AD not currently supported for ragged arrays in model code", call. = FALSE)
+              stop("AD not currently supported for ragged arrays in model code.")
             }
             codeLength <- c(codeLength, thisCodeLength[1])
           }
@@ -225,7 +225,7 @@ Rname2CppName <- function(rName, colonsOK = TRUE, maxLength = 250) {
         rName <- gsub(':', 'to', rName)  # replace colons with 'to'
         rName <- gsub('_DOUBLE_COLON_', '::', rName)
     } else if(grepl(':', rName)) {
-        stop(paste0('trying to do name mashup on expression with colon (\':\') from ', rName))
+        stop('unable to do name mashup on expression with colon (\':\'): `', rName, "`.")
     }
     rName <- gsub(' ', '', rName)
     rName <- gsub('\\.', '_dot_', rName) 
@@ -313,7 +313,7 @@ character2index <- function(thisChar){
 		return(begin:end)
 	}
 	else
-		stop("Error: too many :'s in index")
+		stop("too many `:`'s in index.")
 }
 
 #' @export

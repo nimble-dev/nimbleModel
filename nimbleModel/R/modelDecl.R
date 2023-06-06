@@ -51,11 +51,11 @@ modelDeclClass <- R6Class(
                    (!any(code[[3]][[1]] == getAllDistributionsInfo('namesVector')) &&
                     code[[3]][[1]] != "T" &&
                     code[[3]][[1]] != "I"))
-                    stop("modelDeclClass$new: Improper syntax for stochastic declaration: `", safeDeparse(code), "`.")
+                    stop("improper syntax for stochastic declaration: `", safeDeparse(code), "`.")
                 distributionName <<- as.character(valueExpr[[1]])
                 stoch <<- TRUE
             } else if(code[[1]] != '<-') {
-                stop("modelDeclClass$new: Improper syntax for declaration: `", safeDeparse(code), "`.")
+                stop("improper syntax for declaration: `", safeDeparse(code), "`.")
             }                 
             
             transExpr <<- NULL
@@ -75,7 +75,7 @@ modelDeclClass <- R6Class(
                     if(length(targetNodeExpr)>1) {
                         ## There are subscripts inside the transformation
                         if(targetNodeExpr[[1]] != '[') 
-                            stop("modelDeclClass$new: Invalid subscripting for `", safeDeparse(targetExpr), "`.")
+                            stop("invalid subscripting for `", safeDeparse(targetExpr), "`.")
                         indexExpr <<- as.list(targetNodeExpr[-c(1,2)])
                         targetVarExpr <- targetNodeExpr[[2]]
                     } else {
@@ -104,7 +104,7 @@ modelDeclClass <- R6Class(
                     if(is.numeric(nDim) && nDim == 0) return(NULL)
                     if(checkForExpr(valueExpr[[k]])) {
                         ## Draft gentler warning for possible future adoption: message("Warning about parameter '", names(decl$valueExpr)[k], "' of distribution '", dist, "': This multivariate parameter is provided as an expression. If this is a costly calculation, try making it a separate model declaration for it to improve efficiency.")
-                        stop("checkMultivarExpr: Error with parameter `", names(valueExpr)[k], "` of distribution `",
+                        stop("error with parameter `", names(valueExpr)[k], "` of distribution `",
                              distributionName, "`: multivariate parameters cannot be expressions; please define the expression as a separate deterministic variable\n",
                              "and use that variable as the parameter.")  
                     }
@@ -291,7 +291,7 @@ modelDeclClass <- R6Class(
                     logProbExpr <- as.name(makeLogProbName(logProbExpr))   
                 } else {  # Indexing on the LHS node.
                     if(logProbExpr[[1]] != '[')
-                        stop("genLogProbExpr: cannot process `", safeDeparse(logProbExpr), "`.")
+                        stop("cannot process `", safeDeparse(logProbExpr), "`.")
                     logProbExpr[[2]] <- as.name(makeLogProbName(logProbExpr[[2]]))
                     
                     origLHS <- code[[2]]
@@ -304,7 +304,7 @@ modelDeclClass <- R6Class(
                                 ## memberData, for each nodeFunction.
                                 if(origIndex[[1]] == ":") {
                                     logProbExpr[[i]] <- origIndex[[2]] # generally the minimum
-                                } else stop("genLogProbExpr: Unexpected input in `", safeDeparse(origIndex), "`.")
+                                } else stop("unexpected input in `", safeDeparse(origIndex), "`.")
                             } else {
                                 ## No loop-indexing variables present in the vectorized index.
                                 ## This index should be constant for all instances of this nodeFunction.

@@ -80,7 +80,7 @@ modelDefClass <- R6Class(
         ## Check constants and assign into class.
         checkAndAssignConstants = function(constants, code) {
             if(!is.list(constants) || (length(constants) && is.null(names(constants))))
-                stop('modelDefClass$assignConstants: `constants` must be a named list.')
+                stop('`constants` must be a named list.')
             if(length(names(constants))) {
                   constantsInCode <- names(constants) %in% all.vars(code)
                 if(!all(constantsInCode)) 
@@ -108,7 +108,7 @@ modelDefClass <- R6Class(
                     constDim <- integer(0)  # But for 1-length vectors treat as scalars as that is how handled in system.
                 if(constName %in% names(dL)) {
                     if(!identical(as.integer(dL[[constName]]), as.integer(constDim))) {
-                        stop('modelDefClass$assignDimensions: inconsistent dimensions between constants and dimensions arguments: `',
+                        stop('inconsistent dimensions between `constants` and `dimensions` arguments: `',
                              constName, '`.')
                     }
                 } else {
@@ -127,7 +127,7 @@ modelDefClass <- R6Class(
                                              initName, '`; ignoring dimensions in inits.')
                         }
                     } else {
-                        dL[[initName]] <- initDim
+                        dL[[initName]] <- as.numeric(initDim)
                     }
                 }
             }
@@ -183,7 +183,7 @@ modelDefClass <- R6Class(
                     indexVarExpr <- code[[i]][[2]]   ## This is the `i`.
                     if(length(contexts) > 0) {
                         if(as.character(indexVarExpr) %in% contexts[[contextID]]$indexVarNames)
-                            stop("modelDefClass$processModelCode: variable `",
+                            stop("variable `",
                                 as.character(indexVarExpr),
                                 "` used multiple times as for loop index in nested loops.",
                                 "If your model has macros or if-then-else blocks,",
@@ -209,7 +209,7 @@ modelDefClass <- R6Class(
                     )
                     contexts[[nextContextID]] <<- modelContextClass$new(singleContexts = singleContexts)
                     if(length(code[[i]][[4]]) == 1) {
-                        stop("modelDefClass$processModelCode: cannot evaluate `", safeDeparse(code[[i]]))
+                        stop("cannot evaluate `", safeDeparse(code[[i]]), "`.")
                     }
                     recurseCode <- if(code[[i]][[4]][[1]] == '{') {
                                        code[[i]][[4]]
@@ -236,7 +236,7 @@ modelDefClass <- R6Class(
                             envir = envir)
                 }
                 if(!safeDeparse(code[[i]][[1]]) %in% c('~', '<-', 'for', '{')) 
-                    stop("modelDefClass$processModelCode: `",
+                    stop("`",
                          safeDeparse(code[[i]][[1]]),
                          " not allowed in model code in `",
                          safeDeparse(code[[i]]), "`.")
@@ -292,7 +292,7 @@ modelDefClass <- R6Class(
 
                     distName <- as.character(newCode[[3]][[1]])
                     if(!getAllDistributionsInfo('pqAvail')[distName]) 
-                        stop("modelDefClass$processBoundsAndTruncation: cannot implement truncation for `",
+                        stop("cannot implement truncation for `",
                              distName, "`; 'p' and 'q' functions not available.")
 
                     distRange <- getDistributionInfo(distName)$range
@@ -349,7 +349,7 @@ modelDefClass <- R6Class(
                 nextNewDeclInfoIndex <- length(newDeclInfo) + 1
                 if(is.null(decl$transExpr))     { newDeclInfo[[nextNewDeclInfoIndex]] <- decl; next }
                 linkText <- safeDeparse(decl$transExpr, warn = TRUE)
-                if(!(linkText %in% names(linkInverses)))    stop("modelDefClass$processLinks: unknown link function: `", linkText, "`.")
+                if(!(linkText %in% names(linkInverses)))    stop("unknown link function: `", linkText, "`.")
                 
                 if(decl$stoch) {   # stochastic declaration
                     code <- decl$code
@@ -390,7 +390,7 @@ modelDefClass <- R6Class(
                 distName <- decl$distributionName
                 ## CHECK: shouldn't this be trapped earlier (e.g., in expandDistributions?).
                 if(!(distName %in% getAllDistributionsInfo('namesVector')))
-                    stop("modelDefClass$reparameterizeDists: unknown distribution name: `", distName, "`.")
+                    stop("unknown distribution name: `", distName, "`.")
                 distRule <- getDistributionInfo(distName)
                 numArgs <- length(distRule$reqdArgs)
                 newValueExpr <- quote(dist())       ## set up a parse tree for the new value expression
@@ -414,8 +414,8 @@ modelDefClass <- R6Class(
                                 matchedAlt <- count
                         }
                         if(is.null(matchedAlt))
-                            stop("modelDefClass$reparameterizeDists: invalid parameters for distribution `",
-                                 safeDeparse(valueExpr), '`. (No available re-parameterization found.)', call. = FALSE)
+                            stop("invalid parameters for distribution `",
+                                 safeDeparse(valueExpr), '`. (No available re-parameterization found.)')
                     }
                     nonReqdArgs <- names(params)[!(names(params) %in% distRule$reqdArgs)]
                     for(iArg in seq_len(numArgs)) {   # loop over the required arguments
@@ -425,17 +425,17 @@ modelDefClass <- R6Class(
                             newValueExpr[[iArg + 1]] <- params[[reqdArgName]];
                             next
                         }
-                        if(!matchedAlt) stop("modelDefClass$reparameterizeDists: processing issue -- looking for alternative parameterization, but supplied args are same as required args in `",
+                        if(!matchedAlt) stop("problem in processing distribution parameterizations: looking for alternative parameterization, but supplied args are same as required args in `",
                                              safeDeparse(valueExpr), "`.")
                         if(!reqdArgName %in% names(distRule$exprs[[matchedAlt]]))
-                            stop("modelDefClass$reparameterizeDists: could not find `",
+                            stop("could not find `",
                                  reqdArgName, "` in alternative parameterization number ", matchedAlt, " for `", safeDeparse(valueExpr), "`.")
                         transformedParameterPT <- distRule$exprs[[matchedAlt]][[reqdArgName]]
                         ## handles pathological-case model variable names, e.g., `y ~ dnorm(0, tau = sd)`.
                         namesToSubstitute <- intersect(c(nonReqdArgs, distRule$reqdArgs), all.vars(transformedParameterPT))
                         for(nm in namesToSubstitute) {
                             ## Loop thru possible non-canonical parameters in the expression for the canonical parameter.
-                            if(is.null(params[[nm]])) stop("modelDefClass$reparameterizeDists: processing error in parameter transformation.")
+                            if(is.null(params[[nm]])) stop("processing error in parameter transformation.")
                             transformedParameterPT <- parseTreeSubstitute(pt = transformedParameterPT, pattern = as.name(nm), replacement = params[[nm]])
                         }
                         newValueExpr[[iArg + 1]] <- transformedParameterPT
@@ -448,11 +448,11 @@ modelDefClass <- R6Class(
                         if(!is.numeric(boundExprs[[iBound]])) {
                             ## Only expecting `boundExprs` to be functions of `reqdArgs`.
                             if(length(intersect(nonReqdArgs, all.vars(boundExprs[[iBound]]))))
-                                stop("modelDefClass$reparameterizeDists: Expecting expressions for distribution range for `",
+                                stop("expecting expressions for distribution range for `",
                                      distName, "` to be functions only of required arguments, namely the parameters used in the 'Rdist' element.")
                             namesToSubstitute <- intersect(c(distRule$reqdArgs), all.vars(boundExprs[[iBound]]))
                             for(nm in namesToSubstitute) {
-                                if(is.null(params[[nm]])) stop("modelDefClass$reparameterizeDists: processing error in parameter transformation.")
+                                if(is.null(params[[nm]])) stop("processing error in parameter transformation.")
                                 boundExprs[[iBound]] <- parseTreeSubstitute(pt = boundExprs[[iBound]], pattern = as.name(nm), replacement = params[[nm]])
                             }
                         }
@@ -683,10 +683,10 @@ modelDefClass <- R6Class(
                 dimVarName <- names(dimensionsList)[i]
                 if(!(dimVarName %in% names(varInfo))) next
                 if(length(dimensionsList[[dimVarName]]) != varInfo[[dimVarName]]$nDim)
-                    stop("genVarInfo: inconsistent dimensions for variable `", dimVarName, "`.")
+                    stop("inconsistent dimensions for variable `", dimVarName, "`.")
                 if(any(dimensionsList[[dimVarName]] < varInfo[[dimVarName]]$maxs &&
                        varInfo[[dimVarName]]$maxs < .Machine$integer.max))
-                    stop("genVarInfo: dimensions specified are smaller than model specification for variable `", dimVarName, "`.")
+                    stop("dimensions specified are smaller than model specification for variable `", dimVarName, "`.")
                 varInfo[[dimVarName]]$maxs <<- dimensionsList[[dimVarName]]
             }
 
@@ -698,7 +698,7 @@ modelDefClass <- R6Class(
                                                any(x$mins > x$maxs))
             if(any(invalidRange)) {
                 problemVars <- which(invalidRange)
-                stop("genVarInfo: indexing error found for model variable(s): `",
+                stop("indexing error found for model variable(s): `",
                      paste0(names(varInfo)[problemVars], collapse = "`, `"),
                            "`. Please check that variables used for indexing are properly defined in the relevant for loop(s).")
             }
@@ -708,7 +708,7 @@ modelDefClass <- R6Class(
             invalidMaxs <- sapply(varInfo, function(x) length(x$maxs) && min(x$maxs) < 1)
             if(any(invalidMins) || any(invalidMaxs)) {
                 problemVars <- c(which(invalidMins), which(invalidMaxs))
-                stop("genVarInfo: index value of zero or less found for model variable(s): `",
+                stop("index value of zero or less found for model variable(s): `",
                      paste0(names(varInfo)[problemVars], collapse = "`, `"), "`.")
             }
 
@@ -804,11 +804,20 @@ modelDefClass <- R6Class(
                 if(!sorted) {  # Complicated SSM-type cases or true cycles.
                     ## Fully fracture to try to handle complicated SSM cases.
                     messageIfVerbose("  [Note] Detected state-space type structure or cycle in model graph. Attempting to determine graph structure for non-cyclic cases. This may take some time. You may wish to alert the NIMBLE development team of your use case so that handling of such cases can be improved.")
+                    
+                    ## Start from scratch with clean set of `initialCalcRules` (because elements of
+                    ## `allCalcRules` are the same as elements of `initialCalcRules`),
+                    ## meaning some `sortID` values have been modified.
+                    initialCalcRules <- lapply(declRules, function(rule)
+                        calcRuleClass$new(rule, NULL, NULL, rule$context, constants)
+                        )
+                    sapply(seq_along(initialCalcRules), function(i) initialCalcRules[[i]]$ID <- as.character(i))
+                    names(initialCalcRules) <- sapply(initialCalcRules, function(rule) rule$ID)
                     allCalcRules <- makeCalcRules(initialCalcRules, rhsOriginalRules, downstreamRules,
                                                   recurseFracturing = TRUE)
                     sorted <- setSortIDs(allCalcRules)
                     if(!sorted)
-                        stop("Cycle found in model graph. NIMBLE does not allow cyclic models.")
+                        stop("cycle found in model graph. NIMBLE does not allow cyclic models.")
                 }
             }
 
@@ -867,8 +876,6 @@ modelDefClass <- R6Class(
 ## part of model class. That said, more naturally part of modelDef class.
 
 ## TODO: move these functions into a new stand-alone code file for user-facing functions?
-## TODO: look into combining results - duplication only deals with complete overlap, e.g., from `y[i]~dnorm(mu,sigma)`
-## getDependencies(c('mu','sigma'))
 
 ## Note: `getDependencies` and `getParents` cannot handle `stochOnly` or `determOnly`
 ## because a given varRange result for getParents could be partially stochastic and
@@ -908,7 +915,7 @@ getNodes <- function(modelDef, nodes = NULL,
     ## `nodes` may contain one or more varRanges or varNames.
     
     if(topOnly + latentOnly + endOnly > 1)
-        stop("getNodes: only one of `topOnly`, `latentOnly`, `endOnly` can be `TRUE`.")
+        stop("only one of `topOnly`, `latentOnly`, `endOnly` can be `TRUE`.")
 
     if(is.null(nodes)) {
         nodes <- names(modelDef$declRules)
@@ -918,7 +925,7 @@ getNodes <- function(modelDef, nodes = NULL,
         if(is(nodes, 'varRangeClass'))
             nodes <- list(nodes) 
         if(!all(is.character(nodes) | sapply(nodes, function(node) is(node, 'varRangeClass'))))
-            stop("getNodes: `nodes` must be variable names or variable ranges.")
+            stop("`nodes` must be variable names or `varRange`s.")
     }
     
     if(!topOnly && !latentOnly && !endOnly) 
@@ -957,7 +964,7 @@ codeProcessIfThenElse <- function(code, constants, envir) {
     
     codeLength <- length(code)
     if(is.name(code))
-        stop("Incomplete declaration found: '", safeDeparse(code), "'.")
+        stop("incomplete declaration found: '", safeDeparse(code), "'.")
         
     if(code[[1]] == '{') {
         if(codeLength > 1)
@@ -974,7 +981,7 @@ codeProcessIfThenElse <- function(code, constants, envir) {
     if(code[[1]] == 'if') {
          evaluatedCondition <- try(eval(code[[2]], constants), silent = TRUE)
         if(inherits(evaluatedCondition, "try-error")) 
-            stop("codeProcessIfThenElse: cannot evaluate condition of `if` statement: `",
+            stop("cannot evaluate condition of `if` statement: `",
                  safeDeparse(code[[2]]),
                  "`.\nCondition must be able to be evaluated based on values in `constants` or environment from which model is created.")
         if(evaluatedCondition) {
@@ -997,7 +1004,7 @@ addMissingIndexingRecurse <- function(code, dimensionsList) {
 
     ## Code must be an indexing call, e.g. `x[.....]`.
     if(code[[1]] != '[')
-        stop("addMissingIndexingRecurse: expecting a bracket, `[`, in `", safeDeparse(code), "`.")
+        stop("expecting a bracket, `[`, in `", safeDeparse(code), "`.")
 
     ## Handle cases like `covMat[1:5,1:5] <- eigen(constMat[1:5,])$vectors[1:5,1:5]%*%t(eigen(constMat[1:5,1:5])$vectors[,])`.
     if(length(code[[2]]) > 1 && code[[2]][[1]] == '$'){
@@ -1039,14 +1046,13 @@ addMissingIndexingRecurse <- function(code, dimensionsList) {
     ## Check to make sure all indices are present.
     if(!any(code[[2]] == names(dimensionsList))) {
         if(any(unlist(lapply(as.list(code), is.blank)))) {
-            stop("addMissingIndexingRecurse: ",
-                 "The model definition included the expression `", safeDeparse(code), "`, which contains missing indices.\n",
-                 "There are two options to resolve this:\n",
+            stop("The model definition included the expression `", safeDeparse(code), "`, which contains missing indices.\n",
+                 "There are three options to resolve this:\n",
                  "(1) Explicitly provide the missing indices in the model definition (e.g., `",
-                 safeDeparse(example_fillInMissingIndices(code)), "`), or\n",
+                 safeDeparse(example_fillInMissingIndices(code)), "`).\n",
                  "(2) Provide the dimensions of variable `", code[[2]], "` via the `dimensions` argument to `nimbleModel()`, e.g.,\n",
                  "    `nimbleModel(code, dimensions = list(", code[[2]], " = ", safeDeparse(example_getMissingDimensions(code)), "`)).\n",
-                 call. = FALSE)
+                 "(3) Provide initial values for the variable `", code[[2]], "` via the `inits` argument to `nimbleModel()`.")
         }
         ## and to recurse on all elements
         for(i in seq_along(code))
@@ -1059,7 +1065,7 @@ addMissingIndexingRecurse <- function(code, dimensionsList) {
       dimensions <- dimensionsList[[as.character(code[[2]])]]
       ## First, just check that the dimensionality of the node is consistent.
       if(length(code) != length(dimensions) + 2)
-          stop("addMissingIndexingRecurse: inconsistent dimensionality provided for `", code[[2]], "`.")
+          stop("inconsistent dimensionality provided for `", code[[2]], "`.")
       ## Then, fill in any missing indices, and recurse on all other elements.
       for(i in seq_along(code)) {
           if(is.blank(code[[i]])) {
@@ -1070,7 +1076,7 @@ addMissingIndexingRecurse <- function(code, dimensionsList) {
       }
       return(code)
      }
-    stop("addMissingIndexingRecurse: unable to process `", safeDeparse(code), "`.")
+    stop("unable to process `", safeDeparse(code), "`.")
 }
 
 ## Replace constants that involve no indexing with actual values of constants.
@@ -1152,7 +1158,7 @@ replaceConstantsRecurse <- function(code, constantsEnv, do.eval = TRUE) {
         }
         return(list(code = code, replaceable = allReplaceable))
     }
-    stop("replaceConstantsRecurse: unable to process `", safeDeparse(code), "`.")
+    stop("unable to process `", safeDeparse(code), "`.")
 }
 
 neverReplaceable <- list(
@@ -1196,7 +1202,7 @@ isExprLiftable <- function(paramExpr, type = NULL) {
     if(is.name(paramExpr))       return(FALSE)
     if(is.numeric(paramExpr))    return(FALSE)
     if(is.logical(paramExpr))
-        stop("isExprLiftable: NIMBLE is not expecting a logical/boolean value; please use a numeric value in place of `", paramExpr, "`.") 
+        stop("not expecting a logical/boolean value; please use a numeric value in place of `", paramExpr, "`.") 
     if(is.call(paramExpr)) {
         callText <- getCallText(paramExpr)
         if(callText %in% names(neverReplaceable)) return(TRUE)    # Special calls that are not lifted.
@@ -1208,7 +1214,7 @@ isExprLiftable <- function(paramExpr, type = NULL) {
         if(is.vectorized(paramExpr))              return(FALSE)   # Don't lift any expression with vectorized indexing, `funName(x[1:10])`.
         return(TRUE)
     }
-    stop("isExprLiftable: cannot process this parameter expression: `", safeDeparse(paramExpr), "`.")
+    stop("cannot process this parameter expression: `", safeDeparse(paramExpr), "`.")
 }
 
 addNecessaryIndexingToNewNode <- function(newNodeNameExpr, paramExpr, indexVarExprs) {
@@ -1245,7 +1251,7 @@ checkForDuplicateNodeDeclaration <- function(newNodeCode, newNodeNameExprIndexed
     for(i in seq_along(newDeclInfo)) {
         if(identical(newNodeNameExprIndexed, newDeclInfo[[i]]$targetExpr)) {
             ## We've found a node declaration with exactly the same LHS, which is a mangling of the RHS during lifting.
-            if(!identical(newNodeCode, newDeclInfo[[i]]$code))    stop("checkForDuplicateNodeDeclaration: error in processing `", safeDeparse(newNodeCode), "`.") 
+            if(!identical(newNodeCode, newDeclInfo[[i]]$code))    stop("error in processing `", safeDeparse(newNodeCode), "`.") 
             return(TRUE)   # Indicate that we found a matching node declaration.
         }
     }
@@ -1269,9 +1275,9 @@ checkUserDefinedDistribution <- function(code, userEnv) {
 
 replaceDistributionAliases <- function(code) {
     if(length(code) < 3)
-        stop("Invalid model declaration: `", safeDeparse(code), "`.")
+        stop("invalid model declaration: `", safeDeparse(code), "`.")
     if(!is.call(code[[3]]))
-        stop("Invalid model declaration: `", safeDeparse(code), "` must call a density function.")
+        stop("invalid model declaration: `", safeDeparse(code), "` must call a density function.")
     dist <- as.character(code[[3]][[1]])
     trunc <- FALSE
     if(dist %in% c("T", "I")) {

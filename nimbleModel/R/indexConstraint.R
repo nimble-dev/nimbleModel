@@ -123,7 +123,7 @@ indexConstraintMatrixClass <- R6Class(
         check = function(indexRange) {
             switch(class(indexRange)[1],
                    indexRangeMatrixClass = checkFunction(indexRange),
-                   stop("indexConstraintMatrixClass$check: `indexRange` must be a matrix.")
+                   stop("`indexRange` must be a matrix.")
                    )                   
         },
 
@@ -190,7 +190,7 @@ checkIndexConstraints <- function(varRange, indexConstraints) {
                             valid <- constraint$check(varRange$extractIndexRange(constraint$slots))
                             for(j in neededRanges) {
                                 if(!is.null(result[[j]]))
-                                    stop("checkIndexConstraints: encountered a case that should have been fully crossed.")
+                                    stop("encountered a case that should have been fully crossed.")
                                 result[[j]] <- valid
                             }
                         } else {
@@ -234,7 +234,7 @@ makeIndicesMatrix <- function(fromIndexExprs, context, constants) {
                function(x) unrolledIndicesEnv[[x]])
     
     if(any(is.na(unlist(fromUnrolledResults))))
-        stop("Missing values found in setting up arbitrary indexRule: are constants the correct size?")
+        stop("missing values found in setting up arbitrary index rule: are constants the correct size?")
     unrolledSize <- unrolledIndicesEnv$outputSize
 
     from_allScalar <- all(

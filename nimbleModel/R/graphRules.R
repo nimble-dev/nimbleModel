@@ -70,7 +70,7 @@ graphRuleClass <- R6Class(
             if(numFromIndexSlots == -1)
                 numFromIndexSlots <<- 0
             if(numFromIndexSlots < 0)
-                stop("graphRuleClass: Unable to determine number of indices in ", safeDeparse(fromExpr), ".")
+                stop("unable to determine number of indices in ", safeDeparse(fromExpr), ".")
             output <- makeIndexRules(toExpr, fromExpr, indexSets, context, constants)
             indexRules <<- output$indexRules
             indexConstraints <<- output$indexConstraints
@@ -83,7 +83,7 @@ graphRuleClass <- R6Class(
                 } else fromVarRange <- varRangeClass$new(fromVarRange)   # string providing the varRange         
             }
             if(!is(fromVarRange, 'varRangeClass'))
-                stop("graphRuleClass$apply: 'fromVarRange' needs to be a `varRangeClass` object.")
+                stop("`fromVarRange` needs to be a `varRangeClass` object.")
             inputVarName <- getVarName(fromVarRange)
             if(!is.null(fromVarName) && !is.null(inputVarName) && inputVarName != fromVarName)
                 return(NULL)
@@ -250,7 +250,7 @@ checkForVars <- function(toExpr, fromExpr, context, constants) {
         varsInExpr <- c(varsInExpr, all.vars(toExpr[2:length(toExpr)]))
     wh <- which(!varsInExpr %in% c(names(constants), context$indexVarNames))
     if(length(wh))
-        stop("graphRuleClass: Index or constant `", paste(unique(varsInExpr[wh]), collapse = ','), "` not found as loop index or in constants.")
+        stop("index or constant `", paste(unique(varsInExpr[wh]), collapse = ','), "` not found as loop index or in constants.")
 }
 
 
@@ -271,12 +271,12 @@ makeIndexRules <- function(toExpr, fromExpr, indexSets, context, constants) {
     if(length(toExpr) >= 3 && toExpr[[1]] == '[') {
         toIndexExprs <- as.list(toExpr[-c(1,2)])
     } else if(length(toExpr) == 1) toIndexExprs <- list() else
-        stop("graphRuleClass: '", safeDeparse(toExpr), "' should be an index expression or variable name.")
+        stop("`", safeDeparse(toExpr), "` should be an index expression or variable name.")
 
     if(length(fromExpr) >= 3 && fromExpr[[1]] == '[') {
         fromIndexExprs <- as.list(fromExpr[-c(1,2)])
     } else if(length(fromExpr) == 1) fromIndexExprs <- list() else
-        stop("graphRuleClass: '", safeDeparse(fromExpr), "' should be an index expression or variable name.") 
+        stop("`", safeDeparse(fromExpr), "`should be an index expression or variable name.") 
 
     ## Create simple constraints.
     fromConstantIndexSlots <- which(indexSets$fromIndexSlotToSet == 0)
@@ -400,7 +400,7 @@ applyGraphRule <- function(fromVarRange, rule, varName = NULL) {
     ## Check valid number of input indices
     numFromIndexSlots <- length(unlist(fromVarRange$rangeToIndexSlot))
     if(numFromIndexSlots != rule$numFromIndexSlots)
-        stop("applyGraphRule: incorrect number of input indices.")
+        stop("incorrect number of input indices.")
      
     ## Determine which fromSlots will be used for each rule
     ## and set up index crossing and aligning needs.
@@ -498,9 +498,9 @@ applyGraphRule <- function(fromVarRange, rule, varName = NULL) {
             if(length(fromConstraints[[iRange]]) > 1) {  # scalar constraint already checked where `invalid` created/used
                 for(set in sets) {
                     if(!is(ansIndexRanges[[set]], 'indexRangeMatrixListClass'))
-                        stop("applyGraphRule: Expecting `fromConstraints` to only be relevant for a matrixList indexRange.")
+                        stop("expecting `fromConstraints` to only be relevant for a `matrixList` `indexRange`.")
                     if(length(fromConstraints[[iRange]]) != ansIndexRanges[[set]]$numElements)
-                        stop("applyGraphRule: Expecting fromConstraints to have as many logicals as elements of the indexRange.")
+                        stop("expecting `fromConstraints` to have as many logicals as elements of the `indexRange`.")
                     ansIndexRanges[[set]] <- ansIndexRanges[[set]]$getRows(fromConstraints[[iRange]])
                 }
             }
@@ -519,7 +519,7 @@ applyGraphRule <- function(fromVarRange, rule, varName = NULL) {
                     finalRangeToIndexSlot[[iAns]] <- finalRangeToIndexSlot[[iAns]][slotOrder]
                     ## TODO: do we need this check?
                     if(is(finalIndexRanges[[iAns]], 'indexRangeEmptyClass'))
-                        stop("applyGraphRule: Found unexpected empty indexRange.")
+                        stop("found unexpected empty `indexRange`.")
                     finalIndexRanges[[iAns]] <- finalIndexRanges[[iAns]]$getColumns(slotOrder)
                 }
             } else {  # Only one rule operates on the indexRange.
@@ -571,7 +571,7 @@ applyGraphRule <- function(fromVarRange, rule, varName = NULL) {
         constantSlots <- which(indexSets$toIndexSlotToSet == 0)
         if(length(constantSlots) != length(constantRulesIdx) &&
            length(constantSlots) > 0)
-            stop("applyGraphRule: number of constant rules doesn't match number of index slots.")
+            stop("number of constant rules doesn't match number of index slots.")
         finalRangeToIndexSlot <- c(finalRangeToIndexSlot, as.list(constantSlots))
     }
 

@@ -1,24 +1,28 @@
-## TODO: be careful that probably will not have replaced constants
-## at point we start testing here.
-
 getElements <- function(x, name) {
     result <- x[names(x) == name]
     names(result) <- NULL
     return(result)
 }
 
+extractRuleElement <- function(vr, nm) {
+    tmp <- sapply(vr$rules, function(rule) rule[[nm]])
+    if(is.matrix(tmp))
+        tmp <- c(tmp)
+    names(tmp) <- NULL
+    for(i in seq_along(tmp))
+        names(tmp[[i]]) <- NULL
+    return(tmp)
+}
+
 test_that("graph processing for basic model works", {
     code <- quote({
-        y ~ dnorm(mu, sigma)
+        y ~ dnorm(mu, sd = sigma)
         mu ~ dnorm(mu0, 1)
         sigma ~ dunif(0,1)
     })
 
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
-
+    
     expect_identical(length(modelDef$downstreamRules), 3L)
     expect_identical(length(modelDef$downstreamRules[['mu0']]$rules), 1L)
     expect_identical(length(modelDef$downstreamRules[['mu']]$rules), 1L)
@@ -62,7 +66,7 @@ test_that("graph processing for basic model works", {
    
 test_that("graph processing for basic model with deterministic nodes works", {
     code <- quote({
-        y ~ dnorm(phi, sigma)
+        y ~ dnorm(phi, sd = sigma)
         phi <- mu + 1
         mu ~ dnorm(mu0, 1)
         mu0 <- mu00 + 1
@@ -71,9 +75,6 @@ test_that("graph processing for basic model with deterministic nodes works", {
     })
   
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
     
     expect_identical(length(modelDef$downstreamRules), 6L)
     
@@ -157,28 +158,29 @@ test_that("graph processing for basic model with deterministic nodes works", {
 
 test_that("graph processing for model with various parents in a declaration works", {
     code <- quote({
-        y ~ dnorm(mu + z, sigma)
+        y ~ dnorm(mu + z, sd = sigma)
         mu ~ dnorm(0, 1)
         sigma ~ dunif(0,1)
         z ~ dnorm(0, 1)
     })
 
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
 
-    expect_identical(length(modelDef$downstreamRules), 3L)
+    expect_identical(length(modelDef$downstreamRules), 4L)
     expect_identical(length(modelDef$downstreamRules[['mu']]$rules), 1L)
     expect_identical(length(modelDef$downstreamRules[['z']]$rules), 1L)
     expect_identical(length(modelDef$downstreamRules[['sigma']]$rules), 1L)
-    expect_identical(modelDef$downstreamRules[['mu']]$rules[[1]]$toVarName, "y")
-    expect_identical(modelDef$downstreamRules[['z']]$rules[[1]]$toVarName, "y")
+    expect_identical(length(modelDef$downstreamRules[['lifted_mu_plus_z']]$rules), 1L)
+    expect_identical(modelDef$downstreamRules[['mu']]$rules[[1]]$toVarName, "lifted_mu_plus_z")
+    expect_identical(modelDef$downstreamRules[['z']]$rules[[1]]$toVarName, "lifted_mu_plus_z")
     expect_identical(modelDef$downstreamRules[['sigma']]$rules[[1]]$toVarName, "y")
+    expect_identical(modelDef$downstreamRules[['lifted_mu_plus_z']]$rules[[1]]$toVarName, "y")
 
-    for(wh in c('sigma','mu','z'))
+    for(wh in c('mu','z'))
         expect_identical(modelDef$calcRules[[wh]]$rules[[1]]$sortID, 1)
-    expect_identical(modelDef$calcRules[['y']]$rules[[1]]$sortID, 2)
+    for(wh in c('sigma', 'lifted_mu_plus_z'))
+        expect_identical(modelDef$calcRules[[wh]]$rules[[1]]$sortID, 2)
+    expect_identical(modelDef$calcRules[['y']]$rules[[1]]$sortID, 3)
 })
 
 
@@ -194,10 +196,7 @@ test_that("graph processing with split latent node", {
     })
 
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
-
+ 
     expect_identical(length(modelDef$downstreamRules), 2L)
     
     expect_identical(length(modelDef$downstreamRules[['y']]$rules), 1L)
@@ -244,9 +243,6 @@ test_that("graph processing with split LHS node", {
     })
 
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
 
     expect_identical(length(modelDef$calcRules), 2L)
 
@@ -289,6 +285,7 @@ test_that("graph processing with split LHS node", {
 
 })
 
+
 test_that("graph processing with triangular dependency structure", {
     code <- quote({
         w ~ dnorm(theta, 1)
@@ -298,15 +295,12 @@ test_that("graph processing with triangular dependency structure", {
     })
 
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
 
     tmp <- unlist(sapply(modelDef$calcRules, function(rule) rule$rules))
     ids <- sapply(tmp, function(x) x$ID)
     names(ids) <- sub("\\..*", "", names(ids))
 
-    expect_identical(length(modelDef$calcRules), 4L)
+    expect_identical(length(modelDef$calcRules), 5L)
 
     var <- "theta"
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$isOfType('top'), TRUE)
@@ -315,7 +309,8 @@ test_that("graph processing with triangular dependency structure", {
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 1)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$parents, numeric(0))
     expect_identical(sort(modelDef$calcRules[[var]]$rules[[1]]$children),
-                     sort(c(getElement(ids, 'w'), getElement(ids, 'y'),  getElement(ids, 'mu'))))
+                     sort(c(getElement(ids, 'w'),
+                            getElement(ids, 'lifted_theta_plus_mu'),  getElement(ids, 'mu'))))
 
     var <- "mu"
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$isOfType('top'), FALSE)
@@ -323,21 +318,30 @@ test_that("graph processing with triangular dependency structure", {
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$isOfType('latent'), TRUE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 2)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$parents, getElement(ids, "theta"))
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$children, getElement(ids, 'y'))
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$children, getElement(ids, 'lifted_theta_plus_mu'))
     
     var <- "y"
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$isOfType('top'), FALSE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$isOfType('end'), TRUE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$isOfType('latent'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 4)
+    expect_identical(sort(modelDef$calcRules[[var]]$rules[[1]]$parents),
+                     getElement(ids, 'lifted_theta_plus_mu'))
+
+    var <- "lifted_theta_plus_mu"
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$isOfType('top'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$isOfType('end'), FALSE)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$isOfType('latent'), TRUE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 3)
     expect_identical(sort(modelDef$calcRules[[var]]$rules[[1]]$parents),
-                     sort(c(getElement(ids, "theta"), getElement(ids, 'mu'))))
+                     sort(c(getElement(ids, 'mu'),
+                            getElements(ids, 'theta'))))
 
     var <- "w"
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$isOfType('top'), FALSE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$isOfType('end'), TRUE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$isOfType('latent'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 3)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 4)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$parents, getElement(ids, "theta"))
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$children, numeric(0))
 })
@@ -353,9 +357,6 @@ test_that("graph processing and top/end nodes with deterministic nodes", {
     })
     
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
 
     var <- "z"
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$isOfType('top'), TRUE)
@@ -390,15 +391,12 @@ test_that("graph processing and top/end nodes with deterministic nodes", {
     code <- quote({
         z <- z0
         w ~ dnorm(0, 1)
-        theta ~ dnorm(w, z)
+        theta ~ dnorm(w, sd = z)
         y <- theta + 3
         y2 <- y + 1
     })
 
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
 
     var <- "z"
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$isOfType('top'), TRUE)
@@ -440,15 +438,12 @@ test_that("graph processing with various types of multivariate nodes", {
     })
     
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
 
     tmp <- unlist(sapply(modelDef$calcRules, function(rule) rule$rules))
     ids <- sapply(tmp, function(x) x$ID)
     names(ids) <- sub("\\..*", "", names(ids))
 
-    expect_identical(length(modelDef$calcRules), 2L)
+    expect_identical(length(modelDef$calcRules), 4L)
 
     var <- "y"
     expect_identical(length(modelDef$calcRules[[var]]$rules), 1L)
@@ -456,9 +451,11 @@ test_that("graph processing with various types of multivariate nodes", {
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$isOfType('top'), FALSE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$isOfType('end'), TRUE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$isOfType('latent'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 2)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 3)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$children, numeric(0))
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$parents, getElements(ids, "mu"))
+    expect_identical(sort(modelDef$calcRules[[var]]$rules[[1]]$parents),
+                     sort(c(getElements(ids, "mu"),
+                            getElements(ids, "lifted_chol_oPpr_oB1to3_comma_1to3_cB_cP"))))
 
     var <- "mu"
     expect_identical(length(modelDef$calcRules[[var]]$rules), 2L)
@@ -467,10 +464,12 @@ test_that("graph processing with various types of multivariate nodes", {
         expect_identical(modelDef$calcRules[[var]]$rules[[i]]$isOfType('top'), TRUE)
         expect_identical(modelDef$calcRules[[var]]$rules[[i]]$isOfType('end'), FALSE)
         expect_identical(modelDef$calcRules[[var]]$rules[[i]]$isOfType('latent'), FALSE)
-        expect_identical(modelDef$calcRules[[var]]$rules[[i]]$sortID, 1)
+        expect_identical(modelDef$calcRules[[var]]$rules[[i]]$sortID, 2)
         expect_identical(modelDef$calcRules[[var]]$rules[[i]]$children, getElement(ids, "y"))
-        expect_identical(modelDef$calcRules[[var]]$rules[[i]]$parents, numeric(0))
     }
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$parents, numeric(0))
+    expect_identical(modelDef$calcRules[[var]]$rules[[2]]$parents,
+                     getElements(ids, "lifted_chol_oPpr_oB1to2_comma_1to2_cB_cP"))
 
     code <- quote({
         y[1:3] ~ dmnorm(mu[1:3], pr[1:3,1:3])
@@ -478,15 +477,12 @@ test_that("graph processing with various types of multivariate nodes", {
     })
     
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
 
     tmp <- unlist(sapply(modelDef$calcRules, function(rule) rule$rules))
     ids <- sapply(tmp, function(x) x$ID)
     names(ids) <- sub("\\..*", "", names(ids))
 
-    expect_identical(length(modelDef$calcRules), 2L)
+    expect_identical(length(modelDef$calcRules), 4L)
 
     var <- "y"
     expect_identical(length(modelDef$calcRules[[var]]$rules), 1L)
@@ -494,9 +490,11 @@ test_that("graph processing with various types of multivariate nodes", {
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$isOfType('top'), FALSE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$isOfType('end'), TRUE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$isOfType('latent'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 2)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 3)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$children, numeric(0))
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$parents, getElement(ids, 'mu'))
+    expect_identical(sort(modelDef$calcRules[[var]]$rules[[1]]$parents),
+                     sort(c(getElement(ids, 'mu'),
+                            getElements(ids, 'lifted_chol_oPpr_oB1to3_comma_1to3_cB_cP'))))
 
     var <- "mu"
     expect_identical(length(modelDef$calcRules[[var]]$rules), 1L)
@@ -504,9 +502,10 @@ test_that("graph processing with various types of multivariate nodes", {
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$isOfType('top'), TRUE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$isOfType('end'), FALSE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$isOfType('latent'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 1)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 2)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$children, getElement(ids, "y"))
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$parents, numeric(0))
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$parents,
+                     getElements(ids, 'lifted_chol_oPpr_oB1to4_comma_1to4_cB_cP'))
     
     code <- quote({
         y[1:3] ~ dmnorm(mu[1:3], pr[1:3,1:3])
@@ -514,15 +513,12 @@ test_that("graph processing with various types of multivariate nodes", {
     })
     
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
 
     tmp <- unlist(sapply(modelDef$calcRules, function(rule) rule$rules))
     ids <- sapply(tmp, function(x) x$ID)
     names(ids) <- sub("\\..*", "", names(ids))
 
-    expect_identical(length(modelDef$calcRules), 2L)
+    expect_identical(length(modelDef$calcRules), 3L)
 
     var <- "y"
     expect_identical(length(modelDef$calcRules[[var]]$rules), 1L)
@@ -530,9 +526,10 @@ test_that("graph processing with various types of multivariate nodes", {
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$isOfType('top'), TRUE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$isOfType('end'), TRUE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$isOfType('latent'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 1)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 2)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$children, getElement(ids, 'z'))
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$parents, numeric(0))
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$parents,
+                     getElement(ids, "lifted_chol_oPpr_oB1to3_comma_1to3_cB_cP"))
 
     var <- "z"
     expect_identical(length(modelDef$calcRules[[var]]$rules), 1L)
@@ -540,19 +537,20 @@ test_that("graph processing with various types of multivariate nodes", {
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$isOfType('top'), FALSE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$isOfType('end'), TRUE)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$isOfType('latent'), FALSE)
-    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 2)
+    expect_identical(modelDef$calcRules[[var]]$rules[[1]]$sortID, 3)
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$parents, getElement(ids, "y"))
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$children, numeric(0))
     
     code <- quote({
-        y[1:3] ~ dmnorm(mu[1:3], pr[1:3,1:3])
+        y[1:3] ~ dmnorm(mu[1:3], cholesky = pr[1:3,1:3], prec_param = 1)
         z[1:4] <- y[1:4]
     })
     
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
+
+    tmp <- unlist(sapply(modelDef$calcRules, function(rule) rule$rules))
+    ids <- sapply(tmp, function(x) x$ID)
+    names(ids) <- sub("\\..*", "", names(ids))
 
     expect_identical(length(modelDef$calcRules), 2L)
 
@@ -577,20 +575,20 @@ test_that("graph processing for complicated multiple mv LHS nodes", {
     })
     
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
 
     tmp <- unlist(sapply(modelDef$calcRules, function(rule) rule$rules))
     ids <- sapply(tmp, function(x) x$ID)
     names(ids) <- sub("\\..*", "", names(ids))
 
-    expect_identical(length(modelDef$calcRules), 2L)
+    expect_identical(length(modelDef$calcRules), 4L)
     expect_identical(length(modelDef$calcRules[['y']]$rules), 2L)
     expect_identical(length(modelDef$calcRules[['mu']]$rules), 1L)
     
-    expect_identical(modelDef$calcRules[['y']]$rules[[1]]$parents, getElement(ids, "mu"))
-    expect_identical(modelDef$calcRules[['y']]$rules[[2]]$parents, numeric(0))
+    expect_identical(sort(modelDef$calcRules[['y']]$rules[[1]]$parents),
+                     sort(c(getElement(ids, "mu"),
+                            getElement(ids, "lifted_chol_oPpr_oB1to3_comma_1to3_cB_cP"))))
+    expect_identical(modelDef$calcRules[['y']]$rules[[2]]$parents,
+                     getElement(ids, "lifted_chol_oPpr_oB1to3_comma_1to3_cB_cP"))
     
     expect_identical(length(modelDef$rhsOnlyRules), 2L)
     expect_is(modelDef$rhsOnlyRules[['mu']]$rules[[1]]$externalRule$indexRules[[1]],
@@ -599,15 +597,12 @@ test_that("graph processing for complicated multiple mv LHS nodes", {
     
     code <- quote({
         for(i in 1:3)
-            mu[i, 1:3] ~ dmnorm(mu0[1:3, i], pr[1:3,1:3])
-        mu0[1, 1:2] ~ dmnorm(zero[1:2], pr[1:2, 1:2])
+            mu[i, 1:3] ~ dmnorm(mu0[1:3, i], cholesky = pr[1:3,1:3], prec_param = 1)
+        mu0[1, 1:2] ~ dmnorm(zero[1:2], cholesky = pr[1:2, 1:2], prec_param = 1)
         y ~ dnorm(mu[1,1], 1)
     })
     
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
 
     var <- "mu"
     expect_identical(length(modelDef$calcRules[[var]]$rules), 3L)
@@ -635,9 +630,6 @@ test_that("graph processing for RHS var used twice", {
     })
 
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
     
     expect_identical(length(modelDef$rhsOnlyRules), 3L)
 
@@ -659,10 +651,7 @@ test_that("graph processing for basic RHS exclusion and LHS fracturing", {
     })
     
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
-
+    
     expect_identical(length(modelDef$calcRules), 2L)
 
     var <- "mu"
@@ -729,9 +718,6 @@ test_that("graph processing for basic RHS exclusion and LHS fracturing", {
     })
 
     modelDef <- modelDefClass$new(code, constants = list(k1 = c(1,2,4), k2 = c(1,2,4)))
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
     
     expect_identical(length(modelDef$calcRules), 2L)
     var <- "mu"
@@ -747,9 +733,6 @@ test_that("graph processing for basic RHS exclusion and LHS fracturing", {
     })
 
     modelDef <- modelDefClass$new(code, constants = list(k1 = c(1,2,4), k2 = c(3,5,7)))
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
     
     expect_identical(length(modelDef$calcRules), 2L)
     var <- "mu"
@@ -765,19 +748,15 @@ test_that("graph processing error trapping for cycles", {
         mu ~ dnorm(z, 1)
     })
 
-    modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    expect_error(expect_warning(modelDef$makeGraphInfo(), "Detected state-space"), "Cycle found")
+    expect_message(expect_error(modelDef <- modelDefClass$new(code), "cycle found"),
+                  "Detected state-space")
 
     code <- quote({
         y ~ dnorm(y, 1)
     })
 
-    modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    expect_error(expect_warning(modelDef$makeGraphInfo(), "Detected state-space"), "Cycle found")
+    expect_message(expect_error(modelDef <- modelDefClass$new(code), "cycle found"),
+                  "Detected state-space")
 })
 
 test_that("graph processing for model with overlapping RHS works", {
@@ -793,10 +772,7 @@ test_that("graph processing for model with overlapping RHS works", {
     })
     
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
-
+    
     var <- 'mu'
     expect_identical(length(modelDef$rhsOnlyRules[[var]]$rules), 3L)
     expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[1]]$getFullRange()$indexRanges[[1]],
@@ -816,9 +792,6 @@ test_that("graph processing for model with overlapping RHS works", {
         mu[1:4, 4:5] <- theta[1:4]
     })
     modelDef <- modelDefClass$new(code, constants = list(k1 = c(1,3,4), k2 = c(1,2,5)))
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
     
     expect_identical(length(modelDef$rhsOnlyRules[['mu']]$rules), 2L)
     expect_identical(length(modelDef$rhsOnlyRules[['theta']]$rules), 1L)
@@ -838,9 +811,6 @@ test_that("graph processing for model with overlapping RHS works", {
             mu[1:4, k3[i]] <- theta[1:4]
     })
     modelDef <- modelDefClass$new(code, constants = list(k1 = c(1,3,4), k2 = c(1,2,5), k3 = c(3,5,7)))
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
     
     expect_identical(length(modelDef$rhsOnlyRules[['mu']]$rules), 2L)
     expect_identical(length(modelDef$rhsOnlyRules[['theta']]$rules), 1L)
@@ -856,14 +826,11 @@ test_that("graph processing for model with overlapping RHS works", {
         y <- mu[1, 1]
         z[1:3, 1:2] <- mu[1:3, 1:2]
         w[3, 2:3] <- mu[3, 2:3]
-        mu[1:2, 2] ~ dmnorm(mu0[1:2], pr[1:2, 1:2])
+        mu[1:2, 2] ~ dmnorm(mu0[1:2], cholesky = pr[1:2, 1:2], prec_param = 1)
         mu[1, 1] ~ dnorm(0, 1)
     })
 
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
 
     var <- 'mu'
     expect_identical(length(modelDef$rhsOnlyRules[[var]]$rules), 2L)
@@ -883,9 +850,6 @@ test_that("graph processing for model with overlapping RHS works", {
     })
     
     modelDef <- modelDefClass$new(code, constants = list(k1 = c(2,4), k2 = c(4,6)))
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
 
     var <- 'mu'
     expect_identical(length(modelDef$rhsOnlyRules[[var]]$rules), 2L)
@@ -917,9 +881,6 @@ test_that("graph processing for model with overlapping RHS works", {
     })
     
     modelDef <- modelDefClass$new(code, constants = list(k1 = c(2,4), k2 = c(4,6)))
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
 
     var <- 'mu'
     expect_identical(length(modelDef$rhsOnlyRules[[var]]$rules), 2L)
@@ -943,7 +904,7 @@ test_that("graph processing for model with overlapping RHS works", {
 test_that("graph processing for multiple RHS only cases", {
     code <- quote({
         for(i in 1:5)
-            y[i] ~ dnorm(mu[i], sigma[i])
+            y[i] ~ dnorm(mu[i], sd = sigma[i])
         for(i in 2:3)
             mu[i] ~ dnorm(0,1)
         for(i in 5:7)
@@ -951,11 +912,7 @@ test_that("graph processing for multiple RHS only cases", {
     })
 
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
-
-
+    
     var <- 'mu'
     expect_identical(length(modelDef$rhsOnlyRules[[var]]$rules), 2L)
     expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[1]]$getFullRange()$indexRanges[[1]],
@@ -972,8 +929,8 @@ test_that("graph processing for multiple RHS only cases", {
 test_that("graph processing for block models with fixed indexing", {
     code <- quote({
         for(i in 1:10) {
-            y[i] ~ dnorm(mu[k[i]],1)
-            mu[i]~dnorm(mu0,1)
+            y[i] ~ dnorm(mu[k[i]], 1)
+            mu[i] ~ dnorm(mu0, 1)
         }})
     
     k <- c(1,3,2,1,1,2,2,3,3,1)
@@ -1011,13 +968,13 @@ test_that("graph processing for block models with fixed indexing", {
     expect_identical(modelDef$calcRules[['mu']]$rules[[1]]$isOfType('top'), TRUE)
     expect_identical(modelDef$calcRules[['mu']]$rules[[2]]$isOfType('end'), TRUE)
     expect_identical(modelDef$calcRules[['mu']]$rules[[2]]$isOfType('top'), TRUE)
-}
+})
 
 test_that("graph processing for dynamic indexing", {
     code <- quote({
         for(i in 1:10) {
-            y[i] ~ dnorm(mu[k[i]],1)
-            mu[i] ~ dnorm(mu0,1)
+            y[i] ~ dnorm(mu[k[i]], 1)
+            mu[i] ~ dnorm(mu0, 1)
             k[i] ~ dcat(p[1:10])
         }})
     
@@ -1063,13 +1020,13 @@ test_that("graph processing for dynamic indexing", {
 test_that("warning of non-constant indices without priors", {
     code <- quote({
         for(i in 1:10) {
-            y[i] ~ dnorm(mu[k[i]],1)
-            mu[i]~dnorm(mu0,1)
+            y[i] ~ dnorm(mu[k[i]], 1)
+            mu[i]~dnorm(mu0, 1)
         }})
     
     k=c(1:3,1:3,1:3,2)
     
-    expect_warning(modelDef <- modelDefClass$new(code, inits = list(k=k)),
+    expect_message(modelDef <- modelDefClass$new(code, inits = list(k=k)),
                    "Detected use of non-constant indices")
 
     code = quote({
@@ -1080,9 +1037,9 @@ test_that("warning of non-constant indices without priors", {
             mu[i] ~ dnorm(0,1)
     })
     
-    expect_warning(modelDef <- modelDefClass$new(code,
+    expect_error(modelDef <- modelDefClass$new(code,
                                                  constants = list(block=sample(1:20,3))),
-                   "Detected use of non-constant indices")
+                   "dynamic indexing of constants")
 
     code = quote({
         for(i in 1:3) {
@@ -1092,7 +1049,7 @@ test_that("warning of non-constant indices without priors", {
             mu[i] ~ dnorm(0,1)
     })
     
-    expect_warning(modelDef <- modelDefClass$new(code,
+    expect_message(modelDef <- modelDefClass$new(code,
                                                  constants = list(k = 1:3)),
                    "Detected use of non-constant indices")
 })
@@ -1184,56 +1141,13 @@ test_that("nested indexing", {
         for(i in 1:10) 
             mu[i] ~ dnorm(0, 1)
     })
-    expect_output(modelDef <- modelDefClass$new(code), "Detected use of non-constant")
+    expect_message(modelDef <- modelDefClass$new(code), "Detected use of non-constant")
     result <- getDependencies(modelDef, 'mu[6]', self = FALSE)
     expect_equal(result[[1]], varRangeClass$new(list(newIndexRange(quote(1:3))), varName = 'y',
                                                 fromStochRule = TRUE))
                          
 })
 
-test_that("graph processing for state-space model", {
-
-    ## basic dependence within a variable
-    code <- quote({
-        for(i in 2:4)
-        y[i]~dnorm(y[i-1],1)
-    })
-    modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
-
-    expect_identical(length(modelDef$rhsOnlyRules), 1L)
-    expect_identical(length(modelDef$rhsOnlyRules[['y']]$rules), 1L)
-    expect_equal(modelDef$rhsOnlyRules[['y']]$rules[[1]]$getFullRange(),
-                     varRangeClass$new(list(newIndexRange(1)), varName = 'y'))
-
-    expect_identical(length(modelDef$calcRules), 1L)
-    expect_identical(length(modelDef$calcRules[['y']]$rules), 3L)
-
-    expect_equal(modelDef$calcRules[['y']]$rules[[1]]$getFullRange(),
-                     varRangeClass$new(list(newIndexRange(4)), varName = 'y'))
-    expect_equal(modelDef$calcRules[['y']]$rules[[2]]$getFullRange(),
-                     varRangeClass$new(list(newIndexRange(3)), varName = 'y'))
-    expect_equal(modelDef$calcRules[['y']]$rules[[3]]$getFullRange(),
-                     varRangeClass$new(list(newIndexRange(2)), varName = 'y'))
-
-    ids <- sapply(modelDef$calcRules[['y']]$rules, function(rule) rule$ID)
-    names(ids) <- NULL
-    
-    expect_identical(modelDef$calcRules[['y']]$rules[[1]]$children, numeric(0))
-    expect_identical(modelDef$calcRules[['y']]$rules[[1]]$parents, ids[2])
-    expect_identical(modelDef$calcRules[['y']]$rules[[2]]$children, ids[1])
-    expect_identical(modelDef$calcRules[['y']]$rules[[2]]$parents, ids[3])
-    expect_identical(modelDef$calcRules[['y']]$rules[[3]]$children, ids[2])
-    expect_identical(modelDef$calcRules[['y']]$rules[[3]]$parents, numeric(0))
-    
-    sortID <- sapply(modelDef$calcRules[['y']]$rules, function(rule) rule$sortID)
-    names(sortID) <- NULL
-    expect_identical(sortID, as.numeric(3:1))
-    
-    ## TODO: expand to more complicated?
-})
 
 ## Testing of model graph interface functions: getDependencies, getParents, getNodes
 
@@ -1241,13 +1155,10 @@ test_that("basic check of graph interface", {
     code <- quote({
         y ~ dnorm(theta, 1)
         theta <- mu0 + 2
-        mu0 ~ dnorm(0, sigma)        
+        mu0 ~ dnorm(0, sd = sigma)        
     })
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
-
+    
     result <- getNodes(modelDef)
     expect_identical(sapply(result, function(node) node$varName),
                      c('y','theta','mu0'))
@@ -1315,13 +1226,10 @@ test_that("basic check of graph interface", {
     code <- quote({
         y ~ dnorm(theta, 1)
         theta ~ dnorm(mu0, 1)
-        mu0 ~ dnorm(0, sigma)        
+        mu0 ~ dnorm(0, sd = sigma)        
     })
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
-    
+        
     result <- getDependencies(modelDef, 'mu0')
     expect_identical(sapply(result, function(node) node$varName),
                      c('mu0','theta'))
@@ -1342,30 +1250,36 @@ test_that("basic check of graph interface", {
 
 test_that("getDependencies deals with repeated children", {
     code <- quote({
-        y ~ dnorm(mu, tau)
+        y ~ dnorm(mu, sd = tau)
     })
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
-
+    
     result <- getDependencies(modelDef, c('tau','mu'))
     expect_identical(sapply(result, function(node) node$varName),
                      c('y'))
 
+    code <- quote({
+        for(i in 1:5) {
+            y[i] ~ dnorm(mu[i], sd = sigma)
+            mu[i] ~ dnorm(mu0, sd = tau)
+        }
+        mu0 ~ dnorm(0, 1)
+        tau ~ dunif(0, 1)
+        sigma ~ dunif(0, 1)
+    })
+    modelDef <- modelDefClass$new(code)
+    
+    getDependencies(modelDef, c('mu0','sigma','tau'), self = FALSE)
 })
 
 test_that("getDependencies deals with repeated parents", {
     code <- quote({
-        y ~ dnorm(mu, tau)
+        y ~ dnorm(mu, sd = tau)
         z ~ dnorm(mu, 1)
         w <- z + 3
     })
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
-
+    
     result <- getParents(modelDef, c('y','z'))
     expect_identical(sapply(result, function(node) node$varName),
                      c('mu','tau'))
@@ -1375,14 +1289,11 @@ test_that("getDependencies deals with repeated parents", {
 test_that("getDependencies with multiple children", {
 
     code <- quote({
-        y ~ dnorm(mu, tau)
+        y ~ dnorm(mu, sd = tau)
         z ~ dnorm(mu, 1)
         w <- z + 3
     })
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
 
     result <- getDependencies(modelDef, 'mu')
     expect_identical(sapply(result, function(node) node$varName),
@@ -1396,7 +1307,7 @@ test_that("getDependencies with multiple children", {
 
 test_that("getParents traversal with mix of stoch/determ edges", {
     code <- quote({
-        y ~ dnorm(theta, z)
+        y ~ dnorm(theta, sd = z)
         theta ~ dnorm(beta, 1)
         z <- w + x
         w ~ dunif(sigma, 2)
@@ -1404,10 +1315,7 @@ test_that("getParents traversal with mix of stoch/determ edges", {
         phi ~ dunif(0,1)
     })
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
-
+    
     result <- getParents(modelDef, 'y')
     expect_identical(sapply(result, function(node) node$varName),
                      c('theta','z','w','x','phi'))
@@ -1416,24 +1324,21 @@ test_that("getParents traversal with mix of stoch/determ edges", {
 
 test_that("same dependent on RHS", {
     code <- quote({
-        y ~ dnorm(mu, exp(mu))
+        y ~ dnorm(mu, sd = mu)
     })
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
 
     result <- getParents(modelDef, 'y')
     expect_identical(sapply(result, function(node) node$varName),
-                     c('mu'))    
+                    'mu')
 })
 
 
 test_that("basic hierarchical models", {
     code <- quote({
         for(i in 1:10) {
-            y[i] ~ dnorm(mu[i], tau)
-            mu[i] ~ dnorm(mu0, sigma)
+            y[i] ~ dnorm(mu[i], sd = tau)
+            mu[i] ~ dnorm(mu0, sd = sigma)
         }
         tau ~ dunif(0, bnd) 
         sigma ~ dunif(0, 1)
@@ -1443,9 +1348,6 @@ test_that("basic hierarchical models", {
     })
     k <- c(2,4,7)
     modelDef <- modelDefClass$new(code, constants = list(k = k))
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
 
     result <- getNodes(modelDef)
     expect_identical(sapply(result, function(node) node$varName),
@@ -1535,21 +1437,18 @@ test_that("basic hierarchical models", {
 
     code <- quote({
         for(i in 1:10) {
-            y[i] ~ dnorm(mu[i], tau)
+            y[i] ~ dnorm(mu[i], sd = tau)
             w[i] <- pr[i, 2]
         }
-        mu[1:10] ~ dmnorm(mu0[1:10], pr[1:10,1:10])
+        mu[1:10] ~ dmnorm(mu0[1:10], cholesky = pr[1:10,1:10], prec_param = 1)
         mu0[1:10] <- mu00*z[1:10]
         mu00 ~ dnorm(0, 1)
-        pr[1:10, 1:10] ~ dwish(S[1:10, 1:10], 5)
+        pr[1:10, 1:10] ~ dwish(cholesky = S[1:10, 1:10], df = 5, scale_param = 1)
         tau ~ dunif(0, bnd)
         sigma ~ dunif(0, 1)
     })
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
-
+    
     result <- getNodes(modelDef, 'pr[2,2]')
     expect_identical(sapply(result, function(node) node$varName),
                      'pr')
@@ -1587,19 +1486,17 @@ test_that("basic hierarchical models", {
                list(newIndexRange(quote(1:10)), newIndexRange(quote(1:10))))
     
     code <- quote({
+        mn[1:3] <- X[1:3, 1:5] %*% beta[1:5]
         for(i in 1:5) {
-            y[i, 1:3] ~ dmnorm(X[1:3, 1:5] %*% beta[1:5], pr[1:3,1:3])
+            y[i, 1:3] ~ dmnorm(mn[1:3], cholesky = pr[1:3,1:3], prec_param = 1)
         }
-        pr[1:3, 1:3] ~ dwish(S[1:3, 1:3], 5)
+        pr[1:3, 1:3] ~ dwish(cholesky = S[1:3, 1:3], df = 5, scale_param = 1)
         for(i in 1:5)
-            beta[i] ~ dnorm(beta0, tau)
+            beta[i] ~ dnorm(beta0, sd = tau)
         beta0 ~ dunif(0,1)        
     })
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
-
+    
     result <- getNodes(modelDef, 'y')
     expect_equal(result[[1]]$indexRanges, 
                list(newIndexRange(quote(1:5)), newIndexRange(quote(1:3))))
@@ -1615,23 +1512,25 @@ test_that("basic hierarchical models", {
 
     result <- getDependencies(modelDef, 'beta[2]')
     expect_identical(sapply(result, function(node) node$varName),
-                     c('beta','y'))
+                     c('beta','mn','y'))
     expect_equal(result[[1]]$indexRanges, 
                list(newIndexRange(2)))
     expect_equal(result[[2]]$indexRanges, 
+               list(newIndexRange(quote(1:3))))
+    expect_equal(result[[3]]$indexRanges, 
                list(newIndexRange(quote(1:5)), newIndexRange(quote(1:3))))
 
     result <- getParents(modelDef, 'y[1,1:3]')
     expect_identical(sapply(result, function(node) node$varName),
-                     c('X','beta','pr'))
+                     c('mn','pr','X','beta'))
 
     result <- getParents(modelDef, 'y[1,2]')
     expect_identical(sapply(result, function(node) node$varName),
-                     c('X','beta','pr'))
+                     c('mn','pr','X','beta'))
     
     result <- getParents(modelDef, c('y[1,2]','y[2,3]'))
     expect_identical(sapply(result, function(node) node$varName),
-                     c('X','beta','pr'))
+                     c('mn','pr','X','beta'))
     
 })
 
@@ -1654,10 +1553,36 @@ test_that("state-space model", {
         y[i]~dnorm(y[i-1],1)
     })
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
 
+    expect_identical(length(modelDef$rhsOnlyRules), 1L)
+    expect_identical(length(modelDef$rhsOnlyRules[['y']]$rules), 1L)
+    expect_equal(modelDef$rhsOnlyRules[['y']]$rules[[1]]$getFullRange(),
+                     varRangeClass$new(list(newIndexRange(1)), varName = 'y'))
+
+    expect_identical(length(modelDef$calcRules), 1L)
+    expect_identical(length(modelDef$calcRules[['y']]$rules), 3L)
+
+    expect_equal(modelDef$calcRules[['y']]$rules[[1]]$getFullRange(),
+                     varRangeClass$new(list(newIndexRange(4)), varName = 'y'))
+    expect_equal(modelDef$calcRules[['y']]$rules[[2]]$getFullRange(),
+                     varRangeClass$new(list(newIndexRange(3)), varName = 'y'))
+    expect_equal(modelDef$calcRules[['y']]$rules[[3]]$getFullRange(),
+                     varRangeClass$new(list(newIndexRange(2)), varName = 'y'))
+
+    ids <- sapply(modelDef$calcRules[['y']]$rules, function(rule) rule$ID)
+    names(ids) <- NULL
+    
+    expect_identical(modelDef$calcRules[['y']]$rules[[1]]$children, numeric(0))
+    expect_identical(modelDef$calcRules[['y']]$rules[[1]]$parents, ids[2])
+    expect_identical(modelDef$calcRules[['y']]$rules[[2]]$children, ids[1])
+    expect_identical(modelDef$calcRules[['y']]$rules[[2]]$parents, ids[3])
+    expect_identical(modelDef$calcRules[['y']]$rules[[3]]$children, ids[2])
+    expect_identical(modelDef$calcRules[['y']]$rules[[3]]$parents, numeric(0))
+    
+    sortID <- sapply(modelDef$calcRules[['y']]$rules, function(rule) rule$sortID)
+    names(sortID) <- NULL
+    expect_identical(sortID, as.numeric(3:1))
+    
     result <- getNodes(modelDef, 'y')
     expect_equal(result[[1]]$indexRanges, 
                list(newIndexRange(quote(2:4))))
@@ -1703,17 +1628,14 @@ test_that("state-space model", {
     
     code <- quote({
         for(i in 1:5)
-            y[i] ~ dnorm(z[i], tau)
+            y[i] ~ dnorm(z[i], sd = tau)
         for(i in 2:5)
-            z[i] ~ dnorm(z[i-1], sigma)
+            z[i] ~ dnorm(z[i-1], sd = sigma)
         z[1] ~ dunif(0, 1)
         tau ~ dunif(0, bnd)
         sigma ~ dunif(0, 1)
     })
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
 
     result <- getNodes(modelDef, topOnly = TRUE)
     expect_length(result, 3)
@@ -1747,8 +1669,6 @@ test_that("state-space model", {
                      list(newIndexRange(quote(4))))
     expect_equal(result[[3]]$indexRanges, 
                      list(newIndexRange(quote(3))))
-
-    
 })
 
 test_that("error trapping for unexpected vars/nodes", {
@@ -1758,9 +1678,6 @@ test_that("error trapping for unexpected vars/nodes", {
         y[i]~dnorm(y[i-1],1)
     })
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
 
     expect_null(getNodes(modelDef, 'x'))
     expect_null(getNodes(modelDef, 'x[3]'))
@@ -1781,9 +1698,6 @@ test_that("getNodes handles a split variable", {
         theta[2:4] <- z[1:3]
     })
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
 
     result <- getNodes(modelDef, 'theta[1:3]')
     expect_length(result, 2)
@@ -1812,9 +1726,6 @@ test_that("complicated input varRange", {
                     y[i+1,j,k] ~ dnorm(theta[i,j,k], 1)
     })
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
 
     vr <- varRangeClass$new(list(newIndexRange(quote(2:3)),
                                  newIndexRange(matrix(c(2,4,5,1), nrow = 2))),
@@ -1860,15 +1771,6 @@ test_that("duplicated RHS elements", {
 
 })
 
-extractRuleElement <- function(vr, nm) {
-    tmp <- sapply(vr$rules, function(rule) rule[[nm]])
-    if(is.matrix(tmp))
-        tmp <- c(tmp)
-    names(tmp) <- NULL
-    for(i in seq_along(tmp))
-        names(tmp[[i]]) <- NULL
-    return(tmp)
-}
 
 
 test_that("one-lag Markov structure handled correctly", {
@@ -1879,16 +1781,18 @@ test_that("one-lag Markov structure handled correctly", {
        sigma ~ dunif(0, 1)
    })
    modelDef <- modelDefClass$new(code)
-   modelDef$processModelCode()
-   modelDef$processDecls()
-   modelDef$makeGraphInfo()
+   
    sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
    topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
    endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
-   expect_identical(sortIDs, list('rho' = 1, 'sigma' = 1, 'mu' = list(5, c(NA, NA, 3, 4), 2)))
-   expect_identical(topRules, list('rho' = TRUE, 'sigma' = TRUE, 'mu' = rep(FALSE, 3)))
-   expect_identical(endRules, list('rho' = FALSE, 'sigma' = FALSE, 'mu' = c(TRUE, FALSE, FALSE)))
-   expect_identical(modelDef$calcRules[['mu']]$rules[[2]]$multiSortIDindex, 1L)
+   expect_identical(sortIDs, list('rho' = 1, 'sigma' = 2, 'mu' = list(c(NA, 3, 5, 7), 9),
+                                  'lifted_rho_times_mu_oBi_minus_1_cB_L2' = list(c(NA,NA,4,6,8),2)))
+   expect_identical(topRules, list('rho' = TRUE, 'sigma' = TRUE, 'mu' = rep(FALSE, 2),
+                                   'lifted_rho_times_mu_oBi_minus_1_cB_L2' = rep(FALSE, 2)))
+   expect_identical(endRules, list('rho' = FALSE, 'sigma' = FALSE, 'mu' = c(FALSE, TRUE),
+                                   'lifted_rho_times_mu_oBi_minus_1_cB_L2' = rep(FALSE, 2)))
+   expect_identical(modelDef$calcRules[['mu']]$rules[[1]]$multiSortIDindex, 1L)
+   expect_identical(modelDef$calcRules[['lifted_rho_times_mu_oBi_minus_1_cB_L2']]$rules[[1]]$multiSortIDindex, 1L)
 
    ## now time in other direction
    code <- quote({
@@ -1897,41 +1801,43 @@ test_that("one-lag Markov structure handled correctly", {
        rho ~ dunif(0, 1)
        sigma ~ dunif(0, 1)
    })
+   
    modelDef <- modelDefClass$new(code)
-   modelDef$processModelCode()
-   modelDef$processDecls()
-   modelDef$makeGraphInfo()
+   
    sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
    topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
    endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
-   expect_identical(sortIDs, list('rho' = 1, 'sigma' = 1, 'mu' = list(5, c(NA, 4, 3), 2)))
-   expect_identical(topRules, list('rho' = TRUE, 'sigma' = TRUE, 'mu' = rep(FALSE, 3)))
-   expect_identical(endRules, list('rho' = FALSE, 'sigma' = FALSE, 'mu' = c(TRUE, FALSE, FALSE)))
-   expect_identical(modelDef$calcRules[['mu']]$rules[[2]]$multiSortIDindex, 1L)
+   expect_identical(sortIDs, list('rho' = 1, 'sigma' = 2, 'mu' = list(c(NA,7,5,3,NA), 9),
+                                   'lifted_rho_times_mu_oBi_plus_1_cB_L2' = list(c(8,6,4),2)))
+   expect_identical(topRules, list('rho' = TRUE, 'sigma' = TRUE, 'mu' = rep(FALSE, 2),
+                                    'lifted_rho_times_mu_oBi_plus_1_cB_L2' = rep(FALSE, 2)))
+   expect_identical(endRules, list('rho' = FALSE, 'sigma' = FALSE, 'mu' = c(FALSE, TRUE),
+                                   'lifted_rho_times_mu_oBi_plus_1_cB_L2' = rep(FALSE, 2)))
+   expect_identical(modelDef$calcRules[['mu']]$rules[[1]]$multiSortIDindex, 1L)
+   expect_identical(modelDef$calcRules[['lifted_rho_times_mu_oBi_plus_1_cB_L2']]$rules[[1]]$multiSortIDindex, 1L)
 })
 
 test_that("standard one-lag SSM handled correctly", {
+    ## Leaving `rho` out to avoid more complicated lifted node case (tested above).
     code <- quote({
         for(i in 1:5) 
             y[i] ~ dnorm(mu[i], sd = sigma)
         for(i in 2:5)
-            mu[i] ~ dnorm(rho*mu[i-1], sd = sigma)
+            mu[i] ~ dnorm(mu[i-1], sd = sigma)
         mu[1] ~ dnorm(0, 1)
-        rho ~ dunif(0, 1)
+        #rho ~ dunif(0, 1)
         sigma ~ dunif(0, 1)
     })
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
+     
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
-    expect_identical(sortIDs, list('mu' = list(1,5,2,c(NA,NA,3,4)), 'rho' = 1, 'sigma' = 1,
+    expect_identical(sortIDs, list('mu' = list(1,5,2,c(NA,NA,3,4)), 'sigma' = 1,
                                    'y' = rep(6, 3)))
-    expect_identical(topRules, list('mu' = c(TRUE, rep(FALSE, 3)), 'rho' = TRUE, 'sigma' = TRUE,
+    expect_identical(topRules, list('mu' = c(TRUE, rep(FALSE, 3)), 'sigma' = TRUE,
                                     'y' = rep(FALSE, 3)))
-    expect_identical(endRules, list('mu' = rep(FALSE, 4), 'rho' = FALSE, 'sigma' = FALSE, 
+    expect_identical(endRules, list('mu' = rep(FALSE, 4), 'sigma' = FALSE, 
                                     'y' = rep(TRUE, 3)))
     expect_identical(modelDef$calcRules[['mu']]$rules[[4]]$multiSortIDindex, 1L)
 })
@@ -1943,25 +1849,22 @@ test_that("one-lag SSM with complicated dependencies handled correctly", {
         for(i in 1:5) 
             y[i] ~ dnorm(mu[k[i]], sd = tau)
         for(i in 2:5) {
-            mu[i] ~ dnorm(rho*mu[i-1], sd = sigma)
+            mu[i] ~ dnorm(mu[i-1], sd = sigma)
         }
         mu[1] ~ dnorm(0, 1)
-        rho ~ dunif(0, 1)
         sigma ~ dunif(0, 1)
         tau ~ dunif(0, 1)
     })
     modelDef <- modelDefClass$new(code, constants = list(k = c(5,3,1,2,4)))
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
+    
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
-    expect_identical(sortIDs, list('mu' = list(1,5,2,c(NA,NA,3,4)), 'rho' = 1, 'sigma' = 1, 'tau' = 5,
+    expect_identical(sortIDs, list('mu' = list(1,5,2,c(NA,NA,3,4)), 'sigma' = 1, 'tau' = 5,
                                    'y' = rep(6, 4)))
-    expect_identical(topRules, list('mu' = c(TRUE, rep(FALSE, 3)), 'rho' = TRUE, 'sigma' = TRUE, 'tau' = TRUE,
+    expect_identical(topRules, list('mu' = c(TRUE, rep(FALSE, 3)), 'sigma' = TRUE, 'tau' = TRUE,
                                     'y' = rep(FALSE, 4)))
-    expect_identical(endRules, list('mu' = rep(FALSE, 4), 'rho' = FALSE, 'sigma' = FALSE, 'tau' = FALSE,
+    expect_identical(endRules, list('mu' = rep(FALSE, 4), 'sigma' = FALSE, 'tau' = FALSE,
                                     'y' = rep(TRUE, 4)))
     expect_identical(modelDef$calcRules[['mu']]$rules[[4]]$multiSortIDindex, 1L)
     
@@ -1981,9 +1884,7 @@ test_that("one-lag Markov structure with intermediate variable handled correctly
         tau ~ dunif(0, 1)
      })
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
+    
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
@@ -2002,8 +1903,9 @@ test_that("one-lag Markov structure with intermediate variable handled correctly
 test_that("one-lag Markov structure with two intermediate variables, multivariate, and complicated indexing handled correctly", {
     code <- quote({
         for(j in 1:3) {
+            tmp[j,1:3,1:3] <- tau[j]*sigma[1:3,1:3]
             for(i in 2:5) {
-                z[i,1:3,j] ~ dmnorm(b[j,2:4,i], tau[j]*sigma[1:3,1:3])
+                z[i,1:3,j] ~ dmnorm(b[j,2:4,i], cholesky = tmp[j,1:3,1:3], prec_param = 1)
                 b[j,2:4,i] <- mu[2:4, i, j]
                 mu[2:4,i,j] <- rho*z[i-1,1:3,j] + beta[1:3]
             }
@@ -2013,18 +1915,15 @@ test_that("one-lag Markov structure with two intermediate variables, multivariat
             beta[j] ~ dnorm(0,1)
     })
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
-
+    
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
-    expect_identical(sortIDs, list('tau' = 3, 'beta' = 1, 'b' = c(NA,3,6,9,12),
+    expect_identical(sortIDs, list('tau' = 2, 'beta' = 1, 'tmp' = 3,  'b' = c(NA,3,6,9,12),
                                    'z' = list(c(NA,4,7,10), 13), 'mu' = list(c(NA,NA,5,8,11), 2)))
-    expect_identical(topRules, list('tau' = TRUE, 'beta' = TRUE, 'b' = FALSE, 'z' = rep(FALSE, 2),
+    expect_identical(topRules, list('tau' = TRUE, 'beta' = TRUE, 'tmp' = FALSE, 'b' = FALSE, 'z' = rep(FALSE, 2),
                                     'mu' = rep(FALSE, 2)))
-    expect_identical(endRules, list('tau' = FALSE, 'beta' = FALSE, 'b' = FALSE, 'z' = c(FALSE, TRUE),
+    expect_identical(endRules, list('tau' = FALSE, 'beta' = FALSE, 'tmp' = FALSE, 'b' = FALSE, 'z' = c(FALSE, TRUE),
                                     'mu' = rep(FALSE, 2)))
     expect_identical(modelDef$calcRules[['mu']]$rules[[1]]$multiSortIDindex, 2L)
     expect_identical(modelDef$calcRules[['z']]$rules[[1]]$multiSortIDindex, 1L)
@@ -2033,6 +1932,8 @@ test_that("one-lag Markov structure with two intermediate variables, multivariat
 
 
 test_that("AR(p) cases", {
+    ## Note that for these cases, we have more fracturing than actually need
+    ## (e.g., mu[9] does not need to be split out.
     code <- quote({
         for(i in 3:10)
             mu[i] ~ dnorm(rho1*mu[i-1] + rho2*mu[i-2], sd = sigma)
@@ -2045,20 +1946,22 @@ test_that("AR(p) cases", {
             y[i] ~ dnorm(mu[i],1)
     })
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
+
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
-    expect_identical(sortIDs, list('rho1' = 1, 'rho2' = 1, 'sigma' = 1,
-                                   'mu' = list(1,1,9,8,2,3, c(rep(as.numeric(NA),4), 4:7)),
-                                   'y' = rep(10, 5)))
+    expect_identical(sortIDs, list('rho1' = 1, 'rho2' = 1, 'sigma' = 2,
+                                   'mu' = list(1, 1, 17, c(rep(as.numeric(NA),2), 3,5,7,9,11,13), 15),
+                                   'lifted_rho1_times_mu_oBi_minus_1_cB_plus_rho2_times_mu_oBi_minus_2_cB_L2' =
+                                       list(2,4, c(rep(as.numeric(NA),4), 6,8,10,12,14), 16),
+                                   'y' = rep(18, 5)))
     expect_identical(topRules, list('rho1' = TRUE, 'rho2' = TRUE, 'sigma' = TRUE,
-                                    'mu' = c(rep(TRUE, 2), rep(FALSE, 5)),
+                                    'mu' = c(rep(TRUE, 2), rep(FALSE, 3)),
+                                    'lifted_rho1_times_mu_oBi_minus_1_cB_plus_rho2_times_mu_oBi_minus_2_cB_L2' = rep(FALSE, 4),
                                     'y' = rep(FALSE, 5)))
     expect_identical(endRules, list('rho1' = FALSE, 'rho2' = FALSE, 'sigma' = FALSE,
-                                    'mu' = c(rep(FALSE, 7)),
+                                    'mu' = c(rep(FALSE, 5)),
+                                    'lifted_rho1_times_mu_oBi_minus_1_cB_plus_rho2_times_mu_oBi_minus_2_cB_L2' = rep(FALSE, 4),
                                     'y' = rep(TRUE, 5)))
 
     code <- quote({
@@ -2073,20 +1976,27 @@ test_that("AR(p) cases", {
             y[i] ~ dnorm(mu[i],1)
     })
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
+    
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
-    expect_identical(sortIDs, list('rho1' = 2, 'rho2' = 3, 'sigma' = 1,
-                                   'mu' = list(2,3,11,10,4,5, c(rep(as.numeric(NA),4), 6:9)),
-                                   'y' = rep(12, 5)))
+    expect_identical(sortIDs, list('rho1' = 2, 'rho2' = 4, 'sigma' = 1,
+                                   'mu' = list(2,4,20, c(rep(as.numeric(NA),2), 6,8,10,12,14,16), 18),
+                                   'lifted_rho1_times_mu_oB1_cB' = 3,
+                                   'lifted_rho1_times_mu_oBi_minus_1_cB_plus_rho2_times_mu_oBi_minus_2_cB_L2' =
+                                       list(5,7, c(rep(as.numeric(NA),4), 9,11,13,15,17), 19),
+                                   'y' = rep(21, 5)))
     expect_identical(topRules, list('rho1' = TRUE, 'rho2' = TRUE, 'sigma' = TRUE,
-                                    'mu' = rep(FALSE, 7),
+                                    'mu' = rep(FALSE, 5),
+                                    'lifted_rho1_times_mu_oB1_cB' = FALSE,
+                                    'lifted_rho1_times_mu_oBi_minus_1_cB_plus_rho2_times_mu_oBi_minus_2_cB_L2' =
+                                        rep(FALSE, 4),
                                     'y' = rep(FALSE, 5)))
     expect_identical(endRules, list('rho1' = FALSE, 'rho2' = FALSE, 'sigma' = FALSE,
-                                    'mu' = c(rep(FALSE, 7)),
+                                    'mu' = c(rep(FALSE, 5)),
+                                    'lifted_rho1_times_mu_oB1_cB' = FALSE,
+                                     'lifted_rho1_times_mu_oBi_minus_1_cB_plus_rho2_times_mu_oBi_minus_2_cB_L2' =
+                                        rep(FALSE, 4),
                                     'y' = rep(TRUE, 5)))
 
     ## Now with a block rule for starting value
@@ -2103,20 +2013,28 @@ test_that("AR(p) cases", {
             y[i] ~ dnorm(mu[i],1)
     })
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
+       
+    
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
-    expect_identical(sortIDs, list('rho1' = 2, 'rho2' = 3, 'sigma' = 1,
-                                   'mu' = list(2,3,11,10,4,5, c(rep(as.numeric(NA),4), 6:9)),
-                                   'y' = rep(12, 5)))
+    expect_identical(sortIDs, list('rho1' = 2, 'rho2' = 4, 'sigma' = 1,
+                                   'mu' = list(2,4,20, c(rep(as.numeric(NA),2), 6,8,10,12,14,16), 18),
+                                   'lifted_rho1_times_mu_oBi_minus_1_cB_L8' = 3,
+                                   'lifted_rho1_times_mu_oBi_minus_1_cB_plus_rho2_times_mu_oBi_minus_2_cB_L2' =
+                                       list(5,7, c(rep(as.numeric(NA),4), 9,11,13,15,17), 19),
+                                   'y' = rep(21, 5)))
     expect_identical(topRules, list('rho1' = TRUE, 'rho2' = TRUE, 'sigma' = TRUE,
-                                    'mu' = rep(FALSE, 7),
+                                    'mu' = rep(FALSE, 5),
+                                    'lifted_rho1_times_mu_oBi_minus_1_cB_L8' = FALSE,
+                                    'lifted_rho1_times_mu_oBi_minus_1_cB_plus_rho2_times_mu_oBi_minus_2_cB_L2' =
+                                        rep(FALSE, 4),
                                     'y' = rep(FALSE, 5)))
     expect_identical(endRules, list('rho1' = FALSE, 'rho2' = FALSE, 'sigma' = FALSE,
-                                    'mu' = c(rep(FALSE, 7)),
+                                    'mu' = c(rep(FALSE, 5)),
+                                    'lifted_rho1_times_mu_oBi_minus_1_cB_L8' = FALSE,
+                                     'lifted_rho1_times_mu_oBi_minus_1_cB_plus_rho2_times_mu_oBi_minus_2_cB_L2' =
+                                        rep(FALSE, 4),
                                     'y' = rep(TRUE, 5)))
 
 })
@@ -2134,22 +2052,25 @@ test_that("only two-lag SSM", {
         sigma ~ dunif(0, 1)
     })
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
+        
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
-    expect_identical(sortIDs, list('mu' = list(1,1,7,2,2,c(rep(as.numeric(NA), 4), 3:6)), 'rho' = 1, 'sigma' = 1,
-                                   'y' = rep(8, 4)))
-    expect_identical(topRules, list('mu' = c(TRUE, TRUE, rep(FALSE, 4)), 'rho' = TRUE, 'sigma' = TRUE,
-                                    'y' = rep(FALSE, 4)))
-    expect_identical(endRules, list('mu' = rep(FALSE, 6), 'rho' = FALSE, 'sigma' = FALSE, 
-                                    'y' = rep(TRUE, 4)))
+    expect_identical(sortIDs, list('mu' = list(1,1,c(rep(as.numeric(NA), 2),3,5,7,9,11,13),15), 'rho' = 1, 'sigma' = 2,
+                                   'y' = rep(16, 4),
+                                   'lifted_rho_times_mu_oBi_minus_2_cB_L4' =
+                                       list(2,2,c(rep(as.numeric(NA), 4), 4,6,8,10,12,14))))
+    expect_identical(topRules, list('mu' = c(TRUE, TRUE, rep(FALSE, 2)), 'rho' = TRUE, 'sigma' = TRUE,
+                                    'y' = rep(FALSE, 4),
+                                    'lifted_rho_times_mu_oBi_minus_2_cB_L4' = rep(FALSE, 3)))
+    expect_identical(endRules, list('mu' = rep(FALSE, 4), 'rho' = FALSE, 'sigma' = FALSE, 
+                                    'y' = rep(TRUE, 4),
+                                     'lifted_rho_times_mu_oBi_minus_2_cB_L4' = rep(FALSE, 3)))
 })
 
 
 test_that("standard one-lag SSM with two parts (two focalRules but on one variable)", {
+    ## Note that for this case, the sortIDs have some gaps because of ties due to having the two parts.
     code <- quote({
         for(i in 1:5) 
             y[i] ~ dnorm(mu[i], sd = sigma)
@@ -2163,25 +2084,26 @@ test_that("standard one-lag SSM with two parts (two focalRules but on one variab
         mu[100] ~ dnorm(0, 1)
     })
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
+    
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
-    expect_identical(sortIDs, list('mu' = list(1,1,6,7,2,
-                                               c(rep(as.numeric(NA),2),3:4),
-                                               2, c(rep(as.numeric(NA),101),3:5)),
-                                               'rho' = 1, 'sigma' = 1,
-                                   'y' = rep(7, 3)))
-    expect_identical(topRules, list('mu' = c(rep(TRUE, 2), rep(FALSE, 6)), 'rho' = TRUE, 'sigma' = TRUE,
-                                    'y' = rep(FALSE, 3)))
-    expect_identical(endRules, list('mu' = c(rep(FALSE, 3), TRUE, rep(FALSE, 4)), 'rho' = FALSE, 'sigma' = FALSE, 
-                                    'y' = rep(TRUE, 3)))
+    expect_identical(sortIDs, list('mu' = list(1,4,c(NA,3,5,7),10,11,5,
+                                               c(rep(as.numeric(NA),101),6,8,9)),
+                                   'rho' = 1, 'sigma' = 2,
+                                   'y' = rep(11, 3),
+                                   'lifted_rho_times_mu_oBi_minus_1_cB_L4' = list(2, c(rep(NA, 2),4,6,8))))
+    expect_identical(topRules, list('mu' = c(rep(TRUE, 2), rep(FALSE, 5)), 'rho' = TRUE, 'sigma' = TRUE,
+                                    'y' = rep(FALSE, 3),
+                                    'lifted_rho_times_mu_oBi_minus_1_cB_L4' = rep(FALSE, 2)))
+    expect_identical(endRules, list('mu' = c(rep(FALSE, 4), TRUE, rep(FALSE, 2)), 'rho' = FALSE, 'sigma' = FALSE, 
+                                    'y' = rep(TRUE, 3),
+                                    'lifted_rho_times_mu_oBi_minus_1_cB_L4' = rep(FALSE, 2)))
 })
 
 
 test_that("two unrelated cycles", {
+    ## Note that for this case, the sortIDs have some gaps because of ties due to having the two parts.
     ## Note that for this case, the sortIDs are valid, but there are more unique sortIDs than needed.
     code <- quote({
         for(i in 1:10) 
@@ -2195,20 +2117,27 @@ test_that("two unrelated cycles", {
         log_sigma[1] ~ dnorm(0, 1)
     })
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
+    
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
-    expect_identical(sortIDs, list('mu' = list(1,10,2,c(rep(as.numeric(NA),2),3:9)),
+    expect_identical(sortIDs, list('mu' = list(3, c(NA,5,7,9,11,13,15,17,19),22),
                                    'rho' = 1,
-                                   'log_sigma' = list(1,10,2,c(rep(as.numeric(NA),2),3:9)),
-                                   'y' = rep(11, 3)))
-    expect_identical(topRules, list('mu' = c(TRUE, rep(FALSE, 3)), 'rho' = TRUE,
-                                    'log_sigma' = c(TRUE, rep(FALSE, 3)), 'y' = rep(FALSE, 3)))
-    expect_identical(endRules, list('mu' = rep(FALSE, 4), 'rho' = FALSE,
-                                    'log_sigma' = rep(FALSE, 4), 'y' = rep(TRUE, 3)))
+                                   'log_sigma' = list(1,c(NA,3,5,7,9,11,13,15,17),21),
+                                   'y' = rep(23, 3),
+                                   'lifted_rho_times_mu_oBi_minus_1_cB_L4' = list(4, c(NA,NA,6,8,10,12,14,16,18,20)),
+                                   'lifted_exp_oPlog_sigma_oBi_cB_cP_L2' = rep(22, 3),
+                                   'lifted_rho_times_log_sigma_oBi_minus_1_cB_L5' = list(2, c(NA,NA,4,6,8,10,12,14,16,18))))
+    expect_identical(topRules, list('mu' = c(TRUE, rep(FALSE, 2)), 'rho' = TRUE,
+                                    'log_sigma' = c(TRUE, rep(FALSE, 2)), 'y' = rep(FALSE, 3),
+                                    'lifted_rho_times_mu_oBi_minus_1_cB_L4' = rep(FALSE, 2),
+                                    'lifted_exp_oPlog_sigma_oBi_cB_cP_L2' = rep(FALSE, 3),
+                                    'lifted_rho_times_log_sigma_oBi_minus_1_cB_L5' = rep(FALSE, 2)))
+    expect_identical(endRules, list('mu' = rep(FALSE, 3), 'rho' = FALSE,
+                                    'log_sigma' = rep(FALSE, 3), 'y' = rep(TRUE, 3),
+                                    'lifted_rho_times_mu_oBi_minus_1_cB_L4' = rep(FALSE, 2),
+                                    'lifted_exp_oPlog_sigma_oBi_cB_cP_L2' = rep(FALSE, 3),
+                                    'lifted_rho_times_log_sigma_oBi_minus_1_cB_L5' = rep(FALSE, 2)))                                   
 })
 
 
@@ -2226,20 +2155,18 @@ test_that("complicated cyclic dependency", {
         tau ~ dunif(0, 1)
      })
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
 
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
-    expect_identical(sortIDs, list('mu' = list(1,6,2, c(rep(as.numeric(NA), 2), 3, 4)),
+    expect_identical(sortIDs, list('mu' = list(1,9,2,c(NA,NA,4,6)),
                                    'sigma' = 1, 'tau' = 1,
-                                   'z' = list(2,7,3, c(rep(as.numeric(NA),2),4,5))))
+                                   'z' = list(2,c(NA,4,6,8),11),
+                                   'lifted_mu_oBi_cB_plus_z_oBi_minus_1_cB_L2' = list(3,10,c(NA,NA,5,7))))
     expect_identical(topRules, list('mu' = c(TRUE, rep(FALSE, 3)), 'sigma' = TRUE, 'tau' = TRUE,
-                                    'z' = rep(FALSE, 4)))
+                                    'z' = rep(FALSE, 3), 'lifted_mu_oBi_cB_plus_z_oBi_minus_1_cB_L2' = rep(FALSE, 3)))
     expect_identical(endRules, list('mu' = rep(FALSE, 4), 'sigma' = FALSE, 'tau' = FALSE,
-                                    'z' = c(FALSE, TRUE, rep(FALSE ,2))))
+                                    'z' = c(rep(FALSE, 2), TRUE), 'lifted_mu_oBi_cB_plus_z_oBi_minus_1_cB_L2' = rep(FALSE, 3)))
 
     ## Case C, with cycles processed in different order
     code <- quote({
@@ -2254,20 +2181,19 @@ test_that("complicated cyclic dependency", {
         tau ~ dunif(0, 1)
      })
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
 
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
-    expect_identical(sortIDs, list('mu' = list(1,6,2, c(rep(as.numeric(NA), 2), 3, 4)),
+    expect_identical(sortIDs, list('mu' = list(1,9,2,c(NA,NA,4,6)),
                                    'sigma' = 1, 'tau' = 1,
-                                   'z' = list(2,7,3, c(rep(as.numeric(NA),2),4,5))))
+                                   'z' = list(2,c(NA,4,6,8),11),
+                                   'lifted_mu_oBi_cB_plus_z_oBi_minus_1_cB_L3' = list(3,10,c(NA,NA,5,7))))
     expect_identical(topRules, list('mu' = c(TRUE, rep(FALSE, 3)), 'sigma' = TRUE, 'tau' = TRUE,
-                                    'z' = rep(FALSE, 4)))
+                                    'z' = rep(FALSE, 3), 'lifted_mu_oBi_cB_plus_z_oBi_minus_1_cB_L3' = rep(FALSE, 3)))
     expect_identical(endRules, list('mu' = rep(FALSE, 4), 'sigma' = FALSE, 'tau' = FALSE,
-                                    'z' = c(FALSE, TRUE, rep(FALSE ,2))))
+                                    'z' = c(rep(FALSE, 2), TRUE), 'lifted_mu_oBi_cB_plus_z_oBi_minus_1_cB_L3' = rep(FALSE, 3)))
+
 
     ## Case B
     code <- quote({
@@ -2281,19 +2207,19 @@ test_that("complicated cyclic dependency", {
         tau ~ dunif(0, 1)
      })
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
+    
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
-    expect_identical(sortIDs, list('mu' = list(1,3, c(rep(as.numeric(NA),2),5,7,9)),
-                                   'sigma' = 2, 'tau' = 3,
-                                   'z' = list(2,10,4, c(rep(as.numeric(NA),2),6,8))))
+    expect_identical(sortIDs, list('mu' = list(1,3, c(rep(as.numeric(NA),2),6,9,12)),
+                                   'sigma' = 2, 'tau' = 4,
+                                   'z' = list(2,c(NA,5,8,11),14),
+                                   'lifted_mu_oBi_cB_plus_z_oBi_minus_1_cB_L2' = list(4, c(NA,NA,7,10,13))))
     expect_identical(topRules, list('mu' = c(TRUE, rep(FALSE, 2)), 'sigma' = TRUE, 'tau' = TRUE,
-                                    'z' = rep(FALSE, 4)))
+                                    'z' = rep(FALSE, 3), 'lifted_mu_oBi_cB_plus_z_oBi_minus_1_cB_L2' = rep(FALSE, 2)))
     expect_identical(endRules, list('mu' = rep(FALSE, 3), 'sigma' = FALSE, 'tau' = FALSE,
-                                    'z' = c(FALSE, TRUE, rep(FALSE , 2))))
+                                    'z' = c(FALSE, FALSE, TRUE),
+                                    'lifted_mu_oBi_cB_plus_z_oBi_minus_1_cB_L2' = rep(FALSE, 2)))
 
 
     ## Case B, with cycles processed in different order
@@ -2309,25 +2235,26 @@ test_that("complicated cyclic dependency", {
         tau ~ dunif(0, 1)
      })
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
+    
+
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
-    expect_identical(sortIDs, list('mu' = list(1,3, c(rep(as.numeric(NA),2),5,7,9)),
-                                   'sigma' = 2, 'tau' = 3,
-                                   'z' = list(2,10,4, c(rep(as.numeric(NA),2),6,8))))
+    expect_identical(sortIDs, list('mu' = list(1,3, c(rep(as.numeric(NA),2),6,9,12)),
+                                   'sigma' = 2, 'tau' = 4,
+                                   'z' = list(2,c(NA,5,8,11),14),
+                                   'lifted_mu_oBi_cB_plus_z_oBi_minus_1_cB_L3' = list(4, c(NA,NA,7,10,13))))
     expect_identical(topRules, list('mu' = c(TRUE, rep(FALSE, 2)), 'sigma' = TRUE, 'tau' = TRUE,
-                                    'z' = rep(FALSE, 4)))
+                                    'z' = rep(FALSE, 3), 'lifted_mu_oBi_cB_plus_z_oBi_minus_1_cB_L3' = rep(FALSE, 2)))
     expect_identical(endRules, list('mu' = rep(FALSE, 3), 'sigma' = FALSE, 'tau' = FALSE,
-                                    'z' = c(FALSE, TRUE, rep(FALSE , 2))))
+                                    'z' = c(FALSE, FALSE, TRUE),
+                                    'lifted_mu_oBi_cB_plus_z_oBi_minus_1_cB_L3' = rep(FALSE, 2)))
 
 })
 
 
 test_that("fully unrolled cases", {
-    ## standard one-lag SSM with two parts (two focalRules but on one variable
+    ## standard one-lag SSM with two parts (two focalRules but on one variable)
     code <- quote({
         for(i in 1:5) 
             y[i] ~ dnorm(mu[i], sd = sigma)
@@ -2339,21 +2266,21 @@ test_that("fully unrolled cases", {
         for(i in 6:10)
             mu[i] ~ dnorm(mu[i-1], 1)
     })
-    modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    expect_warning(modelDef$makeGraphInfo(), "Detected state-space type structure or cycle")
+
+    expect_message(modelDef <- modelDefClass$new(code), "Detected state-space type structure or cycle")
 
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
-    expect_identical(sortIDs, list('mu' = c(1,5,10,2,6,3,4,7:9),
-                                               'rho' = 1, 'sigma' = 1,
-                                   'y' = rep(10, 5)))
+
+    expect_identical(sortIDs, list('mu' = c(1,9,14,10,3,11,12,13,5,7),
+                                               'rho' = 1, 'sigma' = 2,
+                                   'y' = rep(14, 5),
+                                   'lifted_rho_times_mu_oBi_minus_1_cB_L4' = c(2,4,6,8)))
     expect_identical(topRules, list('mu' = c(TRUE, rep(FALSE, 9)), 'rho' = TRUE, 'sigma' = TRUE,
-                                    'y' = rep(FALSE, 5)))
+                                    'y' = rep(FALSE, 5), 'lifted_rho_times_mu_oBi_minus_1_cB_L4' = rep(FALSE, 4)))
     expect_identical(endRules, list('mu' = c(rep(FALSE, 2), TRUE, rep(FALSE, 7)), 'rho' = FALSE, 'sigma' = FALSE, 
-                                    'y' = rep(TRUE, 5)))
+                                    'y' = rep(TRUE, 5), 'lifted_rho_times_mu_oBi_minus_1_cB_L4' = rep(FALSE, 4)))
 
     ## This unrolls because mu[2] has sortID of Inf and it is child of z[3:6]
     code <- quote({
@@ -2362,10 +2289,8 @@ test_that("fully unrolled cases", {
             mu[i] ~ dnorm(mu[i-1] + z[i],1)
         }
     })
-    modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    expect_warning(modelDef$makeGraphInfo(), "Detected state-space type structure or cycle")
+
+    expect_message(modelDef <- modelDefClass$new(code), "Detected state-space type structure or cycle")
 
     ## This unrolls because don't know what to set as sign for mu rule
     code <- quote({
@@ -2374,11 +2299,11 @@ test_that("fully unrolled cases", {
             mu[i] ~ dnorm(mu[i-1] + z[i+1],1)
         }
     })
-    modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    expect_warning(modelDef$makeGraphInfo(), "Detected state-space type structure or cycle")
+    
+    expect_message(modelDef <- modelDefClass$new(code), "Detected state-space type structure or cycle")
 
+    ## HERE errors - some sort of bug in setting up lifted node in terms of indexing
+    # change j to 1:7 to make sure extent of indexing is handled
     code <- quote({
         for(j in 1:5) {
             y[1,j] ~ dnorm(mu[1,j], sd = tau)
@@ -2392,10 +2317,8 @@ test_that("fully unrolled cases", {
             }}
         tau ~ dunif(0, 1)
     })
-    modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    expect_warning(modelDef$makeGraphInfo(), "Detected state-space type structure or cycle")
+    
+    expect_message(modelDef <- modelDefClass$new(code), "Detected state-space type structure or cycle")
 
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
@@ -2410,20 +2333,17 @@ test_that("fully unrolled cases", {
 
 })
 
-
-
 test_that("SSM using arbitrary indexing", {
-    ## this should be handled by unrolling
+    ## This should be handled by unrolling
     code <- quote({
         for(i in 1:5) 
             mu[i] ~ dnorm(mu[k[i]], sd = tau)
         mu[6] ~ dnorm(0, 1)
         tau ~ dunif(0, 1)
     })
-    modelDef <- modelDefClass$new(code, constants = list(k = c(2,3,4,5,6)))
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    expect_warning(modelDef$makeGraphInfo(), "Detected state-space")
+    
+    expect_warning(modelDef <- modelDefClass$new(code, constants = list(k = c(2,3,4,5,6))),
+                   "Detected state-space")
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
@@ -2441,26 +2361,21 @@ test_that("top/end nodes for SSM with deterministic relationships", {
             y[i] <- y[i+1]
     })
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
+    
+    
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
     expect_identical(topRules, list('y' = rep(TRUE, 3)))
     expect_identical(endRules, list('y' = rep(TRUE, 3)))
 })
 
-
-
 test_that("actual cycle is trapped", {
     code <- quote({
         mu[1] ~ dnorm(mu[2], 1)
         mu[2] ~ dnorm(mu[1], 1)
     })
-    modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    expect_error(expect_warning(modelDef$makeGraphInfo(), "Detected state-space"), "Cycle found")
+    
+    expect_error(expect_warning(modelDef <- modelDefClass$new(code), "Detected state-space"), "Cycle found")
 
     code <- quote({
         for(i in 2:5) 
@@ -2469,10 +2384,9 @@ test_that("actual cycle is trapped", {
             mu[i] ~ dnorm(mu[i-1], 1)
         mu[1] ~ dnorm(mu[5], 1)
     })
-    modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    expect_error(expect_warning(modelDef$makeGraphInfo(), "Detected state-space"), "Cycle found")
+    
+    
+    expect_error(expect_warning(modelDef <- modelDefClass$new(code), "Detected state-space"), "Cycle found")
   
     code <- quote({
         for(i in 2:5)
@@ -2481,9 +2395,9 @@ test_that("actual cycle is trapped", {
             mu[i] ~ dnorm(y[i+1], 1)
     })
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    expect_error(expect_warning(modelDef$makeGraphInfo(), "Detected state-space"), "Cycle found")
+    
+    
+    expect_error(expect_warning(modelDef <- modelDefClass$new(code), "Detected state-space"), "Cycle found")
     
 })
 
@@ -2494,9 +2408,7 @@ test_that("for loops with arbitrary sets", {
         mu ~ dnorm(0, 1)
     })
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
+    
     
     yNodes <- getNodes(modelDef, 'y')
     expect_equal(yNodes[[1]]$indexRanges[[1]],
@@ -2506,10 +2418,8 @@ test_that("for loops with arbitrary sets", {
         y[c(2,3,5)] ~ dmnorm(mu[1:3],sigma[1:3,1:3])
     })
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
-
+    
+    
     getNodes(modelDef, 'y')
     expect_equal(yNodes[[1]]$indexRanges[[1]],
                  newIndexRange(c(2,3,5)))
@@ -2538,10 +2448,8 @@ test_that("SSM with additional pieces handled", {
         
     })
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
-
+    
+    
     expect_equal(getDependencies(modelDef, 'sigma', self = FALSE),
                  list(varRangeClass$new(list(newIndexRange(quote(1:5))), varName = 'y',
                                         fromStochRule = TRUE),
@@ -2570,3 +2478,22 @@ test_that("duplicated nodes", {
                  varRangeClass$new(list(newIndexRange(quote(1:2))),
                                    varName = 'y', fromStochRule = TRUE))
 })
+
+test_that("missing indexing", {
+    modelCode <- quote({
+        y <- sum(mu[])
+    })
+
+    modelDef <- modelDefClass$new(modelCode, dimensions = list(mu = 5))
+
+    expect_equal(getParents(modelDef, 'y')[[1]],
+                 varRangeClass$new(list(newIndexRange(quote(1:5))),
+                                        varName = 'mu', fromStochRule = FALSE))
+
+    expect_equal(getDependencies(modelDef, 'mu[2]')[[1]],
+                 varRangeClass$new(list(), varName = 'y', fromStochRule = FALSE))
+    
+    expect_identical(getDependencies(modelDef, 'mu[9]'), NULL)
+
+})
+

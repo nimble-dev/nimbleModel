@@ -277,7 +277,7 @@ getSymbolicParentNodesRecurse <- function(code,
 
             ## Error if it looks like mu[i][j] where i is a for-loop index
             if(variable$hasIndex)
-                stop("getSymbolicParentNodesRecurse: variable `",
+                stop("variable `",
                      safeDeparse(code[[2]]),
                      '` on outside of [ contains an index.')
             
@@ -286,7 +286,7 @@ getSymbolicParentNodesRecurse <- function(code,
                 ## `block[i]`, so `block` is replaceable.
                 if(!all(contentsReplaceable)) 
                     ## dynamic index on a constant
-                    stop('getSymbolicParentNodesRecurse: dynamic indexing of constants is not allowed in `',
+                    stop('dynamic indexing of constants is not allowed in `',
                          safeDeparse(code), '`.')
                 boolIndexingBlock <-
                     unlist(lapply(code[-c(1,2)],
@@ -320,7 +320,7 @@ getSymbolicParentNodesRecurse <- function(code,
                         dynamicIndexParent <- code[[2]]
                     } else {
                         if(any(sapply(contentsCode, detectNonscalarIndex)))
-                            stop("getSymbolicParentNodesRecurse: only scalar random indices are allowed; vector random indexing found in `", safeDeparse(code), "`.")
+                            stop("only scalar random indices are allowed; vector random indexing found in `", safeDeparse(code), "`.")
                         indexedVariable <- safeDeparse(code[[2]], warn = TRUE)
                         dynamicIndexParent <- code # addUnknownIndexToVarNameInBracketExpr(code)
                         ## Instead of inserting NA, leave indexing
@@ -386,14 +386,14 @@ getSymbolicParentNodesRecurse <- function(code,
             isRonly <- isRfunction && (!checkNimbleOrRfunctionNames(funName, envir))
             ## We can no longer handle R functions, even if all contents replaceable because we no longer unroll.
             if(isRonly) 
-                stop("getSymbolicParentNodesRecurse: Detected use of an R function `", funName,
+                stop("detected use of an R function `", funName,
                      "`. This function cannot be compiled; it must be a nimbleFunction.")
             return(list(code = contentsCode,
                         replaceable = allContentsReplaceable & isRfunction,
                         hasIndex = any(contentsHasIndex)))
         }
     }
-    stop("getSymbolicParentNodesRecurse: `", safeDeparse(code), "` cannot be evaluated.")
+    stop("`", safeDeparse(code), "` cannot be evaluated.")
 }
 
 checkNimbleOrRfunctionNames <- function(functionName, envir) {
@@ -413,7 +413,7 @@ detectNonscalarIndex <- function(expr) {
     if(length(expr) == 2) {  ## This can occur if we have mu[k[j[i]]]
         expr <- stripIndexWrapping(expr)
         if(length(expr) <= 2)
-            stop("detectNonscalarIndex: unexpected expression `", safeDeparse(expr), "`.")
+            stop("unexpected expression `", safeDeparse(expr), "`.")
     }
     return(
         any(sapply(expr[3:length(expr)], isVectorIndex))

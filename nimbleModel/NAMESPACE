@@ -64,3 +64,4 @@ export(seqNoDecrease)
 export(messageIfVerbose)
 
 export(calc_dmnormAltParams)
+export(calc_dwishAltParams)

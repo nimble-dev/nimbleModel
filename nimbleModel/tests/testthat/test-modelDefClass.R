@@ -200,3 +200,49 @@ test_that("makeVarInfo works", {
     expect_identical(vi$mu$nDim, 1)
     expect_identical(vi$pr$nDim, 2)
 })
+
+
+test_that("handling dimensions if not specified", {
+    modelCode <- quote({
+        y <- sum(mu[])
+    })
+
+    expect_error(
+        modelDef <- modelDefClass$new(modelCode),
+        "which contains missing indices")
+    
+    modelDef <- modelDefClass$new(modelCode, inits = list(mu = rnorm(5)))
+    expect_identical(modelDef$varInfo$mu$maxs, 5)
+
+    expect_identical(body(modelDef$declRules[['y']]$rules[[1]]$calculate),
+                 quote(y <<- sum(mu[1:5])))
+        
+    modelDef <- modelDefClass$new(modelCode, dimensions = list(mu = 5))
+    expect_identical(modelDef$varInfo$mu$maxs, 5)
+
+    expect_message(
+        modelDef <- modelDefClass$new(modelCode, dimensions = list(mu = 3),
+                                      inits = list(mu = rnorm(5))),
+        "Inconsistent dimensions")
+
+    expect_error(
+        modelDef <- modelDefClass$new(modelCode, dimensions = list(mu = c(5,2))),
+        "inconsistent dimensionality")
+
+})    
+
+test_that("truncation processing", {
+    modelCode <- quote({
+        y ~ T(dnorm(mu, sd = sigma), 3, b)
+    })
+    modelDef <- modelDefClass$new(modelCode)
+    
+    expect_identical(
+        modelDef$declInfo[[1]]$symbolicParentNodes,
+        list(quote(mu),quote(sigma),quote(b)))
+
+    expect_identical(
+        body(modelDef$declRules[['y']]$rules[[1]]$calculate),
+        quote(logProb_y <<- dnorm(y, mean = mu, sd = sigma, lower_ = 3, upper_ = b, 
+                                  log = 1)))
+})
