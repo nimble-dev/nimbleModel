@@ -68,6 +68,12 @@ indexRuleBlock_setup <- function(toIndexExprList,
     ## fromRange <- range(eval(indexRangeExpr, envir = constants))
     if(indexRangeExpr[[1]] != ":")
         return(NULL)
+
+    varsInExpr <- all.vars(indexRangeExpr)
+    wh <- which(!varsInExpr %in% names(constants))
+    if(length(wh))
+        stop("constant `", paste(unique(varsInExpr[wh]), collapse = ','),
+             "` not found in `constants`.")
     fromRange <- 
         c(eval(indexRangeExpr[[2]], envir = constants),
           eval(indexRangeExpr[[3]], envir = constants))
@@ -110,7 +116,7 @@ indexRuleBlock_applyToMatrix <- function(fromValues,
     ## do that if the output of the `j` rule is also a list.
     ## CHECK: check this reasoning
     if(collapse)  
-        return(indexRangeMatrixClass$new(toValues))
+        return(indexRangeMatrixClass$new(toValues, sort = FALSE))
     else  
         return(indexRangeMatrixListClass$new(lapply(toValues, as.matrix)))
 }

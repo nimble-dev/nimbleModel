@@ -465,6 +465,16 @@ test_that("calcRule fracturing works", {
     expected <- nodeRuleClass$new(expr, 1, context_tmp)
     expect_identical(result[[3]]$externalRule$indexRules[[1]]$setupResults,
                      expected$externalRule$indexRules[[1]]$setupResults)
+
+    ## full overlap
+    LHS <- quote(mu[i+1])
+    LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
+    calcRule <- calcRuleClass$new(LHSrule, NULL, NULL, context_i)
+    ## fracture with mu[4:5]
+    fracRange <- calcRule$apply(varRangeClass$new(list(newIndexRange(quote(3:11))), varName = 'mu'))
+    
+    result <- fracture(calcRule, fracRange)
+    expect_identical(result, NULL)
     
 
     ## seq and matrix
@@ -489,6 +499,73 @@ test_that("calcRule fracturing works", {
     expect_equal(result[[2]]$externalRule$indexRules[[1]]$setupResults,
                  expected$externalRule$indexRules[[1]]$setupResults)
 
+    ## matrix and matrix
+    constants <- list(k = c(1,3,5,7,9,11,15,13))
+    LHS <- quote(mu[k[i]])
+    LHSrule <- nodeRuleClass$new(LHS, 1, context_i, constants = constants)
+    calcRule <- calcRuleClass$new(LHSrule, NULL, NULL, context_i, constants = constants)
+
+    idx <- c(3,7,8,9)
+    fracRange <- calcRule$apply(varRangeClass$new(list(newIndexRange(matrix(idx))), varName = 'mu'))
+    
+    result <- fracture(calcRule, fracRange)
+    
+    expect_identical(length(result), 2L)
+    expr <- quote(mu[idx[i]])
+    idx1 <- c(3,7,9)
+    idx2 <- c(5,11,13,15)
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:3){}))))
+    expected <- nodeRuleClass$new(expr, 1, context_tmp, constants = list(idx = idx1))
+    expect_equal(result[[1]]$externalRule$indexRules[[1]]$setupResults,
+                 expected$externalRule$indexRules[[1]]$setupResults)
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:4){}))))
+    expected <- nodeRuleClass$new(expr, 1, context_tmp, constants = list(idx = idx2))
+    expect_equal(result[[2]]$externalRule$indexRules[[1]]$setupResults,
+                 expected$externalRule$indexRules[[1]]$setupResults)
+
+    ## full overlap
+    idx <- c(7,3,5,8,9,11,13,15,23)
+    fracRange <- calcRule$apply(varRangeClass$new(list(newIndexRange(matrix(idx))), varName = 'mu'))
+    
+    result <- fracture(calcRule, fracRange)
+    expect_identical(result, NULL)
+
+    ## 2-d matrix and matrix
+    constants <- list(k1 = c(2,3,4,5), k2 = c(3,3,5,5))
+    LHS <- quote(mu[k1[j],k2[j]])
+    LHSrule <- nodeRuleClass$new(LHS, 1, context_j, constants = constants)
+    calcRule <- calcRuleClass$new(LHSrule, NULL, NULL, context_j, constants = constants)
+
+    idx <- matrix(c(2,4,3,5), nrow = 2)
+    fracRange <- calcRule$apply(varRangeClass$new(list(newIndexRange(idx)), varName = 'mu'))
+    
+    result <- fracture(calcRule, fracRange)
+    expect_identical(length(result), 2L)
+    expr <- quote(mu[idx1[i],idx2[i]])
+    idx1 <- c(2,4)
+    idx2 <- c(3,5)
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:2){}))))
+    expected <- nodeRuleClass$new(expr, 1, context_tmp, constants = list(idx1 = idx1, idx2 = idx2))
+    expect_equal(result[[1]]$externalRule$indexRules[[1]]$setupResults,
+                 expected$externalRule$indexRules[[1]]$setupResults)
+    idx1 <- c(3,5)
+    idx2 <- c(3,5)
+    context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:2){}))))
+    expected <- nodeRuleClass$new(expr, 1, context_tmp, constants = list(idx1 = idx1, idx2 = idx2))
+    expect_equal(result[[2]]$externalRule$indexRules[[1]]$setupResults,
+                 expected$externalRule$indexRules[[1]]$setupResults)
+
+    ## full overlap
+    constants <- list(k1 = c(5,2,3,4), k2 = c(5,3,3,6))
+    LHS <- quote(mu[k1[j],k2[j]])
+    LHSrule <- nodeRuleClass$new(LHS, 1, context_j, constants = constants)
+    calcRule <- calcRuleClass$new(LHSrule, NULL, NULL, context_j, constants = constants)
+
+    idx <- matrix(c(2,4,3,5,6,3,6,3,5,7), nrow = 5)
+    fracRange <- calcRule$apply(varRangeClass$new(list(newIndexRange(idx)), varName = 'mu'))
+    result <- fracture(calcRule, fracRange)
+    expect_identical(result, NULL)
+    
     ## basic case with one external, one internal: mu[1:3, i]
     LHS <- quote(mu[1:3,i])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_i)

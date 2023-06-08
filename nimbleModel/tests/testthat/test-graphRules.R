@@ -447,7 +447,7 @@ test_that("graphRules works for single index cases, wrapping indexRules", {
             varRangeClass$new(list(
                               newIndexRange(quote(3:7)))), rule), 
         varRangeClass$new(list(
-                          newIndexRange(matrix(idx[3:7]))), varName = 'y')
+                          newIndexRange(matrix(unique(sort(idx[3:7]))))), varName = 'y')
     )
 
 })
@@ -798,7 +798,7 @@ test_that("graphRules works for arbitrary rule with ragged blocks combined with 
                               newIndexRange(quote(2:3)))), rule),
         varRangeClass$new(list(
                           newIndexRange(quote(2:4)),
-                          newIndexRange(matrix(c(2,3,4,3,4), ncol = 1))), varName = 'y')
+                          newIndexRange(quote(2:4))), varName = 'y')
     )
 
     expect_equal(
@@ -822,7 +822,7 @@ test_that("graphRules works for arbitrary rule with ragged blocks combined with 
                               newIndexRange(quote(2:3)))), rule),
         varRangeClass$new(list(
                           newIndexRange(quote(2:4)),
-                          newIndexRange(matrix(c(1,2,1,2,3), ncol = 1))), varName = 'y')
+                          newIndexRange(quote(1:3))), varName = 'y')
     )
     
 
@@ -858,7 +858,7 @@ test_that("graphRules works for arbitrary rule with ragged blocks combined with 
                               newIndexRange(matrix(c(2,1,2,2,1,1), nrow = 3, byrow = TRUE)),
                               newIndexRange(quote(2:4)))), rule),
         varRangeClass$new(list(
-                          newIndexRange(matrix(c(2,2,1), ncol = 1)),
+                          newIndexRange(quote(1:2)),
                           newIndexRange(quote(2:4))), varName = 'y')
     )
 })
@@ -1413,7 +1413,7 @@ test_that("graphRules correctly handles ragged indexing", {
        applyGraphRule(
            varRangeClass$new(list(newIndexRange(quote(2:3)),
                                   newIndexRange(matrix(c(3,2,2,3,3,4), ncol = 2)))), rule),
-       varRangeClass$new(list(newIndexRange(matrix(c(3,2,2), ncol = 1))), varName = 'x')
+       varRangeClass$new(list(newIndexRange(quote(2:3))), varName = 'x')
    )
 
 })
@@ -1998,7 +1998,7 @@ test_that("indexRange matrix converted to sequence if appropriate", {
         applyGraphRule(
             varRangeClass$new(list(newIndexRange(quote(2:5)),
                                    newIndexRange(2))),rule),
-        varRangeClass$new(list(newIndexRange(c(3,5,4,6)), newIndexRange(2)), varName = 'y')
+        varRangeClass$new(list(newIndexRange(quote(3:6)), newIndexRange(2)), varName = 'y')
     )
 
     
@@ -2058,7 +2058,7 @@ test_that("non-sequential indexing in for loop or indexRule", {
         NULL
     )
     
-    rule <- graphRuleClass$new(toExpr = quote(y[c(2,3,5)]),
+    rule <- graphRuleClass$new(toExpr = quote(y[nimC(2,3,5)]),
                                fromExpr = quote(x[1:3]),
                                context = context_0)
 

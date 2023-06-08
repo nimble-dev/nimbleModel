@@ -1807,7 +1807,7 @@ test_that("one-lag Markov structure handled correctly", {
    sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
    topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
    endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
-   expect_identical(sortIDs, list('rho' = 1, 'sigma' = 2, 'mu' = list(c(NA,7,5,3,NA), 9),
+   expect_identical(sortIDs, list('rho' = 1, 'sigma' = 2, 'mu' = list(c(NA,7,5,3), 9),
                                    'lifted_rho_times_mu_oBi_plus_1_cB_L2' = list(c(8,6,4),2)))
    expect_identical(topRules, list('rho' = TRUE, 'sigma' = TRUE, 'mu' = rep(FALSE, 2),
                                     'lifted_rho_times_mu_oBi_plus_1_cB_L2' = rep(FALSE, 2)))
@@ -2302,8 +2302,6 @@ test_that("fully unrolled cases", {
     
     expect_message(modelDef <- modelDefClass$new(code), "Detected state-space type structure or cycle")
 
-    ## HERE errors - some sort of bug in setting up lifted node in terms of indexing
-    # change j to 1:7 to make sure extent of indexing is handled
     code <- quote({
         for(j in 1:5) {
             y[1,j] ~ dnorm(mu[1,j], sd = tau)
@@ -2323,13 +2321,17 @@ test_that("fully unrolled cases", {
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
     endRules <- lapply(modelDef$calcRules, extractRuleElement, 'end')
+    ## Note that lifted elements swap the indexing so confusing to chart this out by hand.
     expect_identical(sortIDs, list('tau' = 4, 'mu' = c(4,5,1,2,3,2,4,3),
-                                     'y' = c(5,5,9,9,6,6,5,7,8,7,8,9,6,7,8,5,5,9,9,6,6,7,7,8,8)))
+                                   'y' = c(5,5,5,7,7,13,13,5,5,7,9,13,11,9,11,9,11,7,7,9,9,13,13,11,11),
+                                   'lifted_mu_oBi_comma_j_cB_plus_y_oBi_minus_1_comma_j_cB_L4' =
+                                       c(6,6,6,8,8,8,6,6,8,8,10,12,10,12,10,12,10,12,10,12)))
     expect_identical(topRules, list('tau' = TRUE, 'mu' = c(rep(FALSE, 2), rep(TRUE, 2), rep(FALSE, 4)),
-                                    'y' = rep(FALSE, 25)))
+                                    'y' = rep(FALSE, 25),
+                                    'lifted_mu_oBi_comma_j_cB_plus_y_oBi_minus_1_comma_j_cB_L4' = rep(FALSE, 20)))
     expect_identical(endRules, list('tau' = FALSE, 'mu' = c(rep(FALSE, 8)),
-                                    'y' = c(rep(FALSE, 2), rep(TRUE, 2), rep(FALSE, 7), TRUE,
-                                            rep(FALSE, 5), rep(TRUE, 2), rep(FALSE, 6))))
+                                    'y' = c(rep(FALSE, 5),rep(TRUE,2),rep(FALSE,4),TRUE,rep(FALSE,9),rep(TRUE,2),rep(FALSE,2)),
+                                    'lifted_mu_oBi_comma_j_cB_plus_y_oBi_minus_1_comma_j_cB_L4' = rep(FALSE, 20)))
 
 })
 
@@ -2342,7 +2344,7 @@ test_that("SSM using arbitrary indexing", {
         tau ~ dunif(0, 1)
     })
     
-    expect_warning(modelDef <- modelDefClass$new(code, constants = list(k = c(2,3,4,5,6))),
+    expect_message(modelDef <- modelDefClass$new(code, constants = list(k = c(2,3,4,5,6))),
                    "Detected state-space")
     sortIDs <- lapply(modelDef$calcRules, extractRuleElement, 'sortID')
     topRules <- lapply(modelDef$calcRules, extractRuleElement, 'top')
@@ -2351,7 +2353,6 @@ test_that("SSM using arbitrary indexing", {
                                                'tau' = 1))
     expect_identical(topRules, list('mu' = c(TRUE, rep(FALSE, 5)), 'tau' = TRUE))
     expect_identical(endRules, list('mu' = c(FALSE, TRUE, rep(FALSE, 4)), 'tau' = FALSE))
-
 })
 
 
@@ -2375,7 +2376,7 @@ test_that("actual cycle is trapped", {
         mu[2] ~ dnorm(mu[1], 1)
     })
     
-    expect_error(expect_warning(modelDef <- modelDefClass$new(code), "Detected state-space"), "Cycle found")
+    expect_error(expect_message(modelDef <- modelDefClass$new(code), "Detected state-space"), "cycle found")
 
     code <- quote({
         for(i in 2:5) 
@@ -2385,21 +2386,18 @@ test_that("actual cycle is trapped", {
         mu[1] ~ dnorm(mu[5], 1)
     })
     
-    
-    expect_error(expect_warning(modelDef <- modelDefClass$new(code), "Detected state-space"), "Cycle found")
-  
+    expect_error(expect_message(modelDef <- modelDefClass$new(code), "Detected state-space"), "cycle found")
+
     code <- quote({
         for(i in 2:5)
             y[i] ~ dnorm(mu[i-1], 1)
         for(i in 1:4)
             mu[i] ~ dnorm(y[i+1], 1)
     })
-    modelDef <- modelDefClass$new(code)
     
-    
-    expect_error(expect_warning(modelDef <- modelDefClass$new(code), "Detected state-space"), "Cycle found")
-    
+    expect_error(expect_message(modelDef <- modelDefClass$new(code), "Detected state-space"), "cycle found")
 })
+
 
 test_that("for loops with arbitrary sets", {
     code <- quote({
@@ -2415,16 +2413,29 @@ test_that("for loops with arbitrary sets", {
                  newIndexRange(c(2,3,5)))
 
     code <- quote({
+        for(i in c(2,3,5))
+            for(j in c(2,7))
+                y[i,j] ~ dnorm(mu, 1)
+        mu ~ dnorm(0, 1)
+    })
+    modelDef <- modelDefClass$new(code)
+
+    yNodes <- getNodes(modelDef, 'y')
+    expect_equal(yNodes[[1]]$indexRanges[[1]],
+                 newIndexRange(c(2,3,5)))
+    expect_equal(yNodes[[1]]$indexRanges[[2]],
+                 newIndexRange(c(2,7)))
+
+    code <- quote({
         y[c(2,3,5)] ~ dmnorm(mu[1:3],sigma[1:3,1:3])
     })
     modelDef <- modelDefClass$new(code)
     
-    
-    getNodes(modelDef, 'y')
+    yNodes <- getNodes(modelDef, 'y')
     expect_equal(yNodes[[1]]$indexRanges[[1]],
                  newIndexRange(c(2,3,5)))
 
-
+    
 })
 
 test_that("SSM with additional pieces handled", {

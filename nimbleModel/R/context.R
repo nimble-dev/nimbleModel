@@ -14,7 +14,7 @@ getNimbleOption <- function(...) FALSE
 
 singleContextClass <- R6Class(
     classname = "singleContextClass",
-    portable = FALSE,
+    portable = FALSE, 
     public = list(
         indexVarExpr = NULL,
         indexRangeExpr = NULL,
@@ -175,6 +175,10 @@ expandContextAndReplacements <- function(allReplacements, allReplacementNameExpr
     innerLoopCode <- as.call(c(list(quote(`{`)), replacementRecordingCode, indexRecordingCode, quote(iAns <- iAns + 1)))
 
     innerLoopCode <- context$embedCodeInForLoop(innerLoopCode, useContext)
+    ## This is a hacky way to deal with `nimC`, which is not in `constantsCopy`.
+    if(innerLoopCode[[3]][[1]] == 'nimC')
+        innerLoopCode[[3]][[1]] <- quote(c)
+    
     ## At this point `innerLoopCode` has the full loop
     outputSize <- determineContextSize(context, useContext, constantsCopy)
     for(i in seq_along(context$singleContexts)) {
@@ -224,10 +228,14 @@ determineContextSize <- function(context, useContext = rep(TRUE, length(context$
     innerLoopCode <- quote(iAns <- iAns + 1)
     innerLoopCode <- context$embedCodeInForLoop(innerLoopCode, useContext)
 
+    ## This is a hacky way to deal with `nimC`, which is not in `evalEnv`.
+    if(innerLoopCode[[3]][[1]] == 'nimC')
+        innerLoopCode[[3]][[1]] <- quote(c)
+    
     assign("iAns", 0L, evalEnv)
-    test <- try(eval(innerLoopCode, evalEnv))
+    test <- try(eval(innerLoopCode, evalEnv), silent = TRUE)
     if(is(test, 'try-error'))
-        stop("could not evaluate loop syntax: is indexing information provided via `constants`?")
+        stop("could not evaluate loop syntax `", safeDeparse(innerLoopCode), "`. Is indexing information provided via `constants`?")
     ans <- evalEnv$iAns
     rm(list = c('iAns', context$indexVarNames[useContext]), envir = evalEnv)
     return(ans)

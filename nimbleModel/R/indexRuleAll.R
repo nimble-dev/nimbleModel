@@ -49,6 +49,12 @@ indexRuleAll_setup <- function(toIndexExprList,
         toOffset <- getOffset(toIndexExpr, indexVarName,  constants)
         if(!is.null(toOffset)) {
             indexRangeExpr <- context$singleContexts[[1]]$indexRangeExpr
+
+            varsInExpr <- all.vars(indexRangeExpr)
+            wh <- which(!varsInExpr %in% names(constants))
+            if(length(wh))
+                stop("constant `", paste(unique(varsInExpr[wh]), collapse = ','),
+                     "` not found as loop index or in `constants`.")
             indexingRange <- 
                 c(eval(indexRangeExpr[[2]], envir = constants),
                   eval(indexRangeExpr[[3]], envir = constants))

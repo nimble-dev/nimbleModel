@@ -250,7 +250,7 @@ checkForVars <- function(toExpr, fromExpr, context, constants) {
         varsInExpr <- c(varsInExpr, all.vars(toExpr[2:length(toExpr)]))
     wh <- which(!varsInExpr %in% c(names(constants), context$indexVarNames))
     if(length(wh))
-        stop("index or constant `", paste(unique(varsInExpr[wh]), collapse = ','), "` not found as loop index or in constants.")
+        stop("index or constant `", paste(unique(varsInExpr[wh]), collapse = ','), "` not found as loop index or in `constants`.")
 }
 
 
@@ -267,7 +267,7 @@ modifyContextForFromOnlyRules <- function(LHS, RHS, context, constants) {
 
 ## Make indexRules and indexConstraints based on the indexSets.
 makeIndexRules <- function(toExpr, fromExpr, indexSets, context, constants) {
-    constantsEnv <- list2env(constants)
+    constantsEnv <- list2env(constants, parent = getDefaultNamespace())
     if(length(toExpr) >= 3 && toExpr[[1]] == '[') {
         toIndexExprs <- as.list(toExpr[-c(1,2)])
     } else if(length(toExpr) == 1) toIndexExprs <- list() else

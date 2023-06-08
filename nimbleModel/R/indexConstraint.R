@@ -150,6 +150,8 @@ newIndexConstraint_fromSimple <- function(expr, slot, constants) {
                                           eval(expr[[3]], envir = constants),
                                           slot))
     } else {  ## various other cases such as `x[2]`, `x[k+1]`, `x[c(2,3,5)]`, `x[c(2,3,k)]`.
+        if(expr[[1]] == "nimC")
+            expr[[1]] <- quote(c)
         result <- eval(expr, envir = constants)
         if(length(result) == 1) {
             return(indexConstraintScalarClass$new(result, slot))

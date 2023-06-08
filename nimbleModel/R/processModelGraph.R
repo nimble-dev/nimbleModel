@@ -433,9 +433,10 @@ processCyclicRules <- function(allCalcRules, modelDef) {
         } else cyclicRules[[i]]$sortID <- tmpSortIDs[(numSortIDs[i-1]+1):numSortIDs[i]]
         ## Clean up unneeded NAs.
         nonNAs <- which(!is.na(cyclicRules[[i]]$sortID))
-        if(length(nonNAs) == 1) {
-            cyclicRules[[i]]$sortID <- cyclicRules[[i]]$sortID[nonNAs]
-        } else cyclicRules[[i]]$sortID <- cyclicRules[[i]]$sortID[1:max(nonNAs)]
+        if(length(nonNAs))
+            if(length(nonNAs) == 1) {
+                cyclicRules[[i]]$sortID <- cyclicRules[[i]]$sortID[nonNAs]
+            } else cyclicRules[[i]]$sortID <- cyclicRules[[i]]$sortID[1:max(nonNAs)]
     })
     
     allCalcRules[cyclicRulesSet] <- cyclicRules

@@ -19,10 +19,8 @@ test_that("avoid using indexing values from global", {
     })
 
     k <- c(1,2,4)
-    modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    expect_error(modelDef$processDecls(),
-                 "not found as loop index or in constants")
+    expect_error(modelDef <- modelDefClass$new(code),
+                 "not found as loop index or in `constants`")                 
 
     ## dynamic indexing case; not yet handled
     ## TODO: address dynamic indexing
@@ -32,19 +30,17 @@ test_that("avoid using indexing values from global", {
     })
     k <- c(1,2,4)
     
-    modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    expect_error(modelDef$processDecls()))
+    expect_message(modelDef <- modelDefClass$new(code),
+                 "Detected use of non-constant indices")
 
     code <- quote({
         for(i in 1:n)
-        y[i] ~ dnorm(mu[i], 1)
+            y[i] ~ dnorm(mu[i], 1)
     })
 
     n <- 3
-    modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    expect_error(modelDef$processDecls(), "not found")
+    expect_error(modelDef <- modelDefClass$new(code),
+                 "not found in `constants`")
 
     code <- quote({
         for(i in 1:3)
@@ -53,9 +49,7 @@ test_that("avoid using indexing values from global", {
     })
     
     n  <- c(1,3,2)
-    modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    expect_error(modelDef$processDecls(), "is indexing information provided")
+    expect_error(modelDef <- modelDefClass$new(code), "Is indexing information provided")
 
     code <- quote({
         for(i in 1:5)
@@ -63,9 +57,6 @@ test_that("avoid using indexing values from global", {
     })
     
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
 
     p <- 3
     expect_error(getNodes(modelDef, 'y[1:p]'), "must involve two positive")

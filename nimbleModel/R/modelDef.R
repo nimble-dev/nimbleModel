@@ -478,7 +478,7 @@ modelDefClass <- R6Class(
 
         ## Overwrite declInfo (both LHS and RHS) with constants replaced; only replaces scalar constants.
         replaceAllConstants = function() {
-            constantsEnv <- list2env(constants)
+            constantsEnv <- list2env(constants, parent = getDefaultNamespace())
             for(i in seq_along(declInfo)) {
                 newCode <- replaceConstantsRecurse(declInfo[[i]]$code, constantsEnv)$code
                 declInfo[[i]] <<- modelDeclClass$new(newCode, declInfo[[i]]$context,

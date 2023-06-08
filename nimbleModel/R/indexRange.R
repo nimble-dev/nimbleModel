@@ -75,7 +75,7 @@ newIndexRange <- function(expr) {
                 ## FUTURE: not clear we need to handle this case and/or might convert to scalar.
                 if(length(dim(expr)) == 2) {
                     dimnames(expr) <- NULL
-                    return(indexRangeMatrixClass$new(expr))
+                    return(indexRangeMatrixClass$new(expr, sort = FALSE))
                 }
                 stop("newIndexRange: an indexRange cannot be an array.")
             } else
@@ -181,7 +181,7 @@ indexRangeScalarClass <- R6Class(
         },
         
         toMatrix = function() {
-            return(indexRangeMatrixClass$new(matrix(value)))
+            return(indexRangeMatrixClass$new(matrix(value), sort = FALSE))
         },
 
         getMinMax = function() {
@@ -224,7 +224,7 @@ indexRangeSequenceClass <- R6Class(
         },
 
         toMatrix = function() {
-            return(indexRangeMatrixClass$new(matrix(as.numeric(seq.int(start, end)))))
+            return(indexRangeMatrixClass$new(matrix(as.numeric(seq.int(start, end))), sort = FALSE))
         },
 
         toMatrixList = function() {
@@ -254,8 +254,11 @@ indexRangeMatrixClass <- R6Class(
         numElements = numeric(),
         numColumns = numeric(),
         
-        initialize = function(values) {
-            values <<- values
+        initialize = function(values, sort = TRUE) {
+            if(sort) {
+                ord <- do.call(order, lapply(seq_len(ncol(values)), function(i) values[, i]))
+                values <<- values[ord, , drop = FALSE]
+            } else values <<- values
             numElements <<- as.numeric(nrow(self$values))
             numColumns <<- as.numeric(ncol(self$values))
         },
@@ -268,14 +271,14 @@ indexRangeMatrixClass <- R6Class(
             if(is.null(indices)) {
                 return(.self)
             } else
-                return(indexRangeMatrixClass$new(values[ , indices, drop = FALSE]))
+                return(indexRangeMatrixClass$new(values[ , indices, drop = FALSE], sort = FALSE))
         },
 
         getRows = function(indices = NULL) {
             if(is.null(indices)) {
                 return(.self)
             } else
-                return(indexRangeMatrixClass$new(values[indices, , drop = FALSE]))
+                return(indexRangeMatrixClass$new(values[indices, , drop = FALSE], sort = FALSE))
         },
 
         getMinMax = function() {
@@ -283,8 +286,10 @@ indexRangeMatrixClass <- R6Class(
         },
 
         removeDuplicates = function() {
-            if(anyDuplicated(values)) # Much faster than `unique`.
+            if(anyDuplicated(values)) { # Much faster than `unique`.
                 values <<- unique(values)
+                numElements <<- as.numeric(nrow(self$values))
+            }
         },
 
         toMatrix = function() {

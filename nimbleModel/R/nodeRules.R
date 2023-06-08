@@ -635,7 +635,7 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
                               )
             valsLHS <- valsLHS[!valsLHS %in% valsFrac]  # Values for new rule are those that don't overlap.
 
-            if(!length(valsLHS)) {  # No overlap (not caught previously if, e.g., LHS is seq and fracturer is matrix). 
+            if(!length(valsLHS)) {  # Full overlap (not caught previously if, e.g., LHS is seq and fracturer is matrix). 
                 if(!is.null(parentRule)) {  # If parent is not RHS.
                     parentRule$setChildren(LHSrule$ID)
                     LHSrule$setParents(parentRule$ID)
@@ -752,6 +752,16 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
         remaining <- !lhsAsChar %in% fracAsChar
         mat1 <- unrolledLHS$values[remaining, , drop = FALSE]
         mat2 <- unrolledLHS$values[!remaining, , drop = FALSE]
+
+        if(!length(mat1)) {
+            ## Full overlap; this should not be needed, but just in case
+            ## (e.g., if LHS and fracturer elements are somehow not in same order).
+            if(!is.null(parentRule)) {  # If parent is not RHS.
+                parentRule$setChildren(LHSrule$ID)
+                LHSrule$setParents(parentRule$ID)
+            }
+            return(NULL)
+        }
 
         focalContext <- sapply(names(singleContexts), function(nm)
             nm %in% unlist(lapply(2+nonIdenticalIndexSlots, function(x) all.vars(expr[[x]]))))
