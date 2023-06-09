@@ -44,7 +44,7 @@ newIndexRange <- function(expr) {
                identical(start, round(start)) && identical(end, round(end))) {
                 return(indexRangeSequenceClass$new(start, end))
             } else 
-                stop("newIdexRange: an indexRange sequence must involve two positive, non-decreasing, integer-valued endpoints.")
+                stop("newIndexRange: an indexRange sequence must involve two positive, non-decreasing, integer-valued endpoints.")
         } else {
             ## An expression like c(2,4,6) or matrix(...).
 

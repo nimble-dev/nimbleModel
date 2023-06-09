@@ -124,7 +124,7 @@ test_that("checkIndexConstraints", {
         nimbleModel:::checkIndexConstraints(varRangeClass$new(list(newIndexRange(matrix(c(3,2,4,3), nrow = 2)),
                                                                    newIndexRange(quote(3:5))), varName = 'x'),
                                             constraints),
-        list(c(FALSE,TRUE),TRUE)
+        list(c(TRUE, FALSE),TRUE)
     )
     expect_identical(
         nimbleModel:::checkIndexConstraints(
@@ -132,7 +132,7 @@ test_that("checkIndexConstraints", {
                                                                       nrow = 3, byrow =  TRUE))),
                                                                varName = 'x'),
                                             constraints),
-        list(c(FALSE,TRUE,FALSE))
+        list(c(TRUE,FALSE,FALSE))
     )
     
     constraints <- list(
@@ -172,7 +172,7 @@ test_that("checkIndexConstraints", {
         nimbleModel:::checkIndexConstraints(varRangeClass$new(list(newIndexRange(matrix(c(3,2,4,3), nrow = 2)),
                                                                    newIndexRange(quote(3:5))), varName = 'x'),
                                             constraints),
-        list(c(FALSE,TRUE),TRUE)
+        list(c(TRUE,FALSE),TRUE)
     )
     ## Extract multiple columns from matrix range and apply constraints and combine.
     expect_identical(
@@ -181,18 +181,18 @@ test_that("checkIndexConstraints", {
                                                                       nrow = 3, byrow =  TRUE))),
                                                                varName = 'x'),
                                             constraints),
-        list(c(FALSE,TRUE,FALSE))
+        list(c(TRUE,FALSE,FALSE))
     )
 
 
     ##  x[2,k[i],,3*i]
     constraints <- list(
         indexConstraintScalarClass$new(2, 1),
-        indexConstraintMatrixClass$new(matrix(c(2,4,5,3,6,9),ncol = 2), c(2,4))
+        indexConstraintMatrixClass$new(matrix(c(4,2,5,6,3,9),ncol = 2), c(2,4))
     )
 
 
-    expResult <- c(FALSE, TRUE, rep(FALSE, 9), TRUE)
+    expResult <- c(rep(FALSE,4),TRUE,rep(FALSE,6),TRUE)
 
     ## Two input ranges on the matrix constraint; ranges are crossed and result duplicated.
     expect_identical(
@@ -230,8 +230,9 @@ test_that("checkIndexConstraints", {
                                             constraints),
         "should have been fully crossed"
     )
+
     ## Input multi-slot range covers only one constraint (and an unconstrained slot).
-    expResult <- c(FALSE,TRUE,rep(FALSE,6))
+    expResult <- c(FALSE,FALSE,TRUE,rep(FALSE,5))
     expect_identical(
         nimbleModel:::checkIndexConstraints(varRangeClass$new(list(newIndexRange(2),
                                                                    newIndexRange(matrix(c(2,9,4,2,5,5,6,7), ncol = 2, byrow = TRUE)),
@@ -247,7 +248,7 @@ test_that("checkIndexConstraints", {
                                                               matrix(c(3,4,3,6, 2,4,3,6, 2,1,3,3, 2,2,3,3, 2,4,3,9), ncol = 4, byrow = TRUE))),
                                                               varName = 'x'),
                                             constraints),
-        list(c(FALSE, TRUE, FALSE, TRUE, FALSE))
+        list(c(FALSE, TRUE, TRUE, FALSE, FALSE)) 
     )
 
 })
