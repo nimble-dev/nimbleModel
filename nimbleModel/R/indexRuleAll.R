@@ -10,7 +10,7 @@ indexRuleAllClass <- R6Class(
         initialize = function(toIndexExprList,
                               fromIndexExprList,
                               context,
-                              constants) {
+                              constants = list()) {
             setupResults <<-
                 indexRuleAll_setup(toIndexExprList,
                                     fromIndexExprList,
