@@ -28,8 +28,11 @@ originalIndexingRuleClass <- R6Class(
 
         ## Produces a varRange, though it's not really a range for a variable
         ## but rather a range for the indices.
+        ## Do not remove duplicates because in generation of `calcRange`s there
+        ## can be cases where we need duplicated values in order to have correct
+        ## number of logProbs.
         apply = function(fromVarRange) {
-            graphRule$apply(fromVarRange)
+            graphRule$apply(fromVarRange, removeDuplicates = FALSE)
         }
     )
 )

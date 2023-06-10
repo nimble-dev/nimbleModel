@@ -7,38 +7,38 @@ test_that("varRule initialization and apply", {
     singleContext1 <-
         singleContextClass$new(forCode = quote(for(i in 1:10){}))
     context_i1 <- modelContextClass$new(list(singleContext1))
-    rule1 <- graphRuleClass$new(LHS = quote(y[i]),
-                                RHS = quote(x[i]),
+    rule1 <- graphRuleClass$new(toExpr = quote(y[i]),
+                                fromExpr = quote(x[i]),
                                 context = context_i1)
 
     ## Example declaration: for(i in 6:15) z[i] <- foo(x[i])
     singleContext2 <-
         singleContextClass$new(forCode = quote(for(i in 6:15){}))
     context_i2 <- modelContextClass$new(list(singleContext2))
-    rule2 <- graphRuleClass$new(LHS = quote(z[i]),
-                                RHS = quote(x[i]),
+    rule2 <- graphRuleClass$new(toExpr = quote(z[i]),
+                                fromExpr = quote(x[i]),
                                 context = context_i2)
 
     varRule_x <- varRuleClass$new(
-        list(rule1, rule2), name = 'x'
+        list(rule1, rule2), varName = 'x'
     )
 
     expect_equal(
         result <- varRule_x$apply(varRangeClass$new(
             list(
-                indexRange(
+                newIndexRange(
                     quote(3:12)
                 )), varName = 'x')
             ),
         expected <- list(
             varRangeClass$new(
                 list(
-                    indexRange(
+                    newIndexRange(
                         quote(3:10)
                     )), varName = 'y'),
             varRangeClass$new(
                 list(
-                    indexRange(
+                    newIndexRange(
                         quote(6:12)
                     )), varName = 'z')
         )

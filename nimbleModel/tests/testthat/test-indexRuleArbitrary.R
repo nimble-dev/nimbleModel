@@ -69,9 +69,7 @@ test_indexRuleArbitrary <- function(LHS,
                        list(LHS = LHS,
                             RHS = RHS))
         codeInForLoop <-
-            nimbleModel:::modelContextClass_embedCodeInForLoop(
-                context$singleContexts,
-                innerLoopCode)
+            context$embedCodeInForLoop(innerLoopCode)
 
         force(constantsEnv)
         

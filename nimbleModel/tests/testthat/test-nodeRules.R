@@ -91,7 +91,7 @@ test_that("nodeRule creation and application works", {
     expect_identical(result$numExternalIndexRanges, 2L)
     expect_identical(result$indexSlotToRange, c(3L,1L,2L,4L))
     expect_equal(result$indexRanges[[1]], newIndexRange(quote(4:5)))
-    expect_equal(result$indexRanges[[2]], newIndexRange(matrix(c(4,6,5))))
+    expect_equal(result$indexRanges[[2]], newIndexRange(quote(4:6)))
     expect_equal(result$indexRanges[[3]], newIndexRange(quote(1:3)))
     expect_equal(result$indexRanges[[4]], newIndexRange(2))
 
@@ -255,21 +255,21 @@ test_that("calcRanges are generated correctly", {
 
     ## Generation of calcRules
    
-    calcRange <- calcRule$generateCalcRange(varRangeClass$new(list(newIndexRange(quote(3:5)))))
+    calcRange <- calcRule$makeCalcRange(varRangeClass$new(list(newIndexRange(quote(3:5)))))
     expect_equal(calcRange$indexingRange,
                  varRangeClass$new(list(newIndexRange(quote(2:4))), varName = 'y'))
 
     ## Mismatched varNames
-    expect_error(calcRule$generateCalcRange(varRangeClass$new(list(newIndexRange(quote(3:5))),
+    expect_error(calcRule$makeCalcRange(varRangeClass$new(list(newIndexRange(quote(3:5))),
                                                                varName = 'foo')),
                  "does not match")
     
     ## No overlap
-    calcRange <- calcRule$generateCalcRange(varRangeClass$new(list(newIndexRange(quote(50:53)))))
+    calcRange <- calcRule$makeCalcRange(varRangeClass$new(list(newIndexRange(quote(50:53)))))
     expect_equal(calcRange, NULL)
 
     ## No input range
-    calcRange <- calcRule$generateCalcRange()
+    calcRange <- calcRule$makeCalcRange()
     expect_equal(calcRange$indexingRange,
                  varRangeClass$new(list(newIndexRange(quote(2:8))), varName = 'y'))
 
@@ -277,25 +277,25 @@ test_that("calcRanges are generated correctly", {
     declRule_i <- declRuleClass$new(quote(y[7:9, i+1] ~ dmnorm(z[1:3],pr[1:3,1:3])), 1, context_i)
     calcRule <- calcRuleClass$new(declRule_i, NULL, NULL, context_i)
  
-    calcRange <- calcRule$generateCalcRange(varRangeClass$new(list(newIndexRange(quote(2:4)), newIndexRange(quote(3:5)))))
+    calcRange <- calcRule$makeCalcRange(varRangeClass$new(list(newIndexRange(quote(2:4)), newIndexRange(quote(3:5)))))
     expect_equal(calcRange$indexingRange, NULL)
 
-    calcRange <- calcRule$generateCalcRange(varRangeClass$new(list(newIndexRange(quote(7:9)), newIndexRange(quote(3:5)))))
+    calcRange <- calcRule$makeCalcRange(varRangeClass$new(list(newIndexRange(quote(7:9)), newIndexRange(quote(3:5)))))
     expect_equal(calcRange$indexingRange,
                  varRangeClass$new(list(newIndexRange(quote(2:4))), varName = 'y'))
 
-    calcRange <- calcRule$generateCalcRange(varRangeClass$new(list(newIndexRange(quote(2)), newIndexRange(quote(3:5)))))
+    calcRange <- calcRule$makeCalcRange(varRangeClass$new(list(newIndexRange(quote(2)), newIndexRange(quote(3:5)))))
     expect_equal(calcRange, NULL)
 
-    calcRange <- calcRule$generateCalcRange(varRangeClass$new(list(newIndexRange(quote(7)), newIndexRange(quote(3:5)))))
+    calcRange <- calcRule$makeCalcRange(varRangeClass$new(list(newIndexRange(quote(7)), newIndexRange(quote(3:5)))))
     expect_equal(calcRange$indexingRange,
                  varRangeClass$new(list(newIndexRange(quote(2:4))), varName = 'y'))
     
-    calcRange <- calcRule$generateCalcRange(varRangeClass$new(list(newIndexRange(quote(5:8)), newIndexRange(quote(3:5)))))
+    calcRange <- calcRule$makeCalcRange(varRangeClass$new(list(newIndexRange(quote(5:8)), newIndexRange(quote(3:5)))))
     expect_equal(calcRange$indexingRange,
                  varRangeClass$new(list(newIndexRange(quote(2:4))), varName = 'y'))
 
-    calcRange <- calcRule$generateCalcRange(varRangeClass$new(list(newIndexRange(quote(6)), newIndexRange(quote(3:5)))))
+    calcRange <- calcRule$makeCalcRange(varRangeClass$new(list(newIndexRange(quote(6)), newIndexRange(quote(3:5)))))
     expect_equal(calcRange, NULL)
 
     ## Using a nodeRange (modified so that output is not same as input)
@@ -303,12 +303,12 @@ test_that("calcRanges are generated correctly", {
     LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
     nodeRange <- LHSrule$apply(varRangeClass$new(list(newIndexRange(quote(7:9)),
                                                    newIndexRange(quote(5:9))), varName = 'y'))
-    calcRange <- calcRule$generateCalcRange(nodeRange)
+    calcRange <- calcRule$makeCalcRange(nodeRange)
     expect_equal(calcRange$indexingRange,
                  varRangeClass$new(list(newIndexRange(quote(4:8))), varName = 'y'))
 
     nodeRange$indexRanges[[1]]$end <- 35  # have nodeRange extend beyond true extent
-    calcRange <- calcRule$generateCalcRange(nodeRange)
+    calcRange <- calcRule$makeCalcRange(nodeRange)
     expect_equal(calcRange$indexingRange,
                  varRangeClass$new(list(newIndexRange(quote(4:8))), varName = 'y'))
 
@@ -316,7 +316,7 @@ test_that("calcRanges are generated correctly", {
     declRule_ijk <- declRuleClass$new(quote(y[j, i+1, k, 2] ~ dnorm(0,1)), 1, context_ijk)
     calcRule <- calcRuleClass$new(declRule_ijk, NULL, NULL, context_ijk)
     
-    calcRange <- calcRule$generateCalcRange(varRangeClass$new(list(
+    calcRange <- calcRule$makeCalcRange(varRangeClass$new(list(
                                                   newIndexRange(quote(3:5)),
                                                   newIndexRange(matrix(c(3,12,8))),
                                                   newIndexRange(quote(1:6)),
@@ -327,14 +327,14 @@ test_that("calcRanges are generated correctly", {
                                         newIndexRange(quote(1:4))), varName = 'y'))
     
 
-    calcRange <- calcRule$generateCalcRange(varRangeClass$new(list(
+    calcRange <- calcRule$makeCalcRange(varRangeClass$new(list(
                                                   newIndexRange(quote(3:5)),
                                                   newIndexRange(matrix(c(3,12,8))),
                                                   newIndexRange(quote(1:6)),
                                                   newIndexRange(3))))
     expect_equal(calcRange, NULL)
 
-    calcRange <- calcRule$generateCalcRange(varRangeClass$new(list(
+    calcRange <- calcRule$makeCalcRange(varRangeClass$new(list(
                                                   newIndexRange(quote(3:5)),
                                                   newIndexRange(matrix(c(3,9,3,11,11,1,2,5,2,7), ncol = 2)),
                                                   newIndexRange(2))
@@ -343,7 +343,7 @@ test_that("calcRanges are generated correctly", {
                  varRangeClass$new(list(newIndexRange(matrix(c(2,8,1,2), ncol = 2)),
                                         newIndexRange(quote(3:5))), rangeToIndexSlot = list(c(1,3), 2), varName = 'y'))
 
-    calcRange <- calcRule$generateCalcRange(varRangeClass$new(list(
+    calcRange <- calcRule$makeCalcRange(varRangeClass$new(list(
                                                   newIndexRange(quote(3:5)),
                                                   newIndexRange(matrix(c(3,12,5,7,2,2,3,2), ncol = 2)),
                                                   newIndexRange(quote(1:5))
@@ -366,7 +366,7 @@ test_that("calcRanges are generated correctly", {
     declRule_ijni <- declRuleClass$new(quote(y[j, i+1] ~ dnorm(0,1)), 1, context_ijni, constants = list(n = n))
     calcRule <- calcRuleClass$new(declRule_ijni, NULL, NULL, context_ijni, constants = list(n = n))
 
-    calcRange <- calcRule$generateCalcRange(varRangeClass$new(list(
+    calcRange <- calcRule$makeCalcRange(varRangeClass$new(list(
                                                                newIndexRange(quote(1:4)),
                                                                newIndexRange(quote(1:3))
                                                            )))
@@ -666,9 +666,10 @@ test_that("calcRule fracturing works", {
         expect_identical(result[[k]]$indexSlotToSet, c(0,1,1,0))
     }
 
+    ## HERE - sorting?
     context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:4){}))))
-    idx1 <- as.integer(c(2,3,2,3))
-    idx2 <- as.integer(c(2,2,3,3))
+    idx1 <- as.integer(c(2,2,3,3))
+    idx2 <- as.integer(c(2,3,2,3))
     expr <- quote(mu[idx1[i],idx2[i]])
     expected <- nodeRuleClass$new(expr, 1, context_tmp, constants = list(idx1 = idx1, idx2 = idx2))
     expect_equal(result[[1]]$externalRule$indexRules[[1]]$setupResults,
@@ -676,6 +677,9 @@ test_that("calcRule fracturing works", {
     context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:24){}))))
     idx1 <- as.integer(c(1,4,1,4,rep(1:4, 5)))
     idx2 <- as.integer(c(2,2,3,3,rep(4:8, each = 4)))
+    ord <- order(idx1, idx2)
+    idx1 <- idx1[ord]
+    idx2 <- idx2[ord]
     expr <- quote(mu[idx1[i],idx2[i]])
     expected <- nodeRuleClass$new(expr, 1, context_tmp, constants = list(idx1 = idx1, idx2 = idx2))
     expect_equal(result[[2]]$externalRule$indexRules[[1]]$setupResults,
@@ -714,6 +718,9 @@ test_that("calcRule fracturing works", {
     wh <- (idx1 == 2 & idx2 == 3) | (idx1 == 3 & idx2 == 7)
     idx1 <- idx1[!wh]
     idx2 <- idx2[!wh]
+    ord <- order(idx1, idx2)
+    idx1 <- idx1[ord]
+    idx2 <- idx2[ord]
     expr <- quote(mu[idx1[i],idx2[i]])
     expected <- nodeRuleClass$new(expr, 1, context_tmp, constants = list(idx1 = idx1, idx2 = idx2))
     expect_equal(result[[2]]$externalRule$indexRules[[1]]$setupResults,
@@ -863,6 +870,9 @@ test_that("RHS exclusion works", {
     context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:5){}))))
     idx1 <- c(11,11,12,13,5)
     idx2 <- c(2,5,6,7,13)
+    ord <- order(idx1, idx2)
+    idx1 <- idx1[ord]
+    idx2 <- idx2[ord]
     expected <- rhsRuleClass$new(RHS, 1, context_tmp, constants = list(idx1 = idx1,idx2=idx2))
     expect_equal(result[[1]]$externalRule$indexRules[[1]]$setupResults,
                      expected$externalRule$indexRules[[1]]$setupResults)
@@ -881,6 +891,9 @@ test_that("RHS exclusion works", {
     context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:26){}))))
     idx1 <- c(2,3,5,6,7,8,2,4:8,rep(2:8, 2))
     idx2 <- c(rep(1,6),rep(2,6),rep(3,7), rep(4,7))
+    ord <- order(idx1, idx2)
+    idx1 <- idx1[ord]
+    idx2 <- idx2[ord]
     expected <- rhsRuleClass$new(LHS, 1, context_tmp, constants = list(idx1 = idx1,idx2=idx2))
     expect_equal(result[[1]]$externalRule$indexRules[[1]]$setupResults,
                      expected$externalRule$indexRules[[1]]$setupResults)
@@ -946,7 +959,7 @@ test_that("RHS exclusion works", {
     LHS <- quote(mu[5, idx[j]])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_j, constants = list(idx = idx))
     
-    result <- exclude(RHSrule, LHSrule)
+    result <- exclude(RHSrule, LHSrule, constants = list(idx = idx))
 
     context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 2:4){})),
                                               singleContextClass$new(forCode = quote(for(j in 1:4){}))))
@@ -979,6 +992,9 @@ test_that("RHS exclusion works", {
     context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:17){}))))
     idx1 <- c(2:6,2:6,2:8)
     idx2 <- c(rep(1,5), rep(2,5), rep(3, 7))
+    ord <- order(idx1, idx2)
+    idx1 <- idx1[ord]
+    idx2 <- idx2[ord]
     RHS <- quote(mu[idx1[i], idx2[i]])
     expected <- rhsRuleClass$new(RHS, 1, context_tmp, constants = list(idx1 = idx1,idx2=idx2))
     expect_equal(result[[1]]$externalRule$indexRules[[1]]$setupResults,
@@ -995,6 +1011,9 @@ test_that("RHS exclusion works", {
     context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:20){}))))
     idx1 <- c(2:8,2:8,2,4:8)
     idx2 <- c(rep(1,7), rep(2,7), rep(3, 6))
+    ord <- order(idx1, idx2)
+    idx1 <- idx1[ord]
+    idx2 <- idx2[ord]
     RHS <- quote(mu[idx1[i], idx2[i]])
     expected <- rhsRuleClass$new(RHS, 1, context_tmp, constants = list(idx1 = idx1,idx2=idx2))
     expect_equal(result[[1]]$externalRule$indexRules[[1]]$setupResults,
@@ -1050,6 +1069,9 @@ test_that("RHS exclusion works", {
                                               singleContextClass$new(forCode = quote(for(j in 1:4){}))))
     idx1 <- c(2:6,2:6,2:8)
     idx2 <- c(rep(1,5), rep(2,5), rep(3, 7))
+    ord <- order(idx1, idx2)
+    idx1 <- idx1[ord]
+    idx2 <- idx2[ord]
     expr <- quote(mu[idx1[i], j, idx2[i]])
     expected <- rhsRuleClass$new(expr, 1, context_tmp, constants = list(idx1 = idx1,idx2=idx2))
     expect_equal(result[[1]]$externalRule$indexRules[[2]]$setupResults,
@@ -1060,6 +1082,9 @@ test_that("RHS exclusion works", {
     ## 3-d case with multi-column shared matrix indexRange
     idx1 <- c(4,7,1,2)
     idx2 <- c(1,9,3,2)
+    ord <- order(idx1, idx2)
+    idx1 <- idx1[ord]
+    idx2 <- idx2[ord]
     
     RHS <- quote(mu[idx1[j], i, idx2[j]])
     RHSrule <- rhsRuleClass$new(RHS, 1, context_ij, constants = list(idx1 = idx1, idx2 = idx2))
@@ -1067,7 +1092,7 @@ test_that("RHS exclusion works", {
     LHS <- quote(mu[idx1[j], 2, idx2[j]])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_j, constants = list(idx1 = idx1, idx2 = idx2))
     
-    result <- exclude(RHSrule, LHSrule)
+    result <- exclude(RHSrule, LHSrule, constants = list(idx1 = idx1, idx2 = idx2))
 
     context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 3:8){})),
                                               singleContextClass$new(forCode = quote(for(j in 1:4){}))))
@@ -1159,58 +1184,40 @@ test_that("declaration-specific calculate generated correctly", {
 })
 
 
-
-
-
-code <- quote({
-    for(i in 3:5)
-        for(j in 1:5)
-        y[i-1,j] ~ dnorm(mu[j+1+i, i+2],1)
-})
-modelDef <- modelDefClass$new(code)
-modelDef$declRules$y$rules[[1]]$calculate
-
-code <- quote({
-    for(i in 3:5)
-            y[2:4,i] ~ dnorm(z[1:3],pr[1:3,1:3])
-})
-modelDef <- modelDefClass$new(code)
-modelDef$declRules$y$rules[[1]]$calculate
-
 ## TODO: need to switch calculate() tests to be on log scale
 
 test_that("calculate works correctly with univariate nodes", {
     ## This implicitly tests `indexRange$getNext()` (and `getItem`), which is not tested elsewhere.
     ## NOTE: until nodeFun generation and model building are integrated, this testing relies on
     ## having logProb_y be in GlobalEnv
-    context_0 <- modelContextClass$new()
+    code <- quote({
+        y ~ dnorm(0, 1)
+    })
+    modelDef <- modelDefClass$new(code)
+    calcRange <- modelDef$calcRules[['y']]$rules[[1]]$makeCalcRange(varRangeClass$new(list()))
     y <- rnorm(1)
     assign('y', y, pos = .GlobalEnv)
-    true_logProb_y <- dnorm(y, 0, 1)
-    
-    declRule <- declRuleClass$new(quote(y ~ dnorm(0, 1)), 1, context_0)
-    calcRule <- calcRuleClass$new(declRule, NULL, NULL, context_0)
-    calcRange <- calcRule$generateCalcRange(varRangeClass$new(list()))
+    true_logProb_y <- dnorm(y, 0, 1, log = TRUE)
     expect_identical(calcRange$calculate(), true_logProb_y)
     expect_identical(get('logProb_y', .GlobalEnv), true_logProb_y)
 
-    singleContext1 <-
-        singleContextClass$new(forCode = quote(for(i in 2:6){}))
-    context_i <- modelContextClass$new(list(singleContext1))
-    declRule <- declRuleClass$new(quote(y[i] ~ dnorm(0, 1)), 1, context_i)
+    code <- quote({
+        for(i in 2:6)
+            y[i] ~ dnorm(0,1)
+    })
+    modelDef <- modelDefClass$new(code)
 
     y <- rnorm(6)
     logProb_y <- rep(0, 6)
     assign('y', y, pos = .GlobalEnv)
     assign('logProb_y', y, pos = .GlobalEnv)
-    true_logProb_y <- dnorm(y, 0, 1)
+    true_logProb_y <- dnorm(y, 0, 1, log = TRUE)
     
-    calcRule <- calcRuleClass$new(declRule, NULL, NULL, context_i)
-    calcRange <- calcRule$generateCalcRange(varRangeClass$new(list(newIndexRange(quote(3:5)))))
+    calcRange <- modelDef$calcRules[['y']]$rules[[1]]$makeCalcRange(varRangeClass$new(list(newIndexRange(quote(3:5)))))
     expect_identical(calcRange$calculate(), true_logProb_y[3:5])
     expect_identical(get('logProb_y', .GlobalEnv)[3:5], true_logProb_y[3:5])
 
-    calcRange <- calcRule$generateCalcRange(varRangeClass$new(list(newIndexRange(matrix(c(3,5))))))
+    calcRange <- modelDef$calcRules[['y']]$rules[[1]]$makeCalcRange(varRangeClass$new(list(newIndexRange(matrix(c(3,5))))))
     expect_identical(calcRange$calculate(), true_logProb_y[c(3,5)])
     expect_identical(get('logProb_y', .GlobalEnv)[c(3,5)], true_logProb_y[c(3,5)])
 
@@ -1218,14 +1225,12 @@ test_that("calculate works correctly with univariate nodes", {
     ## current nimble 1e5 dnorms is 34 sec.
     ## (compare to vec dnorm in R of .02 for 1e6 and for loop of 0.88 sec for 1e6)
 
-    singleContext1 <-
-        singleContextClass$new(forCode = quote(for(i in 2:6){}))
-    singleContext2 <-
-        singleContextClass$new(forCode = quote(for(j in 3:9){}))
-    context_ij <- modelContextClass$new(list(singleContext1, singleContext2))
-
-
-    declRule <- declRuleClass$new(quote(y[i,j] ~ dnorm(x[i], 1)), 1, context_ij)
+    code <- quote({
+        for(i in 2:6)
+            for(j in 3:9)
+                y[i,j] ~ dnorm(x[i], 1)
+    })
+    modelDef <- modelDefClass$new(code)
 
     y <- matrix(rnorm(6*9), 6)
     x <- rep(0, 6)
@@ -1234,15 +1239,14 @@ test_that("calculate works correctly with univariate nodes", {
     logProb_y <- y
     assign('logProb_y', y, pos = .GlobalEnv)
     
-    true_logProb_y <- dnorm(y, 0, 1)
+    true_logProb_y <- dnorm(y, 0, 1, log = TRUE)
 
-    calcRule <- calcRuleClass$new(declRule, NULL, NULL, context_ij)
-    calcRange <- calcRule$generateCalcRange(varRangeClass$new(
+    calcRange <- modelDef$calcRules[['y']]$rules[[1]]$makeCalcRange(varRangeClass$new(
                         list(newIndexRange(matrix(c(4,7,5,6,2,5), ncol = 2)))))
     expect_identical(calcRange$calculate(), true_logProb_y[matrix(c(4,5,6,5), ncol = 2)])
     expect_identical(get('logProb_y', .GlobalEnv)[matrix(c(4,5,6,5), ncol = 2)], true_logProb_y[matrix(c(4,5,6,5), ncol = 2)])
 
-    calcRange <- calcRule$generateCalcRange(varRangeClass$new(
+    calcRange <- modelDef$calcRules[['y']]$rules[[1]]$makeCalcRange(varRangeClass$new(
                         list(newIndexRange(quote(2:3)), newIndexRange(quote(8:9)))))
                                              
     assign('logProb_y', y, pos = .GlobalEnv)
@@ -1253,7 +1257,12 @@ test_that("calculate works correctly with univariate nodes", {
     expect_identical(get('logProb_y', .GlobalEnv)[2:3,8:9], true_logProb_y[2:3,8:9])
 
     ## change index order
-    declRule <- declRuleClass$new(quote(y[j,i] ~ dnorm(x[i], 1)), 1, context_ij)
+    code <- quote({
+        for(i in 2:6)
+            for(j in 3:9)
+                y[j,i] ~ dnorm(x[i], 1)
+    })
+    modelDef <- modelDefClass$new(code)
 
     y <- matrix(rnorm(6*9), 9)
     x <- rep(0, 6)
@@ -1262,15 +1271,14 @@ test_that("calculate works correctly with univariate nodes", {
     logProb_y <- y
     assign('logProb_y', y, pos = .GlobalEnv)
     
-    true_logProb_y <- dnorm(y, 0, 1)
+    true_logProb_y <- dnorm(y, 0, 1, log = TRUE)
 
-    calcRule <- calcRuleClass$new(declRule, NULL, NULL, context_ij)
-    calcRange <- calcRule$generateCalcRange(varRangeClass$new(
-                        list(newIndexRange(matrix(c(6,2,5,4,7,5), ncol = 2)))))
-    expect_identical(calcRange$calculate(), true_logProb_y[matrix(c(6,5,4,5), ncol = 2)])
-    expect_identical(get('logProb_y', .GlobalEnv)[matrix(c(6,5,4,5), ncol = 2)], true_logProb_y[matrix(c(6,5,4,5), ncol = 2)])
+    calcRange <- modelDef$calcRules[['y']]$rules[[1]]$makeCalcRange(varRangeClass$new(
+                        list(newIndexRange(matrix(c(2,5,6,7,5,4), ncol = 2)))))
+    expect_identical(calcRange$calculate(), true_logProb_y[matrix(c(5,6,5,4), ncol = 2)])
+    expect_identical(get('logProb_y', .GlobalEnv)[matrix(c(5,6,5,4), ncol = 2)], true_logProb_y[matrix(c(5,6,5,4), ncol = 2)])
 
-    calcRange <- calcRule$generateCalcRange(varRangeClass$new(
+    calcRange <- modelDef$calcRules[['y']]$rules[[1]]$makeCalcRange(varRangeClass$new(
                         list(newIndexRange(quote(8:9)), newIndexRange(quote(2:3)))))
                                              
     assign('logProb_y', y, pos = .GlobalEnv)
@@ -1283,33 +1291,35 @@ test_that("calculate works correctly with univariate nodes", {
     assign('y', y, pos = .GlobalEnv)
     assign('x', x, pos = .GlobalEnv)
 
-    declRule <- declRuleClass$new(quote(y[i,2:3,j] <- x[i,j]), 1, context_ij)
-    calcRule <- calcRuleClass$new(declRule, NULL, NULL, context_ij)
-    calcRange <- calcRule$generateCalcRange(varRangeClass$new(
+    code <- quote({
+        for(i in 2:6)
+            for(j in 3:9)
+                y[i,2:3,j] <- x[i,j]
+    })
+    modelDef <- modelDefClass$new(code)
+    calcRange <- modelDef$calcRules[['y']]$rules[[1]]$makeCalcRange(varRangeClass$new(
                         list(newIndexRange(matrix(c(3,2,4,3,3,4,5,2,5,5,3,5), byrow = TRUE, ncol = 3)))))
     expect_identical(calcRange$calculate(), x[matrix(c(3,4,3,4,5,5,5,5), byrow = TRUE, ncol = 2)])
     expect_identical(get('y', .GlobalEnv)[matrix(c(3,2,4,3,3,4,5,2,5,5,3,5), byrow = TRUE, ncol = 3)], x[matrix(c(3,4,3,4,5,5,5,5), byrow = TRUE, ncol = 2)])
-
-    singleContext1 <-
-        singleContextClass$new(forCode = quote(for(i in 1:2){}))
-    singleContext2 <-
-        singleContextClass$new(forCode = quote(for(j in 1:3){}))
-    singleContext3 <-
-        singleContextClass$new(forCode = quote(for(k in 1:4){}))
-    context_ijk <- modelContextClass$new(list(singleContext1, singleContext2, singleContext3))
 
     y <- array(rnorm(2*3*4), c(2,3,4))
     logProb_y <- y
     assign('y', y, pos = .GlobalEnv)
     assign('logProb_y', y, pos = .GlobalEnv)
-    true_logProb_y  <- dnorm(y, 0, 1)
-    declRule <- declRuleClass$new(quote(y[i,j,k] ~ dnorm(0,1)), 1, context_ijk)
-    calcRule <- calcRuleClass$new(declRule, NULL, NULL, context_ijk)
-    calcRange <- calcRule$generateCalcRange(varRangeClass$new(
+    true_logProb_y  <- dnorm(y, 0, 1, log = TRUE)
+
+    code <- quote({
+        for(i in 1:2)
+            for(j in 1:3)
+                for(k in 1:4)
+                    y[i,j,k] ~ dnorm(0,1)
+    })
+    modelDef <- modelDefClass$new(code)
+    calcRange <- modelDef$calcRules[['y']]$rules[[1]]$makeCalcRange(varRangeClass$new(
                                                                list(newIndexRange(matrix(c(2,1,3,1), ncol = 2)),
                                                                     newIndexRange(quote(2:3))),
                                                                rangeToIndexSlot = list(c(1,3), 2)))
-    expect_identical(calcRange$calculate(), true_logProb_y[matrix(c(2,2,3,2,3,3,1,2,1,1,3,1), ncol = 3, byrow = TRUE)])
+    expect_identical(calcRange$calculate(), true_logProb_y[matrix(c(1,2,1,1,3,1,2,2,3,2,3,3), ncol = 3, byrow = TRUE)])
     expect_identical(get('logProb_y', .GlobalEnv)[matrix(c(2,2,3,2,3,3,1,2,1,1,3,1), ncol = 3, byrow = TRUE)],
                      true_logProb_y[matrix(c(2,2,3,2,3,3,1,2,1,1,3,1), ncol = 3, byrow = TRUE)])
 
@@ -1318,28 +1328,28 @@ test_that("calculate works correctly with univariate nodes", {
 test_that("calculate works correctly with multivariate nodes", {
     ## TODO: add tests with mv nodes; will need to work out single logProb value
     ## and the need for RHS vars. Might need to move to test-modelGraph.R.
-    
-    context_0 <- modelContextClass$new()
 
     ## non-sequential indexing
-    declRule <- declRuleClass$new(quote(y[c(2,3,5)] ~ dmnorm(mu[1:3], sigma[1:3,1:3])), 1, context_0)
+    code <- quote({
+        y[c(2,3,5)] ~ dmnorm(mu[1:3], sigma[1:3,1:3])
+    })
+    modelDef <- modelDefClass$new(code)
     y <- rnorm(5)
     mu <- rep(0, 3)
     sigma <- diag(3)
+    lifted_chol_oPsigma_oB1to3_comma_1to3_cB_cP <- chol(sigma)
     logProb_y <- 0
     assign('y', y, pos = .GlobalEnv)
     assign('logProb_y', y, pos = .GlobalEnv)
-    true_logProb_y <- nimble:::dmnorm_chol(y[c(2,3,5)], mu, chol(sigma))
+    true_logProb_y <- nimble:::dmnorm_chol(y[c(2,3,5)], mu, chol(sigma), log = TRUE)
 
     dmnorm <<- nimble:::dmnorm_chol  # so dmnorm can be used in calculate(); only works if chol=prec
     
-    calcRule <- calcRuleClass$new(declRule, NULL, NULL, context_0)
-    calcRange <- calcRule$makeCalcRange(varRangeClass$new(list(newIndexRange(2))))
+    calcRange <- modelDef$calcRules[['y']]$rules[[1]]$makeCalcRange(varRangeClass$new(list(newIndexRange(2))))
     expect_identical(calcRange$calculate(), true_logProb_y)
     expect_identical(get('logProb_y', .GlobalEnv)[2], true_logProb_y)
 
 })
-
 
 
 test_that("calculate works correctly for SSM recursion", {
@@ -1350,10 +1360,7 @@ test_that("calculate works correctly for SSM recursion", {
         test[6] <- 0
     })
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
-    calcRange <- modelDef$calcRules[['test']]$rules[[4]]$generateCalcRange(
+    calcRange <- modelDef$calcRules[['test']]$rules[[4]]$makeCalcRange(
                  varRangeClass$new(list(newIndexRange(quote(2:3)))))
     ## 'test' is hard coded into declRule class as rep(0,10)
     expect_identical(calcRange$calculate(), c(3, 1.5))
@@ -1367,14 +1374,11 @@ test_that("calculate works correctly for SSM recursion", {
         }
     })
     modelDef <- modelDefClass$new(code)
-    modelDef$processModelCode()
-    modelDef$processDecls()
-    modelDef$makeGraphInfo()
-    calcRange <- modelDef$calcRules[['test2']]$rules[[4]]$generateCalcRange(
+    calcRange <- modelDef$calcRules[['test2']]$rules[[4]]$makeCalcRange(
                                         varRangeClass$new(list(
                                         newIndexRange(c(3,1)), newIndexRange(quote(3:4)))))
     ## 'test2' is hard coded into declRule class as matrix(0,3,5)
-    expect_identical(calcRange$calculate(), c(9,4.5,3,1.5))    
+    expect_identical(calcRange$calculate(), c(3,1.5,9,4.5))    
 })
 
 

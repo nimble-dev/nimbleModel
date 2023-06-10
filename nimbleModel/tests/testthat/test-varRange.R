@@ -2,7 +2,7 @@ test_that('varRangeClass', {
 
     ## erroneous instantiation
     expect_error(varRangeClass$new(newIndexRange(4), varName = 'x'),
-                 "must be initialized from a list of indexRanges")
+                 "must be initialized from a list of `indexRange`s")
     
     ## 0D
     xVar <- varRangeClass$new('x')
@@ -18,8 +18,8 @@ test_that('varRangeClass', {
     expect_true(nimbleModel:::varRange_isEqual(xVar1, xVar2))
     expect_identical(sapply(xVar1$indexRanges, function(x) class(x)[1]),
                      'indexRangeScalarClass')
-    expect_identical(xVar2$rangeID_2_indexID, list(1L))
-    expect_identical(xVar2$indexID_2_rangeID, 1L)
+    expect_identical(xVar2$rangeToIndexSlot, list(1L))
+    expect_identical(xVar2$indexSlotToRange, 1L)
     expect_identical(xVar2$toExpr(), expr)
     
     expr <- quote(x[2:4])
@@ -28,8 +28,8 @@ test_that('varRangeClass', {
     expect_true(nimbleModel:::varRange_isEqual(xVar1, xVar2))
     expect_identical(sapply(xVar1$indexRanges, function(x) class(x)[1]),
                      'indexRangeSequenceClass')
-    expect_identical(xVar2$rangeID_2_indexID, list(1L))
-    expect_identical(xVar2$indexID_2_rangeID, 1L)
+    expect_identical(xVar2$rangeToIndexSlot, list(1L))
+    expect_identical(xVar2$indexSlotToRange, 1L)
     expect_identical(xVar2$toExpr(), expr)
     
     expr <- quote(x[c(2,3,5)])
@@ -38,8 +38,8 @@ test_that('varRangeClass', {
     expect_true(nimbleModel:::varRange_isEqual(xVar1, xVar2))
     expect_identical(sapply(xVar1$indexRanges, function(x) class(x)[1]),
                      'indexRangeMatrixClass')
-    expect_identical(xVar2$rangeID_2_indexID, list(1L))
-    expect_identical(xVar2$indexID_2_rangeID, 1L)
+    expect_identical(xVar2$rangeToIndexSlot, list(1L))
+    expect_identical(xVar2$indexSlotToRange, 1L)
     expect_identical(xVar2$toExpr(), expr)
 
     expr <- quote(x[c(2,3,5,7,9)])
@@ -57,8 +57,8 @@ test_that('varRangeClass', {
     expect_true(nimbleModel:::varRange_isEqual(xVar1, xVar2))
     expect_identical(sapply(xVar1$indexRanges, function(x) class(x)[1]),
                      rep('indexRangeSequenceClass', 2))
-    expect_identical(xVar2$rangeID_2_indexID, list(1L,2L))
-    expect_identical(xVar2$indexID_2_rangeID, 1:2)
+    expect_identical(xVar2$rangeToIndexSlot, list(1L,2L))
+    expect_identical(xVar2$indexSlotToRange, 1:2)
     expect_identical(xVar2$toExpr(), expr)
     
     expr <- quote(x[c(2,3,5), c(1,4)])
@@ -68,16 +68,16 @@ test_that('varRangeClass', {
     expect_true(nimbleModel:::varRange_isEqual(xVar1, xVar2))
     expect_identical(sapply(xVar1$indexRanges, function(x) class(x)[1]),
                      rep('indexRangeMatrixClass', 2))
-    expect_identical(xVar2$rangeID_2_indexID, list(1L,2L))
-    expect_identical(xVar2$indexID_2_rangeID, 1:2)
+    expect_identical(xVar2$rangeToIndexSlot, list(1L,2L))
+    expect_identical(xVar2$indexSlotToRange, 1:2)
     expect_identical(xVar2$toExpr(), expr)
 
     xVar <- varRangeClass$new(list(newIndexRange(matrix(c(2,3,5,1,2,4), ncol = 2))),
                                varName = 'x')
     expect_identical(sapply(xVar$indexRanges, function(x) class(x)[1]),
                      'indexRangeMatrixClass')
-    expect_identical(xVar$rangeID_2_indexID, list(1:2))
-    expect_identical(xVar$indexID_2_rangeID, rep(1L,2))
+    expect_identical(xVar$rangeToIndexSlot, list(1:2))
+    expect_identical(xVar$indexSlotToRange, rep(1L,2))
     expr <- quote(x[1,1])
     expr[[3]] <- expr[[4]] <- quote(...)
     expect_identical(xVar$toExpr(), expr)
@@ -89,8 +89,8 @@ test_that('varRangeClass', {
                                     varName = 'x')
     expect_identical(sapply(xVar$indexRanges, function(x) class(x)[1]),
                      c('indexRangeMatrixClass', 'indexRangeSequenceClass'))
-    expect_identical(xVar$rangeID_2_indexID, list(1:2, 3L))
-    expect_identical(xVar$indexID_2_rangeID, c(1L, 1L, 2L))
+    expect_identical(xVar$rangeToIndexSlot, list(1:2, 3L))
+    expect_identical(xVar$indexSlotToRange, c(1L, 1L, 2L))
     expr <- quote(x[1,1,2:3])
     expr[[3]] <- expr[[4]] <- quote(...)
     expect_identical(xVar$toExpr(), expr)
@@ -100,8 +100,8 @@ test_that('varRangeClass', {
                                     varName = 'x')
     expect_identical(sapply(xVar$indexRanges, function(x) class(x)[1]),
                      c('indexRangeMatrixClass', 'indexRangeSequenceClass'))
-    expect_identical(xVar$rangeID_2_indexID, list(c(3L,1L), 2L))
-    expect_identical(xVar$indexID_2_rangeID, c(1L, 2L, 1L))
+    expect_identical(xVar$rangeToIndexSlot, list(c(3L,1L), 2L))
+    expect_identical(xVar$indexSlotToRange, c(1L, 2L, 1L))
     expr <- quote(x[1,2:3,1])
     expr[[3]] <- expr[[5]] <- quote(...)
     expect_identical(xVar$toExpr(), expr)

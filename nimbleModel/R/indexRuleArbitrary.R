@@ -9,7 +9,7 @@ indexRuleArbitraryClass <- R6Class(
         initialize = function(toIndexExprList,
                               fromIndexExprList,
                               context,
-                              constants
+                              constants = list()
                               ) {
            setupResults <<-
                 indexRuleArbitrary_setup(toIndexExprList,

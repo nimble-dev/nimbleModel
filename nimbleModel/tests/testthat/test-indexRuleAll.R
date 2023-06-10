@@ -2,6 +2,7 @@ context("indexRuleAll")
 
 test_that("indexRuleAll",
 {    
+    context_0 <- modelContextClass$new()
     singleContext1 <-
         singleContextClass$new(forCode = quote(for(i in 1:10){}))
     
@@ -20,7 +21,7 @@ test_that("indexRuleAll",
 
     rule <- indexRuleAllClass$new(list(quote(2)),
                                   list(),
-                                  context_i)
+                                  context_0)
     expect_identical(rule$setupResults, NULL)
     
     ## Sequence case, `y[i+1]`.

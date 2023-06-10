@@ -76,7 +76,7 @@ graphRuleClass <- R6Class(
             indexConstraints <<- output$indexConstraints
         },
         
-        apply = function(fromVarRange) {
+        apply = function(fromVarRange, removeDuplicates = TRUE) {
             if(is.character(fromVarRange)) {
                 if(fromVarName == fromVarRange && numFromIndexSlots) {
                     fromVarRange <- getFromRange()   # only varName given
@@ -88,7 +88,7 @@ graphRuleClass <- R6Class(
             if(!is.null(fromVarName) && !is.null(inputVarName) && inputVarName != fromVarName)
                 return(NULL)
             ## CHECK: should we error out if fromVarRange doesn't have a varName?
-            applyGraphRule(fromVarRange, self)
+            applyGraphRule(fromVarRange, self, removeDuplicates = removeDuplicates)
         },
 
         getFromRange = function() {
@@ -386,7 +386,7 @@ makeIndexRules <- function(toExpr, fromExpr, indexSets, context, constants) {
 ## We need to extract the relevant components of fromVarRange for each rule, apply the rule,
 ## Applies a `graphRule` to a `varRange` by extract the relevant components of fromVarRange for
 ## constituent `indexRule`, applying the `indexRule` and composing the result as a new varRange.
-applyGraphRule <- function(fromVarRange, rule, varName = NULL) {
+applyGraphRule <- function(fromVarRange, rule, varName = NULL, removeDuplicates = TRUE) {
     ## Some of the steps below will reveal things that
     ## could be cached and re-used.
     indexSets <- rule$indexSets
@@ -532,8 +532,9 @@ applyGraphRule <- function(fromVarRange, rule, varName = NULL) {
 
             ## Remove duplicate rows in matrix indexRanges.
             ## Can only do this after matrixLists have been combined.
-            if(is(finalIndexRanges[[iAns]], 'indexRangeMatrixClass'))
-                finalIndexRanges[[iAns]]$removeDuplicates()
+            if(removeDuplicates)
+                if(is(finalIndexRanges[[iAns]], 'indexRangeMatrixClass'))
+                    finalIndexRanges[[iAns]]$removeDuplicates()
  
             iAns <- iAns + 1
         }
