@@ -1771,6 +1771,38 @@ test_that("duplicated RHS elements", {
 
 })
 
+test_that("handling of `self` in graph traversal", {
+    ## TODO: may want to do more testing of the `self` cases.
+    code <- quote({
+        for(i in 1:5) {
+            y[i] ~ dnorm(mu[i], sd = 1)
+            mu[i] ~ dnorm(theta, sd = 1)
+        }
+        theta ~ dnorm(0, 1)
+    })
+    
+    modelDef <- modelDefClass$new(code)
+
+    deps <- getDependencies(modelDef, c('mu[1:5]','theta'), self = TRUE)
+    expect_equal(deps, list(varRangeClass$new(list(), varName = 'theta'),
+                            varRangeClass$new(list(newIndexRange(quote(1:5))), varName = 'mu', fromStochRule = TRUE),
+                            varRangeClass$new(list(newIndexRange(quote(1:5))), varName = 'y', fromStochRule = TRUE)))
+
+    deps <- getDependencies(modelDef, c('mu[1:5]','theta'), self = FALSE)
+
+    expect_equal(deps, list(varRangeClass$new(list(newIndexRange(quote(1:5))), varName = 'y', fromStochRule = TRUE)))
+    deps <- getDependencies(modelDef, c('mu[1:3]','theta'), self = FALSE)
+    expect_equal(deps, list(varRangeClass$new(list(newIndexRange(quote(1:3))), varName = 'y', fromStochRule = TRUE),
+                            varRangeClass$new(list(newIndexRange(quote(4:5))), varName = 'mu')))
+    
+    deps <- getDependencies(modelDef, c('mu[1:3]','theta'), self = TRUE)
+    expect_equal(deps, list(varRangeClass$new(list(), varName = 'theta'),
+                            varRangeClass$new(list(newIndexRange(quote(1:3))), varName = 'mu', fromStochRule = TRUE),
+                            varRangeClass$new(list(newIndexRange(quote(4:5))), varName = 'mu'),
+                            varRangeClass$new(list(newIndexRange(quote(1:3))), varName = 'y', fromStochRule = TRUE)))
+
+})
+
 
 
 test_that("one-lag Markov structure handled correctly", {

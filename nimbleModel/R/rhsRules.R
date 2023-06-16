@@ -69,9 +69,16 @@ rhsRuleClass <- R6Class(
 ## be to remove the `rhsRule` object or split it into two rules, so it's not naturally
 ## set up as a method that modifies the object.
 
+
 exclude <- function(rhsRule, excludingRule, constants = list()) {
-    excludingRange <- excludingRule$getFullRange()
-    rhsRange <- rhsRule$getFullRange()
+    ## Can also take varRanges for use in `traverseGraph`.
+    if(is(excludingRule, 'varRangeClass')) {
+        excludingRange <- excludingRule
+    } else excludingRange <- excludingRule$getFullRange()
+    if(is(rhsRule, 'varRangeClass')) {
+        rhsRange <- rhsRule
+        rhsRule <- rhsRule$toRule()
+    } else rhsRange <- rhsRule$getFullRange()
     intersection <- rhsRule$apply(excludingRange)
 
     if(is.null(intersection)) # no overlap

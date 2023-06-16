@@ -170,3 +170,22 @@ test_that("getMinMax", {
                          matrix(c(1,2,2,4,7,5), 3))
 })
 
+test_that("toRule", {
+    xVar <- varRangeClass$new(list(newIndexRange(matrix(c(2,3,5,4,1,2), ncol = 2)),
+                                   newIndexRange(quote(2:7)),
+                                   newIndexRange(3),
+                                   newIndexRange(c(7,1,3))),
+                                  rangeToIndexSlot = list(c(2,4), 1, 3, 5),
+                                  varName = 'x')
+    xRule <- xVar$toRule()
+    expect_identical(as.integer(xRule$indexSlotToSet), xVar$indexSlotToRange)
+    expect_identical(sapply(xRule$fullRule$indexRules, function(rule) class(rule)[1]),
+                     c('indexRuleArbitraryClass','indexRuleBlockClass','indexRuleBlockClass','indexRuleArbitraryClass'))
+    newVar <- xRule$getFullRange()
+    expect_identical(newVar$indexSlotToRange, c(1L,2L,3L,2L,4L))
+    expect_equal(xVar$indexRanges, newVar$indexRanges[c(2,1,3,4)])
+})
+
+
+
+                     

@@ -230,33 +230,52 @@ traverseGraph <- function(streamRules, declRules,
 
     results <- traverseGraphRecurse(streamRules, nodes, down, follow, immediateOnly)
 
-    if(self) {
-        ## Need to handle "self" for three cases: (a) when an input node is a full variable,
-        ## (b) character expression for a range, or (c) an actual varRange or nodeRange.
-        varNames <- sapply(nodes, getVarName)
-        vars <- nodes == varNames
-        selfRangeFromVars <- flatten(lapply(nodes[vars],
-                                       function(varName)
-                                           lapply(declRules[[varName]]$rules,
-                                                  function(declRule) declRule$getFullRange())))
-        
-        charRanges <- is.character(nodes) & !vars
-        selfRangeFromCharRanges <- flatten(lapply(nodes[charRanges],
+    varNames <- sapply(nodes, getVarName)
+    vars <- nodes == varNames
+    selfRangeFromVars <- flatten(lapply(nodes[vars],
+                                        function(varName)
+                                            lapply(declRules[[varName]]$rules,
+                                                   function(declRule) declRule$getFullRange())))
+    
+    charRanges <- is.character(nodes) & !vars
+    selfRangeFromCharRanges <- flatten(lapply(nodes[charRanges],
                                               function(node) {
                                                   lapply(declRules[[getVarName(node)]]$rules,
                                                          function(declRule) {
                                                              tmp <- declRule$apply(node)
                                                              if(is.null(tmp)) NULL else tmp$toVarRange()
                                                          })
-                                                  }))
-        if(identical(selfRangeFromCharRanges, list(NULL)))
-            selfRangeFromCharRanges <- NULL
-        selfRangeFromNodes <- lapply(nodes[!vars & !charRanges],
-                                     function(node)
-                                         if(is(node, 'nodeRangeClass')) {
-                                             return(node$toVarRange())
-                                         } else return(node))
-        results <- c(selfRangeFromNodes, selfRangeFromVars, selfRangeFromCharRanges, results)
+                                              }))
+    if(identical(selfRangeFromCharRanges, list(NULL)))
+        selfRangeFromCharRanges <- NULL
+    selfRangeFromNodes <- lapply(nodes[!vars & !charRanges],
+                                 function(node)
+                                     if(is(node, 'nodeRangeClass')) {
+                                         return(node$toVarRange())
+                                     } else return(node))
+    selfRanges <- c(selfRangeFromNodes, selfRangeFromVars, selfRangeFromCharRanges)
+    
+    if(length(results)) {
+        ## Exclude self (add back below if needed).
+        ## This helps avoid duplication, though that might be handled fully by removeDuplicateVarRanges.
+        for(i in seq_along(selfRanges)) {
+            resultsNames <- sapply(results, function(x) x$varName)
+            wh <- which(resultsNames == selfRanges[[i]]$varName)
+            if(length(wh)) {
+                newResults <- list()
+                for(idx in wh) 
+                    newResults <- c(newResults,
+                                    lapply(exclude(results[[idx]], selfRanges[[i]]),
+                                           function(rule) rule$getFullRange()))
+                results <- c(results[-wh], newResults)
+            }
+        }
+    }
+    
+    if(self) {
+        ## Need to handle "self" for three cases: (a) when an input node is a full variable,
+        ## (b) character expression for a range, or (c) an actual varRange or nodeRange.
+        results <- c(selfRanges, results)
     }
     
     if(!length(results))

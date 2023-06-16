@@ -196,6 +196,50 @@ varRangeClass <- R6Class(
             safeDeparse(toExpr(), warn = TRUE)
         },
 
+        toRule = function() {
+            constants <- list()
+            indexVars <- paste0('idx', seq_along(indexRanges))
+            expr <- quote(y[1])
+            expr[[2]] <- as.name(varName)
+            expr[3:(2+length(indexSlotToRange))] <- sapply(indexVars[indexSlotToRange], function(x) as.name(x))
+            irMatrices <- which(sapply(indexRanges, function(range) is(range, 'indexRangeMatrixClass')))
+            if(length(irMatrices)) {
+                idxExpr <- quote(k[idx])
+                for(i in irMatrices) {
+                    cnt <- 1
+                    for(j in seq_along(rangeToIndexSlot[[i]])) {
+                        constantName <- paste0("k", rangeToIndexSlot[[i]][j])
+                        idxExpr[[2]] <- as.name(constantName)
+                        idxExpr[[3]] <- as.name(indexVars[i])
+                        expr[[2+rangeToIndexSlot[[i]][j]]] <- idxExpr
+                        constants[[constantName]] <- indexRanges[[i]]$values[ , cnt]
+                        cnt <- cnt + 1
+                    }
+                }
+            }
+            singleContexts <- sapply(seq_along(indexRanges),
+                                     function(i) {
+                                         switch(class(indexRanges[[i]])[1],
+                                                "indexRangeMatrixClass" =
+                                                singleContextClass$new(
+                                                                       indexVarExpr = as.name(paste0('idx',i)),
+                                                                       indexRangeExpr = substitute(1:M, list(M = indexRanges[[i]]$numElements))),
+                                                "indexRangeSequenceClass" = 
+                                                singleContextClass$new(
+                                                                       indexVarExpr = as.name(paste0('idx',i)),
+                                                                       indexRangeExpr = substitute(M1:M2, list(M1 = indexRanges[[i]]$start,
+                                                                                                               M2 = indexRanges[[i]]$end))),
+                                                "indexRangeScalarClass" =
+                                                singleContextClass$new(
+                                                                       indexVarExpr = as.name(paste0('idx',i)),
+                                                                       indexRangeExpr = substitute(M:M, list(M = indexRanges[[i]]$value))),
+                                                stop("invalid indexRange type"))
+                                     })
+            context <- modelContextClass$new(singleContexts)
+            
+            return(rhsRuleClass$new(expr, context = context, constants = constants))
+        },
+
         print = function() {
             cat("variable range for `", toChar(), "`.\n", sep = '')
         }
