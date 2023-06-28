@@ -1206,7 +1206,7 @@ test_that("basic check of graph interface", {
 
     result <- getDependencies(modelDef, c('mu0','theta'), self = FALSE)
     expect_identical(sapply(result, function(node) node$varName),
-                     c('theta','y'))
+                     c('y'))
 
     result <- getParents(modelDef, 'y')
     expect_identical(sapply(result, function(node) node$varName),
@@ -1608,22 +1608,22 @@ test_that("state-space model", {
     expect_equal(result[[1]],
                  varRangeClass$new(list(newIndexRange(2)), varName = 'y', fromStochRule = TRUE))
     expect_equal(result[[2]],
-                 varRangeClass$new(list(newIndexRange(3)), varName = 'y', fromStochRule = TRUE))
+                 varRangeClass$new(list(newIndexRange(3)), varName = 'y'))
 
     result <- getDependencies(modelDef, 'y[2]', downstream = TRUE)
     expect_length(result, 3)
     expect_equal(result[[3]],
-                 varRangeClass$new(list(newIndexRange(4)), varName = 'y', fromStochRule = TRUE))
+                 varRangeClass$new(list(newIndexRange(4)), varName = 'y'))
 
     result <- getParents(modelDef, 'y[3]')
     expect_length(result, 1)
     expect_equal(result[[1]],
-                 varRangeClass$new(list(newIndexRange(2)), varName = 'y', fromStochRule = TRUE))
+                 varRangeClass$new(list(newIndexRange(2)), varName = 'y'))
 
     result <- getParents(modelDef, 'y[3]', upstream = TRUE)
     expect_length(result, 2)
     expect_equal(result[[2]],
-                 varRangeClass$new(list(newIndexRange(1)), varName = 'y', fromStochRule = TRUE))
+                 varRangeClass$new(list(newIndexRange(1)), varName = 'y'))
 
     
     code <- quote({

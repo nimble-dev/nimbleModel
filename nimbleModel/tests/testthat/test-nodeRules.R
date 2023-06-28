@@ -1340,7 +1340,10 @@ test_that("calculate works correctly with multivariate nodes", {
     lifted_chol_oPsigma_oB1to3_comma_1to3_cB_cP <- chol(sigma)
     logProb_y <- 0
     assign('y', y, pos = .GlobalEnv)
+    assign('mu', mu, pos = .GlobalEnv)
+    assign('sigma', sigma, pos = .GlobalEnv)
     assign('logProb_y', y, pos = .GlobalEnv)
+    assign('lifted_chol_oPsigma_oB1to3_comma_1to3_cB_cP', lifted_chol_oPsigma_oB1to3_comma_1to3_cB_cP, pos = .GlobalEnv)
     true_logProb_y <- nimble:::dmnorm_chol(y[c(2,3,5)], mu, chol(sigma), log = TRUE)
 
     dmnorm <<- nimble:::dmnorm_chol  # so dmnorm can be used in calculate(); only works if chol=prec

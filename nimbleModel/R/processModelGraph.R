@@ -258,8 +258,8 @@ traverseGraph <- function(streamRules, declRules,
     if(length(results)) {
         ## Exclude self (add back below if needed).
         ## This helps avoid duplication, though that might be handled fully by removeDuplicateVarRanges.
+        resultsNames <- sapply(results, function(x) x$varName)
         for(i in seq_along(selfRanges)) {
-            resultsNames <- sapply(results, function(x) x$varName)
             wh <- which(resultsNames == selfRanges[[i]]$varName)
             if(length(wh)) {
                 newResults <- list()
