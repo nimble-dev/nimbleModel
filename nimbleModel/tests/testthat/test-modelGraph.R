@@ -1658,6 +1658,10 @@ test_that("state-space model", {
     expect_equal(result[[2]]$indexRanges, 
                      list(newIndexRange(1)))
 
+    result <- getDependencies(modelDef, 'z', self = FALSE)
+    expect_length(result, 1)
+    expect_identical(sapply(result, function(node) node$varName),
+                     c('y'))
     
     result <- getDependencies(modelDef, 'z[3]')
     expect_length(result, 3)
@@ -1669,6 +1673,16 @@ test_that("state-space model", {
                      list(newIndexRange(quote(4))))
     expect_equal(result[[3]]$indexRanges, 
                      list(newIndexRange(quote(3))))
+
+    result <- getDependencies(modelDef, 'z[3]', self = FALSE)
+    expect_length(result, 2)
+    expect_identical(sapply(result, function(node) node$varName),
+                     c('y','z'))
+    expect_equal(result[[1]]$indexRanges, 
+                     list(newIndexRange(quote(3))))
+    expect_equal(result[[2]]$indexRanges, 
+                     list(newIndexRange(quote(4))))
+
 })
 
 test_that("error trapping for unexpected vars/nodes", {
