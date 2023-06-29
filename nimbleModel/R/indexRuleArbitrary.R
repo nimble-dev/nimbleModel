@@ -282,7 +282,7 @@ indexRuleArbitrary_applyMatrix <- function(indexRange,
                                  })
 
     if(!length(toIndicesList))
-        return(indexRangeEmptyClass$new())
+        return(NULL) 
 
     ## `applyGraphRule` will use `collapse=FALSE`, as we need to maintain correspondence
     ## of rows of input indexRange (via toIndicesList) in order to cross results of multiple rules

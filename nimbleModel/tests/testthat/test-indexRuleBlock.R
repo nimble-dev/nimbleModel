@@ -54,9 +54,8 @@ test_that("indexRuleBlock", {
         newIndexRange(2)
     )
 
-    expect_equal(
-        rule$apply(newIndexRange(quote(15:16))),
-        indexRangeEmptyClass$new()
+    expect_null(
+        rule$apply(newIndexRange(quote(15:16)))
     )
     
     ## Scalar input
@@ -65,9 +64,8 @@ test_that("indexRuleBlock", {
         newIndexRange(11)
     )
 
-    expect_equal(
-        rule$apply(newIndexRange(15)),
-        indexRangeEmptyClass$new()
+    expect_null(
+        rule$apply(newIndexRange(15))
     )
     
     ## Matrix input

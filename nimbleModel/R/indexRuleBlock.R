@@ -90,7 +90,7 @@ indexRuleBlock_setup <- function(toIndexExprList,
 indexRuleBlock_applyToScalar <- function(fromValue,
                                        setupResults) {
     if(fromValue < setupResults$fromMin || fromValue > setupResults$fromMax)
-        return(indexRangeEmptyClass$new())
+        return(NULL) 
     toValue <- fromValue + setupResults$offset
     return(indexRangeScalarClass$new(toValue))
 }
@@ -126,7 +126,7 @@ indexRuleBlock_applyToSequence <- function(fromStart, fromEnd,
     if(fromStart > fromEnd ||
        fromStart > setupResults$fromMax ||
        fromEnd < setupResults$fromMin)
-        return(indexRangeEmptyClass$new())
+        return(NULL)
 
     toStart <- if(fromStart < setupResults$fromMin)
                    setupResults$fromMin + setupResults$offset

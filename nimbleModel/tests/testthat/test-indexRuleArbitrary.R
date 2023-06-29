@@ -175,9 +175,8 @@ test_that("arbitraryIndexRuleClass", {
         newIndexRange(matrix(c(4, 1), nrow = 1))
     )
 
-    expect_equal(
-        rule$apply(newIndexRange(matrix(c(5, 99), nrow = 1))),
-        indexRangeEmptyClass$new()
+    expect_null(
+        rule$apply(newIndexRange(matrix(c(5, 99), nrow = 1)))
     )
 
     expect_equal(
@@ -203,9 +202,8 @@ test_that("arbitraryIndexRuleClass", {
         newIndexRange(matrix(c(NA, NA, 5, 1), byrow = TRUE, nrow = 2))
     )
 
-    expect_equal(
-        rule$apply(newIndexRange(matrix(c(15, 3, 16, 3), byrow = TRUE, nrow = 2))),
-        indexRangeEmptyClass$new()
+    expect_null(
+        rule$apply(newIndexRange(matrix(c(15, 3, 16, 3), byrow = TRUE, nrow = 2)))
     )
 
  

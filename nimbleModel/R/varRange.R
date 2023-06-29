@@ -106,7 +106,8 @@ varRangeClass <- R6Class(
                     lapply(indexRanges,
                            function(x) {
                                numCols <- x$numColumns
-                               if(is.null(numCols)) numCols <- 1  # indexRangeEmpty
+                               if(is.null(numCols))
+                                   stop("unexpected lack of `numCols`") ## empty indexRange case
                                ans <- nextID-1 + (1:numCols)
                                nextID <<- nextID + numCols
                                as.integer(ans)
@@ -157,10 +158,11 @@ varRangeClass <- R6Class(
             return(result)
         },
 
-        isEmpty = function() {
-            return(any(sapply(self$indexRanges,
-                              function(x) is(x, "indexRangeEmptyClass"))))
-        },
+        ## TODO: remove this
+        ## isEmpty = function() {
+        ##     return(any(sapply(self$indexRanges,
+        ##                       function(x) is(x, "indexRangeEmptyClass"))))
+        ## },
         
         isNone = function() {
             return(!length(indexRanges))

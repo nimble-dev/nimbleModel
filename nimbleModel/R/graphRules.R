@@ -466,9 +466,10 @@ applyGraphRule <- function(fromVarRange, rule, varName = NULL, removeDuplicates 
         }
         
         ## Apply the rule to produce a resulting range and noting the slots covered by the range.
-        ansIndexRanges[[iSet]] <- indexRules[[iSet]]$apply(fromIndexRange, collapse = FALSE)
-        if(is(ansIndexRanges[[iSet]], "indexRangeEmptyClass"))
-            return(NULL)
+        result <- indexRules[[iSet]]$apply(fromIndexRange, collapse = FALSE)
+        if(is.null(result)) 
+            return(NULL) 
+        ansIndexRanges[[iSet]] <- result
         ansRangeToIndexSlot[[iSet]] <-
             which(indexSets$toIndexSlotToSet == iSet)
     }
@@ -518,7 +519,7 @@ applyGraphRule <- function(fromVarRange, rule, varName = NULL, removeDuplicates 
                 if(!identical(slotOrder, seq_along(slotOrder))) {
                     finalRangeToIndexSlot[[iAns]] <- finalRangeToIndexSlot[[iAns]][slotOrder]
                     ## TODO: do we need this check?
-                    if(is(finalIndexRanges[[iAns]], 'indexRangeEmptyClass'))
+                    if(is.null(finalIndexRanges[[iAns]]))
                         stop("found unexpected empty `indexRange`.")
                     finalIndexRanges[[iAns]] <- finalIndexRanges[[iAns]]$getColumns(slotOrder)
                 }

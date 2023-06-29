@@ -149,7 +149,8 @@ indexRangeClass <- R6Class(
 )
 
 
-## A class representing no elements.
+## (Deprecated) A class representing no elements.
+## Replaced by use of `NULL`.
 indexRangeEmptyClass <- R6Class(
     classname = 'indexRangeEmptyClass',
     inherit = indexRangeClass,
