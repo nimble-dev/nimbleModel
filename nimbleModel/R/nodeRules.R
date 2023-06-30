@@ -703,9 +703,11 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
                 expr[[nonIdenticalIndexSlots+2]] <- newSingleContexts1[[length(newSingleContexts1)]]$indexVarExpr
 
                 fracturingRule <- calcRuleClass$new(LHSrule$declRule, expr, currentID + 1,
-                                                    context = modelContextClass$new(newSingleContexts2))
+                                                    context = modelContextClass$new(newSingleContexts2),
+                                                    constants = constants)
                 resultRule <- calcRuleClass$new(LHSrule$declRule, expr, currentID + 2,
-                                                context = modelContextClass$new(newSingleContexts1))
+                                                context = modelContextClass$new(newSingleContexts1),
+                                                constants = constants)
 
                 result <- list(fracturingRule, resultRule)
             } else {
@@ -731,11 +733,14 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
                 expr3[[nonIdenticalIndexSlots+2]] <- newSingleContexts3[[length(newSingleContexts3)]]$indexVarExpr
                
                 fracturingRule <- calcRuleClass$new(LHSrule$declRule, expr1, currentID + 1,
-                                                    context = modelContextClass$new(newSingleContexts1))
+                                                    context = modelContextClass$new(newSingleContexts1),
+                                                    constants = constants)
                 resultRule1 <- calcRuleClass$new(LHSrule$declRule, expr2, currentID + 2,
-                                                 context = modelContextClass$new(newSingleContexts2))
+                                                 context = modelContextClass$new(newSingleContexts2),
+                                                 constants = constants)
                 resultRule2 <- calcRuleClass$new(LHSrule$declRule, expr3, currentID + 3,
-                                                 context = modelContextClass$new(newSingleContexts3))
+                                                 context = modelContextClass$new(newSingleContexts3),
+                                                 constants = constants)
 
                 result <- list(fracturingRule, resultRule1, resultRule2)
             }

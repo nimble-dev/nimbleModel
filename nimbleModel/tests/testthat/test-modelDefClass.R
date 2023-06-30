@@ -15,14 +15,14 @@ test_that("processModelCode works in simplest case", {
 test_that("processModelCode works", {
     ## Multiple lines; and check declRules
     modelCode <- quote({
-        for(i in 1:10) {
+        for(i in 1:n) {
             a[i] ~ dnorm(mu[i], tau)
             mu[i] ~ dnorm(mu0, theta)
         }
         tau ~ dunif(0, 1)
         theta <- thetaVal
     })
-    modelDef <- modelDefClass$new(modelCode, constants = list(thetaVal = 7))
+    modelDef <- modelDefClass$new(modelCode, constants = list(thetaVal = 7, n = 10))
 
     expect_identical(
         modelDef$declInfo[[2]]$targetNodeExpr, quote(a[i]))
