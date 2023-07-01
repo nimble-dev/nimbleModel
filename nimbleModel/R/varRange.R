@@ -164,7 +164,7 @@ varRangeClass <- R6Class(
         ##                       function(x) is(x, "indexRangeEmptyClass"))))
         ## },
         
-        isNone = function() {
+        isNone = function() {  # No indexing case.
             return(!length(indexRanges))
         },
 
@@ -173,7 +173,7 @@ varRangeClass <- R6Class(
         ## an expression input and imputes the index values in the case of a
         ## a `varRange` initialized from a list of `indexRange`s.
         ## Example 1: varRange2expr(varRangeClass$new(quote(x[1:10]))) ==> "x[1:10]"
-        ## EXample 2: varRange2expr(varRangeClass$new(list(indexRange(quote(1:10), varName = 'x'))))
+        ## Example 2: varRange2expr(varRangeClass$new(list(indexRange(quote(1:10), varName = 'x'))))
         ##  ==> "x[1:10]"
         toExpr = function() {
             if(is.null(varName)) {
