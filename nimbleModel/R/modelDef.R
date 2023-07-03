@@ -755,7 +755,7 @@ modelDefClass <- R6Class(
             varNames <<- unique(lapply(declRules, function(rule) rule$varName))
             
             rhsOriginalRules <- unlist(lapply(declInfo, function(x) x$rhsOriginalRules))
-            rhsOnlyRules <<- newVarRules(makeRHSonlyRules(rhsOriginalRules, declRules))
+            rhsOnlyRules <<- newVarRules(makeRHSonlyRules(rhsOriginalRules, declRules, constants))
             
             allDownstreamRules <- unlist(lapply(declInfo, function(x) x$downstreamRules))
             fromVarNames <- sapply(allDownstreamRules, function(rule) rule$fromVarName)

@@ -224,6 +224,26 @@ test_that("rhsRule creation and application works", {
     
 })
 
+test_that("rhsRule creation when RHS missing an index and relevant singleContexts use that index", {
+    ## Test case with duplicate RHS node creation and dependent indexing, e.g.,
+    ## `for(i in 1:4) for(t in 1:seasons[i]) y[i,t] <- alpha[t]`.
+    singleContext1 <-
+        singleContextClass$new(forCode = quote(for(i in 1:4){}))
+    singleContext2 <-
+        singleContextClass$new(forCode = quote(for(j in n1[i]:n2[i]){}))
+    
+    context <- modelContextClass$new(list(singleContext1,singleContext2))
+
+    RHS <- quote(alpha[j])
+    RHSrule <- rhsRuleClass$new(RHS, 1, context, constants = list(n1 = c(2,3,5,2), n2 = c(2,8,6,3)))
+    expect_identical(RHSrule$numExternalIndexRules, 1L)
+    expect_identical(RHSrule$numInternalIndexRules, 0L)
+    expect_true(is(RHSrule$externalRule$indexRules[[1]], 'indexRuleBlockClass'))
+    expect_identical(RHSrule$externalRule$indexRules[[1]]$setupResults,
+                     list(offset = 0, fromMin = 2, fromMax = 8))
+    
+})
+
 
 test_that("calcRanges are generated correctly", {  
     singleContext1 <-

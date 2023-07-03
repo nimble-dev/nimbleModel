@@ -12,7 +12,7 @@ rhsRuleClass <- R6Class(
     portable = FALSE,
     inherit = nodeRuleClass,
     public = list(
-        usedInIndex = FALSE,  # allows tracking of use as dynamic index
+        usedInIndex = FALSE,  # Allows tracking of use as dynamic index.
         
         initialize = function(expr, ID = NULL, context = modelContextClass$new(), constants = list(), usedInIndex = FALSE) {
             usedInIndex <<- usedInIndex
@@ -29,7 +29,46 @@ rhsRuleClass <- R6Class(
                     expr[[3]] <- quote(1:2)
                     expr[[3]][[3]] <- .Machine$integer.max
                 }
-               
+
+            ## Replace sequence indexing with maximal indexing in cases
+            ## in which could have duplicate declarations of RHS because
+            ## one or more singleContexts are not used in indexing the RHS
+            ## but are used in for loop expression, e.g.,
+            ## `for(i in 1:4) for(t in 1:seasons[i]) y[i,t] <- alpha[t]`.
+            usedIndexVarsBool <- names(context$singleContexts) %in% all.vars(expr)
+            if(exists('paciorek')) browser()
+            if(any(usedIndexVarsBool) && !all(usedIndexVarsBool)) {
+                usedIndexVars <- names(context$singleContexts)[usedIndexVarsBool]
+                depIndexVarExprs <- sapply(usedIndexVars,
+                                           function(var) 
+                                               !all(all.vars(context$singleContexts[[var]]$indexRangeExpr) %in%
+                                                    names(constants)))
+                usedIndexVars <- usedIndexVars[depIndexVarExprs]
+                if(length(usedIndexVars)) {  ## Only if index expr uses other indices.
+                    allReplacements <- lapply(usedIndexVars, as.name)
+                    names(allReplacements) <- paste0("t", seq_along(allReplacements))
+                    unrolledIndicesEnv <-
+                        expandContextAndReplacements(
+                            allReplacements = allReplacements,
+                            allReplacementNameExpr = lapply(names(allReplacements), as.name),
+                            context = context,
+                            constants = constants
+                        )
+                    rgs <- lapply(usedIndexVars, function(x)  ## Use full extent of indexing across all iterations.
+                        range(unrolledIndicesEnv[[x]]))
+                    newSingleContexts <- context$singleContexts
+                    ## Assign full extent back into singleContext indexRangeExpr, removing
+                    ## dependence on other indices.
+                    newSingleContexts[usedIndexVars] <- lapply(seq_along(usedIndexVars),
+                                                function(i) {
+                                                    singleContextClass$new(
+                                                                           indexVarExpr = as.name(usedIndexVars[i]),
+                                                                           indexRangeExpr = substitute(L:M, list(L = rgs[[i]][1], M = rgs[[i]][2])))
+                                                })
+                    context <- modelContextClass$new(newSingleContexts)
+                }
+            }
+
             ## Transform constants into sequences.
             if(length(expr) > 1 && expr[[1]] == "[") {
                 scalarConstants <- sapply(3:length(expr),
@@ -219,9 +258,9 @@ exclude <- function(rhsRule, excludingRule, constants = list()) {
 
         ## Replace any constants related to an index slot processed in a previous
         ## call to `exclude`.
+        oldConstants <- constants
         constants <- lapply(seq_len(ncol(remainingVals)), function(i) remainingVals[ , i])
         names(constants) <- paste0(".idx", nonIdenticalIndices)
-        oldConstants <- constants
         oldConstants[names(oldConstants) %in% names(constants)] <- NULL
         resultRule <- rhsRuleClass$new(expr, context = modelContextClass$new(newSingleContexts),
                                        constants = c(constants, oldConstants), usedInIndex = rhsRule$usedInIndex)
