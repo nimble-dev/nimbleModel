@@ -19,7 +19,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 [Model definition processing](model_processing.html)
 
-[Graph/node querying](graph_querying.html)
+[User interface](user_interface.html)
 
 [Combining ranges](combining_ranges.html)
 

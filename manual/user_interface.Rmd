@@ -14,7 +14,7 @@ Some notes on how the data structures and methods will be used to respond to int
 Example: `calculate(c('y[1:3]', 'z[2:4, 1:3]'))`
 
 - Input is one or more `varRange`s
-- `calcRule`s are invoked via `varCalcRules`.
+- `calcRule`s are invoked via `varRules`.
 - Intermediate output is an ordered set of `calcRange`s.
 - Appropriate nodeFunctions associated with the `calcRanges` are called in order (in run code if in a nf context).
 
@@ -28,22 +28,23 @@ These include `getDependencies` and `getParents`.
 
 Example: `getDependencies(c('y[1:3]', 'z[2:4, 1:3]'))`
 
-- Input is one or more `varRange`s.
-- `graphRule`s are invoked.
+- Input is one or more `varRange`s (or the like).
+- Upstream or downstream `graphRule`s are invoked via `traverseGraph`.
 - Output is a set of `varRange`s.
+- Iff nodes are needed, pass output through `getNodes`
 
 Presumably we want to process the result to [combine `varRange`s that can be combined](combining_ranges.html).
 
 # Node queries
 
-These include `expandNodeNames` and `getNodeNames`.
+This is done via `getNodes`, which subsumes `expandNodeNames` and `getNodeNames`.
 
-- Inputs include flags (e.g., `latentOnly`) and `varRange`(s).
-- `calcRule`s are invoked (are there any cases we would invoke `declRule`s?).
+- Inputs include flags (e.g., `latentOnly`, `stochOnly`) and (optionally) `varRange`s (and the like).
+- Relevant `calcRule`s are invoked.
 - Output is a set of `nodeRanges`. (Not same as a `varRange`, as often assign samplers to elements of a `nodeRange` and need to know the elements, whereas could summarize a `nodeRange` as a single `varRange` that doesn't distinguish the nodes -- see implementation.Rmd.)
-- Output could be further processed to create our format of a vector of character node names.
 
-Will potentially need to use `varStore`s such as information on which nodes are latent. However, if all nodes in a `nodeRange` have same type, then might not need to use `varStore` for subsetting.
+
+
 
 
 
