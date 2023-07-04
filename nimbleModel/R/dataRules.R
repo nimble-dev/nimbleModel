@@ -2,7 +2,8 @@
 
 ## Perhaps should be called `isDataRuleClass`.
 
-## TODO: this sets `rule` as NULL if the rule is "empty" (representing no indices).
+## TODO: this sets `rule` field as NULL if the rule
+## is "empty" (representing no indices).
 ## May need to revisit this behavior.
 
 dataRuleClass <- R6Class(
@@ -59,7 +60,7 @@ dataRuleClass <- R6Class(
 
 makeRulePieces <- function(NAs, varName, all = TRUE) {
     d <- dimOrLength(NAs)
-    if(all) {
+    if(all) {   ## Full 'rectangular' extent.
         idxNames <- paste0("idx", seq_along(d))
         singleContexts <- lapply(seq_along(d), function(i)
             singleContextClass$new(

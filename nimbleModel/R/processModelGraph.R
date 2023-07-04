@@ -213,12 +213,14 @@ setSortIDs <- function(calcRules) {
 }
 
 
-## Walks graph to find children or parents, by default
-## stopping at stochastic nodes, unless requested to go through (`follow = TRUE`)
-## or to stop at immediate parent or child (`immediateOnly = TRUE`).
+## Walks graph to find children or parents.
+## `getParents` and `getDependencies` are wrappers around this function.
+
+## By default stops at stochastic nodes, unless requested to go through
+## (`follow = TRUE`) or to stop at immediate parent or child
+## (`immediateOnly = TRUE`).
 ## Result is a set of varRanges (not nodeRanges), so users may need to
 ## pass result through `getNodes`.
-## This is the meat of `getDependencies` and `getParents`.
 traverseGraph <- function(streamRules, declRules,
                           nodes, down, self = TRUE,
                           follow = FALSE, immediateOnly = FALSE) {
@@ -310,14 +312,6 @@ traverseGraphRecurse <- function(rules, nodes, down, follow = FALSE, immediateOn
     }
 }
 
-## Utility for determining which varRule is needed for a node and
-## applying it.
-applyRules <- function(rules, node) {
-    varName <- getVarName(node)  
-    if(varName %in% names(rules)) {
-        return(rules[[varName]]$apply(node))
-    } else return(NULL)
-}
 
 ## Set sortIDs elementwise for nodes in a nodeRule for nodeRules involved in cyclic relationships.
 ## Note that this could involve one or more variables, e.g. `y[i] ~ dnorm(z[i],1); z[i] ~ dnorm(y[i-1],1)`,

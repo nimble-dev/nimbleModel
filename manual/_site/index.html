@@ -11,9 +11,9 @@
 
 
 
-<title>graph processing</title>
+<title>nimbleModel</title>
 
-<script src="site_libs/header-attrs-2.14/header-attrs.js"></script>
+<script src="site_libs/header-attrs-2.21/header-attrs.js"></script>
 <script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="site_libs/bootstrap-3.3.5/css/cerulean.min.css" rel="stylesheet" />
@@ -144,11 +144,15 @@ $(document).ready(function () {
     href = "index.html";
   var menuAnchor = $('a[href="' + href + '"]');
 
-  // mark it active
-  menuAnchor.tab('show');
-
-  // if it's got a parent navbar menu mark it active as well
-  menuAnchor.closest('li.dropdown').addClass('active');
+  // mark the anchor link active (and if it's in a dropdown, also mark that active)
+  var dropdown = menuAnchor.closest('li.dropdown');
+  if (window.bootstrap) { // Bootstrap 4+
+    menuAnchor.addClass('active');
+    dropdown.find('> .dropdown-toggle').addClass('active');
+  } else { // Bootstrap 3
+    menuAnchor.parent().addClass('active');
+    dropdown.addClass('active');
+  }
 
   // Navbar adjustments
   var navHeight = $(".navbar").first().height() + 15;
@@ -177,8 +181,8 @@ $(document).ready(function () {
   border-radius: 4px;
 }
 
-.tabset-dropdown > .nav-tabs > li.active:before {
-  content: "";
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "\e259";
   font-family: 'Glyphicons Halflings';
   display: inline-block;
   padding: 10px;
@@ -186,16 +190,9 @@ $(document).ready(function () {
 }
 
 .tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
-  content: "&#xe258;";
-  border: none;
-}
-
-.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
-  content: "";
+  content: "\e258";
   font-family: 'Glyphicons Halflings';
-  display: inline-block;
-  padding: 10px;
-  border-right: 1px solid #ddd;
+  border: none;
 }
 
 .tabset-dropdown > .nav-tabs > li.active {
@@ -323,7 +320,7 @@ div.tocify {
         <span class="icon-bar"></span>
         <span class="icon-bar"></span>
       </button>
-      <a class="navbar-brand" href="index.html">graph processing</a>
+      <a class="navbar-brand" href="index.html">nimbleModel</a>
     </div>
     <div id="navbar" class="navbar-collapse collapse">
       <ul class="nav navbar-nav">
@@ -342,7 +339,7 @@ div.tocify {
 
 
 
-<h1 class="title toc-ignore">graph processing</h1>
+<h1 class="title toc-ignore">nimbleModel</h1>
 
 </div>
 
@@ -350,42 +347,57 @@ div.tocify {
 <p><a href="overview.html">Overview of new nimbleModel</a></p>
 <p><a href="implementation.html">Implementation</a></p>
 <p><a href="graph_relationships.html">Graph relationships</a></p>
-<!-- [Overall strategy](overall_strategy.html) -->
 <p><a href="index_inversion.html">Index inversion</a></p>
-<p><a href="topo_sorting.html">Topological sorting</a></p>
 <p><a href="calculation_processing.html">Calculation processing</a></p>
+<p><a href="model_processing.html">Model definition processing</a></p>
+<p><a href="graph_querying.html">Graph/node querying</a></p>
 <p><a href="combining_ranges.html">Combining ranges</a></p>
-<p>Todos (a mostly complete list as of July 2022):</p>
+<p>Todos (a mostly complete list as of June 2023):</p>
 <ul>
-<li>figure out compilation of calculate based on calcRanges; discuss
-current approach of generic calculate function operating on calcRange’s
-original index ranges and calculate nodeFunction operating on
-scalar-valued original indexes.</li>
-<li>discuss and implement design for fracturing original LHS into
-calcRules and assigning child/parent information (actual fracturing code
-for a given instance is complete)</li>
-<li>finalize design for sortID assignment based on child/parent
-information using (presumably) recursion</li>
-<li>write out steps for overall RHS exclude process based on existing
-design notes (already have implemented code to do a given
-exclusion)</li>
-<li>implement reworking of nodeRange as subclass of varRange based on
-existing design notes</li>
-<li>implement code for combining varRanges based on existing design
-notes</li>
-<li>work through declaration processing code based on declRules and
-graphRules</li>
-<li>implement nodeFunction generation based on existing nimble</li>
-<li>work through re-implementation of getDependencies, getNodeNames,
-expandNodeNames, etc. based on graphRules and nodeRules.</li>
-<li>rework indexRange code as actual classes</li>
-<li>copyRules has nothing done yet</li>
-<li>think about getParam, getBound and the like</li>
-<li>do we need varStore for anything given calcRules and declRules will
-store stoch, end, top, latent; perhaps only for isData?</li>
-<li>stochastic indexing (look back at somewhat recent CJP notes)</li>
-<li>think about state-space style dependence; not yet handled or
-considered</li>
+<li>Core todos:
+<ul>
+<li>Work on compilation of <code>calculate</code> based on
+<code>calcRange</code>. Current approach had declaration-level
+<code>calcFun</code> in each <code>declRule</code> that operates on
+scalar nodes. <code>calcRangeClass$calculate</code> iterates over
+<code>calcRange</code>’s original index ranges and calls the
+<code>calcFun</code>.
+<ul>
+<li>Revisit how to provide vectorized calculations.</li>
+</ul></li>
+<li>Consider <code>simulate</code>, <code>getParam</code>,
+<code>getBound</code>, etc.</li>
+<li>Incorporate data flags into <code>getNodes</code> and/or
+<code>getDependencies</code> using (existing)
+<code>dataRule</code>s.</li>
+<li>Determine predictive nodes.</li>
+<li><code>calculate</code> does not yet handle truncation.</li>
+</ul></li>
+<li>Questions:
+<ul>
+<li>Do we need <code>copyRule</code>s?</li>
+<li>Do we need <code>varStore</code>s?</li>
+</ul></li>
+<li>Efficiency improvements:
+<ul>
+<li>Do some benchmarking and comparison to current processing.
+<ul>
+<li>Consider slowness of building individual samplers for every node in
+large models.</li>
+<li>Potential tradeoff of faster creation of graph/modelDef with slower
+<code>getDependencies</code> as that used to be done in C++.</li>
+</ul></li>
+<li>Work on combining <code>varRange</code>s, in particular when can be
+done while preserving block <code>indexRange</code>s.</li>
+<li>Revisit handling of state-space style dependence and which cases we
+do not handle efficiently (worst-case scenario involves very slow
+recursive unrolling via <code>fracture</code>).</li>
+<li>Avoid duplication of varRanges/nodeRanges/calcRanges (particularly
+in unrolled cases); e.g., same ‘y’ deps of intercept and slopes in
+regression.</li>
+<li>(long-term) create C++ version of <code>graphRule</code>s for
+run-time dependency resolution.</li>
+</ul></li>
 </ul>
 
 

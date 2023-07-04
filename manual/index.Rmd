@@ -1,5 +1,5 @@
 ---
-title: "graph processing"
+title: "nimbleModel"
 output: html_document
 ---
 
@@ -25,17 +25,24 @@ knitr::opts_chunk$set(echo = TRUE)
 
 Todos (a mostly complete list as of June 2023):
 
-- Work on compilation of `calculate` based on `calcRange`. Current approach had declaration-level `calcFun` in each `declRule` that operates on scalar nodes. `calcRangeClass$calculate` iterates over `calcRange`'s original index ranges and calls the `calcFun`.
-   - Revisit how to provide vectorized calculations.
-- Consider `simulate`, `getParam`, `getBound`, etc.
-- Incorporate data flags into `getNodes` and/or `getDependencies` using (existing) `dataRule`s.
-- Determine predictive nodes.
-- `calculate` does not yet handle truncation.
-- Work on combining `varRange`s, in particular when can be done while preserving block `indexRange`s.
-- Question: do we need `copyRule`s?
-- Question: do we need `varStore`s?
-- Revisit handling of state-space style dependence and which cases we do not handle efficiently (worst-case scenario involves very slow recursive unrolling via `fracture`.
-- Do some benchmarking and comparison to current processing. Consider slowness of building individual samplers for every node in large models.
-- Avoid duplication of varRanges/nodeRanges/calcRanges (particularly in unrolled cases); e.g., same 'y' deps of intercept and slopes in regression.
-- (long-term) create C++ version of `graphRule`s for run-time dependency resolution.
+- Core todos:
+  - Work on compilation of `calculate` based on `calcRange`. Current approach had declaration-level `calcFun` in each `declRule` that operates on scalar nodes. `calcRangeClass$calculate` iterates over `calcRange`'s original index ranges and calls the `calcFun`.
+     - Revisit how to provide vectorized calculations.
+  - Consider `simulate`, `getParam`, `getBound`, etc.
+  - Incorporate data flags into `getNodes` and/or `getDependencies` using (existing) `dataRule`s.
+  - Determine predictive nodes.
+  - `calculate` does not yet handle truncation.
+
+- Questions:
+  - Do we need `copyRule`s?
+  - Do we need `varStore`s?
+
+- Efficiency improvements:
+  - Do some benchmarking and comparison to current processing.
+    - Consider slowness of building individual samplers for every node in large models.
+    - Potential tradeoff of faster creation of graph/modelDef with slower `getDependencies` as that used to be done in C++.
+  - Work on combining `varRange`s, in particular when can be done while preserving block `indexRange`s.
+  - Revisit handling of state-space style dependence and which cases we do not handle efficiently (worst-case scenario involves very slow recursive unrolling via `fracture`).
+  - Avoid duplication of varRanges/nodeRanges/calcRanges (particularly in unrolled cases); e.g., same 'y' deps of intercept and slopes in regression.
+  - (long-term) create C++ version of `graphRule`s for run-time dependency resolution.
 

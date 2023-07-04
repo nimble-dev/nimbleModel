@@ -13,7 +13,7 @@
 
 <title>Index Inversion</title>
 
-<script src="site_libs/header-attrs-2.14/header-attrs.js"></script>
+<script src="site_libs/header-attrs-2.21/header-attrs.js"></script>
 <script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="site_libs/bootstrap-3.3.5/css/cerulean.min.css" rel="stylesheet" />
@@ -144,11 +144,15 @@ $(document).ready(function () {
     href = "index.html";
   var menuAnchor = $('a[href="' + href + '"]');
 
-  // mark it active
-  menuAnchor.tab('show');
-
-  // if it's got a parent navbar menu mark it active as well
-  menuAnchor.closest('li.dropdown').addClass('active');
+  // mark the anchor link active (and if it's in a dropdown, also mark that active)
+  var dropdown = menuAnchor.closest('li.dropdown');
+  if (window.bootstrap) { // Bootstrap 4+
+    menuAnchor.addClass('active');
+    dropdown.find('> .dropdown-toggle').addClass('active');
+  } else { // Bootstrap 3
+    menuAnchor.parent().addClass('active');
+    dropdown.addClass('active');
+  }
 
   // Navbar adjustments
   var navHeight = $(".navbar").first().height() + 15;
@@ -177,8 +181,8 @@ $(document).ready(function () {
   border-radius: 4px;
 }
 
-.tabset-dropdown > .nav-tabs > li.active:before {
-  content: "";
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "\e259";
   font-family: 'Glyphicons Halflings';
   display: inline-block;
   padding: 10px;
@@ -186,16 +190,9 @@ $(document).ready(function () {
 }
 
 .tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
-  content: "&#xe258;";
-  border: none;
-}
-
-.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
-  content: "";
+  content: "\e258";
   font-family: 'Glyphicons Halflings';
-  display: inline-block;
-  padding: 10px;
-  border-right: 1px solid #ddd;
+  border: none;
 }
 
 .tabset-dropdown > .nav-tabs > li.active {
@@ -323,7 +320,7 @@ div.tocify {
         <span class="icon-bar"></span>
         <span class="icon-bar"></span>
       </button>
-      <a class="navbar-brand" href="index.html">graph processing</a>
+      <a class="navbar-brand" href="index.html">nimbleModel</a>
     </div>
     <div id="navbar" class="navbar-collapse collapse">
       <ul class="nav navbar-nav">
@@ -421,20 +418,27 @@ were defined by those declarations.</li>
 </div>
 <div id="block-inversion" class="section level1">
 <h1>Block inversion</h1>
-<p>(is this a case like
-<code>y[1:2, i] ~ dmnorm(A[1:2,1:3]%*%mu[1:3, i], pr[1:2,1:2])</code>?
-/CJP) (i.e., inverting <code>y[2, 3]</code> gives
-<code>mu[1:3, 3]</code>)</p>
-<p>(also consider a case like <code>y[i] ~ dnorm(sum(mu[1:5]),1)</code>?
-/CJP)</p>
+<p>This handles a situation like:</p>
+<pre><code>for(i in 1:U)
+  y[i+2] &lt;-foo(x[i-1])</code></pre>
+<p>We handle this via an offset.</p>
+</div>
+<div id="all-inversion" class="section level1">
+<h1>All inversion</h1>
+<p>This handles a situation like:</p>
+<pre><code>for(i in 1:U)
+  y[i] &lt;- x</code></pre>
 </div>
 <div id="constant-inversion" class="section level1">
 <h1>Constant inversion</h1>
-<p>(is this a case like <code>y[2] ~ dnorm(mu[3],1)</code>? /CJP)</p>
+<p>This handles a situation like:</p>
+<pre><code>y[2] &lt;- x</code></pre>
 </div>
 <div id="blank-inversion" class="section level1">
 <h1>Blank inversion</h1>
-<p>(is this a case like <code>y ~ dnorm(mu, 1)</code>? /CJP)</p>
+<p>This handles a situation like:</p>
+<pre><code>y &lt;- sum(x[])</code></pre>
+<p>(This is not yet handled.)</p>
 </div>
 
 

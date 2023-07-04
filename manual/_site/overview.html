@@ -13,7 +13,7 @@
 
 <title>Overview of design for new nimbleModel</title>
 
-<script src="site_libs/header-attrs-2.14/header-attrs.js"></script>
+<script src="site_libs/header-attrs-2.21/header-attrs.js"></script>
 <script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="site_libs/bootstrap-3.3.5/css/cerulean.min.css" rel="stylesheet" />
@@ -144,11 +144,15 @@ $(document).ready(function () {
     href = "index.html";
   var menuAnchor = $('a[href="' + href + '"]');
 
-  // mark it active
-  menuAnchor.tab('show');
-
-  // if it's got a parent navbar menu mark it active as well
-  menuAnchor.closest('li.dropdown').addClass('active');
+  // mark the anchor link active (and if it's in a dropdown, also mark that active)
+  var dropdown = menuAnchor.closest('li.dropdown');
+  if (window.bootstrap) { // Bootstrap 4+
+    menuAnchor.addClass('active');
+    dropdown.find('> .dropdown-toggle').addClass('active');
+  } else { // Bootstrap 3
+    menuAnchor.parent().addClass('active');
+    dropdown.addClass('active');
+  }
 
   // Navbar adjustments
   var navHeight = $(".navbar").first().height() + 15;
@@ -177,8 +181,8 @@ $(document).ready(function () {
   border-radius: 4px;
 }
 
-.tabset-dropdown > .nav-tabs > li.active:before {
-  content: "";
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "\e259";
   font-family: 'Glyphicons Halflings';
   display: inline-block;
   padding: 10px;
@@ -186,16 +190,9 @@ $(document).ready(function () {
 }
 
 .tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
-  content: "&#xe258;";
-  border: none;
-}
-
-.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
-  content: "";
+  content: "\e258";
   font-family: 'Glyphicons Halflings';
-  display: inline-block;
-  padding: 10px;
-  border-right: 1px solid #ddd;
+  border: none;
 }
 
 .tabset-dropdown > .nav-tabs > li.active {
@@ -323,7 +320,7 @@ div.tocify {
         <span class="icon-bar"></span>
         <span class="icon-bar"></span>
       </button>
-      <a class="navbar-brand" href="index.html">graph processing</a>
+      <a class="navbar-brand" href="index.html">nimbleModel</a>
     </div>
     <div id="navbar" class="navbar-collapse collapse">
       <ul class="nav navbar-nav">
@@ -347,41 +344,41 @@ div.tocify {
 </div>
 
 
-<p>To more efficiently process nimbleModels and provide for scalability,
-we are redesigning key aspects of nimbleModel defining and building. The
-key pieces of this are:</p>
+<p>To more efficiently process nimble models and provide for
+scalability, we are redesigning key aspects of nimbleModel defining and
+building. The key pieces of this are:</p>
 <ul>
 <li>representing values of individual indexes (and groups of indexes
 when paired in arbitrary ways) of a variable as abstractions called
-varRanges rather than (unless required) complete unrolling</li>
+<code>varRange</code>s rather than (unless required) complete
+unrolling</li>
 <li>providing functionality to determine graph dependencies abstractly
 based on the index abstraction, including child and parent
-relationships, using what we call index inversion</li>
+relationships, using what we call index inversion, in
+<code>graphRule</code>s.</li>
 <li>representing the relationship between variable indexes and
 nodeFunction code, such as <code>y[i+1] &lt;- x[i]</code>, using
-<code>originalIndexRules</code></li>
-<li>providing topological sorting at the declaration level that allows
-for ties</li>
-<li>representing a set of equivalent (in some sense) nodes within a
-variable in a compact representation called a <code>nodeRange</code>
-(perhaps <code>nodeSet</code>), such as
-<code>y[i, 1:3] for i in 1:500</code>, determined using
-<code>nodeRules</code>.</li>
+<code>originalIndexRule</code>s.</li>
 <li>determining equivalent nodes within a variable using
 <code>nodeRules</code>, a superclass containing <code>declRules</code>,
 <code>calcRules</code>, and <code>rhsRules</code></li>
+<li>representing a set of equivalent (in some sense) nodes within a
+variable in a compact representation called a <code>nodeRange</code>,
+such as <code>y[i, 1:3] for i in 1:500</code>, determined using
+<code>nodeRules</code>.</li>
 <li>determining sets of nodes with the same type (and same topological
-level) using <code>calcRules</code></li>
+level – top, end, latent) using <code>calcRules</code></li>
+<li>determining sets of data elements (or non-data elements) using
+<code>dataRule</code>s.</li>
+<li>providing topological sorting at the declaration level (actually
+some fracturing of declarations to get to <em>calculation level</em>
+that allows for ties</li>
 <li>determining what nodeFunction calculations need to be done based on
 the variables and their indexes provided by a user or by a dependency
 calculation, using <code>calcRules</code>.</li>
-<li>providing multiple versions of nodeFunctions so as to allow
-vectorized calculations, and determining which version to call</li>
-<li>providing efficient (sparse in some form) storage of variable
-information, including topological order, isData status, node type, etc.
-(Node type, topological order, and some other information may actually
-be stored in <code>calcRules</code>.)</li>
 </ul>
+<p>We no longer have the maps and no longer have the notions of vertices
+or element IDs.</p>
 
 
 

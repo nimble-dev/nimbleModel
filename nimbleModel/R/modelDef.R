@@ -57,7 +57,7 @@ modelDefClass <- R6Class(
             genBounds()                   ## Create bound expressions (modifying `calculateCode`).
 
             makeRHSoriginalRules()  
-            makeVarInfo()  # This requires `rhsOriginalRules` and `symbolicParentNodes`.
+            makeVarInfo()                 ## This requires `rhsOriginalRules` and `symbolicParentNodes`.
 
             ## Change dynamic indices to full extent.
             ## (e.g., `mu[k[i]]` to `mu[1:10]`, as needed for setting up graphRules.

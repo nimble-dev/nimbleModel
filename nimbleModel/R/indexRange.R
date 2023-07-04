@@ -1,14 +1,13 @@
 ## CHECK: do we want to handle blank cases: y[], y[,].
 
-## CHECK: do we need a print() or will that always be done at varRange level? 
-
-## An indexRange stores the indices for one or more index positions of a variable.
-## When multiple positions are included, the indexRange type is necessarily
+## An indexRange stores the indices for one or more index slots
+## (positions) of a variable.
+## When multiple slots are included, the indexRange type is necessarily
 ## an `indexRangeMatrix`, which keeps the index values that are tied together
 ## as individual rows.
 
-## Indices that can be crossed, e.g. `y[1:3, 1:4]` has all pairs of first
-## and second indices, will generally be stored as two single index
+## Indices that can be crossed (e.g. `y[1:3, 1:4]` has all pairs of first
+## and second indices), will generally be stored as two single index slot
 ## indexRanges (two `indexRangeSequence`s in this case).
 
 ## NOTE: this uses subclass-specific variables for storing index information.

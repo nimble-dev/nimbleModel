@@ -12,6 +12,12 @@ knitr::opts_chunk$set(echo = TRUE)
 - An `indexRange` manages the index content of one dimension of one variable.
 
     - This is implemented as a class hierarchy, with subclasses for scalar, sequence (e.g., `2:10`), matrix (i.e., arbitrary).
+    - Multiple index slots that are tied together are handled via `indexRangeMatrix`s. 
+
+- A `varRange` manages a set of `indexRange`s representing all dimensions ('slots') of a variable.
+
+    - A `varRange` also keeps track of how each `indexRange` is crossed or combined with others to represent the set of variable elements correctly.
+    - Ultimately we may want to be able to [collapse multiple `varRange`s to a single `varRange`](combining_ranges.html) when possible.
 
 - An `indexRule` manages the determination of LHS indices from RHS indices for one or more `indexRange`s.  (Sometimes multiple index dimensions need to be solved jointly.)
 
@@ -23,71 +29,74 @@ knitr::opts_chunk$set(echo = TRUE)
     - Various possibilities for either input or output include no indexing, constant scalar, constant vector, arbitrary, and block. 
 
 - An `originalIndexingRule` manages the determination of nodeFunction indices from actual index values, e.g., with a declaration such as `y[i+1] <- x[i]`, determining that calculation for `y[2]` is handled with `i=1`.
+    - Input is a `varRange` and output is also a `varRange` but where that represents a range of indices not of a variable.
 
     - This is handled by the `indexRule` functionality by making dummy declarations such as `w[i,j] <- y[i+j]` if the focal declaration is, say, `y[i+j] <- x[i] + x[j]`.
 
-- A `varRange` manages a set of `indexRange`s representing all dimensions of a variable.
-
-    - A `varRange` also keeps track of how each `indexRange` is crossed or combined with others to represent the set of variable elements correctly.
-    - Ultimately we may want to be able to [collapse multiple `varRange`s to a single `varRange`](combining_ranges.html) when possible.
-
-- A `graphRule` manages the set of `indexRule`s needed to determine all output indices from all input indices for one set of edges created by one of the input variables and the output variable of a single declaration.
+- A `graphRule`  represents an edge in the model graph using a set of `indexRule`s, for the purpose of graph queries. It manages the set of `indexRule`s needed to determine all output indices from all input indices for the graph edge created by one of the input variables and the output variable of a single declaration.
 
     - Inputs and outputs to a `graphRule` are `varRange`s.
     - `graphRule` also can contain `indexConstraint`s that don't map to an output index but need to be enforced, such as `y[i] <- x[2]`.
     - Dynamic indexing is handled similarly to as in current nimble -- all possible dependencies are included in the rule.
     
-- A `varRules` object manages the set of rules (`graphRule`s, various kinds of `nodeRule`s) for the same variable.
+- A `varRules` object manages the set of rules (multiple `graphRule`s or multiple of a given kind of `nodeRule`s) for a single variable.
+    - Collections of a given kind of rules for multiple variables done via a named list of `varRules`.
 
-- A `nodeRule` manages a single set of nodes from a declaration that are equivalent in some sense. 
+- A `nodeRule` manages a single set of nodes from a declaration that are equivalent in some sense. Unlike a graphRule, a nodeRule does not translate indexing between variables; rather it simply represents the valid index values for a variable and distinguishes which index slots index over nodes (compared to within a node).
 
-    - `nodeRule` is base class for `declRule`, `calcRule`, and `RHSrule`
+    - The `nodeRuleClass` is base class for `declRuleClass`, `calcRuleClass`, and `rhsRuleClass`
     - Has external and internal rules for handling `i` and `1:3` in `y[i,1:3]`. Rules are `graphRule`s (though without the notion of two sides).
     - Input is a `varRange`.
     - Output is a `nodeRange`.
     - Indexing is over nodes (see comments below regarding `nodeRange`).
 
-- A `nodeRange` compactly represents a set of equivalent nodes
+- A `nodeRange` compactly represents a set of equivalent nodes.
 
     - E.g., `y[i, 1:3] for i in 1:500` or `y[i, j] for i in 1:5, j in 1:20`
-    - A subclass of `varRange` that knows which `indexRanges` are external (`i` in `y[i,1:3]`) and internal (`1:3` in `y[i,1:3]`.
+    - It is a subclass of `varRange` that knows which `indexRanges` are external (`i` in `y[i,1:3]`) and internal (`1:3` in `y[i,1:3]`.
     - Various API calls (e.g., `getNodes`, `getDependencies`) will work with either `varRange`s or `nodeRange`s transparently to the user.
 
-` A `declRule` manages information from a single declaration
+- A `declRule` manages indexing and calculation information from a single declaration.
+
     - Generates the nodeFunction, `calcFun`, as function of a vector of scalar-valued index arguments (e.g., `calcFun(idx_vector)`)
     - Contains `originalIndexingRule` with indexing information needed for calculations to pass along to related `calcRule`s.
-    - Created by initial pass through model, with LHS from the declarations
+    - Created by initial pass through model, with LHS from the declarations.
     - Notion of "equivalence" in terms of sort order, type, etc. is pushed down into `calcRule`s.
 
-` A `rhsRule` manages information about RHS only nodes
-    - Produced from original `rhsRule`s generated from all RHS terms in a declaration and subsequent modification of those rules based on all or portions of the RHS appearing in a different LHS rule (a `calcRule`) via `exclude()`.
+- A `rhsRule` manages information about RHS-only nodes.
 
-- A `calcRule` manages a single `varRange` that can be calculated jointly.
+    - Produced from 'original' `rhsRule`s generated from all RHS terms in a declaration and subsequent modification (via `exclude()`) of those rules based on all or portions of the RHS appearing in a different LHS rule (a `calcRule`).
+
+- A `calcRule` manages a single set of nodes that can be calculated jointly.
     - Inherits from the `nodeRule` base class as a `calcRule` generally represents subsets of nodes containing elements of all the same type (e.g., `top`, `end`).
     - An individual `calcRule` is produced from the elements in a declaration that are tied in terms of their sort order and (are all of the same type).
-    - Includes parent/child links.
-    - This avoids having to store information in `variableStore`s and can use all of our tools for working with `indexRange`s and `varRange`s.
     - When passed a `varRange` (or a `nodeRange`) it returns a `calcRange` (or nothing if there is no overlap) that can be used for calculation.
-    - Produced from original `calcRule` generated by each `declRule` and subsequent fracturing of those rules (using `fracture()`) based on walking down the graph.  (Noting that `theta[i] ~ dnorm(theta0[i], 1)` are not necessarily all latent or all top nodes, as it depends on how `theta0[i]` are declared; this involve splitting an original `calcRule` when graph processing is done.)
+    - Includes parent/child links.
+    - Produced from original `calcRule` generated by each `declRule` and subsequent fracturing of those rules (using `makeCalcRules`, which calls `fracture()`) based on all graph edges.  (Noting that `theta[i] ~ dnorm(theta0[i], 1)` are not necessarily all latent or all top nodes, as it depends on how `theta0[i]` are declared; this involve splitting an 'original' `calcRule` when graph processing is done.)
        - everything on LHS starts out as both `top` and `end`
-       - `top` found by walking down the graph (from known `top` [those with only constant RHS] and `RHSonly`), fracturing, and tagging what has stoch parents; the resulting `calcRule`s that don't have stoch parents are `top`
-       - `end` found by starting with final `calcRule`s with no dependents. Then also walk up from each stoch end rule and anything found along the way is removed from being `end`
+       - `top` found recursively determining which `calcRule`s have stochastic parents using `setStochParent`.
+       - `end` found by recursively determining which `calcRule`s have stochastic dependents using `setStochDep`.
        - `latent` found by what is not top or end
-    - `sortID` (topological sorting) determined by recursion based on walking the final set of `calcRules` (which have parent/child information) bottom-up (so that all data nodes are set to be tied, given data nodes generally more numerous than parameter nodes)
+    - `sortID` (topological sorting) determined by recursion based on walking the final set of `calcRules` (which have parent/child information) bottom-up (so that all data nodes are set to be tied, given data nodes generally more numerous than parameter nodes).
        - `sortID` can be a vector in state-space type cases.
+    - Use of `calcRule`s avoids having to store information in `varStore`s and can use all of our tools for working with `indexRange`s and `varRange`s.
 
-- A `calcRange` manages the indexing for a single calculation for a variable
+- A `calcRange` manages the indexing for a single calculation for a variable.
 
-    - Keeps track of declaration (via `declRule`, including associated nodeFunction, `calcFun`), indexing (using `originalIndexRange`s) (and nodeFunction version to be used).
+    - Keeps track of declaration (via `declRule`, including associated nodeFunction, `calcFun`) and indexing (using `originalIndexRange`s).
     - Index values are based on original declaration context, e.g., a declaration of `y[i+1] ~ dnorm(x[i], 1)` with `i=1:5` has `calcRange` indexing of `1:5` since nodeFunctions use `i` directly. 
     - Need to discuss how to provide vectorized calculations.
-        - Currently `calcRange` has a calculation function that loops over ranges of original indexes and calls `declRule` scalar-index-valued nodeFunction (`calcFun`).
+        - Currently `calcRange` has a `calculate` method that loops over ranges of original indexes and calls `declRule` scalar-index-valued nodeFunction (`calcFun`).
         - Currently unclear how the compilation of this would work.
     - Includes `sortID` so that `calcRange` can be calculated in correct order relative to other `calcRange`s.
 
-- A `dataRule` manages information about  data (or non-data) elements.
+- A `dataRule` manages information about data (or non-data) elements.
     - Application of such a rule produces a `varRange`.
+    - Originally we had the idea of a `varStore`, but using a rule follows our general approach with the revamp and will allow easy filtering to data or non-data elements in `getNodes` or the like.
 
+- `modelDeclClass` objects represent information in a single declaration. This class has some of the same features as our previous `BUGSdeclClass`, but now contains a `declRule` and constituent `upstreamRules` and `downstreamRules`. While it is used when a `modelDef` is created, it is not generally used subsequently; instead sets of rules are aggregated (at the variable level rather than by declaration) as fields of the `modelDef`.
+
+- `modelDefClass` objects represent the model definition, in particlar the graphical structure. The core fields are the downstream and upstream `graphRule`s and the various `nodeRule`s.
 
 - [Needed? Not done] A `copyRule` manages the determination of copying for a variable
 
@@ -106,8 +115,3 @@ knitr::opts_chunk$set(echo = TRUE)
     - Ultimately may want to handle simple sequential values (e.g., row-major or column-major in a matrix) as this could be useful for sort ID values in state-space/time-series contexts.
     - Should we have `variableStore`s that map back to `calcRule`s and `nodeRule`s? This might avoid need to store something like node type if all node types for a given `nodeRule` are the same. Also avoids need for variable-level sort ID unless there is an ordering with a given `calcRule` (since could just look up sort ID of the `calcRule`).
 
-
-- Dynamic indexing still needs consideration.
-
-    - Currently we introduce a hidden 'unknownIndex' lifted node that allows for our standard dependency processing.
-    - Possibly handle things similarly to current approach: have one `graphRule` with `varRange` of the 'unknownIndex' as the LHS and another `graphRule` with `varRange` of the 'unknownIndex' as the RHS.

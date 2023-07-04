@@ -1,5 +1,5 @@
-## A graphRuleClass object represents an edge in the model graph using a set of indexRules,
-## for the purpose of graph queries.
+## A graphRuleClass object represents an edge in the model graph using a set
+## of indexRules, for the purpose of graph queries.
 
 ## There are a variety of cases, some tricky, that must be handled.
 ## Rules/constraints can cover one or more index slots arbitrarily,
@@ -384,8 +384,8 @@ makeIndexRules <- function(toExpr, fromExpr, indexSets, context, constants) {
 
 
 ## We need to extract the relevant components of fromVarRange for each rule, apply the rule,
-## Applies a `graphRule` to a `varRange` by extract the relevant components of fromVarRange for
-## constituent `indexRule`, applying the `indexRule` and composing the result as a new varRange.
+## Applies a `graphRule` to a `varRange` by extract the relevant components of `fromVarRange` for
+## constituent `indexRule`, applying the `indexRule` and composing the result as a new `varRange`.
 applyGraphRule <- function(fromVarRange, rule, varName = NULL, removeDuplicates = TRUE) {
     ## Some of the steps below will reveal things that
     ## could be cached and re-used.
@@ -475,12 +475,12 @@ applyGraphRule <- function(fromVarRange, rule, varName = NULL, removeDuplicates 
     }
 
     ## Step 2: Compose results from the various rules, aggregating results from multiple rules
-    ## applied to one input indexRange.
+    ## applied to one input `indexRange`.
 
     finalIndexRanges <- list()
     finalRangeToIndexSlot <- list()
 
-    ## Loop through results based on input indexRanges; this will not handle 'constant' or 'all' rules.
+    ## Loop through results based on input `indexRanges`; this will not handle 'constant' or 'all' rules.
     ## Also, this will produce duplicate results (handled at the end) when multiple input indexRanges
     ## used in a single rule.
     iAns <- 1

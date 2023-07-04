@@ -1,11 +1,11 @@
-## A varRule holds a set of rules (graphRules, topRules, etc.) that together
+## A varRules object holds a set of rules (graphRules, topRules, etc.) that together
 ## comprise all the rules of that type for a variable.
 
 ## varRules will generally be stored as elements of a list, with the element name
 ## being the variable name, for lookup purposes.
 
-varRuleClass <- R6Class(
-    classname = "varRuleClass",
+varRulesClass <- R6Class(
+    classname = "varRulesClass",
     portable = FALSE,
     public = list(
         rules = list(),
@@ -25,7 +25,7 @@ varRuleClass <- R6Class(
     )
 )
 
-## Take a flat list of rules and divide up into one `varRule` per variable.
+## Take a flat list of rules and divide up into one `varRules` per variable.
 newVarRules <- function(items, varNames = NULL, type = NULL) {
     if(!all(sapply(items, function(x) is(x, "nodeRuleClass") || is(x, "graphRuleClass"))))
         stop("all elements of `items` must be `nodeRule`s or `graphRule`s.")
@@ -45,8 +45,16 @@ newVarRules <- function(items, varNames = NULL, type = NULL) {
             items[varNames == nm & include])
     } else  
         result <- lapply(uniqVarNames, function(nm)
-            varRuleClass$new(items[varNames == nm & include], varName = nm))
+            varRulesClass$new(items[varNames == nm & include], varName = nm))
     names(result) <- uniqVarNames
     return(result)
 }
 
+## Utility for determining which `varRules` is needed for a node and
+## applying it.
+applyRules <- function(rules, node) {
+    varName <- getVarName(node)  
+    if(varName %in% names(rules)) {
+        return(rules[[varName]]$apply(node))
+    } else return(NULL)
+}

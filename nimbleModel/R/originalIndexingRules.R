@@ -1,7 +1,7 @@
 ## An originalIndexingRuleClass object represents the relationship
 ## between the loop indexing and the indexing of a LHS variable,
 ## such as giving the values of `i` when provided a varRange for `y` in
-## `for(i in 1:n) y[i-2] <- 1`
+## `for(i in 5:n) y[i-2] <- 1`, such that `y[7:9]` would give `i=9:11`.
 
 
 originalIndexingRuleClass <- R6Class(

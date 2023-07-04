@@ -1,5 +1,5 @@
-## A varRangeClass object represents a variable with some set of indices,
-## for the purpose of graph queries.
+## A varRangeClass object represents a set of index values for a variable,
+## covering all the index slots (i.e., index positions).
 
 ## It does not represent the *values* of the variable.  Instead it symbolically
 ## represents some subset of the variable to be manipulated and passed.
@@ -30,10 +30,10 @@ varRangeClass <- R6Class(
         indexRanges = list(),
 
         ## These next two should be integer type (arbitrary but good to do for ease of testing).
-        ## They contain the information indicating how index positions relate to indexRanges.
+        ## They contain the information indicating how index slots relate to indexRanges.
         ## Example: x[3, 1, 11], x[3, 2, 11], x[10, 1, 8], x[10, 2, 8]
-        ## An indexRangeMatrix handles 1st/3rd index positions, while a sequence covers second.
-        rangeToIndexSlot = list(),  # e.g., list(c(1,3), 2) for a matrix covering 1st/3rd index positions
+        ## An indexRangeMatrix handles 1st/3rd index slots, while a sequence covers second.
+        rangeToIndexSlot = list(),  # e.g., list(c(1,3), 2) for a matrix covering 1st/3rd index slots
         indexSlotToRange = integer(),  # e.g., c(1,2,1)
 
         initialize = function(indexInfo,
@@ -95,7 +95,7 @@ varRangeClass <- R6Class(
         setIndexRanges = function(indexRanges, rangeToIndexSlot = NULL) {
             ## Helper method for `initialize` to set `indexRanges` and `rangeToIndexSlot`
             ## based on list input, each element as returned by `indexRange` and possibly
-            ## an `rangeToIndexSlot` list relating each `indexRange` to one or more index positions.
+            ## an `rangeToIndexSlot` list relating each `indexRange` to one or more index slots.
             indexRanges <<- indexRanges
             if(!is.null(rangeToIndexSlot)) {
                 rangeToIndexSlot <<- lapply(rangeToIndexSlot, as.integer)

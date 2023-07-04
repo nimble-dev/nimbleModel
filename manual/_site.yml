@@ -1,6 +1,6 @@
-name: "model-processing"
+name: "nimbleModel"
 navbar:
-  title: "graph processing"
+  title: "nimbleModel"
   left:
     - text: "Home"
       href: index.html
