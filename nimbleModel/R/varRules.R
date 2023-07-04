@@ -1,4 +1,4 @@
-## A varRule holds a set of rules (graphRules, varRules, topRules, etc.) that together
+## A varRule holds a set of rules (graphRules, topRules, etc.) that together
 ## comprise all the rules of that type for a variable.
 
 ## varRules will generally be stored as elements of a list, with the element name
@@ -25,7 +25,7 @@ varRuleClass <- R6Class(
     )
 )
 
-## Take a flat list of `nodeRule`s and divide up into one `varRule` per variable.
+## Take a flat list of rules and divide up into one `varRule` per variable.
 newVarRules <- function(items, varNames = NULL, type = NULL) {
     if(!all(sapply(items, function(x) is(x, "nodeRuleClass") || is(x, "graphRuleClass"))))
         stop("all elements of `items` must be `nodeRule`s or `graphRule`s.")

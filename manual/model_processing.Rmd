@@ -7,14 +7,15 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-Fully incomplete notes on how we might use the new nimbleModel framework when creating a modelDef and a model.
+Here are the key steps in creating a model definition using the new framework. Some of this mimics steps in current modelDef processing.
 
-- As we process each declaration, we will produce one or more `graphRule`s.
-- As we process each declaration, we will produce one `declRule`.
-   - Initially each `declRule` will also generate a `calcRule`
-   - In further processing where we determine node types, we might split a `calcRule` into multiple `calcRule`s. E.g. the case of `theta[i] ~ dnorm(theta0[i], 1)` might have some theta[i]s being latent and some being top nodes.
-- As we process each declaration, we will produce zero or more `rhsRule`s.
-   - In further processing, the `rhsRule`s may be shrunk or split as we determine that elements have been used on LHS of another `declRule`.
-- In further passes we will produce various `variableStore`s.
-
-My initial take is that we will no longer need the maps and no longer have the notions of vertices or element IDs. 
+- Process if-then-else.
+- Set up dimensions.
+- Determine declarations and contexts via `processModelCode`.
+- Handle bounds and truncation.
+- Handle parameterizations and links.
+- Create `declRule`s and set up symbolic parent nodes *at the declaration level*.
+- Create RHS original rules (before determining what is RHS *only*).
+- Make individual upstream and downstream `graphRule`s (using `symbolicParentNodes`) *at the declaration level* via `makeGraphRules`.
+- Create sets of `declRule`s, upstream and downstream `graphRule`s, `calcRule`s of various types (`end`, `top`, etc.), `rhsOnlyRule`s *at the model level* via `makeGraphInfo`.
+   - This has somewhat sophisticated but ugly code for dealing with state-space structures reasonably efficiently for many cases.

@@ -7,7 +7,9 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-Given a `varRange`, we need to be able to combine multiple ranges into a single range. Similar capabilities are needed for `nodeRange`s and blocks of `variableStore`s.
+Given a `varRange`, we need to be able to combine multiple ranges into a single range. Similar capabilities are needed for `nodeRange`s (and possibly blocks of `variableStore`s).
+
+This has not yet been tackled.
 
 Examples:
 
@@ -18,7 +20,7 @@ Examples:
 
 Implementation:
 
-Need logic to deal with adjancent ranges, overlapping ranges, and 'fully encompassing' ranges (e.g, Case 3 above).
+Need logic to deal with adjacent ranges, overlapping ranges, and 'fully encompassing' ranges (e.g, Case 3 above).
 
 With multi-dimensional ranges, need to check that all dimensions have exactly the same ranges except for at most one dimension (e.g., Case 2 above), or that all dimensions of one are fully embedded in the dimensions of the other. 
 

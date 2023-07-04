@@ -1,0 +1,20 @@
+---
+title: "Graph querying"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+The two key functions are `getNodes` and `getDependencies`/`getParents`.
+
+- `getDependencies` (`getParents`) determines children (parents) by traversing the `downstreamRules` (`upstreamRules`) using `traverseGraph`.
+   - input is `varRange` (or `nodeRange`).
+   - output is `varRange`.
+   - if nodes are needed, pass output through `getNodes`
+
+- `getNodes` generates relevant `nodeRanges` by applying the various `nodeRule` subclasses (`declRule`, `rhsRule`, `topRule`, etc.)
+   - allows one to select stoch/determ, top/latent/end, RHSonly.
+   - optionally can take `varRange` or equivalent (`nodeRange`, variable name, string representing `varRange`) so that operates only on part of the model.
+
