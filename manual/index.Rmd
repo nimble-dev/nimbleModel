@@ -32,6 +32,7 @@ Todos (a mostly complete list as of June 2023):
   - Incorporate data flags into `getNodes` and/or `getDependencies` using (existing) `dataRule`s.
   - Determine predictive nodes.
   - `calculate` does not yet handle truncation.
+  - Look into backwards compatibility in terms of working with char strings of node names and in input/output of getNodes/getDependencies.
 
 - Questions:
   - Do we need `copyRule`s?
@@ -41,6 +42,7 @@ Todos (a mostly complete list as of June 2023):
   - Do some benchmarking and comparison to current processing.
     - Consider slowness of building individual samplers for every node in large models.
     - Potential tradeoff of faster creation of graph/modelDef with slower `getDependencies` as that used to be done in C++.
+  - Check if SSM with long sets of deterministic deps is handled efficiently.
   - Work on combining `varRange`s, in particular when can be done while preserving block `indexRange`s.
   - Revisit handling of state-space style dependence and which cases we do not handle efficiently (worst-case scenario involves very slow recursive unrolling via `fracture`).
   - Avoid duplication of varRanges/nodeRanges/calcRanges (particularly in unrolled cases); e.g., same 'y' deps of intercept and slopes in regression.
