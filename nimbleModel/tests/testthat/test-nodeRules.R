@@ -241,7 +241,99 @@ test_that("rhsRule creation when RHS missing an index and relevant singleContext
     expect_true(is(RHSrule$externalRule$indexRules[[1]], 'indexRuleBlockClass'))
     expect_identical(RHSrule$externalRule$indexRules[[1]]$setupResults,
                      list(offset = 0, fromMin = 2, fromMax = 8))
+
+    singleContext1 <-
+        singleContextClass$new(forCode = quote(for(i in 1:4){}))
+    singleContext2 <-
+        singleContextClass$new(forCode = quote(for(j in n1[i]:n2[i]){}))
+    singleContext3 <-
+        singleContextClass$new(forCode = quote(for(k in 1:n3[i]){}))
     
+    context <- modelContextClass$new(list(singleContext1, singleContext2, singleContext3))
+
+    RHS <- quote(alpha[j,k])
+    RHSrule <- rhsRuleClass$new(RHS, 1, context, constants = list(n1 = c(2,3,5,2), n2 = c(2,8,6,3), n3 = c(5,9,1,2)))
+    expect_identical(RHSrule$numExternalIndexRules, 2L)
+    expect_identical(RHSrule$numInternalIndexRules, 0L)
+    expect_true(is(RHSrule$externalRule$indexRules[[1]], 'indexRuleBlockClass'))
+    expect_true(is(RHSrule$externalRule$indexRules[[2]], 'indexRuleBlockClass'))
+    expect_identical(RHSrule$externalRule$indexRules[[1]]$setupResults,
+                     list(offset = 0, fromMin = 2, fromMax = 8))
+    expect_identical(RHSrule$externalRule$indexRules[[2]]$setupResults,
+                     list(offset = 0, fromMin = 1, fromMax = 9))
+
+    
+    singleContext1 <-
+        singleContextClass$new(forCode = quote(for(i in 1:4){}))
+    singleContext2 <-
+        singleContextClass$new(forCode = quote(for(j in n1[i]:n2[i]){}))
+    singleContext3 <-
+        singleContextClass$new(forCode = quote(for(k in n3[j]:n4[i]){}))  # uses both 'j' and 'i'
+    
+    context <- modelContextClass$new(list(singleContext1, singleContext2, singleContext3))
+
+    RHS <- quote(alpha[j,k])
+    RHSrule <- rhsRuleClass$new(RHS, 1, context, constants = list(n1 = c(2,3,5,2), n2 = c(2,8,6,3),
+                                                                  n3 = c(5,9,4,3,3,3,3,4), n4 = c(11,10,4,8,4,4,4,4)))
+    expect_identical(RHSrule$numExternalIndexRules, 2L)
+    expect_identical(RHSrule$numInternalIndexRules, 0L)
+    expect_true(is(RHSrule$externalRule$indexRules[[1]], 'indexRuleBlockClass'))
+    expect_true(is(RHSrule$externalRule$indexRules[[2]], 'indexRuleBlockClass'))
+    expect_identical(RHSrule$externalRule$indexRules[[1]]$setupResults,
+                     list(offset = 0, fromMin = 2, fromMax = 8))
+    expect_identical(RHSrule$externalRule$indexRules[[2]]$setupResults,
+                     list(offset = 0, fromMin = 3, fromMax = 11))
+
+    singleContext1 <-
+        singleContextClass$new(forCode = quote(for(i in 1:4){}))
+    singleContext2 <-
+        singleContextClass$new(forCode = quote(for(j in 1:3){}))
+    singleContext3 <-
+        singleContextClass$new(forCode = quote(for(k in 1:n1[i]){}))
+    
+    context <- modelContextClass$new(list(singleContext1, singleContext2, singleContext3))
+
+    RHS <- quote(alpha[j,k])
+    RHSrule <- rhsRuleClass$new(RHS, 1, context, constants = list(n1 = c(2,3,6,2)))
+    expect_identical(RHSrule$numExternalIndexRules, 2L)
+    expect_identical(RHSrule$numInternalIndexRules, 0L)
+    expect_true(is(RHSrule$externalRule$indexRules[[1]], 'indexRuleBlockClass'))
+    expect_true(is(RHSrule$externalRule$indexRules[[2]], 'indexRuleBlockClass'))
+    expect_identical(RHSrule$externalRule$indexRules[[1]]$setupResults,
+                     list(offset = 0, fromMin = 1, fromMax = 3))
+    expect_identical(RHSrule$externalRule$indexRules[[2]]$setupResults,
+                     list(offset = 0, fromMin = 1, fromMax = 6))
+
+    
+    singleContext1 <-
+        singleContextClass$new(forCode = quote(for(i in 1:4){}))
+    singleContext2 <-
+        singleContextClass$new(forCode = quote(for(j in n1[i]:n2[i]){}))
+        
+    context <- modelContextClass$new(list(singleContext1, singleContext2))
+
+    RHS <- quote(alpha[idx[j]])
+    RHSrule <- rhsRuleClass$new(RHS, 1, context, constants = list(n1 = c(3,4,6,3), n2 = c(4,7,7,3), idx = c(11,2,3,2,4,9,3,15)))
+    expect_identical(RHSrule$numExternalIndexRules, 1L)
+    expect_identical(RHSrule$numInternalIndexRules, 0L)
+    expect_true(is(RHSrule$externalRule$indexRules[[1]], 'indexRuleArbitraryClass'))
+    expect_identical(RHSrule$getFullRange()$indexRanges[[1]]$values,
+                     matrix(c(2,3,4,9)))  # only the idx values within j=3:7
+
+    singleContext1 <-
+        singleContextClass$new(forCode = quote(for(i in 1:4){}))
+    singleContext2 <-
+        singleContextClass$new(forCode = quote(for(j in c(3,7,4)){}))
+    context <- modelContextClass$new(list(singleContext1, singleContext2))
+
+    RHS <- quote(alpha[j])
+    RHSrule <- rhsRuleClass$new(RHS, 1, context)
+    expect_identical(RHSrule$numExternalIndexRules, 1L)
+    expect_identical(RHSrule$numInternalIndexRules, 0L)
+    expect_true(is(RHSrule$externalRule$indexRules[[1]], 'indexRuleArbitraryClass'))
+    expect_identical(RHSrule$getFullRange()$indexRanges[[1]]$values,
+                     matrix(c(3,4,7)))
+        
 })
 
 
@@ -397,7 +489,7 @@ test_that("calcRanges are generated correctly", {
 
 
 
-## Hopefully comprehensive testing of exclude()
+## Hopefully comprehensive testing of fracture()
 test_that("calcRule fracturing works", {
     ## For simplicity, these tests use generic `nodeRule` inputs rather than `calcRule` that would be used in real work.
     singleContext1 <-
@@ -686,7 +778,6 @@ test_that("calcRule fracturing works", {
         expect_identical(result[[k]]$indexSlotToSet, c(0,1,1,0))
     }
 
-    ## HERE - sorting?
     context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:4){}))))
     idx1 <- as.integer(c(2,2,3,3))
     idx2 <- as.integer(c(2,3,2,3))
@@ -748,6 +839,7 @@ test_that("calcRule fracturing works", {
 
 })
 
+## Hopefully comprehensive testing of exclude()
 test_that("RHS exclusion works", {
     ## Note that this uses a generic `nodeRule` as the excluding input,
     ## though in real work, it would be a `rhsRule` or a `declRule`.

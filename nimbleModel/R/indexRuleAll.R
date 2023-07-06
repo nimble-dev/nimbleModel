@@ -41,7 +41,9 @@ indexRuleAll_setup <- function(toIndexExprList,
     
     ## Try to handle single index, simple increment case expeditiously.
     ## The second condition excludes non-sequential indexing in for loop.
-    if(length(toIndexExprList) == 1 && context$singleContexts[[1]]$indexRangeExpr[[1]] == ":") {
+    if(length(toIndexExprList) == 1 &&
+       length(context$singleContexts[[1]]$indexRangeExpr) > 1 &&
+       context$singleContexts[[1]]$indexRangeExpr[[1]] == ":") {
         toIndexExpr <- toIndexExprList[[1]]
         
         indexVarName <- context$indexVarNames[1]

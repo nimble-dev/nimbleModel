@@ -2447,11 +2447,11 @@ test_that("actual cycle is trapped", {
 
 test_that("for loops with arbitrary sets", {
     code <- quote({
-        for(i in c(2,3,5))
+        for(i in n) 
             y[i] ~ dnorm(mu, 1)
         mu ~ dnorm(0, 1)
     })
-    modelDef <- modelDefClass$new(code)
+    modelDef <- modelDefClass$new(code, constants = list(n=c(2,3,5)))
     
     
     yNodes <- getNodes(modelDef, 'y')

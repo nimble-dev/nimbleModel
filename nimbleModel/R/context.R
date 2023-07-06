@@ -176,7 +176,7 @@ expandContextAndReplacements <- function(allReplacements, allReplacementNameExpr
 
     innerLoopCode <- context$embedCodeInForLoop(innerLoopCode, useContext)
     ## This is a hacky way to deal with `nimC`, which is not in `constantsCopy`.
-    if(innerLoopCode[[3]][[1]] == 'nimC')
+    if(length(innerLoopCode[[3]]) > 1 && innerLoopCode[[3]][[1]] == 'nimC')
         innerLoopCode[[3]][[1]] <- quote(c)
     
     ## At this point `innerLoopCode` has the full loop
@@ -229,7 +229,7 @@ determineContextSize <- function(context, useContext = rep(TRUE, length(context$
     innerLoopCode <- context$embedCodeInForLoop(innerLoopCode, useContext)
 
     ## This is a hacky way to deal with `nimC`, which is not in `evalEnv`.
-    if(innerLoopCode[[3]][[1]] == 'nimC')
+    if(length(innerLoopCode[[3]]) > 1 && innerLoopCode[[3]][[1]] == 'nimC')
         innerLoopCode[[3]][[1]] <- quote(c)
     
     assign("iAns", 0L, evalEnv)

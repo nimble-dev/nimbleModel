@@ -1,6 +1,6 @@
-context("varRuleClass")
+context("varRulesClass")
 
-test_that("varRule initialization and apply", {
+test_that("varRules initialization and apply", {
     ## Simple case of applying two simple graphRules containing single block rules.
     
     ## Example declaration: for(i in 1:10) y[i] <- foo(x[i])
@@ -19,12 +19,12 @@ test_that("varRule initialization and apply", {
                                 fromExpr = quote(x[i]),
                                 context = context_i2)
 
-    varRule_x <- varRuleClass$new(
+    varRules_x <- varRulesClass$new(
         list(rule1, rule2), varName = 'x'
     )
 
     expect_equal(
-        result <- varRule_x$apply(varRangeClass$new(
+        result <- varRules_x$apply(varRangeClass$new(
             list(
                 newIndexRange(
                     quote(3:12)
