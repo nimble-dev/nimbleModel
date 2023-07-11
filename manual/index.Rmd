@@ -11,6 +11,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 [Implementation](implementation.html)
 
+  - [Implementation notes (Perry)](implementation_notes_p.html)
+
 [Graph relationships](graph_relationships.html)
 
 [Index inversion](index_inversion.html)

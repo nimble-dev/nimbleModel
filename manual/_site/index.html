@@ -13,7 +13,7 @@
 
 <title>nimbleModel</title>
 
-<script src="site_libs/header-attrs-2.21/header-attrs.js"></script>
+<script src="site_libs/header-attrs-2.20/header-attrs.js"></script>
 <script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="site_libs/bootstrap-3.3.5/css/cerulean.min.css" rel="stylesheet" />
@@ -346,6 +346,10 @@ div.tocify {
 
 <p><a href="overview.html">Overview of new nimbleModel</a></p>
 <p><a href="implementation.html">Implementation</a></p>
+<ul>
+<li><a href="implementation_notes_p.html">Implementation notes
+(Perry)</a></li>
+</ul>
 <p><a href="graph_relationships.html">Graph relationships</a></p>
 <p><a href="index_inversion.html">Index inversion</a></p>
 <p><a href="calculation_processing.html">Calculation processing</a></p>
@@ -372,6 +376,9 @@ scalar nodes. <code>calcRangeClass$calculate</code> iterates over
 <code>dataRule</code>s.</li>
 <li>Determine predictive nodes.</li>
 <li><code>calculate</code> does not yet handle truncation.</li>
+<li>Look into backwards compatibility in terms of working with char
+strings of node names and in input/output of
+getNodes/getDependencies.</li>
 </ul></li>
 <li>Questions:
 <ul>
@@ -387,6 +394,8 @@ large models.</li>
 <li>Potential tradeoff of faster creation of graph/modelDef with slower
 <code>getDependencies</code> as that used to be done in C++.</li>
 </ul></li>
+<li>Check if SSM with long sets of deterministic deps is handled
+efficiently.</li>
 <li>Work on combining <code>varRange</code>s, in particular when can be
 done while preserving block <code>indexRange</code>s.</li>
 <li>Revisit handling of state-space style dependence and which cases we
