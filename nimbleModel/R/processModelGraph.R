@@ -225,11 +225,16 @@ traverseGraph <- function(streamRules, declRules,
                           nodes, down, self = TRUE,
                           follow = FALSE, immediateOnly = FALSE) {
                           
-    if(is(nodes, 'varRangeClass')) nodes <- list(nodes)  # We use `lapply` on 'nodes' later.
-    
-    if(!all(is.character(nodes) | sapply(nodes, function(node) is(node, 'varRangeClass'))))
-        stop("`nodes` must be variable names or `varRange`s.")
+    if(inherits(nodes, 'varRangeClass')) nodes <- list(nodes)  # We use `lapply` on 'nodes' later.
 
+    nodes <- lapply(nodes, function(node) {
+        if(is.character(node)) {
+            return(varRangeClass$new(node))
+        }
+        if(!inherits(node, 'varRangeClass'))
+            stop("`nodes` must be variable names or `varRange`s.")
+    })
+    
     results <- traverseGraphRecurse(streamRules, nodes, down, follow, immediateOnly)
 
     varNames <- sapply(nodes, getVarName)
@@ -252,7 +257,7 @@ traverseGraph <- function(streamRules, declRules,
         selfRangeFromCharRanges <- NULL
     selfRangeFromNodes <- lapply(nodes[!vars & !charRanges],
                                  function(node)
-                                     if(is(node, 'nodeRangeClass')) {
+                                     if(inherits(node, 'nodeRangeClass')) {
                                          return(node$toVarRange())
                                      } else return(node))
     selfRanges <- c(selfRangeFromNodes, selfRangeFromVars, selfRangeFromCharRanges)
@@ -344,7 +349,7 @@ processCyclicRules <- function(allCalcRules, modelDef) {
         ## Multiple graphRules can result from AR(p) structure for p>1.
         upstreamGraphRules <- modelDef$upstreamRules[[varNames[currentCyclicRule]]]$rules[idx]
         offsets <- lapply(upstreamGraphRules, function(graphRule) sapply(graphRule$indexRules, function(rule) 
-            if(is(rule, 'indexRuleBlockClass')) return(rule$setupResults$offset) else return(0)
+            if(inherits(rule, 'indexRuleBlockClass')) return(rule$setupResults$offset) else return(0)
             ))
 
         ## Multiple indices in a rule are lagged.

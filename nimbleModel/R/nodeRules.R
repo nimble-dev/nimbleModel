@@ -50,7 +50,7 @@ nodeRuleClass <- R6Class(
             indexSlotToSet <<- fullRule$indexSets$toIndexSlotToSet
 
             if(length(fullRule$indexRules)) {  # if any indexing
-                isConstant <- sapply(fullRule$indexRules, function(x) is(x, "indexRuleConstantClass"))
+                isConstant <- sapply(fullRule$indexRules, function(x) inherits(x, "indexRuleConstantClass"))
 
                 ## Treat constants as internal rules that don't relate to indexing over nodes.
                 ## Need to relate constant rule types to indexing; constant rules are in order of constant indices.
@@ -566,7 +566,7 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
     ## Get full nodeRange of the rule.
     LHSrange <- LHSrule$apply()
 
-    if(!is(fracturingRange, 'nodeRangeClass'))
+    if(!inherits(fracturingRange, 'nodeRangeClass'))
         fracturingRange <- LHSrule$apply(fracturingRange)
 
     if(is.null(fracturingRange))
@@ -619,7 +619,7 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
         ## expression, contexts, and constants from the LHS rule.
         
         ## If matrix involved, we need to create resulting rules as indexRuleArbitraryClass.
-        if(is(LHS, 'indexRangeMatrixClass') || is(frac, 'indexRangeMatrixClass')) {
+        if(inherits(LHS, 'indexRangeMatrixClass') || is(frac, 'indexRangeMatrixClass')) {
             ## `as.numeric` prevents some indexRanges from having ints when generally have doubles.
             valsLHS <- switch(class(LHS)[1],
                               indexRangeMatrixClass = LHS$values,
@@ -678,10 +678,10 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
 
             result <- list(fracturingRule, resultRule)
         } else {  # Two sequences or sequence and a scalar, handled by creating new sequences.
-            if(is(frac, "indexRangeScalarClass"))   # Process as a sequence to avoid special casing.
+            if(inherits(frac, "indexRangeScalarClass"))   # Process as a sequence to avoid special casing.
                 frac <- newIndexRange(substitute(A:A, list(A = frac$value)))
             ## Scalar LHS should either have no overlap or full overlap and have been handled at start.
-            if(is(LHS, "indexRangeScalarClass"))
+            if(inherits(LHS, "indexRangeScalarClass"))
                 stop("not expecting `LHS` to be a scalar.")
           
             if(frac$start == LHS$start || frac$end == LHS$end) {

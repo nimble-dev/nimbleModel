@@ -170,7 +170,7 @@ indexRangeScalarClass <- R6Class(
     public = list(
         numElements = 1,
         numColumns = 1,
-        value = numeric(),
+        value = NULL,
 
         initialize = function(value) {
             value <<- value
@@ -373,7 +373,7 @@ indexRangeMatrixListsToMatrix <- function(indexRangesList) {
     ## Convert any sequences to matrixLists and extract the `rangeList` list of indices.
     rangeListsList <- lapply(indexRangesList,
                   function(x) 
-                      if(is(x, "indexRangeSequenceClass")) x$toMatrixList()$rangeList else x$rangeList
+                      if(inherits(x, "indexRangeSequenceClass")) x$toMatrixList()$rangeList else x$rangeList
                   )
 
     lengths <- sapply(rangeListsList, function(x) length(x))

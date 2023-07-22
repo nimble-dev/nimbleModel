@@ -97,7 +97,7 @@ makeSizeAndDimList <- function(code, nodesToExtract, unrolledIndicesMatrix = NUL
 ## This should add model$ in front of any names that are not already part of a '$' expression
 addModelDollarSign <- function(expr, exceptionNames = character(0)) {
     if(is.numeric(expr)) return(expr)
-    if(is(expr, 'srcref')) return(expr)
+    if(inherits(expr, 'srcref')) return(expr)
     if(is.name(expr)) {
         if((as.character(expr) %in% exceptionNames) || (as.character(expr) == ''))    return(expr)
         proto <- quote(model$a)

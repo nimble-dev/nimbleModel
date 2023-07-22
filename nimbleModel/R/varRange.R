@@ -42,7 +42,7 @@ varRangeClass <- R6Class(
                               fromStochRule = NULL) {
 
             fromStochRule <<- fromStochRule
-            if(is(indexInfo, "indexRangeClass"))
+            if(inherits(indexInfo, "indexRangeClass"))
                 stop("`varRange` must be initialized from a list of `indexRange`s, not a single `indexRange`.")
             if(is.character(indexInfo))
                 indexInfo <- parse(text = indexInfo, keep.source = FALSE)[[1]]
@@ -61,7 +61,7 @@ varRangeClass <- R6Class(
                     indexRanges <<- lapply(indexRangeExprs, newIndexRange)
                     
                     ## Truncate indexRangeExprs for matrices for nicer printing.
-                    if(any(sapply(indexRanges, function(x) is(x, "indexRangeMatrixClass"))))
+                    if(any(sapply(indexRanges, function(x) inherits(x, "indexRangeMatrixClass"))))
                         indexRangeExprs <<- lapply(indexRanges, function(x) x$toExpr())
                     
                     rangeToIndexSlot <<- as.list(seq_along(indexRanges))
@@ -78,7 +78,7 @@ varRangeClass <- R6Class(
                 ## Input is a list that should be of `indexRange`s.
                 if(is.list(indexInfo)) {
                     if(length(indexInfo)) {
-                        if(!all(sapply(indexInfo, function(x) is(x, "indexRangeClass"))))
+                        if(!all(sapply(indexInfo, function(x) inherits(x, "indexRangeClass"))))
                             stop("`indexInfo` should be a list of `indexRange`s.")
                         setIndexRanges(indexInfo, rangeToIndexSlot)
                         indexRangeExprs <<- lapply(indexRanges, function(x) x$toExpr())
@@ -134,7 +134,7 @@ varRangeClass <- R6Class(
                 })
                 
                 if(length(indexRangesList) == 1) {
-                    if(is(indexRangesList[[1]], "indexRangeMatrixClass") &&
+                    if(inherits(indexRangesList[[1]], "indexRangeMatrixClass") &&
                        indexRangesList[[1]]$numColumns > 1) {
                         indexRangeResult <- indexRangeMatrixClass$new(
                                   indexRangesList[[1]]$values[ , match(indices, usedIndices), drop = FALSE], sort = FALSE)
@@ -205,7 +205,7 @@ varRangeClass <- R6Class(
                 expr <- quote(y[1])
                 expr[[2]] <- as.name(varName)
                 expr[3:(2+length(indexSlotToRange))] <- sapply(indexVars[indexSlotToRange], function(x) as.name(x))
-                irMatrices <- which(sapply(indexRanges, function(range) is(range, 'indexRangeMatrixClass')))
+                irMatrices <- which(sapply(indexRanges, function(range) inherits(range, 'indexRangeMatrixClass')))
                 if(length(irMatrices)) {
                     idxExpr <- quote(k[idx])
                     for(i in irMatrices) {
@@ -262,10 +262,11 @@ varRange_isEqual <- function(vr1, vr2) {
 }
 
 getVarName <- function(x) {
-    if(is(x, 'varRangeClass'))
+    if(inherits(x, 'varRangeClass'))
         return(x$varName)
-    if(is.character(x)) 
-        x <- parse(text = x)[[1]]
+    if(is.character(x))
+        ## String operations are faster than parse/deparse.
+        return(strsplit(x, "[", fixed = TRUE)[[1]][1])
     if(is.call(x) || is.name(x))
         if(length(x) == 1) return(safeDeparse(x, warn = TRUE)) else return(safeDeparse(x[[2]], warn = TRUE))
     if(is.null(x)) return(NULL)

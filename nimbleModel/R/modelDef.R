@@ -922,9 +922,9 @@ getNodes <- function(modelDef, nodes = NULL,
         if(includeRHSonly)
             nodes <- c(nodes, names(modelDef$rhsOnlyRules))
     } else {
-        if(is(nodes, 'varRangeClass'))
+        if(inherits(nodes, 'varRangeClass'))
             nodes <- list(nodes) 
-        if(!all(is.character(nodes) | sapply(nodes, function(node) is(node, 'varRangeClass'))))
+        if(!all(is.character(nodes) | sapply(nodes, function(node) inherits(node, 'varRangeClass'))))
             stop("`nodes` must be variable names or `varRange`s.")
     }
     

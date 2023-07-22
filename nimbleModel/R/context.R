@@ -69,7 +69,7 @@ modelContextClass <- R6Class(
                                               function(x)
                                                   if(is.call(x)) {
                                                       singleContextClass$new(forCode = x)
-                                                  } else if(is(x, "singleContextClass")) {
+                                                  } else if(inherits(x, "singleContextClass")) {
                                                       x
                                                   } else stop("`singleContexts` must be a list of `singleContextClass` objects or a list of for-loop code.")
                                               )
@@ -234,7 +234,7 @@ determineContextSize <- function(context, useContext = rep(TRUE, length(context$
     
     assign("iAns", 0L, evalEnv)
     test <- try(eval(innerLoopCode, evalEnv), silent = TRUE)
-    if(is(test, 'try-error'))
+    if(inherits(test, 'try-error'))
         stop("could not evaluate loop syntax `", safeDeparse(innerLoopCode), "`. Is indexing information provided via `constants`?")
     ans <- evalEnv$iAns
     rm(list = c('iAns', context$indexVarNames[useContext]), envir = evalEnv)

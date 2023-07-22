@@ -27,7 +27,7 @@ varRulesClass <- R6Class(
 
 ## Take a flat list of rules and divide up into one `varRules` per variable.
 newVarRules <- function(items, varNames = NULL, type = NULL) {
-    if(!all(sapply(items, function(x) is(x, "nodeRuleClass") || is(x, "graphRuleClass"))))
+    if(!all(sapply(items, function(x) inherits(x, "nodeRuleClass") || is(x, "graphRuleClass"))))
         stop("all elements of `items` must be `nodeRule`s or `graphRule`s.")
     if(is.null(varNames)) {
         varNames <- sapply(items, function(item) item$varName)
@@ -38,7 +38,7 @@ newVarRules <- function(items, varNames = NULL, type = NULL) {
         include <- sapply(items, function(item) item$isOfType(type))
     } else include <- rep(TRUE, length(items))
     uniqVarNames <- unique(varNames)
-    if(is(items[[1]], 'varRangeClass')) {
+    if(inherits(items[[1]], 'varRangeClass')) {
         ## TODO: why would we ever have a varRule of varRanges?
         stop("input cannot be a `varRange`.")
         result <- lapply(uniqVarNames, function(nm)

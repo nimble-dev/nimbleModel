@@ -111,10 +111,10 @@ rhsRuleClass <- R6Class(
 
 exclude <- function(rhsRule, excludingRule, constants = list()) {
     ## Can also take varRanges for use in `traverseGraph`.
-    if(is(excludingRule, 'varRangeClass')) {
+    if(inherits(excludingRule, 'varRangeClass')) {
         excludingRange <- excludingRule
     } else excludingRange <- excludingRule$getFullRange()
-    if(is(rhsRule, 'varRangeClass')) {
+    if(inherits(rhsRule, 'varRangeClass')) {
         rhsRange <- rhsRule
         rhsRule <- rhsRule$toRule()
     } else rhsRange <- rhsRule$getFullRange()
@@ -148,7 +148,7 @@ exclude <- function(rhsRule, excludingRule, constants = list()) {
         focalContext <- sapply(names(singleContexts), function(nm)
             nm %in% all.vars(expr[[2+nonIdenticalIndices]]))
         
-        if(is(RHS, "indexRangeMatrixClass") || is(int, "indexRangeMatrixClass")) {
+        if(inherits(RHS, "indexRangeMatrixClass") || is(int, "indexRangeMatrixClass")) {
             ## Handle any matrix cases by expanding elements.
             valsRHS <- switch(class(RHS)[1],
                               indexRangeMatrixClass = RHS$values,
@@ -184,9 +184,9 @@ exclude <- function(rhsRule, excludingRule, constants = list()) {
                                            constants = c(constants, oldConstants), usedInIndex = rhsRule$usedInIndex)
             return(list(resultRule))
         } else {  # seq+seq or seq+scalar
-            if(is(int, "indexRangeScalarClass"))  # convert to sequence to avoid special case code
+            if(inherits(int, "indexRangeScalarClass"))  # convert to sequence to avoid special case code
                 int <- newIndexRange(substitute(A:A, list(A = int$value)))
-            if(is(RHS, "indexRangeScalarClass"))
+            if(inherits(RHS, "indexRangeScalarClass"))
                 stop("not expecting RHS to be a scalar.")  ## scalar RHS either fully intersected or not intersected
 
             ## Now process two sequences.

@@ -207,7 +207,7 @@ distClass <- setRefClass(
         
         initTypes_makeArgList = function(typeArgCharVector) {
             parsedArgList <- try(lapply(typeArgCharVector, function(x) parse(text=x, keep.source = FALSE)[[1]]))
-            if(is(parsedArgList, 'try-error'))
+            if(inherits(parsedArgList, 'try-error'))
                 stop("problem with arguments `", paste(typeArgCharVector, collapse = ","), "`. Perhaps you didn't define types for your user-defined distribution nimbleFunctions?")
             allNames <- unlist(lapply(parsedArgList, function(pa) as.character(pa[[2]])))
             if('x' %in% allNames) {

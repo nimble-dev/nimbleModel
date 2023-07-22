@@ -82,7 +82,7 @@ graphRuleClass <- R6Class(
                     fromVarRange <- getFromRange()   # only varName given
                 } else fromVarRange <- varRangeClass$new(fromVarRange)   # string providing the varRange         
             }
-            if(!is(fromVarRange, 'varRangeClass'))
+            if(!inherits(fromVarRange, 'varRangeClass'))
                 stop("`fromVarRange` needs to be a `varRangeClass` object.")
             inputVarName <- getVarName(fromVarRange)
             if(!is.null(fromVarName) && !is.null(inputVarName) && inputVarName != fromVarName)
@@ -498,7 +498,7 @@ applyGraphRule <- function(fromVarRange, rule, varName = NULL, removeDuplicates 
             ## element of a `rangeList` can have arbitrarily many sets of indices.
             if(length(fromConstraints[[iRange]]) > 1) {  # scalar constraint already checked where `invalid` created/used
                 for(set in sets) {
-                    if(!is(ansIndexRanges[[set]], 'indexRangeMatrixListClass'))
+                    if(!inherits(ansIndexRanges[[set]], 'indexRangeMatrixListClass'))
                         stop("expecting `fromConstraints` to only be relevant for a `matrixList` `indexRange`.")
                     if(length(fromConstraints[[iRange]]) != ansIndexRanges[[set]]$numElements)
                         stop("expecting `fromConstraints` to have as many logicals as elements of the `indexRange`.")
@@ -526,7 +526,7 @@ applyGraphRule <- function(fromVarRange, rule, varName = NULL, removeDuplicates 
             } else {  # Only one rule operates on the indexRange.
                 finalIndexRanges[[iAns]] <- ansIndexRanges[[sets]]
                 ## Simplify to a matrix indexRange.
-                if(is(finalIndexRanges[[iAns]], 'indexRangeMatrixListClass'))  
+                if(inherits(finalIndexRanges[[iAns]], 'indexRangeMatrixListClass'))  
                     finalIndexRanges[[iAns]] <- finalIndexRanges[[iAns]]$toMatrix()
                 finalRangeToIndexSlot[[iAns]] <- ansRangeToIndexSlot[[sets]]
             }
@@ -534,7 +534,7 @@ applyGraphRule <- function(fromVarRange, rule, varName = NULL, removeDuplicates 
             ## Remove duplicate rows in matrix indexRanges.
             ## Can only do this after matrixLists have been combined.
             if(removeDuplicates)
-                if(is(finalIndexRanges[[iAns]], 'indexRangeMatrixClass'))
+                if(inherits(finalIndexRanges[[iAns]], 'indexRangeMatrixClass'))
                     finalIndexRanges[[iAns]]$removeDuplicates()
  
             iAns <- iAns + 1
@@ -545,7 +545,7 @@ applyGraphRule <- function(fromVarRange, rule, varName = NULL, removeDuplicates 
     ## This can only be done after collapsing or else the constituent matrixLists will have different lengths
     ## and couldn't be properly collapsed above (i.e., if we removed the NAs earlier).
     for(iRange in seq_along(finalIndexRanges)) 
-        if(is(finalIndexRanges[[iRange]], 'indexRangeMatrixClass')) {
+        if(inherits(finalIndexRanges[[iRange]], 'indexRangeMatrixClass')) {
             NArows <- apply(finalIndexRanges[[iRange]]$values, 1,
                             function(x) any(is.na(x)))
             if(all(NArows)) 
@@ -558,14 +558,14 @@ applyGraphRule <- function(fromVarRange, rule, varName = NULL, removeDuplicates 
     
     ## Add in results from `indexRuleAll` cases, as these have no `from` index used in the rule,
     ## and are not populated into `finalIndexRanges` above.
-    allRuleSets <- sapply(indexRules, function(x) is(x, 'indexRuleAllClass'))
+    allRuleSets <- sapply(indexRules, function(x) inherits(x, 'indexRuleAllClass'))
     if(sum(allRuleSets)) {
        finalIndexRanges <- c(finalIndexRanges, ansIndexRanges[allRuleSets])
        finalRangeToIndexSlot <- c(finalRangeToIndexSlot, ansRangeToIndexSlot[allRuleSets])
     }
 
     ## Add in result of constant rules (constant `to` index and (of course) no corresponding `from` index).
-    constantRulesIdx <- which(sapply(indexRules, function(x) is(x, 'indexRuleConstantClass')))
+    constantRulesIdx <- which(sapply(indexRules, function(x) inherits(x, 'indexRuleConstantClass')))
     if(length(constantRulesIdx)) {
         constantIndexRanges <- sapply(indexRules[constantRulesIdx], 
                                       function(rule) rule$apply(NULL))
@@ -580,9 +580,9 @@ applyGraphRule <- function(fromVarRange, rule, varName = NULL, removeDuplicates 
     ## Convert single-column matrix indexRanges to sequence if possible
     ## (e.g., to more efficiently handle y[i] <- x[k[i]] cases where all y's included).
     for(iRange in seq_along(finalIndexRanges)) {
-        if(is(finalIndexRanges[[iRange]], 'indexRangeMatrixClass'))
+        if(inherits(finalIndexRanges[[iRange]], 'indexRangeMatrixClass'))
             finalIndexRanges[[iRange]] <- finalIndexRanges[[iRange]]$toSequence()
-        if(is(finalIndexRanges[[iRange]], 'indexRangeSequenceClass'))
+        if(inherits(finalIndexRanges[[iRange]], 'indexRangeSequenceClass'))
             finalIndexRanges[[iRange]] <- finalIndexRanges[[iRange]]$toScalar()
     }
     
