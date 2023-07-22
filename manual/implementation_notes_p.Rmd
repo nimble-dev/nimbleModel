@@ -1,0 +1,228 @@
+---
+title: "Implementation (Perry's notes)"
+output: html_document
+---
+
+This document contains Perry's notes on the new nimbleModel concepts and implementation after talking to Chris. (Some text is freely copied from the current manual/implementation.Rmd)
+
+## Terminology:
+
+- A "slot" refers to one index entry. E.g. in `x[5, 2:8, j]`, there are three slots, filled by `5`, `2:8` and `j`, respectively.
+
+## Classes representing the most basic indices and variables
+
+- An `indexRange` represents the index context of one indexing slot (or multiple slots for an `indexRangeMatrix`).
+
+    - *Possible new name: `indexSet` (there is no ordering implied).*
+    - Examples: `5`, `5:10`, and `c(5, 10, 8)` 
+    - These correspond to subclasses for scalar, sequence, and matrix (i.e. arbitrary) ranges, respectively.
+    - *Possible addition*: When a model uses `x[k[i]]`, and `k` is constant, it may be helpful to have an indexing vector `k` with start and end indices. A goal would be to minimize copying of `k` through many processing steps and instead have it live in one object used by reference.
+    - Use case: In a call like `getDependencies(x[1:10])`, the `1:10` of the input is an `indexRange`.
+    
+- An `indexRangeMatrix` is a special kind of `indexRange` that represents the index content of multiple indexing slots when they are inextricably tied together.
+
+    - *Possible new name: `indexSetMatrix`.*
+    - Example: `c(5, 10, 8)` in one slot and `c(7, 5, 3)` in another slot.
+    - Use case: Say we have model code `for(i in 1:3) x[k[i], l[i]] ~ dnorm(0, 1)` with constants `k` and `l` being the vectors just given in the Example. The set of indices for `x` are the inextricably linked pairs `[5, 7]`, `[10, 5]`, and `[8, 3]`.
+    
+- A `varRange` represents a variable and a full set of index contents.
+
+    - *Possible new name: `varSubset` or `varIndexedSet` or `indexedVar`*
+    - It contains a variable name, one or more `indexRange`s, slot index (or indices) for each `indexRange`, and coding for how each `indexRange` is crossed or combined with others to represent the set of variable elements correctly.
+    - Ultimately we may want to be able to [collapse multiple `varRange`s to a single `varRange`](combining_ranges.html) when possible.
+    - Derived classes: `nodeRange`
+    - *Not derived classes: `calcRange`*
+    - Use cases:
+    
+        - In a call like `getDependencies(x[1:10, 5:8])`, the `x[1:10, 5:8]` is a `varRange` with two `indexRanges`. It has nothing to do with the content of `x` or graph relationships of `x`. It is just an encoding of the symbols `x` paired with `1:10` (first slot) and `5:8` (second slot).
+        - Return values from many kinds of model-structure queries may be `varRange`s.
+        
+        
+## Classes representing indices and variables with enhanced content or methods
+
+- A `nodeRange` represents a `varRange` that is a set of nodes
+
+    - *Possible new name: `nodeSet` or `varNodeSet` or `varNodeSubset`*
+    - It is a derived class of `varRange` that knows which `indexRanges` are external (`i` in `y[i,1:3]`) and internal (`1:3`) in `y[i,1:3]`).
+    - Example: Say we have `for(i in 1:3) {y[i, 1:3] ~ dmnorm(...)}`, resulting in three vector nodes with `y`. A `nodeRange` for `y[1:2, 1:3]` contains a set of nodes and knows that they are `y[1, 1:3]` and `y[2, 1:3]`.  In contrast, a `varRange` for `y[1:2, 1:3]` represents an arbitrary chunk of `y` that may or may not be nodes. In this example, `y[1:2, 1:2]` could be a `varRange` but not a `nodeRange` (because it is not a set of complete nodes).
+    - Use cases:
+    
+        - Various API calls (e.g., `getNodes`, `getDependencies`) will work with either `varRange`s or `nodeRange`s transparently to the user.
+        - Sometimes we will want nodes that belong together such as having equivalent topological sorting position. Such "in some sense equivalent" nodes will be grouped into a `nodeRange`.
+
+
+- A `calcRange` represents everything needed to do calculations (and can actually run those calculations) for a set of nodes from the same declaration (and hence in the same variable).
+
+    - *Possible new name: `nodeCalcSet` or `nodeCalcRange`*.
+    - This does not inherit from `nodeRange` or `varRange`.
+    - This contains all the information needed for actual calculations, including:
+
+        - The `declRule` that contains the `calcFun` to be called for actual calculations for a single set of (`for`-loop) index values (e.g. `i = 2, j = 4`).
+        - Index values from the original declaration context, i.e. the for loop indices.  
+        - e.g., a declaration of `y[i+1] ~ dnorm(x[i], 1)` with `i=1:5` has `calcRange` indexing of `1:5` since nodeFunctions use `i` directly.
+        - The `sortID` (topological sort index)
+        - A generic method `calculate` that loops over ranges of original indices and calls `declRule$calcFun` for each set of scalar index values.
+        - *Possible revision: Rearrange where this `calculate` lives and whether it is a method of `calcRange` or a function that uses a `calcRange`.*
+      - In practice, `calcRange`s will be grouped not only by being from the same declaration (a requirement) but also by having the same topological sort position (not necessary for the calculation code to work, but necessary to organize calculations in sorted order).
+        
+## Classes representing mappings from `indexRange` to `indexRange`.
+
+- An `indexRule` maps one `indexRange` to another.
+
+    - *Possible new name: `indexMap` or `indexSetMap` etc.*
+    - Example: Say we have `for(i in 1:5) y[i+1] <- 2*x[i]`. An `indexRule` would determine indices of the LHS (`y`) from indices of the RHS (`x`).  For input `2:4` we would get output `3:5`.
+    - By reversing the order of a declaration, we can create both parent and child rules.
+    - Inputs and outputs are `indexRange`s.
+    - Kinds of `indexRule`s are implemented as derived classes. Cases include:
+    
+        - 'all': Consider `for(i in 1:5) for(j in 1:3) y[i, j] <- mu[j]`. Then `mu[j]` is used for all of `y[1:5, j]` (for each `j`). Then the input `indexRange` with empty `i` returns the output `indexRange` with `i=1:5`, i.e. *all* of the `i` range.
+        - `arbitrary`
+        - `block`,
+        - `constant`
+
+    - Inputs that are out of range do not produce output
+    - Includes checks for going out of range
+    - Various possibilities for either input or output include no indexing, constant scalar, constant vector, arbitrary, and block. 
+    - Sometimes multiple index dimensions need to be solved jointly.
+
+## Classes to determine nodes from `varRange`s.
+
+- A `nodeRule` is used to determine what nodes are contained within a `varRange`
+
+    - *Possible new name: `nodeMap`, `nodeFinder`, `varNodeMap`*
+    - Input is a `varRange`. Output is a `nodeRange`.
+    - Here "node" means a contiguous regular block of a variable on the LHS of a model declaration.
+    - Derived classes of `nodeRuleClass` include: `declRuleClass`, `calcRuleClass`, and `rhsRuleClass`
+    - Somewhat analogous to `model$expandNodeNames` in current nimble.
+    - Implementation details:
+    
+        - Has external and internal rules for handling `i` and `1:3` in `y[i,1:3]`, respectively.
+        - Implemented as a special case of `graphRules` (without the notion of two sides).
+        - Indexing is over nodes (see comments in `nodeRange`)
+
+- A `rhsRule` is used to determine what RHS nodes are contained within a `varRange`.
+
+    - *Possible new name: `rhsMap`, `rhsNodeMap`, etc.*
+    - Input is a `varRange`. Output is a `nodeRange`.
+    - Comment from Chris: It is not currently clear when we need to use a `rhsRule`.
+    - Original explanation: "Produced from 'original' `rhsRule`s generated from all RHS terms in a declaration and subsequent modification (via `exclude()`) of those rules based on all or portions of the RHS appearing in a different LHS rule (a `calcRule`)."
+    - Perry thinks (guesses) this means something roughly like the following:
+    
+        - Say we have `for(i in 1:3) y[i] <- sum(x[i, 1:10])`. The rhs nodes created are `x[1, 1:10]`, `x[2, 1:10]` and `x[3, 1:10]`.
+        - From input `x[2:3, 5]`, the `rhsRule` would return the `nodeRange` `x[2:3, 1:10]`, which knows that `2:3` are the node indices and `1:10` are internal to each node.
+        - Now say we have also `for(i in 2:3) z[i] <- sum(x[i, 1:5])`. Now the rhs nodes might be `x[1, 1:10], x[2, 1:5]`, `x[2, 6:10]`, `x[3, 1:5]`, `x[3, 6:10]`. But this kind of "fracture" situation in current nimble was particularly complicated and it would be helpful to have more explanation of how it is handled in the new nimbleModel.
+
+- A `graphRule` is used to determine what nodes are children or parents of other nodes.
+
+    - *Possible new name: `graphMap`, `edgeMap` etc.*
+    - "Downstream" means "children" or "dependencies".  "Upstream" means "parents".
+    - For the "downstream" direction, a `graphRule` represents a set of edges from one (RHS) set of nodes of one variable to the LHS nodes of another variable in one declaration. For the "upstream" direction, the roles of RHS and LHS are reversed.
+    - Inputs and outputs are `varRanges`.
+    - Example: Say we have `for(i in 1:5) for(j in 1:3) y[i+1, j] ~ dnorm(mu[k[i]], sigma[i, j])`. There would be one `graphRule` from the `mu[k[1:5]]` nodes and one from the `sigma[i, j]` nodes.  From input `varRange` such as `mu[2:4]` (1st `graphRule`) or `sigma[2:4, 2:3]` (2nd `graphRule`), we would get output `varRanges` of `y`.
+    - Dynamic indexing is handled similarly to as in current nimble – all possible dependencies are included in the rule.
+    - Implementation details:
+    
+        - This uses a set of `indexRule`s to determine all output indices from all input indices.
+        - A `graphRule` also can contain `indexConstraint`s that don’t map to an output index but need to be enforced, such as y[i] <- x[2]. (More explanation needed, possibly by example. I think this is how irrelevant parts of an input are correctly ignored.)
+        
+        
+- A `dataRule` TBD
+
+## Classes for collections of "rules" for one variable
+
+- A `varRules` object manages a set of rules of the same kind for a single variable.
+
+    - *Possible new name: `varRuleSet`, `varMapSet`, `varRuleManager`*
+    - Example: Say there are multiple model declarations with elements of `y` on the LHS. From each declaration, there is a `nodeRule` to determine a `nodeRange` of `y` from a `varRange` of `y`. The `varRules` contains the `nodeRule` from each declaration with `y` on the LHS. It is used to determine *all* the nodes (represented as `nodeRanges`) of `y` from *all* declarations.
+    - A `varRules` is generic because there are different cases where multiple sets of rules for one variable must be managed and applied. For any `varRules`, the `rules` are all of the same type. The set of rules in a `varRules` can be of type:
+    
+        - `graphRule`
+        - `nodeRule`
+        - Any derived `nodeRule`.
+
+## Classes for achieving calculations
+
+- A `calcRule` is used to determine `calcRange`(s?) from a `varRange`.
+
+    - *Possible new name: not sure, but something*
+    - Input is a `varRange`. Output is one or more `calcRange`s. (Chris' notes indicate one `calcRange`, but couldn't it be multiple?).
+    - Normally, a `calcRange` will contain topologically-tied calculations. I think a `calcRule` might return multiple `calcRange`s so that calculations can be done in topologically valid order.
+    - Example: Say `y[1]`...`y[3]` are created by one declaration, and `y[4]`...`y[6]` are created by another. (Alternative, they are created by the same declaration but the latter are used differently in the model, resulting in different topological order than the former.) The `calcRule` could take the `varRange` `y[2:5]` as input and return `calcRange`s for `y[2:3]` and `y[4:5]`.
+    - Implementation details (copied from Chris)
+
+        - Inherits from the `nodeRule` base class.
+        - A `calcRule` generally represents subsets of nodes containing elements of all the same type (e.g., `top`, `end`). (Is this simply a consequence of having the same sort order, per next item? -Perry)
+        - An individual `calcRule` is produced from the elements in a declaration that are tied in terms of their sort order and (are all of the same type).
+
+    - More implementation details (copied from Chris. These ones are hard for me to follow. Could some of this be moved to a more narrative explanation of how model code is processed?)
+
+        - Includes parent/child links. (Perry does not know precisely what this means.)
+        - Produced from original `calcRule` generated by each `declRule` and subsequent fracturing of those rules (using `makeCalcRules`, which calls `fracture()`) based on all graph edges.  (Noting that `theta[i] ~ dnorm(theta0[i], 1)` are not necessarily all latent or all top nodes, as it depends on how `theta0[i]` are declared; this involve splitting an 'original' `calcRule` when graph processing is done.)
+        - everything on LHS starts out as both `top` and `end`
+        - `top` found recursively determining which `calcRule`s have stochastic parents using `setStochParent`.
+        - `end` found by recursively determining which `calcRule`s have stochastic dependents using `setStochDep`.
+        - `latent` found by what is not top or end
+        - `sortID` (topological sorting) determined by recursion based on walking the final set of `calcRules` (which have parent/child information) bottom-up (so that all data nodes are set to be tied, given data nodes generally more numerous than parameter nodes).
+        - `sortID` can be a vector in state-space type cases.
+
+- An `originalIndexingRule` determines the *original* `for` loops indices needed for a calculation.
+
+    - *Possible new name: `originalIndexMap` or `sourceIndexRule` etc*
+    - Input and output are `varRange`s. For the output, the variable name is not used and the `indexRanges` are for the original `for` loop index variables.
+    - This is handled by the `indexRule` functionality by making dummy declarations such as `w[i,j] <- y[i+j]` if the focal declaration is, say, `y[i+j] <- x[i] + x[j]`.
+    - Use case: Say we have `for(i in 1:3) y[i+1] <- foo(x[i])`. In order to calculate `y[3]`, we need to determine that the corresponding `i` is 2. An `originalIndexingRule` does this.
+
+- A `declRule` is used for actual calculations.
+
+    - *Possible new name (this doesn't seem like a "rule" at all?): `declCalc`*
+    - Contains the nodeFunction, `calcFun`. This contains the actual mathematical computation (e.g. `dnorm`) of a model declaration.
+    - Input to `calcFun` is a vector of scalar-valued index arguments (e.g., `calcFun(idx_vector)`) for the values of `for`-loop indices from the original model code.
+    - For a given `calcRange`, the `calcFun` will be called once for each `idx_vector`. Iteration to use all needed values of `idx_vector` is done by the `calculate` of the `calcRange`.
+    - It is necessary to determine the `original` (`for`-loop) index values to set up `idx_vector` correctly. The `declRule` contains an `originalIndexingRule` to do this. This may be used by the `calcRange`.
+
+## Final model definition
+
+- A `modelDefClass` objects represent the model definition, with all of the content above organized for use. The core fields are the downstream and upstream `graphRule`s (collected into `varRules` objects) and the various `nodeRules`.
+
+## Transient classes for processing model code
+
+- A `modelDeclClass` object represents information in a single declaration. 
+
+    - This class has some of the same features as our previous `BUGSdeclClass`.
+    - While it is used when a `modelDef` is created, it is not generally used subsequently.
+    - A key component is a `declRule`, which contains `upstreamRules` and `downstreamRules`.
+    - These rules are aggregated into `varRules` within the `modelDef` and then are no longer needed in the `modelDeclClass`.
+
+## out of place
+
+- What is an `indexConstraint`? (It seems simple but would be nice to place explicitly in the organization.)
+
+# Integrated examples
+
+```
+for(i in 1:2)
+  y[i+1] ~ dnorm(mu[1], 1)
+for(i in 3:4)
+  y[i+1] ~ dnorm(mu[2], 1)
+```
+
+What happens for `getDependencies(mu[1:2])`?
+
+1. `mu[1:2]` is a `varRange` with one (sequential) `indexRange` for `1:2`.
+2. There is a `varRules` with all the `graphRule`s for `mu`.
+
+    - It contains two `graphRule`s, one from each declaration. They happen to not overlap.
+    - Each `graphRule` contains an `indexRule`.
+
+3. The result of applying both `graphRule`s is a nodeRange with `y[2:3]` and `y[4:5]` **(I am confused about whether this is one nodeRange containing two nested nodeRanges, or a list of nodeRanges, or if they are consolidated into y[2:5])**
+
+Then if we want to calculate the result, what happens?
+
+1. The input is the `nodeRange`(s) `y[2:3]` and `y[4:5]`
+2. There is a `varRules` with all the `calcRule`s for `y`.
+3. Applying this `varRules` returns two `calcRange`s, one for `y[2:3]` and one for `y[4:5]`.
+
+    - Each `calcRange` has a `declRule`, which it uses to convert indices to original (for loop) indices and call a `calcFun`.
+    
+4. In order by `sortID`, each `calcRange` uses its `calculate` to iterate over "2:3" or "4:5", use the `originalIndexRule` in the `declRule` to determine the original `i` as `1:2` and `3:4`, and call the `calcFun` for each original index value.
+

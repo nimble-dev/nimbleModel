@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+
+
+<title>Implementation (Perry’s notes)</title>
+
+<script src="site_libs/header-attrs-2.20/header-attrs.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/cerulean.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="site_libs/jqueryui-1.11.4/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<link href="site_libs/highlightjs-9.12.0/default.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+<style type="text/css">code{white-space: pre;}</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+
+
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+<style type="text/css">
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #adb5bd;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script type="text/javascript">
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark the anchor link active (and if it's in a dropdown, also mark that active)
+  var dropdown = menuAnchor.closest('li.dropdown');
+  if (window.bootstrap) { // Bootstrap 4+
+    menuAnchor.addClass('active');
+    dropdown.find('> .dropdown-toggle').addClass('active');
+  } else { // Bootstrap 3
+    menuAnchor.parent().addClass('active');
+    dropdown.addClass('active');
+  }
+
+  // Navbar adjustments
+  var navHeight = $(".navbar").first().height() + 15;
+  var style = document.createElement('style');
+  var pt = "padding-top: " + navHeight + "px; ";
+  var mt = "margin-top: -" + navHeight + "px; ";
+  var css = "";
+  // offset scroll position for anchor links (for fixed navbar)
+  for (var i = 1; i <= 6; i++) {
+    css += ".section h" + i + "{ " + pt + mt + "}\n";
+  }
+  style.innerHTML = "body {" + pt + "padding-bottom: 40px; }\n" + css;
+  document.head.appendChild(style);
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "\e259";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "\e258";
+  font-family: 'Glyphicons Halflings';
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+
+
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+.tocify-subheader {
+  display: inline;
+}
+.tocify-subheader .tocify-item {
+  font-size: 0.95em;
+}
+
+</style>
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-target="#navbar" data-bs-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">nimbleModel</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+
+
+
+<h1 class="title toc-ignore">Implementation (Perry’s notes)</h1>
+
+</div>
+
+
+<p>This document contains Perry’s notes on the new nimbleModel concepts
+and implementation after talking to Chris. (Some text is freely copied
+from the current manual/implementation.Rmd)</p>
+<div id="terminology" class="section level2">
+<h2>Terminology:</h2>
+<ul>
+<li>A “slot” refers to one index entry. E.g. in
+<code>x[5, 2:8, j]</code>, there are three slots, filled by
+<code>5</code>, <code>2:8</code> and <code>j</code>, respectively.</li>
+</ul>
+</div>
+<div id="classes-representing-the-most-basic-indices-and-variables"
+class="section level2">
+<h2>Classes representing the most basic indices and variables</h2>
+<ul>
+<li><p>An <code>indexRange</code> represents the index context of one
+indexing slot (or multiple slots for an
+<code>indexRangeMatrix</code>).</p>
+<ul>
+<li><em>Possible new name: <code>indexSet</code> (there is no ordering
+implied).</em></li>
+<li>Examples: <code>5</code>, <code>5:10</code>, and
+<code>c(5, 10, 8)</code></li>
+<li>These correspond to subclasses for scalar, sequence, and matrix
+(i.e. arbitrary) ranges, respectively.</li>
+<li><em>Possible addition</em>: When a model uses <code>x[k[i]]</code>,
+and <code>k</code> is constant, it may be helpful to have an indexing
+vector <code>k</code> with start and end indices. A goal would be to
+minimize copying of <code>k</code> through many processing steps and
+instead have it live in one object used by reference.</li>
+<li>Use case: In a call like <code>getDependencies(x[1:10])</code>, the
+<code>1:10</code> of the input is an <code>indexRange</code>.</li>
+</ul></li>
+<li><p>An <code>indexRangeMatrix</code> is a special kind of
+<code>indexRange</code> that represents the index content of multiple
+indexing slots when they are inextricably tied together.</p>
+<ul>
+<li><em>Possible new name: <code>indexSetMatrix</code>.</em></li>
+<li>Example: <code>c(5, 10, 8)</code> in one slot and
+<code>c(7, 5, 3)</code> in another slot.</li>
+<li>Use case: Say we have model code
+<code>for(i in 1:3) x[k[i], l[i]] ~ dnorm(0, 1)</code> with constants
+<code>k</code> and <code>l</code> being the vectors just given in the
+Example. The set of indices for <code>x</code> are the inextricably
+linked pairs <code>[5, 7]</code>, <code>[10, 5]</code>, and
+<code>[8, 3]</code>.</li>
+</ul></li>
+<li><p>A <code>varRange</code> represents a variable and a full set of
+index contents.</p>
+<ul>
+<li><p><em>Possible new name: <code>varSubset</code> or
+<code>varIndexedSet</code> or <code>indexedVar</code></em></p></li>
+<li><p>It contains a variable name, one or more
+<code>indexRange</code>s, slot index (or indices) for each
+<code>indexRange</code>, and coding for how each <code>indexRange</code>
+is crossed or combined with others to represent the set of variable
+elements correctly.</p></li>
+<li><p>Ultimately we may want to be able to <a
+href="combining_ranges.html">collapse multiple <code>varRange</code>s to
+a single <code>varRange</code></a> when possible.</p></li>
+<li><p>Derived classes: <code>nodeRange</code></p></li>
+<li><p><em>Not derived classes: <code>calcRange</code></em></p></li>
+<li><p>Use cases:</p>
+<ul>
+<li>In a call like <code>getDependencies(x[1:10, 5:8])</code>, the
+<code>x[1:10, 5:8]</code> is a <code>varRange</code> with two
+<code>indexRanges</code>. It has nothing to do with the content of
+<code>x</code> or graph relationships of <code>x</code>. It is just an
+encoding of the symbols <code>x</code> paired with <code>1:10</code>
+(first slot) and <code>5:8</code> (second slot).</li>
+<li>Return values from many kinds of model-structure queries may be
+<code>varRange</code>s.</li>
+</ul></li>
+</ul></li>
+</ul>
+</div>
+<div
+id="classes-representing-indices-and-variables-with-enhanced-content-or-methods"
+class="section level2">
+<h2>Classes representing indices and variables with enhanced content or
+methods</h2>
+<ul>
+<li><p>A <code>nodeRange</code> represents a <code>varRange</code> that
+is a set of nodes</p>
+<ul>
+<li><p><em>Possible new name: <code>nodeSet</code> or
+<code>varNodeSet</code> or <code>varNodeSubset</code></em></p></li>
+<li><p>It is a derived class of <code>varRange</code> that knows which
+<code>indexRanges</code> are external (<code>i</code> in
+<code>y[i,1:3]</code>) and internal (<code>1:3</code>) in
+<code>y[i,1:3]</code>).</p></li>
+<li><p>Example: Say we have
+<code>for(i in 1:3) {y[i, 1:3] ~ dmnorm(...)}</code>, resulting in three
+vector nodes with <code>y</code>. A <code>nodeRange</code> for
+<code>y[1:2, 1:3]</code> contains a set of nodes and knows that they are
+<code>y[1, 1:3]</code> and <code>y[2, 1:3]</code>. In contrast, a
+<code>varRange</code> for <code>y[1:2, 1:3]</code> represents an
+arbitrary chunk of <code>y</code> that may or may not be nodes. In this
+example, <code>y[1:2, 1:2]</code> could be a <code>varRange</code> but
+not a <code>nodeRange</code> (because it is not a set of complete
+nodes).</p></li>
+<li><p>Use cases:</p>
+<ul>
+<li>Various API calls (e.g., <code>getNodes</code>,
+<code>getDependencies</code>) will work with either
+<code>varRange</code>s or <code>nodeRange</code>s transparently to the
+user.</li>
+<li>Sometimes we will want nodes that belong together such as having
+equivalent topological sorting position. Such “in some sense equivalent”
+nodes will be grouped into a <code>nodeRange</code>.</li>
+</ul></li>
+</ul></li>
+<li><p>A <code>calcRange</code> represents everything needed to do
+calculations (and can actually run those calculations) for a set of
+nodes from the same declaration (and hence in the same variable).</p>
+<ul>
+<li><p><em>Possible new name: <code>nodeCalcSet</code> or
+<code>nodeCalcRange</code></em>.</p></li>
+<li><p>This does not inherit from <code>nodeRange</code> or
+<code>varRange</code>.</p></li>
+<li><p>This contains all the information needed for actual calculations,
+including:</p>
+<ul>
+<li>The <code>declRule</code> that contains the <code>calcFun</code> to
+be called for actual calculations for a single set of
+(<code>for</code>-loop) index values
+(e.g. <code>i = 2, j = 4</code>).</li>
+<li>Index values from the original declaration context, i.e. the for
+loop indices.<br />
+</li>
+<li>e.g., a declaration of <code>y[i+1] ~ dnorm(x[i], 1)</code> with
+<code>i=1:5</code> has <code>calcRange</code> indexing of
+<code>1:5</code> since nodeFunctions use <code>i</code> directly.</li>
+<li>The <code>sortID</code> (topological sort index)</li>
+<li>A generic method <code>calculate</code> that loops over ranges of
+original indices and calls <code>declRule$calcFun</code> for each set of
+scalar index values.</li>
+<li><em>Possible revision: Rearrange where this <code>calculate</code>
+lives and whether it is a method of <code>calcRange</code> or a function
+that uses a <code>calcRange</code>.</em></li>
+<li>In practice, <code>calcRange</code>s will be grouped not only by
+being from the same declaration (a requirement) but also by having the
+same topological sort position (not necessary for the calculation code
+to work, but necessary to organize calculations in sorted order).</li>
+</ul></li>
+</ul></li>
+</ul>
+</div>
+<div id="classes-representing-mappings-from-indexrange-to-indexrange."
+class="section level2">
+<h2>Classes representing mappings from <code>indexRange</code> to
+<code>indexRange</code>.</h2>
+<ul>
+<li><p>An <code>indexRule</code> maps one <code>indexRange</code> to
+another.</p>
+<ul>
+<li><p><em>Possible new name: <code>indexMap</code> or
+<code>indexSetMap</code> etc.</em></p></li>
+<li><p>Example: Say we have
+<code>for(i in 1:5) y[i+1] &lt;- 2*x[i]</code>. An
+<code>indexRule</code> would determine indices of the LHS
+(<code>y</code>) from indices of the RHS (<code>x</code>). For input
+<code>2:4</code> we would get output <code>3:5</code>.</p></li>
+<li><p>By reversing the order of a declaration, we can create both
+parent and child rules.</p></li>
+<li><p>Inputs and outputs are <code>indexRange</code>s.</p></li>
+<li><p>Kinds of <code>indexRule</code>s are implemented as derived
+classes. Cases include:</p>
+<ul>
+<li>‘all’: Consider
+<code>for(i in 1:5) for(j in 1:3) y[i, j] &lt;- mu[j]</code>. Then
+<code>mu[j]</code> is used for all of <code>y[1:5, j]</code> (for each
+<code>j</code>). Then the input <code>indexRange</code> with empty
+<code>i</code> returns the output <code>indexRange</code> with
+<code>i=1:5</code>, i.e. <em>all</em> of the <code>i</code> range.</li>
+<li><code>arbitrary</code></li>
+<li><code>block</code>,</li>
+<li><code>constant</code></li>
+</ul></li>
+<li><p>Inputs that are out of range do not produce output</p></li>
+<li><p>Includes checks for going out of range</p></li>
+<li><p>Various possibilities for either input or output include no
+indexing, constant scalar, constant vector, arbitrary, and
+block.</p></li>
+<li><p>Sometimes multiple index dimensions need to be solved
+jointly.</p></li>
+</ul></li>
+</ul>
+</div>
+<div id="classes-to-determine-nodes-from-varranges."
+class="section level2">
+<h2>Classes to determine nodes from <code>varRange</code>s.</h2>
+<ul>
+<li><p>A <code>nodeRule</code> is used to determine what nodes are
+contained within a <code>varRange</code></p>
+<ul>
+<li><p><em>Possible new name: <code>nodeMap</code>,
+<code>nodeFinder</code>, <code>varNodeMap</code></em></p></li>
+<li><p>Input is a <code>varRange</code>. Output is a
+<code>nodeRange</code>.</p></li>
+<li><p>Here “node” means a contiguous regular block of a variable on the
+LHS of a model declaration.</p></li>
+<li><p>Derived classes of <code>nodeRuleClass</code> include:
+<code>declRuleClass</code>, <code>calcRuleClass</code>, and
+<code>rhsRuleClass</code></p></li>
+<li><p>Somewhat analogous to <code>model$expandNodeNames</code> in
+current nimble.</p></li>
+<li><p>Implementation details:</p>
+<ul>
+<li>Has external and internal rules for handling <code>i</code> and
+<code>1:3</code> in <code>y[i,1:3]</code>, respectively.</li>
+<li>Implemented as a special case of <code>graphRules</code> (without
+the notion of two sides).</li>
+<li>Indexing is over nodes (see comments in <code>nodeRange</code>)</li>
+</ul></li>
+</ul></li>
+<li><p>A <code>rhsRule</code> is used to determine what RHS nodes are
+contained within a <code>varRange</code>.</p>
+<ul>
+<li><p><em>Possible new name: <code>rhsMap</code>,
+<code>rhsNodeMap</code>, etc.</em></p></li>
+<li><p>Input is a <code>varRange</code>. Output is a
+<code>nodeRange</code>.</p></li>
+<li><p>Comment from Chris: It is not currently clear when we need to use
+a <code>rhsRule</code>.</p></li>
+<li><p>Original explanation: “Produced from ‘original’
+<code>rhsRule</code>s generated from all RHS terms in a declaration and
+subsequent modification (via <code>exclude()</code>) of those rules
+based on all or portions of the RHS appearing in a different LHS rule (a
+<code>calcRule</code>).”</p></li>
+<li><p>Perry thinks (guesses) this means something roughly like the
+following:</p>
+<ul>
+<li>Say we have <code>for(i in 1:3) y[i] &lt;- sum(x[i, 1:10])</code>.
+The rhs nodes created are <code>x[1, 1:10]</code>,
+<code>x[2, 1:10]</code> and <code>x[3, 1:10]</code>.</li>
+<li>From input <code>x[2:3, 5]</code>, the <code>rhsRule</code> would
+return the <code>nodeRange</code> <code>x[2:3, 1:10]</code>, which knows
+that <code>2:3</code> are the node indices and <code>1:10</code> are
+internal to each node.</li>
+<li>Now say we have also
+<code>for(i in 2:3) z[i] &lt;- sum(x[i, 1:5])</code>. Now the rhs nodes
+might be <code>x[1, 1:10], x[2, 1:5]</code>, <code>x[2, 6:10]</code>,
+<code>x[3, 1:5]</code>, <code>x[3, 6:10]</code>. But this kind of
+“fracture” situation in current nimble was particularly complicated and
+it would be helpful to have more explanation of how it is handled in the
+new nimbleModel.</li>
+</ul></li>
+</ul></li>
+<li><p>A <code>graphRule</code> is used to determine what nodes are
+children or parents of other nodes.</p>
+<ul>
+<li><p><em>Possible new name: <code>graphMap</code>,
+<code>edgeMap</code> etc.</em></p></li>
+<li><p>“Downstream” means “children” or “dependencies”. “Upstream” means
+“parents”.</p></li>
+<li><p>For the “downstream” direction, a <code>graphRule</code>
+represents a set of edges from one (RHS) set of nodes of one variable to
+the LHS nodes of another variable in one declaration. For the “upstream”
+direction, the roles of RHS and LHS are reversed.</p></li>
+<li><p>Inputs and outputs are <code>varRanges</code>.</p></li>
+<li><p>Example: Say we have
+<code>for(i in 1:5) for(j in 1:3) y[i+1, j] ~ dnorm(mu[k[i]], sigma[i, j])</code>.
+There would be one <code>graphRule</code> from the
+<code>mu[k[1:5]]</code> nodes and one from the <code>sigma[i, j]</code>
+nodes. From input <code>varRange</code> such as <code>mu[2:4]</code>
+(1st <code>graphRule</code>) or <code>sigma[2:4, 2:3]</code> (2nd
+<code>graphRule</code>), we would get output <code>varRanges</code> of
+<code>y</code>.</p></li>
+<li><p>Dynamic indexing is handled similarly to as in current nimble –
+all possible dependencies are included in the rule.</p></li>
+<li><p>Implementation details:</p>
+<ul>
+<li>This uses a set of <code>indexRule</code>s to determine all output
+indices from all input indices.</li>
+<li>A <code>graphRule</code> also can contain
+<code>indexConstraint</code>s that don’t map to an output index but need
+to be enforced, such as y[i] &lt;- x[2]. (More explanation needed,
+possibly by example. I think this is how irrelevant parts of an input
+are correctly ignored.)</li>
+</ul></li>
+</ul></li>
+<li><p>A <code>dataRule</code> TBD</p></li>
+</ul>
+</div>
+<div id="classes-for-collections-of-rules-for-one-variable"
+class="section level2">
+<h2>Classes for collections of “rules” for one variable</h2>
+<ul>
+<li><p>A <code>varRules</code> object manages a set of rules of the same
+kind for a single variable.</p>
+<ul>
+<li><p><em>Possible new name: <code>varRuleSet</code>,
+<code>varMapSet</code>, <code>varRuleManager</code></em></p></li>
+<li><p>Example: Say there are multiple model declarations with elements
+of <code>y</code> on the LHS. From each declaration, there is a
+<code>nodeRule</code> to determine a <code>nodeRange</code> of
+<code>y</code> from a <code>varRange</code> of <code>y</code>. The
+<code>varRules</code> contains the <code>nodeRule</code> from each
+declaration with <code>y</code> on the LHS. It is used to determine
+<em>all</em> the nodes (represented as <code>nodeRanges</code>) of
+<code>y</code> from <em>all</em> declarations.</p></li>
+<li><p>A <code>varRules</code> is generic because there are different
+cases where multiple sets of rules for one variable must be managed and
+applied. For any <code>varRules</code>, the <code>rules</code> are all
+of the same type. The set of rules in a <code>varRules</code> can be of
+type:</p>
+<ul>
+<li><code>graphRule</code></li>
+<li><code>nodeRule</code></li>
+<li>Any derived <code>nodeRule</code>.</li>
+</ul></li>
+</ul></li>
+</ul>
+</div>
+<div id="classes-for-achieving-calculations" class="section level2">
+<h2>Classes for achieving calculations</h2>
+<ul>
+<li><p>A <code>calcRule</code> is used to determine
+<code>calcRange</code>(s?) from a <code>varRange</code>.</p>
+<ul>
+<li><p><em>Possible new name: not sure, but something</em></p></li>
+<li><p>Input is a <code>varRange</code>. Output is one or more
+<code>calcRange</code>s. (Chris’ notes indicate one
+<code>calcRange</code>, but couldn’t it be multiple?).</p></li>
+<li><p>Normally, a <code>calcRange</code> will contain
+topologically-tied calculations. I think a <code>calcRule</code> might
+return multiple <code>calcRange</code>s so that calculations can be done
+in topologically valid order.</p></li>
+<li><p>Example: Say <code>y[1]</code>…<code>y[3]</code> are created by
+one declaration, and <code>y[4]</code>…<code>y[6]</code> are created by
+another. (Alternative, they are created by the same declaration but the
+latter are used differently in the model, resulting in different
+topological order than the former.) The <code>calcRule</code> could take
+the <code>varRange</code> <code>y[2:5]</code> as input and return
+<code>calcRange</code>s for <code>y[2:3]</code> and
+<code>y[4:5]</code>.</p></li>
+<li><p>Implementation details (copied from Chris)</p>
+<ul>
+<li>Inherits from the <code>nodeRule</code> base class.</li>
+<li>A <code>calcRule</code> generally represents subsets of nodes
+containing elements of all the same type (e.g., <code>top</code>,
+<code>end</code>). (Is this simply a consequence of having the same sort
+order, per next item? -Perry)</li>
+<li>An individual <code>calcRule</code> is produced from the elements in
+a declaration that are tied in terms of their sort order and (are all of
+the same type).</li>
+</ul></li>
+<li><p>More implementation details (copied from Chris. These ones are
+hard for me to follow. Could some of this be moved to a more narrative
+explanation of how model code is processed?)</p>
+<ul>
+<li>Includes parent/child links. (Perry does not know precisely what
+this means.)</li>
+<li>Produced from original <code>calcRule</code> generated by each
+<code>declRule</code> and subsequent fracturing of those rules (using
+<code>makeCalcRules</code>, which calls <code>fracture()</code>) based
+on all graph edges. (Noting that
+<code>theta[i] ~ dnorm(theta0[i], 1)</code> are not necessarily all
+latent or all top nodes, as it depends on how <code>theta0[i]</code> are
+declared; this involve splitting an ‘original’ <code>calcRule</code>
+when graph processing is done.)</li>
+<li>everything on LHS starts out as both <code>top</code> and
+<code>end</code></li>
+<li><code>top</code> found recursively determining which
+<code>calcRule</code>s have stochastic parents using
+<code>setStochParent</code>.</li>
+<li><code>end</code> found by recursively determining which
+<code>calcRule</code>s have stochastic dependents using
+<code>setStochDep</code>.</li>
+<li><code>latent</code> found by what is not top or end</li>
+<li><code>sortID</code> (topological sorting) determined by recursion
+based on walking the final set of <code>calcRules</code> (which have
+parent/child information) bottom-up (so that all data nodes are set to
+be tied, given data nodes generally more numerous than parameter
+nodes).</li>
+<li><code>sortID</code> can be a vector in state-space type cases.</li>
+</ul></li>
+</ul></li>
+<li><p>An <code>originalIndexingRule</code> determines the
+<em>original</em> <code>for</code> loops indices needed for a
+calculation.</p>
+<ul>
+<li><em>Possible new name: <code>originalIndexMap</code> or
+<code>sourceIndexRule</code> etc</em></li>
+<li>Input and output are <code>varRange</code>s. For the output, the
+variable name is not used and the <code>indexRanges</code> are for the
+original <code>for</code> loop index variables.</li>
+<li>This is handled by the <code>indexRule</code> functionality by
+making dummy declarations such as <code>w[i,j] &lt;- y[i+j]</code> if
+the focal declaration is, say,
+<code>y[i+j] &lt;- x[i] + x[j]</code>.</li>
+<li>Use case: Say we have
+<code>for(i in 1:3) y[i+1] &lt;- foo(x[i])</code>. In order to calculate
+<code>y[3]</code>, we need to determine that the corresponding
+<code>i</code> is 2. An <code>originalIndexingRule</code> does
+this.</li>
+</ul></li>
+<li><p>A <code>declRule</code> is used for actual calculations.</p>
+<ul>
+<li><em>Possible new name (this doesn’t seem like a “rule” at all?):
+<code>declCalc</code></em></li>
+<li>Contains the nodeFunction, <code>calcFun</code>. This contains the
+actual mathematical computation (e.g. <code>dnorm</code>) of a model
+declaration.</li>
+<li>Input to <code>calcFun</code> is a vector of scalar-valued index
+arguments (e.g., <code>calcFun(idx_vector)</code>) for the values of
+<code>for</code>-loop indices from the original model code.</li>
+<li>For a given <code>calcRange</code>, the <code>calcFun</code> will be
+called once for each <code>idx_vector</code>. Iteration to use all
+needed values of <code>idx_vector</code> is done by the
+<code>calculate</code> of the <code>calcRange</code>.</li>
+<li>It is necessary to determine the <code>original</code>
+(<code>for</code>-loop) index values to set up <code>idx_vector</code>
+correctly. The <code>declRule</code> contains an
+<code>originalIndexingRule</code> to do this. This may be used by the
+<code>calcRange</code>.</li>
+</ul></li>
+</ul>
+</div>
+<div id="final-model-definition" class="section level2">
+<h2>Final model definition</h2>
+<ul>
+<li>A <code>modelDefClass</code> objects represent the model definition,
+with all of the content above organized for use. The core fields are the
+downstream and upstream <code>graphRule</code>s (collected into
+<code>varRules</code> objects) and the various
+<code>nodeRules</code>.</li>
+</ul>
+</div>
+<div id="transient-classes-for-processing-model-code"
+class="section level2">
+<h2>Transient classes for processing model code</h2>
+<ul>
+<li><p>A <code>modelDeclClass</code> object represents information in a
+single declaration.</p>
+<ul>
+<li>This class has some of the same features as our previous
+<code>BUGSdeclClass</code>.</li>
+<li>While it is used when a <code>modelDef</code> is created, it is not
+generally used subsequently.</li>
+<li>A key component is a <code>declRule</code>, which contains
+<code>upstreamRules</code> and <code>downstreamRules</code>.</li>
+<li>These rules are aggregated into <code>varRules</code> within the
+<code>modelDef</code> and then are no longer needed in the
+<code>modelDeclClass</code>.</li>
+</ul></li>
+</ul>
+</div>
+<div id="out-of-place" class="section level2">
+<h2>out of place</h2>
+<ul>
+<li>What is an <code>indexConstraint</code>? (It seems simple but would
+be nice to place explicitly in the organization.)</li>
+</ul>
+</div>
+<div id="integrated-examples" class="section level1">
+<h1>Integrated examples</h1>
+<pre><code>for(i in 1:2)
+  y[i+1] ~ dnorm(mu[1], 1)
+for(i in 3:4)
+  y[i+1] ~ dnorm(mu[2], 1)</code></pre>
+<p>What happens for <code>getDependencies(mu[1:2])</code>?</p>
+<ol style="list-style-type: decimal">
+<li><p><code>mu[1:2]</code> is a <code>varRange</code> with one
+(sequential) <code>indexRange</code> for <code>1:2</code>.</p></li>
+<li><p>There is a <code>varRules</code> with all the
+<code>graphRule</code>s for <code>mu</code>.</p>
+<ul>
+<li>It contains two <code>graphRule</code>s, one from each declaration.
+They happen to not overlap.</li>
+<li>Each <code>graphRule</code> contains an <code>indexRule</code>.</li>
+</ul></li>
+<li><p>The result of applying both <code>graphRule</code>s is a
+nodeRange with <code>y[2:3]</code> and <code>y[4:5]</code> <strong>(I am
+confused about whether this is one nodeRange containing two nested
+nodeRanges, or a list of nodeRanges, or if they are consolidated into
+y[2:5])</strong></p></li>
+</ol>
+<p>Then if we want to calculate the result, what happens?</p>
+<ol style="list-style-type: decimal">
+<li><p>The input is the <code>nodeRange</code>(s) <code>y[2:3]</code>
+and <code>y[4:5]</code></p></li>
+<li><p>There is a <code>varRules</code> with all the
+<code>calcRule</code>s for <code>y</code>.</p></li>
+<li><p>Applying this <code>varRules</code> returns two
+<code>calcRange</code>s, one for <code>y[2:3]</code> and one for
+<code>y[4:5]</code>.</p>
+<ul>
+<li>Each <code>calcRange</code> has a <code>declRule</code>, which it
+uses to convert indices to original (for loop) indices and call a
+<code>calcFun</code>.</li>
+</ul></li>
+<li><p>In order by <code>sortID</code>, each <code>calcRange</code> uses
+its <code>calculate</code> to iterate over “2:3” or “4:5”, use the
+<code>originalIndexRule</code> in the <code>declRule</code> to determine
+the original <code>i</code> as <code>1:2</code> and <code>3:4</code>,
+and call the <code>calcFun</code> for each original index
+value.</p></li>
+</ol>
+</div>
+
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+
+<script>
+$(document).ready(function ()  {
+
+    // temporarily add toc-ignore selector to headers for the consistency with Pandoc
+    $('.unlisted.unnumbered').addClass('toc-ignore')
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_');
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = false;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
