@@ -36,6 +36,7 @@ nodeRuleClass <- R6Class(
         numExternalIndexRules = 0,
         numInternalIndexRules = 0,
         indexSlotToSet = NULL,
+        fullRange = NULL,
 
         initialize = function(expr, ID, context = modelContextClass$new(), constants = list(), isRHS = FALSE) {
             varName <<- getVarName(expr)
@@ -48,6 +49,7 @@ nodeRuleClass <- R6Class(
             ## We'll use graphRules, though only have a single side of declaration.
             fullRule <<- graphRuleClass$new(expr, expr, context, constants, checkVars = !isRHS)
             indexSlotToSet <<- fullRule$indexSets$toIndexSlotToSet
+            fullRange <<- fullRule$apply(varName)
 
             if(length(fullRule$indexRules)) {  # if any indexing
                 isConstant <- sapply(fullRule$indexRules, function(x) inherits(x, "indexRuleConstantClass"))
@@ -105,10 +107,6 @@ nodeRuleClass <- R6Class(
                 nodeRangeClass$new(varName, externalRange, internalRange,
                                    indexSlotToSet, self)
             )
-        },
-
-        getFullRange = function() {
-            return(fullRule$apply(varName))
         }
     )
 )
@@ -219,7 +217,7 @@ calcRuleClass <- R6Class(
             super$initialize(expr, ID, context = context, constants = constants)
 
             ## Full range, for use with calculate applied to full variable.
-            canonicalRange <<- declRule$getFullRange()
+            canonicalRange <<- declRule$fullRange
             declRule <<- declRule
         },
         

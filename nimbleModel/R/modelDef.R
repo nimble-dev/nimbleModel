@@ -640,7 +640,7 @@ modelDefClass <- R6Class(
                 anyStoch <- varInfo[[lhsVar]]$anyStoch
                 if(anyStoch) lhsLogProbVar <- makeLogProbName(lhsVar)
                 if(varInfo[[lhsVar]]$nDim > 0) {
-                    newMinMax <- decl$declRule$getFullRange()$getMinMax()
+                    newMinMax <- decl$declRule$fullRange$getMinMax()
                     varInfo[[lhsVar]]$mins <<- pmin(varInfo[[lhsVar]]$mins, newMinMax[ , 1])
                     varInfo[[lhsVar]]$maxs <<- pmax(varInfo[[lhsVar]]$maxs, newMinMax[ , 2])
                     if(anyStoch) {
@@ -670,7 +670,7 @@ modelDefClass <- R6Class(
                             next
                         }
                         ## Otherwise extend the range of known mins and maxs.
-                        newMinMax <- rhsRule$getFullRange()$getMinMax()
+                        newMinMax <- rhsRule$fullRange$getMinMax()
                         varInfo[[rhsVar]]$mins <<- pmin(varInfo[[rhsVar]]$mins, newMinMax[ , 1])
                         varInfo[[rhsVar]]$maxs <<- pmax(varInfo[[rhsVar]]$maxs, newMinMax[ , 2])
                     }
@@ -852,7 +852,7 @@ modelDefClass <- R6Class(
                     ind <- sapply(rhsOnlyRules[[i]]$rules, function(rule) rule$usedInIndex)
                     if(sum(ind) && !rhsOnlyRules[[i]]$varName %in% names(declRules)) {
                         varRangeChars <- sapply(rhsOnlyRules[[i]]$rules[ind], function(rule)
-                            rule$getFullRange()$toChar())
+                            rule$fullRange$toChar())
                         messageIfVerbose("  [Note] Detected use of non-constant indices: `", paste0(varRangeChars, collapse = "`, `"),
                                          "`.\n         For computational efficiency we recommend specifying these in `constants`.")
                     }

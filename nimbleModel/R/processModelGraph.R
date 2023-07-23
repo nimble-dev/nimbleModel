@@ -74,7 +74,7 @@ makeCalcRules <- function(calcRules, rhsOriginalRules, graphRules, recurseFractu
 
     ## Use `while` rather than `for` to match needed `while` in loop over calcRules in Step 2.
     while(pos <= length(rhsOriginalRules)) {   
-        rhsRange <- rhsOriginalRules[[pos]]$getFullRange()
+        rhsRange <- rhsOriginalRules[[pos]]$fullRange
         if(!rhsRange$isNone()) {
             ## Try to fracture all rules by looping over rules.
             for(i in seq_along(calcRules)) {
@@ -114,7 +114,7 @@ makeCalcRules <- function(calcRules, rhsOriginalRules, graphRules, recurseFractu
         if(!fracturedRules[pos]) {
             varName <- calcRules[[pos]]$varName
             deps <- getChildren(
-                calcRules[[pos]]$getFullRange(),
+                calcRules[[pos]]$fullRange,
                 graphRules[[varName]]$rules)
             ## FUTURE: don't try to fracture singletons (how could I detect this?).
             ## FUTURE: precompute the relevant rules to loop over to avoid if() checking.
@@ -168,7 +168,7 @@ setRelationships <- function(calcRules, graphRules, startPos = 1) {
     for(pos in setToCheck) {
         varName <- calcRules[[pos]]$varName
         deps <- getChildren(
-            calcRules[[pos]]$getFullRange(),
+            calcRules[[pos]]$fullRange,
             graphRules[[varName]]$rules)
         for(d in seq_along(deps)) {
             for(i in seq_along(calcRules))
@@ -242,7 +242,7 @@ traverseGraph <- function(streamRules, declRules,
     selfRangeFromVars <- flatten(lapply(nodes[vars],
                                         function(varName)
                                             lapply(declRules[[varName]]$rules,
-                                                   function(declRule) declRule$getFullRange())))
+                                                   function(declRule) declRule$fullRange)))
     
     charRanges <- is.character(nodes) & !vars
     selfRangeFromCharRanges <- flatten(lapply(nodes[charRanges],
@@ -273,7 +273,7 @@ traverseGraph <- function(streamRules, declRules,
                 for(idx in wh) 
                     newResults <- c(newResults,
                                     lapply(exclude(results[[idx]], selfRanges[[i]]),
-                                           function(rule) rule$getFullRange()))
+                                           function(rule) rule$fullRange))
                 results <- c(results[-wh], newResults)
             }
         }

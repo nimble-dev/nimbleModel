@@ -113,11 +113,11 @@ exclude <- function(rhsRule, excludingRule, constants = list()) {
     ## Can also take varRanges for use in `traverseGraph`.
     if(inherits(excludingRule, 'varRangeClass')) {
         excludingRange <- excludingRule
-    } else excludingRange <- excludingRule$getFullRange()
+    } else excludingRange <- excludingRule$fullRange
     if(inherits(rhsRule, 'varRangeClass')) {
         rhsRange <- rhsRule
         rhsRule <- rhsRule$toRule()
-    } else rhsRange <- rhsRule$getFullRange()
+    } else rhsRange <- rhsRule$fullRange
     intersection <- rhsRule$apply(excludingRange)
 
     if(is.null(intersection)) # no overlap
