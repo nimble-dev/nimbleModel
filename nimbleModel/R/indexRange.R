@@ -129,6 +129,10 @@ indexRangeClass <- R6Class(
             stop("toSequence: not valid for '", class(self)[1], "' objects.")
         },
 
+        getValuesAsMatrix = function() {
+            stop("getValuesAsMatrix: not valid for '", class(self)[1], "' objects.")
+        },
+            
         toMatrix = function() {
             stop("toMatrix: not valid for '", class(self)[1], "' objects.")
         },
@@ -179,9 +183,13 @@ indexRangeScalarClass <- R6Class(
         getItem = function(item) {
             return(value)
         },
+
+        getValuesAsMatrix = function() {
+            return(matrix(value))
+        },
         
         toMatrix = function() {
-            return(indexRangeMatrixClass$new(matrix(value), sort = FALSE))
+            return(indexRangeMatrixClass$new(getValuesAsMatrix(), sort = FALSE))
         },
 
         getMinMax = function() {
@@ -223,8 +231,12 @@ indexRangeSequenceClass <- R6Class(
             return(self)
         },
 
+        getValuesAsMatrix = function() {
+            return(matrix(as.numeric(seq.int(start, end))))
+        },
+
         toMatrix = function() {
-            return(indexRangeMatrixClass$new(matrix(as.numeric(seq.int(start, end))), sort = FALSE))
+            return(indexRangeMatrixClass$new(getValuesAsMatrix(), sort = FALSE))
         },
 
         toMatrixList = function() {
@@ -269,14 +281,14 @@ indexRangeMatrixClass <- R6Class(
 
         getColumns = function(indices = NULL) {
             if(is.null(indices)) {
-                return(.self)
+                return(self)
             } else
                 return(indexRangeMatrixClass$new(values[ , indices, drop = FALSE], sort = FALSE))
         },
 
         getRows = function(indices = NULL) {
             if(is.null(indices)) {
-                return(.self)
+                return(self)
             } else
                 return(indexRangeMatrixClass$new(values[indices, , drop = FALSE], sort = FALSE))
         },
@@ -290,6 +302,10 @@ indexRangeMatrixClass <- R6Class(
                 values <<- unique(values)
                 numElements <<- as.numeric(nrow(self$values))
             }
+        },
+
+        getValuesAsMatrix = function() {
+            return(values)
         },
 
         toMatrix = function() {
@@ -348,7 +364,7 @@ indexRangeMatrixListClass <- R6Class(
         ## Naming is a bit tricky - 'row's are really `rangeList` elements
         getRows = function(indices = NULL) {
             if(is.null(indices)) {
-                return(.self)
+                return(self)
             } else
                 return(indexRangeMatrixListClass$new(rangeList[indices]))
         }
@@ -360,10 +376,10 @@ indexRangeMatrixListClass <- R6Class(
 ## Take a list of `indexRange`s and cross (expand) to give fully-expanded
 ## `indexRangeMatrix`. E.g. c(3,5) with 1:3 to give (3,1),(5,1),(3,2),(5,2),(3,3),(5,3).
 crossIndexRanges <- function(indexRangesList, order) {
-    matrixResult <- matrixExpandGrid(lapply(indexRangesList, function(x) x$toMatrix()$values))
+    matrixResult <- matrixExpandGrid(lapply(indexRangesList, function(x) x$getValuesAsMatrix()))
     if(!missing(order))
         matrixResult <- matrixResult[ , order, drop = FALSE]
-    return(newIndexRange(matrixResult))
+    return(indexRangeMatrixClass$new(matrixResult))
 }
 
 

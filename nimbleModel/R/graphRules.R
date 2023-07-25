@@ -434,14 +434,16 @@ applyGraphRule <- function(fromVarRange, rule, varName = NULL, removeDuplicates 
     ## Check index constraints (i.e., valid `fromExpr`).
     ## Returns a list with one element for each input indexRange giving validity with respect to constraints,
     ## either a scalar when the range does not (also) involve unconstrained columns or the valid rows when it does.
-    fromConstraints <- checkIndexConstraints(fromVarRange, rule$indexConstraints)
+    if(length(rule$indexConstraints)) {
+        fromConstraints <- checkIndexConstraints(fromVarRange, rule$indexConstraints)
 
-    ## No result if any constraint not satisfied for any input rows.
-    invalid <- sapply(fromConstraints, function(constraint)
-        !is.null(constraint) && !any(constraint))
-    if(any(invalid)) 
-        return(NULL)
-
+        ## No result if any constraint not satisfied for any input rows.
+        invalid <- sapply(fromConstraints, function(constraint)
+            !is.null(constraint) && !any(constraint))
+        if(any(invalid)) 
+            return(NULL)
+    }
+    
     if(!length(indexRules))
         return(
             varRangeClass$new(ifelse(is.null(varName), rule$toVarName, varName),
@@ -496,7 +498,7 @@ applyGraphRule <- function(fromVarRange, rule, varName = NULL, removeDuplicates 
             ## This needs to be done before conversion to `indexRangeMatrixClass` because
             ## booleans of constraint are 1:1 mapped to elements of `rangeList`, where an
             ## element of a `rangeList` can have arbitrarily many sets of indices.
-            if(length(fromConstraints[[iRange]]) > 1) {  # scalar constraint already checked where `invalid` created/used
+            if(length(rule$indexConstraints) && length(fromConstraints[[iRange]]) > 1) {  # scalar constraint already checked where `invalid` created/used
                 for(set in sets) {
                     if(!inherits(ansIndexRanges[[set]], 'indexRangeMatrixListClass'))
                         stop("expecting `fromConstraints` to only be relevant for a `matrixList` `indexRange`.")
@@ -546,12 +548,13 @@ applyGraphRule <- function(fromVarRange, rule, varName = NULL, removeDuplicates 
     ## and couldn't be properly collapsed above (i.e., if we removed the NAs earlier).
     for(iRange in seq_along(finalIndexRanges)) 
         if(inherits(finalIndexRanges[[iRange]], 'indexRangeMatrixClass')) {
-            NArows <- apply(finalIndexRanges[[iRange]]$values, 1,
-                            function(x) any(is.na(x)))
-            if(all(NArows)) 
-                return(NULL)
-            if(any(NArows))
-                finalIndexRanges[[iRange]] <- finalIndexRanges[[iRange]]$getRows(!NArows)
+            NArows <- which(is.na(rowSums(finalIndexRanges[[iRange]]$values)))
+            num <- length(NArows)
+            if(num) {
+                if(num == finalIndexRanges[[iRange]]$numElements)
+                    return(NULL)
+                finalIndexRanges[[iRange]] <- finalIndexRanges[[iRange]]$getRows(-NArows)
+            }
         }
 
     ## Step 3: Add additional results for "all" and "constant" cases.

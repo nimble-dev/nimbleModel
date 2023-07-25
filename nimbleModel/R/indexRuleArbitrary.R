@@ -21,7 +21,7 @@ indexRuleArbitraryClass <- R6Class(
         apply = function(indexRange, collapse = TRUE) {
             if(!inherits(indexRange, 'indexRangeClass'))
                 stop("an index rule must be applied to an `indexRange`.")
-            indexRuleArbitrary_applyMatrix(indexRange$toMatrix(), setupResults, collapse = collapse)
+            indexRuleArbitrary_applyMatrix(indexRange$getValuesAsMatrix(), setupResults, collapse = collapse)
         },
  
         getMax = function() {
@@ -248,12 +248,12 @@ make2IndicesFunctions <- function(info) {
                 flatIndex2rawIndex = invertSingle))
 }
 
-indexRuleArbitrary_applyMatrix <- function(indexRange,
+indexRuleArbitrary_applyMatrix <- function(indexRangeMatrixValues,
                                            setupResults,
                                            collapse = TRUE) {
 
     ## fromFlat is the flat index of each row of "from" indices.
-    fromFlat <- setupResults$from2indicesFunctions$rawIndex2flatIndex_multi(indexRange$values)
+    fromFlat <- setupResults$from2indicesFunctions$rawIndex2flatIndex_multi(indexRangeMatrixValues)
     ## Deal with invalid from indices - need information retained for later collapsing with other columns.
     invalid <- sapply(fromFlat, function(x) length(x) == 0)
     if(length(invalid))
