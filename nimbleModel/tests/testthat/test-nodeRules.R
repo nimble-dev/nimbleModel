@@ -317,7 +317,7 @@ test_that("rhsRule creation when RHS missing an index and relevant singleContext
     expect_identical(RHSrule$numExternalIndexRules, 1L)
     expect_identical(RHSrule$numInternalIndexRules, 0L)
     expect_true(is(RHSrule$externalRule$indexRules[[1]], 'indexRuleArbitraryClass'))
-    expect_identical(RHSrule$getFullRange()$indexRanges[[1]]$values,
+    expect_identical(RHSrule$fullRange$indexRanges[[1]]$values,
                      matrix(c(2,3,4,9)))  # only the idx values within j=3:7
 
     singleContext1 <-
@@ -331,7 +331,7 @@ test_that("rhsRule creation when RHS missing an index and relevant singleContext
     expect_identical(RHSrule$numExternalIndexRules, 1L)
     expect_identical(RHSrule$numInternalIndexRules, 0L)
     expect_true(is(RHSrule$externalRule$indexRules[[1]], 'indexRuleArbitraryClass'))
-    expect_identical(RHSrule$getFullRange()$indexRanges[[1]]$values,
+    expect_identical(RHSrule$fullRange$indexRanges[[1]]$values,
                      matrix(c(3,4,7)))
         
 })
@@ -1508,44 +1508,44 @@ test_that("getFullRange works correctly", {
 
     LHS <- quote(mu)
     LHSrule <- nodeRuleClass$new(LHS, 1, context_0)
-    expect_equal(LHSrule$getFullRange(),
+    expect_equal(LHSrule$fullRange,
                      varRangeClass$new(list(), varName = 'mu'))
 
     LHS <- quote(mu[i])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
-    expect_equal(LHSrule$getFullRange(),
+    expect_equal(LHSrule$fullRange,
                      varRangeClass$new(list(newIndexRange(quote(2:8))), varName = 'mu'))
     
     
     LHS <- quote(mu[5, 1:3])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_0)
-    expect_equal(LHSrule$getFullRange(),
+    expect_equal(LHSrule$fullRange,
                      varRangeClass$new(list(newIndexRange(5), newIndexRange(quote(1:3))), varName = 'mu'))
 
     LHS <- quote(mu[4:5, 1:3])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_0)
-    expect_equal(LHSrule$getFullRange(),
+    expect_equal(LHSrule$fullRange,
                      varRangeClass$new(list(newIndexRange(quote(4:5)), newIndexRange(quote(1:3))), varName = 'mu'))
     
     LHS <- quote(mu[4:5, i, 1:3])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
-    expect_equal(LHSrule$getFullRange(),
+    expect_equal(LHSrule$fullRange,
                  varRangeClass$new(list(newIndexRange(quote(4:5)), newIndexRange(quote(2:8)), newIndexRange(quote(1:3))), varName = 'mu'))
     
     expr <- quote(mu[4:5, j, i, 3])
     LHSrule <- nodeRuleClass$new(expr, 1, context_ij)
-    expect_equal(LHSrule$getFullRange(),
+    expect_equal(LHSrule$fullRange,
                  varRangeClass$new(list(newIndexRange(quote(4:5)), newIndexRange(quote(1:4)),
                                         newIndexRange(quote(2:8)), newIndexRange(quote(3))), varName = 'mu'))
     
     LHS <- quote(mu[4:5, i, i, 3])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
-    expect_equal(LHSrule$getFullRange(),
+    expect_equal(LHSrule$fullRange,
                  varRangeClass$new(list(newIndexRange(quote(4:5)), newIndexRange(matrix(rep(2:8, 2), ncol = 2)), newIndexRange(3)), varName = 'mu'))
 
     LHS <- quote(mu[4:5, i, 3, i])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
-    expect_equal(LHSrule$getFullRange(),
+    expect_equal(LHSrule$fullRange,
                  varRangeClass$new(list(newIndexRange(quote(4:5)), newIndexRange(matrix(rep(2:8, 2), ncol = 2)), newIndexRange(3)),
                                    rangeToIndexSlot = list(1, c(2,4), 3),
                                    varName = 'mu'))

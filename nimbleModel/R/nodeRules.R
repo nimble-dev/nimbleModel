@@ -36,7 +36,7 @@ nodeRuleClass <- R6Class(
         numExternalIndexRules = 0,
         numInternalIndexRules = 0,
         indexSlotToSet = NULL,
-        fullRange = NULL,
+        fullRange = list(),
 
         initialize = function(expr, ID, context = modelContextClass$new(), constants = list(), isRHS = FALSE) {
             varName <<- getVarName(expr)

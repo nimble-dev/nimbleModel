@@ -229,7 +229,7 @@ test_that("graph processing with split latent node", {
     
     expect_identical(length(modelDef$rhsOnlyRules), 1L)
     expect_identical(modelDef$rhsOnlyRules[[var]]$rules[[1]]$varName, "z")
-    expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[1]]$getFullRange()$indexRanges[[1]],
+    expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[1]]$fullRange$indexRanges[[1]],
                      newIndexRange(quote(3)))
 
 })
@@ -563,7 +563,7 @@ test_that("graph processing with various types of multivariate nodes", {
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$parents, numeric(0))
 
     expect_identical(length(modelDef$rhsOnlyRules), 3L)
-    expect_equal(modelDef$rhsOnlyRules[[3]]$rules[[1]]$getFullRange()$indexRanges[[1]],
+    expect_equal(modelDef$rhsOnlyRules[[3]]$rules[[1]]$fullRange$indexRanges[[1]],
                      newIndexRange(quote(4)))
 })
 
@@ -607,11 +607,11 @@ test_that("graph processing for complicated multiple mv LHS nodes", {
     var <- "mu"
     expect_identical(length(modelDef$calcRules[[var]]$rules), 3L)
 
-    expect_equal(modelDef$calcRules[[var]]$rules[[1]]$getFullRange()$indexRanges,
+    expect_equal(modelDef$calcRules[[var]]$rules[[1]]$fullRange$indexRanges,
                      list(newIndexRange(1), newIndexRange(quote(1:3))))
-    expect_equal(modelDef$calcRules[[var]]$rules[[2]]$getFullRange()$indexRanges,
+    expect_equal(modelDef$calcRules[[var]]$rules[[2]]$fullRange$indexRanges,
                      list(newIndexRange(2), newIndexRange(quote(1:3))))
-    expect_equal(modelDef$calcRules[[var]]$rules[[3]]$getFullRange()$indexRanges,
+    expect_equal(modelDef$calcRules[[var]]$rules[[3]]$fullRange$indexRanges,
                      list(newIndexRange(3), newIndexRange(quote(1:3))))
 
     expect_identical(modelDef$calcRules[[var]]$rules[[1]]$isOfType('latent'), TRUE)
@@ -698,15 +698,15 @@ test_that("graph processing for basic RHS exclusion and LHS fracturing", {
     expect_identical(length(modelDef$rhsOnlyRules), 2L)
     expect_identical(length(modelDef$rhsOnlyRules[['mu']]$rules), 4L)
     expect_identical(length(modelDef$rhsOnlyRules[['z']]$rules), 1L)
-    expect_equal(modelDef$rhsOnlyRules[['mu']]$rules[[1]]$getFullRange()$indexRanges[[1]],
+    expect_equal(modelDef$rhsOnlyRules[['mu']]$rules[[1]]$fullRange$indexRanges[[1]],
                      newIndexRange(quote(1)))
-    expect_equal(modelDef$rhsOnlyRules[['mu']]$rules[[2]]$getFullRange()$indexRanges[[1]],
+    expect_equal(modelDef$rhsOnlyRules[['mu']]$rules[[2]]$fullRange$indexRanges[[1]],
                      newIndexRange(quote(4:5)))
-    expect_equal(modelDef$rhsOnlyRules[['mu']]$rules[[3]]$getFullRange()$indexRanges[[1]],
+    expect_equal(modelDef$rhsOnlyRules[['mu']]$rules[[3]]$fullRange$indexRanges[[1]],
                      newIndexRange(quote(8)))
-    expect_equal(modelDef$rhsOnlyRules[['mu']]$rules[[4]]$getFullRange()$indexRanges[[1]],
+    expect_equal(modelDef$rhsOnlyRules[['mu']]$rules[[4]]$fullRange$indexRanges[[1]],
                      newIndexRange(quote(10)))
-    expect_equal(modelDef$rhsOnlyRules[['z']]$rules[[1]]$getFullRange()$indexRanges[[1]],
+    expect_equal(modelDef$rhsOnlyRules[['z']]$rules[[1]]$fullRange$indexRanges[[1]],
                      newIndexRange(quote(1:2)))
 
     ## complete overlap
@@ -775,11 +775,11 @@ test_that("graph processing for model with overlapping RHS works", {
     
     var <- 'mu'
     expect_identical(length(modelDef$rhsOnlyRules[[var]]$rules), 3L)
-    expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[1]]$getFullRange()$indexRanges[[1]],
+    expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[1]]$fullRange$indexRanges[[1]],
                      newIndexRange(quote(1:3)))
-    expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[2]]$getFullRange()$indexRanges[[1]],
+    expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[2]]$fullRange$indexRanges[[1]],
                      newIndexRange(quote(6:7)))
-    expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[3]]$getFullRange()$indexRanges[[1]],
+    expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[3]]$fullRange$indexRanges[[1]],
                      newIndexRange(quote(10:12)))
 
     ## Multiple exclusion over a single index
@@ -797,9 +797,9 @@ test_that("graph processing for model with overlapping RHS works", {
     expect_identical(length(modelDef$rhsOnlyRules[['theta']]$rules), 1L)
 
     var <- 'mu'
-    expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[1]]$getFullRange()$indexRanges,
+    expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[1]]$fullRange$indexRanges,
                      list(newIndexRange(quote(1:4)), newIndexRange(matrix(c(1,3)))))
-    expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[2]]$getFullRange()$indexRanges,
+    expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[2]]$fullRange$indexRanges,
                      list(newIndexRange(quote(1:4)), newIndexRange(quote(2))))
 
     code <- quote({
@@ -816,9 +816,9 @@ test_that("graph processing for model with overlapping RHS works", {
     expect_identical(length(modelDef$rhsOnlyRules[['theta']]$rules), 1L)
 
     var <- 'mu'
-    expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[1]]$getFullRange()$indexRanges,
+    expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[1]]$fullRange$indexRanges,
                      list(newIndexRange(quote(1:4)), newIndexRange(matrix(c(1,4)))))
-    expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[2]]$getFullRange()$indexRanges,
+    expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[2]]$fullRange$indexRanges,
                      list(newIndexRange(quote(1:4)), newIndexRange(quote(2))))
 
     ## Multiple exclusion over same indices, checking multiple use of .idx constants
@@ -834,9 +834,9 @@ test_that("graph processing for model with overlapping RHS works", {
 
     var <- 'mu'
     expect_identical(length(modelDef$rhsOnlyRules[[var]]$rules), 2L)
-    expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[1]]$getFullRange()$indexRanges,
+    expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[1]]$fullRange$indexRanges,
                      list(newIndexRange(matrix(c(2,3,3,1,1,2), ncol = 2))))
-    expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[2]]$getFullRange()$indexRanges,
+    expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[2]]$fullRange$indexRanges,
                      list(newIndexRange(matrix(c(3,3), ncol = 2))))
 
     
@@ -854,7 +854,7 @@ test_that("graph processing for model with overlapping RHS works", {
     var <- 'mu'
     expect_identical(length(modelDef$rhsOnlyRules[[var]]$rules), 2L)
 
-    expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[1]]$getFullRange()$indexRanges,
+    expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[1]]$fullRange$indexRanges,
                      list(newIndexRange(matrix(c(1,2,1,2,1,1,1,2,2,3), ncol = 2)), newIndexRange(quote(1:4))))
     expect_is(modelDef$rhsOnlyRules[[var]]$rules[[1]]$externalRule$indexRules[[1]],
               'indexRuleBlockClass')
@@ -862,7 +862,7 @@ test_that("graph processing for model with overlapping RHS works", {
               'indexRuleArbitraryClass')
     expect_identical(modelDef$rhsOnlyRules[[var]]$rules[[1]]$indexSlotToSet, c(2,2,1))
     
-    expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[2]]$getFullRange()$indexRanges,
+    expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[2]]$fullRange$indexRanges,
                      list(newIndexRange(matrix(c(4,2,4,4,6,6), ncol = 2)), newIndexRange(quote(1:3))))
     expect_is(modelDef$rhsOnlyRules[[var]]$rules[[2]]$externalRule$indexRules[[1]],
               'indexRuleBlockClass')
@@ -885,7 +885,7 @@ test_that("graph processing for model with overlapping RHS works", {
     var <- 'mu'
     expect_identical(length(modelDef$rhsOnlyRules[[var]]$rules), 2L)
 
-    expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[1]]$getFullRange()$indexRanges,
+    expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[1]]$fullRange$indexRanges,
                      list(newIndexRange(matrix(c(1,2,1,2,1,1,1,2,2,3), ncol = 2)), newIndexRange(quote(1:4))))
     expect_is(modelDef$rhsOnlyRules[[var]]$rules[[1]]$externalRule$indexRules[[1]],
               'indexRuleBlockClass')
@@ -893,7 +893,7 @@ test_that("graph processing for model with overlapping RHS works", {
               'indexRuleArbitraryClass')
     expect_identical(modelDef$rhsOnlyRules[[var]]$rules[[1]]$indexSlotToSet, c(2,2,1))
 
-    expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[2]]$getFullRange()$indexRanges,
+    expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[2]]$fullRange$indexRanges,
                      list(newIndexRange(matrix(c(4,4,4,2,4,2,4,2,1,2,3,1,1,2,2,3,rep(4,3),rep(6,5)), ncol = 3))))
     expect_is(modelDef$rhsOnlyRules[[var]]$rules[[2]]$externalRule$indexRules[[1]],
               'indexRuleArbitraryClass')
@@ -915,14 +915,14 @@ test_that("graph processing for multiple RHS only cases", {
     
     var <- 'mu'
     expect_identical(length(modelDef$rhsOnlyRules[[var]]$rules), 2L)
-    expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[1]]$getFullRange()$indexRanges[[1]],
+    expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[1]]$fullRange$indexRanges[[1]],
                      newIndexRange(quote(1)))
-    expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[2]]$getFullRange()$indexRanges[[1]],
+    expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[2]]$fullRange$indexRanges[[1]],
                      newIndexRange(quote(4:5)))
 
     var <- 'sigma'
     expect_identical(length(modelDef$rhsOnlyRules[[var]]$rules), 1L)
-    expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[1]]$getFullRange()$indexRanges[[1]],
+    expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[1]]$fullRange$indexRanges[[1]],
                      newIndexRange(quote(1:4)))
 })
 
@@ -941,11 +941,11 @@ test_that("graph processing for block models with fixed indexing", {
     expect_identical(length(modelDef$calcRules[['y']]$rules), 1L)
     expect_identical(length(modelDef$calcRules[['mu']]$rules), 2L)
 
-    expect_equal(modelDef$calcRules[['y']]$rules[[1]]$getFullRange(),
+    expect_equal(modelDef$calcRules[['y']]$rules[[1]]$fullRange,
                      varRangeClass$new(list(newIndexRange(quote(1:10))), varName = 'y'))
-    expect_equal(modelDef$calcRules[['mu']]$rules[[1]]$getFullRange(),
+    expect_equal(modelDef$calcRules[['mu']]$rules[[1]]$fullRange,
                      varRangeClass$new(list(newIndexRange(quote(1:3))), varName = 'mu'))
-    expect_equal(modelDef$calcRules[['mu']]$rules[[2]]$getFullRange(),
+    expect_equal(modelDef$calcRules[['mu']]$rules[[2]]$fullRange,
                      varRangeClass$new(list(newIndexRange(quote(4:10))), varName = 'mu'))
 
     y_ids <- sapply(modelDef$calcRules[['y']]$rules, function(rule) rule$ID)
@@ -1556,17 +1556,17 @@ test_that("state-space model", {
 
     expect_identical(length(modelDef$rhsOnlyRules), 1L)
     expect_identical(length(modelDef$rhsOnlyRules[['y']]$rules), 1L)
-    expect_equal(modelDef$rhsOnlyRules[['y']]$rules[[1]]$getFullRange(),
+    expect_equal(modelDef$rhsOnlyRules[['y']]$rules[[1]]$fullRange,
                      varRangeClass$new(list(newIndexRange(1)), varName = 'y'))
 
     expect_identical(length(modelDef$calcRules), 1L)
     expect_identical(length(modelDef$calcRules[['y']]$rules), 3L)
 
-    expect_equal(modelDef$calcRules[['y']]$rules[[1]]$getFullRange(),
+    expect_equal(modelDef$calcRules[['y']]$rules[[1]]$fullRange,
                      varRangeClass$new(list(newIndexRange(4)), varName = 'y'))
-    expect_equal(modelDef$calcRules[['y']]$rules[[2]]$getFullRange(),
+    expect_equal(modelDef$calcRules[['y']]$rules[[2]]$fullRange,
                      varRangeClass$new(list(newIndexRange(3)), varName = 'y'))
-    expect_equal(modelDef$calcRules[['y']]$rules[[3]]$getFullRange(),
+    expect_equal(modelDef$calcRules[['y']]$rules[[3]]$fullRange,
                      varRangeClass$new(list(newIndexRange(2)), varName = 'y'))
 
     ids <- sapply(modelDef$calcRules[['y']]$rules, function(rule) rule$ID)
@@ -2512,9 +2512,9 @@ test_that("SSM with additional pieces handled", {
                                         fromStochRule = TRUE),
                       varRangeClass$new(list(newIndexRange(quote(1:5))), varName = 'y2',
                                         fromStochRule = TRUE)))
-    expect_equal(modelDef$endRules$y2$rules[[1]]$getFullRange(),
+    expect_equal(modelDef$endRules$y2$rules[[1]]$fullRange,
                  varRangeClass$new(list(newIndexRange(quote(2:5))), varName = 'y2'))
-    expect_equal(modelDef$latentRules$y2$rules[[1]]$getFullRange(),
+    expect_equal(modelDef$latentRules$y2$rules[[1]]$fullRange,
                  varRangeClass$new(list(newIndexRange(quote(1))), varName = 'y2'))
     
 })

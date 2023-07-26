@@ -75,20 +75,20 @@ test_that("makeRHSoriginalNodes works", {
     expect_identical(length(modelDef$declInfo[[4]]$rhsOriginalRules), 1L)
     expect_identical(length(modelDef$declInfo[[5]]$rhsOriginalRules), 1L)
 
-    expect_equal(modelDef$declInfo[[1]]$rhsOriginalRules[[1]]$getFullRange(),
+    expect_equal(modelDef$declInfo[[1]]$rhsOriginalRules[[1]]$fullRange,
                  varRangeClass$new(list(newIndexRange(quote(1:2))),
                                         varName = 'phi'))
-    expect_equal(modelDef$declInfo[[2]]$rhsOriginalRules[[1]]$getFullRange(),
+    expect_equal(modelDef$declInfo[[2]]$rhsOriginalRules[[1]]$fullRange,
                  varRangeClass$new(list(), varName = 'tau'))
-    expect_equal(modelDef$declInfo[[3]]$rhsOriginalRules[[1]]$getFullRange(),
+    expect_equal(modelDef$declInfo[[3]]$rhsOriginalRules[[1]]$fullRange,
                  varRangeClass$new(list(newIndexRange(quote(1:10))), varName = 'mu'))
-    expect_equal(modelDef$declInfo[[3]]$rhsOriginalRules[[2]]$getFullRange(),
+    expect_equal(modelDef$declInfo[[3]]$rhsOriginalRules[[2]]$fullRange,
                  varRangeClass$new(list(), varName = 'lifted_d1_over_sqrt_oPtau_cP'))
-    expect_equal(modelDef$declInfo[[3]]$rhsOriginalRules[[3]]$getFullRange(),
+    expect_equal(modelDef$declInfo[[3]]$rhsOriginalRules[[3]]$fullRange,
                  varRangeClass$new(list(), varName = 'tau'))
-    expect_equal(modelDef$declInfo[[4]]$rhsOriginalRules[[1]]$getFullRange(),
+    expect_equal(modelDef$declInfo[[4]]$rhsOriginalRules[[1]]$fullRange,
                  varRangeClass$new(list(), varName = 'tau2'))
-    expect_equal(modelDef$declInfo[[5]]$rhsOriginalRules[[1]]$getFullRange(),
+    expect_equal(modelDef$declInfo[[5]]$rhsOriginalRules[[1]]$fullRange,
                  varRangeClass$new(list(newIndexRange(quote(1:2))), varName = 'mu0'))
       
 })

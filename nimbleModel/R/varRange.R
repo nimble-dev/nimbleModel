@@ -56,7 +56,7 @@ varRangeClass <- R6Class(
                     ## The expression must have some indexing so it must start with `[`.
                     if(!identical(indexInfo[[1]], as.name("[")))
                         stop("input is not a valid variable or `varRange`.")
-                    nameFromExpr <- safeDeparse(indexInfo[[2]], warn = TRUE)
+                    nameFromExpr <- as.character(indexInfo[[2]]) # safeDeparse(indexInfo[[2]], warn = TRUE)
                     indexRangeExprs <<- as.list(indexInfo[-c(1,2)])
                     indexRanges <<- lapply(indexRangeExprs, newIndexRange)
                     

@@ -227,15 +227,10 @@ traverseGraph <- function(streamRules, declRules,
                           
     if(inherits(nodes, 'varRangeClass')) nodes <- list(nodes)  # We use `lapply` on 'nodes' later.
 
-    nodes <- lapply(nodes, function(node) {
-        if(is.character(node)) {
-            return(varRangeClass$new(node))
-        }
-        if(!inherits(node, 'varRangeClass'))
-            stop("`nodes` must be variable names or `varRange`s.")
-    })
-    
     results <- traverseGraphRecurse(streamRules, nodes, down, follow, immediateOnly)
+
+    ## Need to handle "self" for three cases: (a) when an input node is a full variable,
+    ## (b) character expression for a range, or (c) an actual varRange or nodeRange.
 
     varNames <- sapply(nodes, getVarName)
     vars <- nodes == varNames
@@ -243,7 +238,9 @@ traverseGraph <- function(streamRules, declRules,
                                         function(varName)
                                             lapply(declRules[[varName]]$rules,
                                                    function(declRule) declRule$fullRange)))
-    
+
+    ## CHECK: can we just create the varRange from the char string and not use `declRule$apply`
+    ## to make sure we have decl-specific varRanges?
     charRanges <- is.character(nodes) & !vars
     selfRangeFromCharRanges <- flatten(lapply(nodes[charRanges],
                                               function(node) {
@@ -280,8 +277,6 @@ traverseGraph <- function(streamRules, declRules,
     }
     
     if(self) {
-        ## Need to handle "self" for three cases: (a) when an input node is a full variable,
-        ## (b) character expression for a range, or (c) an actual varRange or nodeRange.
         results <- c(selfRanges, results)
     }
     

@@ -181,7 +181,7 @@ test_that("toRule", {
     expect_identical(as.integer(xRule$indexSlotToSet), xVar$indexSlotToRange)
     expect_identical(sapply(xRule$fullRule$indexRules, function(rule) class(rule)[1]),
                      c('indexRuleArbitraryClass','indexRuleBlockClass','indexRuleBlockClass','indexRuleArbitraryClass'))
-    newVar <- xRule$getFullRange()
+    newVar <- xRule$fullRange
     expect_identical(newVar$indexSlotToRange, c(1L,2L,3L,2L,4L))
     expect_equal(xVar$indexRanges, newVar$indexRanges[c(2,1,3,4)])
 })
