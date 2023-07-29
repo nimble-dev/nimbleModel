@@ -118,7 +118,6 @@ varRangeClass <- R6Class(
 
         ## Extract one or more columns of a varRange.
         ## If multiple columns, result is expanded as a matrix of indices.
-        ## TODO: `returnUsedRanges` is never used, so could remove.
         extractIndexRange = function(indices, returnUsedRanges = FALSE) {
             
             usedIndices <- unlist(lapply(rangeToIndexSlot, function(x) x[x %in% indices]))
@@ -126,7 +125,7 @@ varRangeClass <- R6Class(
             usedRanges <- which(sapply(usedIndicesBool, any))
             
             if(!length(usedRanges)) {
-                indexRangeResult <- newIndexRange(NULL)
+                return(NULL)
             } else {            
                 indexRangesList <- lapply(usedRanges, function(i) {
                     innerIndices <- which(usedIndicesBool[[i]])
@@ -143,9 +142,7 @@ varRangeClass <- R6Class(
                     indexRangeResult <- crossIndexRanges(indexRangesList, order = match(indices, usedIndices))  ## result is an indexRangeMatrix
                 }
             }
-            if(!returnUsedRanges) {
-                return(indexRangeResult)
-            } else return(list(indexRange = indexRangeResult, usedRanges = usedRanges))
+            return(indexRangeResult)
         },
 
         ## TODO: perhaps return list(min = ..., max = ...)?
