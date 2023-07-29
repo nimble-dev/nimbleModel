@@ -1014,6 +1014,19 @@ test_that("graph processing for dynamic indexing", {
     expect_false(modelDef$varInfo$k$anyDynamicallyIndexed)
     expect_false(modelDef$varInfo$p$anyDynamicallyIndexed)
     
+    code <- quote({
+        for(i in 1:10) {
+            y[i] ~ dnorm(mu[k[i], 3], 1)
+            mu[i,3] ~ dnorm(mu0, 1)
+            k[i] ~ dcat(p[1:10])
+        }})
+    
+    k=c(1:3,1:3,1:3,2)
+    
+    modelDef <- modelDefClass$new(code, inits = list(k=k))
+    expect_true(modelDef$varInfo$mu$anyDynamicallyIndexed)
+    expect_true(is(modelDef$downstreamRules$mu$rules[[1]]$indexRules[[1]], 'indexRuleAllClass'))
+
 })
 
 
