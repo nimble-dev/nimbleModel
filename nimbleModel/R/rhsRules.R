@@ -25,10 +25,15 @@ rhsRuleClass <- R6Class(
             ## Indices for dynamically-indexed RHS vars cannot be determined
             ## so set to some very large value (can't use `1:Inf`).
             if(getNimbleModelOption('allowDynamicIndexing')) 
-                if(length(expr) == 3 && isDynamicIndex(expr[[3]])) {
-                    expr[[3]] <- quote(1:2)
-                    expr[[3]][[3]] <- .Machine$integer.max
-                }
+                if(length(expr) >= 3) 
+                    expr[3:length(expr)] <- lapply(expr[3:length(expr)],
+                                                   function(e) {
+                                                       if(isDynamicIndex(e)) {
+                                                           e <- quote(1:2)
+                                                           e[[3]] <- .Machine$integer.max
+                                                       }
+                                                       return(e)
+                                                   })
 
             ## Replace sequence indexing with maximal indexing in cases
             ## in which could have duplicate declarations of RHS because
@@ -36,7 +41,6 @@ rhsRuleClass <- R6Class(
             ## but are used in for loop expression, e.g.,
             ## `for(i in 1:4) for(t in 1:seasons[i]) y[i,t] <- alpha[t]`.
             usedIndexVarsBool <- names(context$singleContexts) %in% all.vars(expr)
-            if(exists('paciorek')) browser()
             if(any(usedIndexVarsBool) && !all(usedIndexVarsBool)) {
                 usedIndexVars <- names(context$singleContexts)[usedIndexVarsBool]
                 depIndexVarExprs <- sapply(usedIndexVars,
