@@ -280,7 +280,7 @@ indexRangeMatrixClass <- R6Class(
         },
 
         getColumns = function(indices = NULL) {
-            if(is.null(indices)) {
+            if(is.null(indices) || identical(indices, seq_len(numColumns))) {
                 return(self)
             } else
                 return(indexRangeMatrixClass$new(values[ , indices, drop = FALSE], sort = FALSE))
