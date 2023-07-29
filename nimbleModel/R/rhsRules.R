@@ -191,14 +191,17 @@ exclude <- function(rhsRule, excludingRule, constants = list()) {
 
             ## Now process two sequences.
             if(int$start == RHS$start || int$end == RHS$end) {
-                ## Shrink existing index block
+                ## Shrink existing index block.
+                ## Don't modify RHS as it is an indexRange pointing to memory in `rhsOriginalRules`.
+                start <- RHS$start
+                end <- RHS$end
                 if(int$start == RHS$start) 
-                    RHS$start <- int$end+1 else RHS$end <- int$start-1
+                    start <- int$end+1 else end <- int$start-1
 
                 newSingleContexts <- singleContexts[!focalContext]
                 newSingleContexts[[length(newSingleContexts)+1]] <- singleContextClass$new(
                     indexVarExpr = quote(.newidx),
-                    indexRangeExpr = substitute(A:B, list(A = RHS$start, B = RHS$end)))
+                    indexRangeExpr = substitute(A:B, list(A = start, B = end)))
                 expr[[nonIdenticalIndices+2]] <- newSingleContexts[[length(newSingleContexts)]]$indexVarExpr
 
                 resultRule <- rhsRuleClass$new(expr, context = modelContextClass$new(newSingleContexts),

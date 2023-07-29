@@ -831,7 +831,7 @@ modelDefClass <- R6Class(
             latentRules <<- newVarRules(allCalcRules, type = 'latent')
             calcRules <<- newVarRules(allCalcRules)
             declRules <<- newVarRules(declRules)
-            
+
             invisible(NULL)
         },
 

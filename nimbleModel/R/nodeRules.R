@@ -49,6 +49,7 @@ nodeRuleClass <- R6Class(
             ## We'll use graphRules, though only have a single side of declaration.
             fullRule <<- graphRuleClass$new(expr, expr, context, constants, checkVars = !isRHS)
             indexSlotToSet <<- fullRule$indexSets$toIndexSlotToSet
+
             fullRange <<- fullRule$apply(varName)
 
             if(length(fullRule$indexRules)) {  # if any indexing
@@ -684,15 +685,18 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
           
             if(frac$start == LHS$start || frac$end == LHS$end) {
                 ## Shrink existing sequence.
+                ## Don't modify LHS as it is an indexRange pointing to memory in `rhsOriginalRules`.
+                start <- LHS$start
+                end <- LHS$end
                 if(frac$start == LHS$start) 
-                    LHS$start <- frac$end+1 else LHS$end <- frac$start-1
+                    start <- frac$end+1 else end <- frac$start-1
 
                 newSingleContexts1 <- singleContexts[!focalContext]
                 newSingleContexts2 <- singleContexts[!focalContext]
 
                 newSingleContexts1[[length(newSingleContexts1)+1]] <- singleContextClass$new(
                     indexVarExpr = parsedIdxName,
-                    indexRangeExpr = substitute(A:B, list(A = LHS$start, B = LHS$end)))
+                    indexRangeExpr = substitute(A:B, list(A = start, B = end)))
 
                 newSingleContexts2[[length(newSingleContexts2)+1]] <- singleContextClass$new(
                     indexVarExpr = parsedIdxName,

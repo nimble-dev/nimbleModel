@@ -77,6 +77,12 @@ graphRuleClass <- R6Class(
         },
         
         apply = function(fromVarRange, removeDuplicates = TRUE) {
+            if(is.character(fromVarRange) || inherits(fromVarRange, 'varRangeClass')) {
+                inputVarName <- getVarName(fromVarRange)
+                if(!is.null(fromVarName) && !is.null(inputVarName) && inputVarName != fromVarName)
+                    return(NULL)
+                ## CHECK: should we error out if fromVarRange doesn't have a varName?
+            }
             if(is.character(fromVarRange)) {
                 if(fromVarName == fromVarRange && numFromIndexSlots) {
                     fromVarRange <- getFromRange()   # only varName given
@@ -84,10 +90,6 @@ graphRuleClass <- R6Class(
             }
             if(!inherits(fromVarRange, 'varRangeClass'))
                 stop("`fromVarRange` needs to be a `varRangeClass` object.")
-            inputVarName <- getVarName(fromVarRange)
-            if(!is.null(fromVarName) && !is.null(inputVarName) && inputVarName != fromVarName)
-                return(NULL)
-            ## CHECK: should we error out if fromVarRange doesn't have a varName?
             applyGraphRule(fromVarRange, self, removeDuplicates = removeDuplicates)
         },
 

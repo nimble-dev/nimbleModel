@@ -53,8 +53,14 @@ newVarRules <- function(items, varNames = NULL, type = NULL) {
 ## Utility for determining which `varRules` is needed for a node and
 ## applying it.
 applyRules <- function(rules, node) {
-    varName <- getVarName(node)  
+    varName <- getVarName(node)
     if(varName %in% names(rules)) {
+        if(!inherits(node, 'VarRangeClass') && is.character(node) &&
+           length(grep("[", node, fixed = TRUE)))
+            ## Avoid repeatedly creating a new varRange for `node` in `graphRule$apply`.
+            ## Can't be done if no indexing.
+            ## CHECK: what if user has missing index such as x[,3]?
+            node <- varRangeClass$new(node)
         return(rules[[varName]]$apply(node))
     } else return(NULL)
 }
