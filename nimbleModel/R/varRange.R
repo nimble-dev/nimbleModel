@@ -58,13 +58,22 @@ varRangeClass <- R6Class(
                         stop("input is not a valid variable or `varRange`.")
                     nameFromExpr <- as.character(indexInfo[[2]]) # safeDeparse(indexInfo[[2]], warn = TRUE)
                     indexRangeExprs <<- as.list(indexInfo[-c(1,2)])
-                    indexRanges <<- lapply(indexRangeExprs, newIndexRange)
+
+                    if(length(indexRangeExprs) > 1 &&
+                       sum(sapply(indexRangeExprs, length)) == length(indexRangeExprs)) {
+                        ## Singletons; handle as a matrix
+                        indexRanges <<- list(indexRangeMatrixClass$new(matrix(unlist(indexRangeExprs), nrow = 1)))
+                        rangeToIndexSlot <<- list(seq_along(indexRangeExprs))
+                        indexRangeExprs <<- list(indexRanges[[1]]$toExpr())
+                    } else {
+                        indexRanges <<- lapply(indexRangeExprs, newIndexRange)
                     
-                    ## Truncate indexRangeExprs for matrices for nicer printing.
-                    if(any(sapply(indexRanges, function(x) inherits(x, "indexRangeMatrixClass"))))
-                        indexRangeExprs <<- lapply(indexRanges, function(x) x$toExpr())
-                    
-                    rangeToIndexSlot <<- as.list(seq_along(indexRanges))
+                        ## Truncate indexRangeExprs for matrices for nicer printing.
+                        if(any(sapply(indexRanges, function(x) inherits(x, "indexRangeMatrixClass"))))
+                            indexRangeExprs <<- lapply(indexRanges, function(x) x$toExpr())
+                        
+                        rangeToIndexSlot <<- as.list(seq_along(indexRanges))
+                    }
                 }
                 if(is.null(varName)) {
                     varName <<- nameFromExpr
