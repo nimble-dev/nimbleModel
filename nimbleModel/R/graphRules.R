@@ -563,14 +563,20 @@ applyGraphRule <- function(fromVarRange, rule, varName = NULL, removeDuplicates 
     
     ## Add in results from `indexRuleAll` cases, as these have no `from` index used in the rule,
     ## and are not populated into `finalIndexRanges` above.
-    allRuleSets <- sapply(indexRules, function(x) inherits(x, 'indexRuleAllClass'))
+    if(length(indexRules) == 1) {
+        allRuleSets <- inherits(indexRules[[1]], 'indexRuleAllClass')
+        constantRulesIdx <- which(inherits(indexRules[[1]], 'indexRuleConstantClass'))
+    } else {
+        allRuleSets <- unlist(lapply(indexRules, function(x) inherits(x, 'indexRuleAllClass')))
+        constantRulesIdx <- which(unlist(lapply(indexRules, function(x) inherits(x, 'indexRuleConstantClass'))))
+    }
     if(sum(allRuleSets)) {
        finalIndexRanges <- c(finalIndexRanges, ansIndexRanges[allRuleSets])
        finalRangeToIndexSlot <- c(finalRangeToIndexSlot, ansRangeToIndexSlot[allRuleSets])
     }
 
     ## Add in result of constant rules (constant `to` index and (of course) no corresponding `from` index).
-    constantRulesIdx <- which(sapply(indexRules, function(x) inherits(x, 'indexRuleConstantClass')))
+    
     if(length(constantRulesIdx)) {
         constantIndexRanges <- sapply(indexRules[constantRulesIdx], 
                                       function(rule) rule$apply(NULL))

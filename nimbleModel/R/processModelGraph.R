@@ -232,7 +232,7 @@ traverseGraph <- function(streamRules, declRules,
     ## Need to handle "self" for three cases: (a) when an input node is a full variable,
     ## (b) character expression for a range, or (c) an actual varRange or nodeRange.
 
-    varNames <- sapply(nodes, getVarName)
+    varNames <- unlist(lapply(nodes, getVarName))
     vars <- nodes == varNames
     selfRangeFromVars <- flatten(lapply(nodes[vars],
                                         function(varName)
@@ -263,7 +263,7 @@ traverseGraph <- function(streamRules, declRules,
         ## Exclude self (add back below if needed).
         ## This helps avoid duplication, though that might be handled fully by removeDuplicateVarRanges.
         for(i in seq_along(selfRanges)) {
-            resultsNames <- sapply(results, function(x) x$varName)
+            resultsNames <- unlist(lapply(results, function(x) x$varName))
             wh <- which(resultsNames == selfRanges[[i]]$varName)
             if(length(wh)) {
                 newResults <- list()
