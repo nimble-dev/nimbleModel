@@ -61,9 +61,11 @@ varRangeClass <- R6Class(
                     indexRanges <<- lapply(indexRangeExprs, newIndexRange)
                     
                     ## Truncate indexRangeExprs for matrices for nicer printing.
-                    if(any(sapply(indexRanges, function(x) inherits(x, "indexRangeMatrixClass"))))
-                        indexRangeExprs <<- lapply(indexRanges, function(x) x$toExpr())
-                    
+                    if(length(indexRanges) == 1 && inherits(indexRanges[[1]], "indexRangeMatrixClass")) {
+                        indexRangeExprs <<- indexRanges[[1]]$toExpr()
+                    } else 
+                        if(any(unlist(lapply(indexRanges, function(x) inherits(x, "indexRangeMatrixClass")))))
+                            indexRangeExprs <<- lapply(indexRanges, function(x) x$toExpr())
                     rangeToIndexSlot <<- as.list(seq_along(indexRanges))
                 }
                 if(is.null(varName)) {
@@ -86,10 +88,13 @@ varRangeClass <- R6Class(
                     varName <<- varName
                 } else stop("unexpected input.")
             }
-            if(length(self$rangeToIndexSlot)) { 
-                rangeID <- rep(seq_along(self$rangeToIndexSlot), times = sapply(self$rangeToIndexSlot, length))
-                indexSlotToRange <<- rangeID[order(unlist(self$rangeToIndexSlot))]
-            } 
+            if(length(self$rangeToIndexSlot) == 1) {
+                indexSlotToRange <<- 1  # This saves a bit of time in the simple case.
+            } else 
+                if(length(self$rangeToIndexSlot)) { 
+                    rangeID <- rep(seq_along(self$rangeToIndexSlot), times = sapply(self$rangeToIndexSlot, length))
+                    indexSlotToRange <<- rangeID[order(unlist(self$rangeToIndexSlot))]
+                }
         },
 
         setIndexRanges = function(indexRanges, rangeToIndexSlot = NULL) {
@@ -122,7 +127,7 @@ varRangeClass <- R6Class(
             
             usedIndices <- unlist(lapply(rangeToIndexSlot, function(x) x[x %in% indices]))
             usedIndicesBool <- lapply(rangeToIndexSlot, function(x) x %in% indices)
-            usedRanges <- which(sapply(usedIndicesBool, any))
+            usedRanges <- which(unlist(lapply(usedIndicesBool, any)))
             
             if(!length(usedRanges)) {
                 return(NULL)
@@ -275,7 +280,7 @@ getVarName <- function(x) {
 
 ## Remove duplicates from an arbitrary set of varRanges.
 removeDuplicateVarRanges <- function(varRanges) {
-    varNames <- sapply(varRanges, function(range) range$varName)
+    varNames <- unlist(lapply(varRanges, function(range) range$varName))
     uniqVarNames <- unique(varNames)
     varRanges <- lapply(uniqVarNames, function(nm)
             varRanges[varNames == nm])
@@ -291,8 +296,8 @@ removeDuplicateVarRangesOne <- function(varRanges) {
     varRangeIDs <- seq_len(mx)
     dups <- rep(FALSE, mx)
     for(id in 1:(mx-1)) {
-        equal <- sapply((id+1):mx, function(id2)
-            varRange_isEqual(varRanges[[id]], varRanges[[id2]]))
+        equal <- unlist(lapply((id+1):mx, function(id2)
+            varRange_isEqual(varRanges[[id]], varRanges[[id2]])))
         dups[(id+1):mx] <- dups[(id+1):mx] | equal
     }
     return(varRanges[!dups])
