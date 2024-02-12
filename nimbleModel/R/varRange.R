@@ -62,7 +62,7 @@ varRangeClass <- R6Class(
                     
                     ## Truncate indexRangeExprs for matrices for nicer printing.
                     if(any(sapply(indexRanges, function(x) inherits(x, "indexRangeMatrixClass"))))
-                        indexRangeExprs <<- lapply(indexRanges, function(x) x$toExpr())
+                        indexRangeExprs <<- lapply(indexRanges, function(x) .Call(C_toExpr, x))
                     
                     rangeToIndexSlot <<- as.list(seq_along(indexRanges))
                 }
@@ -78,10 +78,11 @@ varRangeClass <- R6Class(
                 ## Input is a list that should be of `indexRange`s.
                 if(is.list(indexInfo)) {
                     if(length(indexInfo)) {
-                        if(!all(sapply(indexInfo, function(x) inherits(x, "indexRangeClass"))))
+                        if(!all(sapply(indexInfo, function(x) inherits(x, "externalptr"))))
                             stop("`indexInfo` should be a list of `indexRange`s.")
                         setIndexRanges(indexInfo, rangeToIndexSlot)
-                        indexRangeExprs <<- lapply(indexRanges, function(x) x$toExpr())
+                        indexRangeExprs <<- lapply(indexRanges, function(x) .Call(C_toExpr, x))
+                        # indexRangeExprs <<- lapply(indexRanges, function(x) x$toExpr())
                     }
                     varName <<- varName
                 } else stop("unexpected input.")
@@ -105,7 +106,7 @@ varRangeClass <- R6Class(
                 rangeToIndexSlot <<-
                     lapply(indexRanges,
                            function(x) {
-                               numCols <- x$numColumns
+                               numCols <- .Call(C_getNumColumns, x)
                                if(is.null(numCols))
                                    stop("unexpected lack of `numCols`") ## empty indexRange case
                                ans <- nextID-1 + (1:numCols)
@@ -129,15 +130,17 @@ varRangeClass <- R6Class(
             } else {            
                 indexRangesList <- lapply(usedRanges, function(i) {
                     innerIndices <- which(usedIndicesBool[[i]])
-                    return(indexRanges[[i]]$getColumns(innerIndices))
+                    return(.Call(C_getColumns, indexRanges[[i]], innerIndices))
                 })
                 
                 if(length(indexRangesList) == 1) {
+                    numColumns <- .Call(C_getNumColumns, indexRangesList[[1]])
                     if(inherits(indexRangesList[[1]], "indexRangeMatrixClass") &&
-                       indexRangesList[[1]]$numColumns > 1) {
+                       numColumns > 1) {
                         mtch <- match(indices, usedIndices)
-                        if(identical(mtch, seq_len(indexRangesList[[1]]$numColumns))) {
+                        if(identical(mtch, seq_len(numColumns))) {
                             indexRangeResult <- indexRangesList[[1]]
+                            ## TODO when have irMatrix
                         } else  indexRangeResult <- indexRangeMatrixClass$new(
                                   indexRangesList[[1]]$values[ , mtch, drop = FALSE], sort = FALSE)
                     } else indexRangeResult <- indexRangesList[[1]]
@@ -150,7 +153,7 @@ varRangeClass <- R6Class(
 
         ## TODO: perhaps return list(min = ..., max = ...)?
         getMinMax = function() {
-            ranges <- lapply(indexRanges, function(x) x$getMinMax())
+            ranges <- lapply(indexRanges, function(x) .Call(C_getMinMax, x))
             result <- matrix(0, length(indexSlotToRange), 2)
             for(i in seq_along(ranges)) {
                 result[rangeToIndexSlot[[i]], ] <- ranges[[i]]
@@ -205,7 +208,7 @@ varRangeClass <- R6Class(
                 expr <- quote(y[1])
                 expr[[2]] <- as.name(varName)
                 expr[3:(2+length(indexSlotToRange))] <- sapply(indexVars[indexSlotToRange], function(x) as.name(x))
-                irMatrices <- which(sapply(indexRanges, function(range) inherits(range, 'indexRangeMatrixClass')))
+                irMatrices <- which(sapply(indexRanges, function(range) .Call(C_getClass, range) == "indexRangeMatrixClass"))
                 if(length(irMatrices)) {
                     idxExpr <- quote(k[idx])
                     for(i in irMatrices) {
@@ -222,7 +225,7 @@ varRangeClass <- R6Class(
                 }
                 singleContexts <- sapply(seq_along(indexRanges),
                                          function(i) {
-                                             switch(class(indexRanges[[i]])[1],
+                                             switch(.Call(C_getClass, indexRanges[[i]]),
                                                     "indexRangeMatrixClass" =
                                                         singleContextClass$new(
                                                                                indexVarExpr = as.name(paste0('idx',i)),
@@ -230,12 +233,12 @@ varRangeClass <- R6Class(
                                                     "indexRangeSequenceClass" = 
                                                         singleContextClass$new(
                                                                                indexVarExpr = as.name(paste0('idx',i)),
-                                                                               indexRangeExpr = substitute(M1:M2, list(M1 = indexRanges[[i]]$start,
-                                                                                                                       M2 = indexRanges[[i]]$end))),
+                                                                               indexRangeExpr = substitute(M1:M2, list(M1 = .Call(C_getStart(indexRanges[[i]])))),
+                                                                                                                       M2 = .Call(C_getEnd(indexRanges[[i]]))),
                                                     "indexRangeScalarClass" =
                                                         singleContextClass$new(
                                                                                indexVarExpr = as.name(paste0('idx',i)),
-                                                                               indexRangeExpr = substitute(M:M, list(M = indexRanges[[i]]$value))),
+                                                                               indexRangeExpr = substitute(M:M, list(M = .Call(C_getValue(indexRanges[[i]]))))),
                                                     stop("invalid indexRange type"))
                                          })
                 context <- modelContextClass$new(singleContexts)

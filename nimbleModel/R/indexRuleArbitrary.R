@@ -19,7 +19,7 @@ indexRuleArbitraryClass <- R6Class(
         },
 
         apply = function(indexRange, collapse = TRUE) {
-            if(!inherits(indexRange, 'indexRangeClass'))
+            if(!inherits(indexRange, 'externalptr'))
                 stop("an index rule must be applied to an `indexRange`.")
             indexRuleArbitrary_applyMatrix(indexRange$getValuesAsMatrix(), setupResults, collapse = collapse)
         },

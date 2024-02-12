@@ -32,10 +32,10 @@ indexConstraintScalarClass <- R6Class(
         },
 
         check = function(indexRange) {
-            switch(class(indexRange)[1],
-                   indexRangeScalarClass = indexRange$value == value,
+            switch(.Call(C_getClass, indexRange),
+                   indexRangeScalarClass = .Call(C_getValue, indexRange) == value,
                    indexRangeSequenceClass =
-                       indexRange$start <= value & indexRange$end >= value,
+                       .Call(C_getStart, indexRange) <= value & .Call(C_getEnd, indexRange) >= value,
                    indexRangeMatrixClass =
                        c(indexRange$values == value)
                    )                   
@@ -63,10 +63,10 @@ indexConstraintSequenceClass <- R6Class(
         },
 
         check = function(indexRange) {
-            switch(class(indexRange)[1],
-                   indexRangeScalarClass = indexRange$value >= start && indexRange$value <= end,
+            switch(.Call(C_getClass, indexRange),
+                   indexRangeScalarClass = .Call(C_getValue, indexRange) >= start && .Call(C_getValue, indexRange) <= end,
                    indexRangeSequenceClass =
-                       indexRange$start <= end && indexRange$end >= start,
+                       .Call(C_getStart, indexRange) <= end && .Call(C_getEnd, indexRange) >= start,
                    indexRangeMatrixClass =
                        indexRange$values %in% start:end
                    )                   
@@ -94,9 +94,9 @@ indexConstraintMatrix1dClass <- R6Class(
         ## CHECK: this assumes a one-column matrix; can't think of cases where
         ## a constraint could be specified.
         check = function(indexRange) {
-            switch(class(indexRange)[1],
-                   indexRangeScalarClass = indexRange$value %in% values,
-                   indexRangeSequenceClass = any(indexRange$start <= values & indexRange$end >= values),
+            switch(.Call(C_getClass, indexRange),
+                   indexRangeScalarClass = .Call(C_getValue, indexRange) %in% values,
+                   indexRangeSequenceClass = any(.Call(C_getStart, indexRange) <= values & .Call(C_getEnd, indexRange) >= values),
                    indexRangeMatrixClass = indexRange$values %in% values
                    )                   
         },
@@ -121,7 +121,7 @@ indexConstraintMatrixClass <- R6Class(
         },
 
         check = function(indexRange) {
-            switch(class(indexRange)[1],
+            switch(.Call(C_getClass, indexRange),
                    indexRangeMatrixClass = checkFunction(indexRange),
                    stop("`indexRange` must be a matrix.")
                    )                   

@@ -41,7 +41,7 @@ newIndexRange <- function(expr) {
                length(start) == 1 && length(end) == 1 &&
                end >= start && start >= 1 && 
                identical(start, round(start)) && identical(end, round(end))) {
-                return(indexRangeSequenceClass$new(start, end))
+                return(.Call(C_setIndexRangeSequence, start, end))
             } else 
                 stop("newIndexRange: an indexRange sequence must involve two positive, non-decreasing, integer-valued endpoints.")
         } else {
@@ -58,7 +58,8 @@ newIndexRange <- function(expr) {
             vals <- vals[!is.na(mat)]
             if(isTRUE(all(vals >= 1)) && isTRUE(all(vals < Inf)) && identical(vals, round(vals))) {
                 dimnames(mat) <- NULL
-                return(indexRangeMatrixClass$new(mat))
+##                return(indexRangeMatrixClass$new(mat))
+                return(0) 
             } else
                 stop("newIndexRange: an indexRange matrix must involve positive, integer-valued indices.")
         }
@@ -68,13 +69,14 @@ newIndexRange <- function(expr) {
             if(is.numeric(expr) && expr >= 1 && identical(expr, round(expr))) {
                 if(is.null(dim(expr))) {
                     names(expr) <- NULL
-                    return(indexRangeScalarClass$new(expr))
+                    return(.Call(C_setIndexRangeScalar, expr))
                 }
                 ## 1x1 matrix
                 ## FUTURE: not clear we need to handle this case and/or might convert to scalar.
                 if(length(dim(expr)) == 2) {
                     dimnames(expr) <- NULL
-                    return(indexRangeMatrixClass$new(expr, sort = FALSE))
+##                    return(indexRangeMatrixClass$new(expr, sort = FALSE))
+                    return(0)
                 }
                 stop("newIndexRange: an indexRange cannot be an array.")
             } else

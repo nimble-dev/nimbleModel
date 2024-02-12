@@ -20,10 +20,10 @@ indexRuleBlockClass <- R6Class(
         apply = function(indexRange, collapse = TRUE) {
             ## A bit awkward to use `switch` but otherwise hard to dispatch on input type,
             ## given we need to cross the indexRule type with the input indexRange type.
-            switch(class(indexRange)[1],
-                   indexRangeScalarClass = indexRuleBlock_applyToScalar(indexRange$value,
+            switch(.Call(C_getClass, indexRange),
+                   indexRangeScalarClass = indexRuleBlock_applyToScalar(.Call(C_getValue, indexRange),
                                                                         setupResults),
-                   indexRangeSequenceClass = indexRuleBlock_applyToSequence(indexRange$start, indexRange$end,
+                   indexRangeSequenceClass = indexRuleBlock_applyToSequence(.Call(C_getStart, indexRange), .Call(C_getEnd, indexRange),
                                                                             setupResults),
                    indexRangeMatrixClass = indexRuleBlock_applyToMatrix(indexRange$values,
                                                                         setupResults,
@@ -92,7 +92,7 @@ indexRuleBlock_applyToScalar <- function(fromValue,
     if(fromValue < setupResults$fromMin || fromValue > setupResults$fromMax)
         return(NULL) 
     toValue <- fromValue + setupResults$offset
-    return(indexRangeScalarClass$new(toValue))
+    return(.Call(C_setIndexRangeScalar, toValue))
 }
 
 indexRuleBlock_applyToMatrix <- function(fromValues,
@@ -139,9 +139,9 @@ indexRuleBlock_applyToSequence <- function(fromStart, fromEnd,
                  fromEnd + setupResults$offset
     
     if(toStart == toEnd) {
-        return(indexRangeScalarClass$new(toStart))
+        return(.Call(C_setIndexRangeScalar, toStart))
     }
     
-    return(indexRangeSequenceClass$new(toStart, toEnd))
+    return(.Call(C_setIndexRangeSequence, toStart, toEnd))
 }
 

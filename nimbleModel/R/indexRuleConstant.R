@@ -51,9 +51,9 @@ indexRuleConstant_setup <- function(toIndexExprList,
     } else {
         toIndexExpr <- toIndexExprList[[1]]
         if(length(toIndexExpr) == 1) {
-            toConstant <- indexRangeScalarClass$new(eval(toIndexExpr, envir = constants))
+            toConstant <- .Call(C_setIndexRangeScalar, eval(toIndexExpr, envir = constants))
         } else if(length(toIndexExpr) == 3 && toIndexExpr[[1]] == ':') {
-            toConstant <- indexRangeSequenceClass$new(eval(toIndexExpr[[2]], envir = constants),
+            toConstant <- .Call(C_setIndexRangeSequence, eval(toIndexExpr[[2]], envir = constants),
                                                       eval(toIndexExpr[[3]], envir = constants))
         } else if(length(toIndexExpr) > 1 && toIndexExpr[[1]] == "nimC") {
             toIndexExpr[[1]] <- quote(c)  # `nimC` not readily available in series of environments.
