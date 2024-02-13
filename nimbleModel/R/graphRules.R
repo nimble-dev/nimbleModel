@@ -402,7 +402,7 @@ applyGraphRule <- function(fromVarRange, rule, varName = NULL, removeDuplicates 
     ## Check valid number of input indices
     numFromIndexSlots <- length(unlist(fromVarRange$rangeToIndexSlot))
     if(numFromIndexSlots != rule$numFromIndexSlots)
-        stop("incorrect number of input indices.")
+        stop("incorrect number of input indices in `", fromVarRange$toChar(), "`; expecting ", rule$numFromIndexSlots)
      
     ## Determine which fromSlots will be used for each rule
     ## and set up index crossing and aligning needs.

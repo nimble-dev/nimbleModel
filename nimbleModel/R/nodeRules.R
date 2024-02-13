@@ -93,7 +93,7 @@ nodeRuleClass <- R6Class(
 
             if(!(numExternalIndexRules + numInternalIndexRules) &&
                !varRange$isNone())
-                stop("incorrect number of input indices in `varRange`.")
+                stop("incorrect number of input indices in `", varRange$toChar(), "`")
             
             ## Apply both the external and internal indexRules.
             if(numExternalIndexRules) {
