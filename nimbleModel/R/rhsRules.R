@@ -238,11 +238,6 @@ exclude <- function(rhsRule, excludingRule, constants = list()) {
         ## Scenarios that are not the simple setting of a single index slot that needs to be considered.
         ## Create fully unrolled matrix of indices for non-identical indices, do exclusion,
         ## then create new arbitrary rhsRule by creating a complicated context, crossed with any indices that are identical
-        if(any(sapply(rhsRange$indexRanges, function(x)
-            inherits(x, "indexRangeSequenceClass") && x$end == .Machine$integer.max))) {
-            messageIfVerbose("  [Warning] In determining right-hand-side only nodes, encountered dynamic indexing of `", rhsRange$varName, "`. Proceeding assuming that there are no right-hand-side only nodes for the dynamically-indexed variable.")
-            return(NULL)
-        }
         unrolledRHS <- rhsRange$extractIndexRange(nonIdenticalIndices)
         unrolledIntersection <- intersection$extractIndexRange(nonIdenticalIndices)
 

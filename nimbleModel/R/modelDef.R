@@ -685,7 +685,7 @@ modelDefClass <- R6Class(
                 if(length(dimensionsList[[dimVarName]]) != varInfo[[dimVarName]]$nDim)
                     stop("inconsistent dimensions for variable `", dimVarName, "`.")
                 if(any(dimensionsList[[dimVarName]] < varInfo[[dimVarName]]$maxs &&
-                       varInfo[[dimVarName]]$maxs < .Machine$integer.max))
+                       varInfo[[dimVarName]]$maxs < Inf)) # .Machine$integer.max))
                     stop("dimensions specified are smaller than model specification for variable `", dimVarName, "`.")
                 varInfo[[dimVarName]]$maxs <<- dimensionsList[[dimVarName]]
             }

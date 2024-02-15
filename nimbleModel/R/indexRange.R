@@ -232,6 +232,10 @@ indexRangeSequenceClass <- R6Class(
         },
 
         getValuesAsMatrix = function() {
+            if(end == .Machine$integer.max) {
+                messageIfVerbose("  [Warning] Replacing unbounded indices (from dynamic indexing) with placeholder maximum value of ", .Machine$integer.max, ".")
+                return(matrix(.Machine$integer.max))
+            }
             return(matrix(as.numeric(seq.int(start, end))))
         },
 
@@ -240,6 +244,8 @@ indexRangeSequenceClass <- R6Class(
         },
 
         toMatrixList = function() {
+            if(end == .Machine$integer.max)
+                stop("dynamic indexing prevented use of `toMatrixList`")
             return(indexRangeMatrixListClass$new(
                 lapply(as.numeric(seq.int(start, end)), matrix)))
         },

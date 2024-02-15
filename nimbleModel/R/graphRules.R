@@ -281,7 +281,9 @@ makeIndexRules <- function(toExpr, fromExpr, indexSets, context, constants) {
         stop("`", safeDeparse(fromExpr), "`should be an index expression or variable name.") 
 
     ## Create simple constraints.
-    fromConstantIndexSlots <- which(indexSets$fromIndexSlotToSet == 0)
+    nonfinite <- sapply(fromIndexExprs, function(expr)
+        is.call(expr) && expr[[1]] == ":" && expr[[3]] == Inf)
+    fromConstantIndexSlots <- which(!nonfinite & indexSets$fromIndexSlotToSet == 0)
     indexConstraints <- lapply(fromConstantIndexSlots, function(idx)
         newIndexConstraint_fromSimple(fromIndexExprs[[idx]], idx, constantsEnv))
 
