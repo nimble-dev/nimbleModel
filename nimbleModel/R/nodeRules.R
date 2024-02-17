@@ -542,7 +542,7 @@ nodeRangeClass <- R6Class(
             return(result)
         },
 
-        toNodes = function() {
+        toNodeChars = function() {
             paste_wrap <- function(...)
                 paste(..., sep = ", ")
             if(isNone())

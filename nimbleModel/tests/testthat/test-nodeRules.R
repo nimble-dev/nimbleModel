@@ -1581,7 +1581,7 @@ test_that("nodeRange::print works correctly", {
   
 })
 
-test_that("nodeRange::toNodes works correctly", {
+test_that("nodeRange::toNodeChars works correctly", {
     code <- quote({
         theta ~ dnorm(0, 1)
         for(i in 1:4)
@@ -1595,14 +1595,14 @@ test_that("nodeRange::toNodes works correctly", {
     
     md <- modelDefClass$new(code)
     nodeRanges <- getNodes(md)
-    expect_identical(nodeRanges[[1]]$toNodes(), "theta")
-    expect_identical(nodeRanges[[2]]$toNodes(),
+    expect_identical(nodeRanges[[1]]$toNodeChars(), "theta")
+    expect_identical(nodeRanges[[2]]$toNodeChars(),
                      "lifted_chol_oPpr_oB1to3_comma_1to3_cB_cP[1:3, 1:3]")
-    expect_identical(nodeRanges[[3]]$toNodes(),
+    expect_identical(nodeRanges[[3]]$toNodeChars(),
         c("y[1, 3, 1, 1, 2:4]", "y[1, 3, 2, 1, 2:4]", "y[2, 3, 1, 2, 2:4]", 
           "y[2, 3, 2, 2, 2:4]", "y[3, 3, 1, 3, 2:4]", "y[3, 3, 2, 3, 2:4]",
           "y[4, 3, 1, 4, 2:4]", "y[4, 3, 2, 4, 2:4]"))
-    expect_identical(nodeRanges[[4]]$toNodes(), c("w[1]", "w[2]", "w[3]"))
-    expect_identical(nodeRanges[[5]]$toNodes(),
+    expect_identical(nodeRanges[[4]]$toNodeChars(), c("w[1]", "w[2]", "w[3]"))
+    expect_identical(nodeRanges[[5]]$toNodeChars(),
                      c("v[1, 1]", "v[2, 2]", "v[3, 3]"))
 })
