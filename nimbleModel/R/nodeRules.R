@@ -528,9 +528,11 @@ nodeRangeClass <- R6Class(
             if(!length(indexRangeExprs))
                 return(nm)
             exprs <- indexRangeExprs
-            sv <- exprs[boolExternalIndexRanges]
-            indexVars <- paste0("idx", seq_len(sum(boolExternalIndexRanges)))
-            exprs[boolExternalIndexRanges] <- lapply(indexVars, as.name)
+            multiSlot <- sapply(exprs, `==`, '...')
+            sv <- exprs[boolExternalIndexRanges & !multiSlot]
+            
+            indexVars <- paste0("idx", seq_len(sum(boolExternalIndexRanges & !multiSlot)))
+            exprs[boolExternalIndexRanges & !multiSlot] <- lapply(indexVars, as.name)
             forText <- paste(indexVars, "in", sv)
             result <- safeDeparse(do.call("call",
                                       c(list("[", nm),
@@ -538,6 +540,33 @@ nodeRangeClass <- R6Class(
             if(sum(boolExternalIndexRanges))
                 result <- paste0('`', result, "`, for ", paste(forText, collapse = ', '))
             return(result)
+        },
+
+        toNodes = function() {
+            paste_wrap <- function(...)
+                paste(..., sep = ", ")
+            if(isNone())
+                return(varName)
+            externalIndices <- unlist(rangeToIndexSlot[boolExternalIndexRanges])
+            internalIndices <- unlist(rangeToIndexSlot[!boolExternalIndexRanges])
+            indicesList <- list()
+            length(indicesList) <- length(indexSlotToRange)
+            if(length(internalIndices)) {
+                internalExprs <- sapply(indexRangeExprs[!boolExternalIndexRanges], deparse)
+                for(i in seq_along(internalExprs))
+                    indicesList[[internalIndices[i]]] <- internalExprs[i]
+            }
+            if(length(externalIndices)) {
+                if(sum(boolExternalIndexRanges) == 1) {
+                    externalMatrix <- indexRanges[[which(boolExternalIndexRanges)]]$getValuesAsMatrix()
+                } else  externalMatrix <- crossIndexRanges(indexRanges[boolExternalIndexRanges])$values # not ordered
+                tmp <- t(apply(externalMatrix, 1, as.character))
+                if(ncol(externalMatrix) == 1)
+                    tmp <- t(tmp)
+                for(i in seq_along(externalIndices))
+                    indicesList[[externalIndices[i]]] <- tmp[ , i]
+            }
+            return(paste0(varName, "[", do.call(paste_wrap, indicesList), "]"))
         },
 
         print = function() {

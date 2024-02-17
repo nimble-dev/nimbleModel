@@ -89,7 +89,7 @@ varRangeClass <- R6Class(
                 } else stop("unexpected input.")
             }
             if(length(self$rangeToIndexSlot) == 1) {
-                indexSlotToRange <<- 1  # This saves a bit of time in the simple case.
+                indexSlotToRange <<- rep(1, length(self$rangeToIndexSlot[[1]]))  # This saves a bit of time in the simple case.
             } else 
                 if(length(self$rangeToIndexSlot)) { 
                     rangeID <- rep(seq_along(self$rangeToIndexSlot), times = sapply(self$rangeToIndexSlot, length))
