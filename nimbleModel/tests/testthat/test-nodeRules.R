@@ -1606,3 +1606,25 @@ test_that("nodeRange::toNodeChars works correctly", {
     expect_identical(nodeRanges[[5]]$toNodeChars(),
                      c("v[1, 1]", "v[2, 2]", "v[3, 3]"))
 })
+
+test_that("removal of indexing for scalar elements of nodeRanges work", {
+    code <- quote({
+        for(i in 1:100) 
+            for(j in 1:100)
+                for(k in 1:100)
+                    for(l in 1:100)
+                        y[55,l,k,j,33, k,i] ~ dnorm(mu[i,j,k,l], 1)
+        
+    })
+    md <- modelDefClass$new(code)
+    deps=getDependencies(md,'mu[1,1:2,4,3]')[[1]]
+    nr <- getNodes(md,deps)[[1]]
+    expect_identical(nr$indexSlotToRange, as.integer(c(3, 5, 1, 2, 4, 1, 6)))
+    expect_equal(nr$indexRanges[[3]], newIndexRange(55))
+    expect_equal(nr$indexRanges[[5]], newIndexRange(3))
+    expect_equal(nr$indexRanges[[1]], newIndexRange(matrix(c(4,4),nrow=1)))
+    expect_equal(nr$indexRanges[[2]], newIndexRange(quote(1:2)))
+    expect_equal(nr$indexRanges[[4]], newIndexRange(33))
+    expect_equal(nr$indexRanges[[6]], newIndexRange(1))
+})
+    

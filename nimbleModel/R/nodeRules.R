@@ -487,6 +487,21 @@ nodeRangeClass <- R6Class(
                               indexSlotToSet,
                               declRule) {
 
+            ## Convert scalar external indexRanges to internal.
+            if(length(externalRange$indexRanges)) {
+                scalars <- sapply(externalRange$indexRanges,
+                                  function(x) inherits(x, 'indexRangeScalarClass'))
+                if(sum(scalars)) {
+                    internalRange$indexRanges <- c(internalRange$indexRanges, externalRange$indexRanges[scalars])
+                    externalRange$indexRanges <- externalRange$indexRanges[!scalars]
+                    indexSlotToSet[indexSlotToSet %in% which(scalars)] <- -1
+                    externalRange$indexSlotToRange <- externalRange$indexSlotToRange[!externalRange$indexSlotToRange %in% which(scalars)]
+                    for(idx in which(scalars)) 
+                        externalRange$indexSlotToRange[externalRange$indexSlotToRange > idx] <-
+                            externalRange$indexSlotToRange[externalRange$indexSlotToRange > idx] - 1
+                }
+            }
+            
             numExternalIndexRanges <<- length(externalRange$indexRanges)
             boolExternalIndexRanges <<- c(rep(TRUE, numExternalIndexRanges),
                                           rep(FALSE, length(internalRange$indexRanges)))
@@ -502,9 +517,12 @@ nodeRangeClass <- R6Class(
            
             indexSlotToRange <<- rep(0L, length(indexSlotToSet))
 
-            indexSlotToRange[indexSlotToSet != 0] <<- externalRange$indexSlotToRange
+            indexSlotToRange[indexSlotToSet > 0] <<- externalRange$indexSlotToRange
             indexSlotToRange[indexSlotToSet == 0] <<- internalRange$indexSlotToRange +
-                numExternalIndexRanges
+                numExternalIndexRanges    # Original internal indexRanges.
+            indexSlotToRange[indexSlotToSet < 0] <<- seq_len(sum(scalars)) + numExternalIndexRanges +
+                sum(indexSlotToSet == 0)  # New internal indexRanges are at the end.
+            
             if(length(indexSlotToRange)) {
                 rangeToIndexSlot <<- lapply(seq_len(max(indexSlotToRange)),
                                              function(x) which(indexSlotToRange == x))
