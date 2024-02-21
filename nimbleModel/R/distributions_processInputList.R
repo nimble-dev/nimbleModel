@@ -194,8 +194,7 @@ distClass <- setRefClass(
                 if(!(typeList$type %in% c('double', 'integer', 'logical')))     stop('unknown type `', typeList$type, '` specified in distribution.')
                 if(typeList$nDim > 0 && typeList$type != 'double') 
                     stop("non-scalar integer or logical found in distribution function for distribution `", BUGSdistName, "`.\nPlease use type 'double' for all non-scalars in distribution functions.")
-                ## HERE
-                if(!(typeList$nDim %in% 0:1000))     stop('unknown `nDim` specified in distribution `', typeList$nDim, '`.')  ## yes, specifying maximum dimension of 1000
+                 if(!(typeList$nDim %in% 0:1000))     stop('unknown `nDim` specified in distribution `', typeList$nDim, '`.')  ## yes, specifying maximum dimension of 1000
                 types[[typeName]] <<- typeList
             }            
         },
@@ -438,10 +437,10 @@ prepareDistributionInput <- function(densityName, userEnv) {
     return(out)
 }
     
-#' Add user-supplied distributions for use in NIMBLE BUGS models
+#' Add user-supplied distributions for use in NIMBLE models
 #'
 #' Register distributional information so that NIMBLE can process
-#' user-supplied distributions in BUGS model code
+#' user-supplied distributions in model code
 #'
 #' @param distributionsInput either a list or character vector specifying the user-supplied distributions. If a list, it should be a named list of lists in the form of that shown in \code{nimble:::distributionsInputList} with each list having required field \code{BUGSdist} and optional fields \code{Rdist}, \code{altParams}, \code{discrete}, \code{pqAvail}, \code{types}, and with the name of the list the same as that of the density function. Alternatively, simply a character vector providing the names of the density functions for the user-supplied distributions.
 #' @param userEnv environment in which to look for the nimbleFunctions that provide the distribution; this will generally not need to be set by the user as it will default to the environment from which this function was called.
@@ -452,7 +451,7 @@ prepareDistributionInput <- function(densityName, userEnv) {
 #' @details
 #' When \code{distributionsInput} is a list of lists, see below for more information on the structure of the list. When \code{distributionsInput} is a character vector, the distribution is assumed to be of standard form, with parameters assumed to be the arguments provided in the density nimbleFunction, no alternative parameterizations, and the distribution assumed to be continuous with range from minus infinity to infinity. The availability of distribution and quantile functions is inferred from whether appropriately-named functions exist in the global environment.
 #'
-#' One usually does not need to explicitly call \code{registerDistributions} as it will be called automatically when the user-supplied distribution is used for the first time in BUGS code. However, if one wishes to provide alternative parameterizations, to provide a range, or to indicate a distribution is discrete, then one still must explicitly register the distribution using \code{registerDistributions} with the argument in the list format.
+#' One usually does not need to explicitly call \code{registerDistributions} as it will be called automatically when the user-supplied distribution is used for the first time in model code. However, if one wishes to provide alternative parameterizations, to provide a range, or to indicate a distribution is discrete, then one still must explicitly register the distribution using \code{registerDistributions} with the argument in the list format.
 #'
 #' Format of the component lists when \code{distributionsInput} is a list of lists:
 #' \itemize{
@@ -592,10 +591,10 @@ registerDistributions <- function(distributionsInput, userEnv = parent.frame(), 
 }
 
 
-#' Remove user-supplied distributions from use in NIMBLE BUGS models
+#' Remove user-supplied distributions from use in NIMBLE models
 #'
 #' Deregister distributional information originally supplied by the user
-#' for use in BUGS model code
+#' for use in model code
 #'
 #' @param distributionsNames a character vector giving the names of the distributions to be dergistered
 #' @author Christopher Paciorek
@@ -654,12 +653,12 @@ getDistributionList <- function(dists) {
 
 #' Get information about a distribution
 #'
-#' Give information about each BUGS distribution
+#' Give information about each distribution
 #'
 #' @name distributionInfo
 #' @aliases isUserDefined pqDefined getType getParamNames getDistributionInfo
 #' 
-#' @param dist a character vector of length one, giving the name of the distribution (as used in BUGS code), e.g. \code{'dnorm'}
+#' @param dist a character vector of length one, giving the name of the distribution (as used in model code), e.g. \code{'dnorm'}
 #'
 #' @param params an optional character vector of names of parameters for which dimensions are desired (possibly including \'value\' and alternate parameters)
 #'
@@ -671,21 +670,21 @@ getDistributionList <- function(dists) {
 #'
 #' @author Christopher Paciorek
 #' @details
-#' NIMBLE provides various functions to give information about a BUGS distribution. In some cases, functions of the same name and similar functionality operate on the node(s) of a model as well (see \code{help(modelBaseClass)}).
+#' NIMBLE provides various functions to give information about a model distribution. In some cases, functions of the same name and similar functionality operate on the node(s) of a model as well (see \code{help(modelBaseClass)}).
 #' 
 #' \code{getDistributionInfo} returns an internal data structure (a reference class object) providing various information about the distribution. The output is not very user-friendly, but does contain all of the information that NIMBLE has about the distribution.
 #'
-#' \code{isDiscrete} tests if a BUGS distribution is a discrete distribution.
+#' \code{isDiscrete} tests if a distribution is a discrete distribution.
 #'
-#' \code{isUserDefined} tests if a BUGS distribution is a user-defined distribution.
+#' \code{isUserDefined} tests if a distribution is a user-defined distribution.
 #'
-#' \code{pqAvail} tests if a BUGS distribution provides distribution ('p') and quantile ('q') functions.
+#' \code{pqAvail} tests if a distribution provides distribution ('p') and quantile ('q') functions.
 #' 
-#' \code{getDimension} provides the dimension of the value and/or parameters of a BUGS distribution. The return value is a numeric vector with an element for each parameter/value requested.
+#' \code{getDimension} provides the dimension of the value and/or parameters of a distribution. The return value is a numeric vector with an element for each parameter/value requested.
 #'
-#' \code{getType} provides the type (numeric, logical, integer) of the value and/or parameters of a BUGS distribution. The return value is a character vector with an element for each parameter/value requested. At present, all quantities are stored as numeric (double) values, so this function is of little practical use but could be exploited in the future.
+#' \code{getType} provides the type (numeric, logical, integer) of the value and/or parameters of a distribution. The return value is a character vector with an element for each parameter/value requested. At present, all quantities are stored as numeric (double) values, so this function is of little practical use but could be exploited in the future.
 #'
-#' \code{getParamNames} provides the value and/or parameter names of a BUGS distribution.
+#' \code{getParamNames} provides the value and/or parameter names of a distribution.
 #' 
 #' @examples
 #' distInfo <- getDistributionInfo('dnorm')

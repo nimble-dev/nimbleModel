@@ -44,8 +44,10 @@ varRangeClass <- R6Class(
             fromStochRule <<- fromStochRule
             if(inherits(indexInfo, "indexRangeClass"))
                 stop("`varRange` must be initialized from a list of `indexRange`s, not a single `indexRange`.")
-            if(is.character(indexInfo))
+            if(is.character(indexInfo)) {
+                if(exists('paciorek')) cat("parsing\n")
                 indexInfo <- parse(text = indexInfo, keep.source = FALSE)[[1]]
+            }
             
             ## Input is an expression.
             if(is.call(indexInfo) || is.name(indexInfo)) {
