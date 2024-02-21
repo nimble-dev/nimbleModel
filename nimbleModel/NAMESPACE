@@ -49,6 +49,7 @@ export(applyGraphRule)
 export(getSymbolicParentNodes)
 export(getSymbolicParentNodesRecurse)
 export(newIndexRange)
+export(newDataRules)
 
 
 export(makeIndexRules)
