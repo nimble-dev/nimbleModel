@@ -4,6 +4,10 @@ dimOrLength <- function(obj, scalarize = FALSE) {
     return(dim(obj))
 }
 
+pasteIndices  <- function(...)
+    paste(..., sep = ", ")
+
+
 ## Sequential label generation system:
 ## labelFunctionMetaCreator returns a function that returns a function.
 ## labelFunctionMetaCreator is only called once, immediately below, to create labelFunctionCreator

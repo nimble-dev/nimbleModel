@@ -1605,6 +1605,11 @@ test_that("nodeRange::toNodeChars works correctly", {
     expect_identical(nodeRanges[[4]]$toNodeChars(), c("w[1]", "w[2]", "w[3]"))
     expect_identical(nodeRanges[[5]]$toNodeChars(),
                      c("v[1, 1]", "v[2, 2]", "v[3, 3]"))
+
+    expect_identical(nodeRanges[[5]]$toNodeChars(2),
+                     "v[2, 2]")
+
+    
 })
 
 test_that("removal of indexing for scalar elements of nodeRanges work", {

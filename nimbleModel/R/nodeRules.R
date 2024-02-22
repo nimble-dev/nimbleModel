@@ -480,6 +480,7 @@ nodeRangeClass <- R6Class(
         declRule = NULL,
         boolExternalIndexRanges = NULL,
         numExternalIndexRanges = NULL,
+        nodeChars = NULL,
 
         initialize = function(varName,
                               externalRange,
@@ -562,31 +563,36 @@ nodeRangeClass <- R6Class(
 
         ## Convert to set of character strings, one element per node,
         ## i.e., format of nodes in original nimble.
-        toNodeChars = function() {
-            paste_wrap <- function(...)
-                paste(..., sep = ", ")
-            if(isNone())
-                return(varName)
-            externalIndices <- unlist(rangeToIndexSlot[boolExternalIndexRanges])
-            internalIndices <- unlist(rangeToIndexSlot[!boolExternalIndexRanges])
-            indicesList <- list()
-            length(indicesList) <- length(indexSlotToRange)
-            if(length(internalIndices)) {
-                internalExprs <- sapply(indexRangeExprs[!boolExternalIndexRanges], deparse)
-                for(i in seq_along(internalExprs))
-                    indicesList[[internalIndices[i]]] <- internalExprs[i]
+        toNodeChars = function(index) {
+            if(is.null(nodeChars)) {
+                if(isNone()) {
+                    nodeChars <<- varName
+                } else {
+                    externalIndices <- unlist(rangeToIndexSlot[boolExternalIndexRanges])
+                    internalIndices <- unlist(rangeToIndexSlot[!boolExternalIndexRanges])
+                    indicesList <- list()
+                    length(indicesList) <- length(indexSlotToRange)
+                    if(length(internalIndices)) {
+                        internalExprs <- sapply(indexRangeExprs[!boolExternalIndexRanges], deparse)
+                        for(i in seq_along(internalExprs))
+                            indicesList[[internalIndices[i]]] <- internalExprs[i]
+                    }
+                    if(length(externalIndices)) {
+                        if(sum(boolExternalIndexRanges) == 1) {
+                            externalMatrix <- indexRanges[[which(boolExternalIndexRanges)]]$getValuesAsMatrix()
+                        } else  externalMatrix <- crossIndexRanges(indexRanges[boolExternalIndexRanges])$values # not ordered
+                        tmp <- t(apply(externalMatrix, 1, as.character))
+                        if(ncol(externalMatrix) == 1)
+                            tmp <- t(tmp)
+                        for(i in seq_along(externalIndices))
+                            indicesList[[externalIndices[i]]] <- tmp[ , i]
+                    }
+                    nodeChars <<- paste0(varName, "[", do.call(pasteIndices, indicesList), "]")
+                }
             }
-            if(length(externalIndices)) {
-                if(sum(boolExternalIndexRanges) == 1) {
-                    externalMatrix <- indexRanges[[which(boolExternalIndexRanges)]]$getValuesAsMatrix()
-                } else  externalMatrix <- crossIndexRanges(indexRanges[boolExternalIndexRanges])$values # not ordered
-                tmp <- t(apply(externalMatrix, 1, as.character))
-                if(ncol(externalMatrix) == 1)
-                    tmp <- t(tmp)
-                for(i in seq_along(externalIndices))
-                    indicesList[[externalIndices[i]]] <- tmp[ , i]
-            }
-            return(paste0(varName, "[", do.call(paste_wrap, indicesList), "]"))
+            if(missing(index)) {
+                return(nodeChars)
+            } else return(nodeChars[index])
         },
 
         print = function() {

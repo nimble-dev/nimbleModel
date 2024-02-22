@@ -210,8 +210,6 @@ varRangeClass <- R6Class(
         ## consideration of what is a node.
         ## e.g., "y[1:3, 1:5]" and c("y[1, 1:5]", "y[3, 1:5]").
         toVarChars = function() {
-            paste_wrap <- function(...)
-                paste(..., sep = ", ")
             if(isNone())
                 return(varName)
             indexRangeClasses <- sapply(indexRanges, function(x) class(x)[1])
@@ -241,7 +239,7 @@ varRangeClass <- R6Class(
                 for(i in seq_along(matrixIndices))
                     indicesList[[matrixIndices[i]]] <- tmp[ , i]
             }
-            return(paste0(varName, "[", do.call(paste_wrap, indicesList), "]"))
+            return(paste0(varName, "[", do.call(pasteIndices, indicesList), "]"))
         }, 
 
         toRule = function() {
