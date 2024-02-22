@@ -2567,3 +2567,29 @@ test_that("missing indexing", {
 
 })
 
+test_that("flexible use of indexing in models", {
+    code = quote({
+    for(i in 1:2)
+        for(t in seasons[[i]])
+            y[i,t] ~ dnorm(mu,1)
+    })
+    md <- modelDefClass$new(code,constants = list(seasons=list(3,c(4,6))))
+    nr <- getDependencies(md, 'mu')[[1]]
+    expect_identical(nr$toNodeChars, c("y[1, 3]", "y[2, 4]", "y[2, 6]"))
+
+    code = quote({
+        for(i in seasons)
+            y[i] ~ dnorm(mu,1)
+    })
+    md <- modelDefClass$new(code, constants = list(seasons = c(3,5)))
+    nr <- getDependencies(md, 'mu')[[1]]
+    expect_identical(nr$toNodeChars, c("y[3]", "y[5]"))
+    
+    code = quote({
+        y[1:3] ~ dmnorm(z[seas],pr[1:3,1:3])
+    })
+    nimbleModel:::nimbleModelOptions(verbose = FALSE)
+    expect_error(md <- modelDefClass$new(code, constants = list(seas=c(1,2,4))),
+                 "unable to process")
+    nimbleModel:::nimbleModelOptions(verbose = TRUE)
+})

@@ -556,8 +556,11 @@ nodeRangeClass <- R6Class(
             result <- safeDeparse(do.call("call",
                                       c(list("[", nm),
                                         exprs[indexSlotToRange]), quote = TRUE))
-            if(sum(boolExternalIndexRanges))
-                result <- paste0('`', result, "`, for ", paste(forText, collapse = ', '))
+            if(sum(boolExternalIndexRanges)) {
+                if(length(sv))
+                    forText <- paste0("`, for ", paste(forText, collapse = ', ')) else forText <- "`"
+                result <- paste0('`', result, forText)
+            }
             return(result)
         },
 
