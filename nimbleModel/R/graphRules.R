@@ -167,12 +167,12 @@ makeSeparableIndexSets <- function(toExpr, fromExpr, context) {
     toIndexSlotToSet <- integer(length = toDim)
     fromIndexSlotToSet <- integer(length = fromDim)
     indexVarNameSets <- list()
-    currentSetID <- 0
+    currentSetID <- 0L
     remainingIndexVarNames <- indexVarNames
     fromOnly <- NULL
     
     while(length(remainingIndexVarNames)) {
-        currentSetID <- currentSetID + 1
+        currentSetID <- currentSetID + 1L
         done <- FALSE
         currentIndexVarNames <- remainingIndexVarNames[1]
         while(!done) {
