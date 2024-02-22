@@ -202,7 +202,7 @@ test_that("toVarChars works correctly", {
     
     md <- modelDefClass$new(code, constants = list(idx = c(2,5,4)))
     vr <- getDependencies(md, 'z', self=FALSE)[[1]]
-    expect_identical(vr$toVarChars,
+    expect_identical(vr$toVarChars(),
                      c("y[2, 2, 3, 1:2, 1, 2:4]", "y[2, 3, 3, 1:2, 2, 2:4]", "y[2, 4, 3, 1:2, 3, 2:4]", "y[2, 5, 3, 1:2, 4, 2:4]", "y[4, 2, 3, 1:2, 1, 2:4]", "y[4, 3, 3, 1:2, 2, 2:4]", "y[4, 4, 3, 1:2, 3, 2:4]", "y[4, 5, 3, 1:2, 4, 2:4]", "y[5, 2, 3, 1:2, 1, 2:4]", "y[5, 3, 3, 1:2, 2, 2:4]", "y[5, 4, 3, 1:2, 3, 2:4]", "y[5, 5, 3, 1:2, 4, 2:4]"))
 })
 
