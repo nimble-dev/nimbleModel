@@ -40,9 +40,12 @@ Presumably we want to process the result to [combine `varRange`s that can be com
 This is done via `getNodes`, which subsumes `expandNodeNames` and `getNodeNames`.
 
 - Inputs include flags (e.g., `latentOnly`, `stochOnly`) and (optionally) `varRange`s (and the like).
-- Relevant `calcRule`s are invoked.
+- Relevant `nodeRule`s are invoked.
 - Output is a set of `nodeRanges`. (Not same as a `varRange`, as often assign samplers to elements of a `nodeRange` and need to know the elements, whereas could summarize a `nodeRange` as a single `varRange` that doesn't distinguish the nodes -- see implementation.Rmd.)
 
+# Getting and setting values
+
+Not yet fleshed out, but one possibility is to handle getting and setting variable valus via `varRange`s, adding get and set functionality that indexes over the elements of the `varRange` similar to `calcRange$calculate()` (but simpler). 
 
 
 

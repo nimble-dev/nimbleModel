@@ -400,7 +400,7 @@ calcRangeClass <- R6Class(
         },
 
         ## Generic calculate function that crosses the indexRanges in the indexingRange (a varRange)
-        ## and extracts the original indice to feed into calculate nodeFunction
+        ## and extracts the original indices to feed into calculate nodeFunction
         ## that operates on set of scalar indices.
 
         ## Keep indexing internal to the indexRange to avoid complicated and possibly repetitive
@@ -500,7 +500,9 @@ nodeRangeClass <- R6Class(
                         externalRange$indexSlotToRange[externalRange$indexSlotToRange > idx] <-
                             externalRange$indexSlotToRange[externalRange$indexSlotToRange > idx] - 1
                 }
-            }
+            } else scalars <- logical(0)
+
+            ## CHECK: could consider converting 1-row indexRangeMatrix to set of scalars.
             
             numExternalIndexRanges <<- length(externalRange$indexRanges)
             boolExternalIndexRanges <<- c(rep(TRUE, numExternalIndexRanges),
@@ -537,8 +539,6 @@ nodeRangeClass <- R6Class(
             varRangeClass$new(indexRanges, rangeToIndexSlot = rangeToIndexSlot, varName = varName, fromStochRule = declRule$stoch)
         },
 
-        ## FUTURE: could represent as y[(1:3), 1:5] where () indicates external indexing over nodes,
-        ## instead of y[i, 1:5] for i = 1:3.
         toChar = function() {
             if(is.null(varName)) {
                 nm <- as.name("no_name")
