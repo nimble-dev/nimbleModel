@@ -205,6 +205,45 @@ varRangeClass <- R6Class(
             safeDeparse(toExpr(), warn = TRUE)
         },
 
+        ## Convert to set of character strings, as few as possible,
+        ## similar to format of nodes in original nimble, but without
+        ## consideration of what is a node.
+        ## e.g., "y[1:3, 1:5]" and c("y[1, 1:5]", "y[3, 1:5]").
+        toVarChars = function() {
+            paste_wrap <- function(...)
+                paste(..., sep = ", ")
+            if(isNone())
+                return(varName)
+            indexRangeClasses <- sapply(indexRanges, function(x) class(x)[1])
+            if(any(indexRangeClasses == "indexRangeMatrixListClass"))
+                stop("`toVarChars` does not handle indexRangeMatrixList class elements.")
+
+            boolMatrixIndexRanges <- indexRangeClasses == "indexRangeMatrixClass"
+            matrixIndices <- unlist(rangeToIndexSlot[boolMatrixIndexRanges])
+            nonMatrixIndices <- unlist(rangeToIndexSlot[!boolMatrixIndexRanges])
+            
+            indicesList <- list()
+            length(indicesList) <- length(indexSlotToRange)
+
+            if(sum(!boolMatrixIndexRanges)) {
+                nonMatrixExprs <- sapply(indexRangeExprs[!boolMatrixIndexRanges], deparse)
+                for(i in seq_along(nonMatrixExprs))
+                    indicesList[[nonMatrixIndices[i]]] <- nonMatrixExprs[i]
+            }
+
+            if(sum(boolMatrixIndexRanges)) {
+                if(sum(boolMatrixIndexRanges) == 1) {
+                    externalMatrix <- indexRanges[[which(boolMatrixIndexRanges)]]$getValuesAsMatrix()
+                } else  externalMatrix <- crossIndexRanges(indexRanges[boolMatrixIndexRanges])$values # not ordered
+                tmp <- t(apply(externalMatrix, 1, as.character))
+                if(ncol(externalMatrix) == 1)
+                    tmp <- t(tmp)
+                for(i in seq_along(matrixIndices))
+                    indicesList[[matrixIndices[i]]] <- tmp[ , i]
+            }
+            return(paste0(varName, "[", do.call(paste_wrap, indicesList), "]"))
+        }, 
+
         toRule = function() {
             constants <- list()
             if(length(indexRanges)) {

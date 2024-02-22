@@ -186,6 +186,24 @@ test_that("toRule", {
     expect_equal(xVar$indexRanges, newVar$indexRanges[c(2,1,3,4)])
 })
 
-
+test_that("toVarChars works correctly", {
+    vr <- varRangeClass$new("y[2, 1:5]")
+    expect_identical(vr$toVarChars(), "y[2, 1:5]")
+    vr <- varRangeClass$new(list(newIndexRange(matrix(c(2,4,5), ncol = 1)),
+                                 newIndexRange(quote(3:4))), varName = "y")
+    expect_identical(vr$toVarChars(), paste0("y[", c(2,4,5), ", 3:4]"))
+    
+    code <- quote({
+        for(i in 1:4)
+            for(j in 1:2)
+                for(k in 1:3)
+                y[idx[k], i+1,3,j,i,2:4]~ dmnorm(z[1:3],pr[1:3,1:3])
+    })
+    
+    md <- modelDefClass$new(code, constants = list(idx = c(2,5,4)))
+    vr <- getDependencies(md, 'z', self=FALSE)[[1]]
+    expect_identical(vr$toVarChars,
+                     c("y[2, 2, 3, 1:2, 1, 2:4]", "y[2, 3, 3, 1:2, 2, 2:4]", "y[2, 4, 3, 1:2, 3, 2:4]", "y[2, 5, 3, 1:2, 4, 2:4]", "y[4, 2, 3, 1:2, 1, 2:4]", "y[4, 3, 3, 1:2, 2, 2:4]", "y[4, 4, 3, 1:2, 3, 2:4]", "y[4, 5, 3, 1:2, 4, 2:4]", "y[5, 2, 3, 1:2, 1, 2:4]", "y[5, 3, 3, 1:2, 2, 2:4]", "y[5, 4, 3, 1:2, 3, 2:4]", "y[5, 5, 3, 1:2, 4, 2:4]"))
+})
 
                      

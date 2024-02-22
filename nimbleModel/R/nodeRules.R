@@ -560,6 +560,8 @@ nodeRangeClass <- R6Class(
             return(result)
         },
 
+        ## Convert to set of character strings, one element per node,
+        ## i.e., format of nodes in original nimble.
         toNodeChars = function() {
             paste_wrap <- function(...)
                 paste(..., sep = ", ")
