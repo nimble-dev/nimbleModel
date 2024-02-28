@@ -68,7 +68,7 @@ modelDefClass <- R6Class(
             
             ## TODO: add later
             ## buildSymbolTable()           
-            ## genIsDataVarInfo()                   
+
             makeVarNames()                 
 
             warnRHSonlyDynamicIndexing()
