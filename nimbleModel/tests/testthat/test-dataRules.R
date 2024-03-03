@@ -1,5 +1,11 @@
 test_that("data rules work", {
 
+    ## 0-d
+    y <- rnorm(1)
+    dataRules <- newDataRules(y, 'y')
+    expect_equal(dataRules[[1]]$apply('y'),
+                 varRangeClass$new(list(), varName = 'y'))
+
     ## 1-d
     y <- rnorm(5)
     dataRules <- newDataRules(y, 'y')

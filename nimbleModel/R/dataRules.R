@@ -22,21 +22,25 @@ newDataRules <- function(x, varName, nondata = FALSE, sequenceThreshold = 0.1) {
     if(!anyNAs && nondata)
         return(NULL)
 
-    if(!anyNAs || allNAs) {  # No fracturing
-        rulePieces <- makeRulePieces(NAs, varName, all = TRUE)
+    if(length(x) == 1) {
+        expr <- parse(text = varName)[[1]]
+        rules <- list(graphRuleClass$new(expr, expr, context = modelContextClass$new()))
     } else {
-        if(nondata) {
-            rulePieces <- makeRulePieces(NAs, varName, all = FALSE,
-                                         sequenceThreshold = sequenceThreshold)
-        } else rulePieces <- makeRulePieces(!NAs, varName, all = FALSE,
-                                            sequenceThreshold = sequenceThreshold)
+        if(!anyNAs || allNAs) {  # No fracturing
+            rulePieces <- makeRulePieces(NAs, varName, all = TRUE)
+        } else {
+            if(nondata) {
+                rulePieces <- makeRulePieces(NAs, varName, all = FALSE,
+                                             sequenceThreshold = sequenceThreshold)
+            } else rulePieces <- makeRulePieces(!NAs, varName, all = FALSE,
+                                                sequenceThreshold = sequenceThreshold)
+        }
+        ## We'll use graphRules, though only have a single "side".
+        rules <- lapply(rulePieces, function(singleRulePieces) {
+            graphRuleClass$new(singleRulePieces$expr, singleRulePieces$expr,
+                               context = modelContextClass$new(singleRulePieces$singleContexts),
+                               constants = singleRulePieces$constants) })
     }
-    ## We'll use graphRules, though only have a single "side".
-    rules <- lapply(rulePieces, function(singleRulePieces) {
-        graphRuleClass$new(singleRulePieces$expr, singleRulePieces$expr,
-                           context = modelContextClass$new(singleRulePieces$singleContexts),
-                           constants = singleRulePieces$constants) })
-
     return(lapply(rules, function(rule) dataRuleClass$new(rule, varName, nondata)))
 }
 

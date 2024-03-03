@@ -996,9 +996,9 @@ exclude <- function(focalRule, excludingRule, constants = list()) {
             if(inherits(focalRule, "rhsRuleClass")) {
                 resultRule <- rhsRuleClass$new(expr, context = modelContextClass$new(newSingleContexts),
                                                constants = c(constants, oldConstants), usedInIndex = focalRule$usedInIndex)
-            } else resultRule <- calcRuleClass$new(focalRule$declRule, expr,
+            } else resultRule <- calcRuleClass$new(focalRule$declRule, expr, ID = focalRule$ID,
                                             context = modelContextClass$new(newSingleContexts),
-                                               constants = c(constants, oldConstants), usedInIndex = focalRule$usedInIndex)       
+                                               constants = c(constants, oldConstants))
             return(list(resultRule))
         } else {  # seq+seq or seq+scalar
             if(inherits(int, "indexRangeScalarClass"))  # convert to sequence to avoid special case code
@@ -1024,9 +1024,9 @@ exclude <- function(focalRule, excludingRule, constants = list()) {
                 if(inherits(focalRule, 'rhsRuleClass')) {
                     resultRule <- rhsRuleClass$new(expr, context = modelContextClass$new(newSingleContexts),
                                                    constants = constants, usedInIndex = focalRule$usedInIndex)
-                } else resultRule <- calcRuleClass$new(focalRule$declRule, expr,
+                } else resultRule <- calcRuleClass$new(focalRule$declRule, expr, ID = focalRule$ID,
                                                   context = modelContextClass$new(newSingleContexts),
-                                                   constants = constants, usedInIndex = focalRule$usedInIndex)     
+                                                   constants = constants)
                 return(list(resultRule))
             } else {
                 ## Modify focalRule expr and context to create two new rules.
@@ -1050,12 +1050,12 @@ exclude <- function(focalRule, excludingRule, constants = list()) {
                     resultRule2 <- rhsRuleClass$new(expr2, context = modelContextClass$new(newSingleContexts2),
                                                     constants = constants, usedInIndex = focalRule$usedInIndex)
                 } else {
-                    resultRule1 <- calcRuleClass$new(focalRule$declRule, expr1,
+                    resultRule1 <- calcRuleClass$new(focalRule$declRule, expr1, ID = focalRule$ID,
                                                      context = modelContextClass$new(newSingleContexts1),
-                                                     constants = constants, usedInIndex = focalRule$usedInIndex)
-                    resultRule2 <- calcRuleClass$new(focalRule$declRule, expr2,
+                                                     constants = constants)
+                    resultRule2 <- calcRuleClass$new(focalRule$declRule, expr2, ID = focalRule$ID,
                                                      context = modelContextClass$new(newSingleContexts2),
-                                                     constants = constants, usedInIndex = focalRule$usedInIndex)
+                                                     constants = constants)
 
 
                 }
@@ -1100,9 +1100,9 @@ exclude <- function(focalRule, excludingRule, constants = list()) {
         if(inherits(focalRule, 'rhsRuleClass')) {
             resultRule <- rhsRuleClass$new(expr, context = modelContextClass$new(newSingleContexts),
                                            constants = c(constants, oldConstants), usedInIndex = focalRule$usedInIndex)
-        } else resultRule <- calcRuleClass$new(focalRule$declRule, expr,
+        } else resultRule <- calcRuleClass$new(focalRule$declRule, expr, ID = focalRule$ID,
                                                context = modelContextClass$new(newSingleContexts),
-                                               constants = c(constants, oldConstants), usedInIndex = focalRule$usedInIndex)
+                                               constants = c(constants, oldConstants))
         return(list(resultRule))
      }
 }
