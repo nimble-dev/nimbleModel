@@ -912,3 +912,198 @@ checkAndCreateLink <- function(LHSrule, dependentRange, parentRule) {
     }
     invisible(NULL)
 }
+
+## Two use cases:
+## 1) Takes a RHS rule (created from variable used in original RHS of an expression) and intersects it with another rule,
+## which could be a `rhsRule` or a `declRule`, from use of the variable either on the LHS or the RHS.
+## 2) Takes a focal rule and intersects it with another rule, for excluding candidate calcRules from predictiveRules.
+## Result can be:
+##  - no intersection: focal rule passed through,
+##  - focal is fully in excluding rule: result is NULL, or
+##  - partly intersects: fracture and return one or more fractured rules.
+
+exclude <- function(focalRule, excludingRule, constants = list()) {
+    ## Can also take varRanges for use in `traverseGraph`.
+    if(inherits(excludingRule, 'varRangeClass')) {
+        excludingRange <- excludingRule
+    } else excludingRange <- excludingRule$fullRange
+    if(inherits(focalRule, 'varRangeClass')) {
+        focalRange <- focalRule
+        focalRule <- focalRule$toRule()
+    } else focalRange <- focalRule$fullRange
+    intersection <- focalRule$apply(excludingRange)
+
+    if(is.null(intersection)) # no overlap
+        return(list(focalRule))
+    if(varRange_isEqual(focalRange, intersection)) # full overlap
+        return(NULL)
+
+    ## Partial overlap case. We need to fracture the focalRule.
+
+    identicalIndices <- sapply(seq_along(focalRange$indexSlotToRange), function(idx)
+        isTRUE(all.equal(focalRange$indexRanges[[focalRange$indexSlotToRange[idx]]],
+                  intersection$indexRanges[[intersection$indexSlotToRange[[idx]]]])))
+
+    nonIdenticalIndices <- which(!identicalIndices)
+    
+    expr <- focalRule$expr
+    singleContexts <- focalRule$context$singleContexts
+    
+    if(length(focalRule$fullRule$indexSets$toIndexSlotToSet) == 1 || length(nonIdenticalIndices) == 1) {
+        ## TODO: remove this check when have done full testing and presumably simply above to only check 2nd condition.
+        if(length(focalRule$fullRule$indexSets$toIndexSlotToSet) == 1 && length(nonIdenticalIndices) != 1)
+            stop("DEBUG: check.")
+
+        ## split, shrink, or remove from focal index, and combine with other indices
+        RHS <- focalRange$indexRanges[[focalRange$indexSlotToRange[nonIdenticalIndices]]]
+        int <- intersection$indexRanges[[intersection$indexSlotToRange[nonIdenticalIndices]]]
+
+        focalContext <- sapply(names(singleContexts), function(nm)
+            nm %in% all.vars(expr[[2+nonIdenticalIndices]]))
+        
+        if(inherits(RHS, "indexRangeMatrixClass") || is(int, "indexRangeMatrixClass")) {
+            ## Handle any matrix cases by expanding elements.
+            valsRHS <- switch(class(RHS)[1],
+                              indexRangeMatrixClass = RHS$values,
+                              indexRangeScalarClass = RHS$value,
+                              indexRangeSequenceClass = as.numeric(RHS$start:RHS$end),
+                              stop("`RHS` type not found.")
+                              )
+            valsInt <- switch(class(int)[1],
+                              indexRangeMatrixClass = int$values,
+                              indexRangeScalarClass = int$value,
+                              indexRangeSequenceClass = as.numeric(int$start:int$end),
+                              stop("`int` type not found.")
+                              )
+            valsRHS <- valsRHS[!valsRHS %in% valsInt]
+
+            ## Modify focalRule expr and context to insert vector of relevant values.
+            newSingleContexts <- singleContexts[!focalContext]
+            newSingleContexts[[length(newSingleContexts)+1]] <- singleContextClass$new(
+                               indexVarExpr = quote(.newidx),
+                indexRangeExpr = substitute(1:L, list(L = length(valsRHS))))
+
+            newcode <- paste0(".idx", nonIdenticalIndices, "[.newidx]")
+            expr[[nonIdenticalIndices+2]] <- parse(text = newcode[1])[[1]]
+
+            ## Replace any constants related to an index slot processed in a previous
+            ## call to `exclude`.
+            constants <- list(valsRHS)
+            names(constants) <- paste0(".idx", nonIdenticalIndices)
+            oldConstants <- constants
+            oldConstants[names(oldConstants) %in% names(constants)] <- NULL
+
+            if(inherits(focalRule, "rhsRuleClass")) {
+                resultRule <- rhsRuleClass$new(expr, context = modelContextClass$new(newSingleContexts),
+                                               constants = c(constants, oldConstants), usedInIndex = focalRule$usedInIndex)
+            } else resultRule <- calcRuleClass$new(focalRule$declRule, expr,
+                                            context = modelContextClass$new(newSingleContexts),
+                                               constants = c(constants, oldConstants), usedInIndex = focalRule$usedInIndex)       
+            return(list(resultRule))
+        } else {  # seq+seq or seq+scalar
+            if(inherits(int, "indexRangeScalarClass"))  # convert to sequence to avoid special case code
+                int <- newIndexRange(substitute(A:A, list(A = int$value)))
+            if(inherits(RHS, "indexRangeScalarClass"))
+                stop("not expecting RHS to be a scalar.")  ## scalar RHS either fully intersected or not intersected
+
+            ## Now process two sequences.
+            if(int$start == RHS$start || int$end == RHS$end) {
+                ## Shrink existing index block.
+                ## Don't modify RHS as it is an indexRange pointing to memory in `rhsOriginalRules`.
+                start <- RHS$start
+                end <- RHS$end
+                if(int$start == RHS$start) 
+                    start <- int$end+1 else end <- int$start-1
+
+                newSingleContexts <- singleContexts[!focalContext]
+                newSingleContexts[[length(newSingleContexts)+1]] <- singleContextClass$new(
+                    indexVarExpr = quote(.newidx),
+                    indexRangeExpr = substitute(A:B, list(A = start, B = end)))
+                expr[[nonIdenticalIndices+2]] <- newSingleContexts[[length(newSingleContexts)]]$indexVarExpr
+
+                if(inherits(focalRule, 'rhsRuleClass')) {
+                    resultRule <- rhsRuleClass$new(expr, context = modelContextClass$new(newSingleContexts),
+                                                   constants = constants, usedInIndex = focalRule$usedInIndex)
+                } else resultRule <- calcRuleClass$new(focalRule$declRule, expr,
+                                                  context = modelContextClass$new(newSingleContexts),
+                                                   constants = constants, usedInIndex = focalRule$usedInIndex)     
+                return(list(resultRule))
+            } else {
+                ## Modify focalRule expr and context to create two new rules.
+                newSingleContexts1 <- singleContexts[!focalContext]
+                newSingleContexts2 <- singleContexts[!focalContext]
+
+                expr1 <- expr2 <- expr
+                newSingleContexts1[[length(newSingleContexts1)+1]] <- singleContextClass$new(
+                    indexVarExpr = quote(.newidx),
+                    indexRangeExpr = substitute(A:B, list(A = RHS$start, B = int$start-1)))
+                expr1[[nonIdenticalIndices+2]] <- newSingleContexts1[[length(newSingleContexts1)]]$indexVarExpr
+
+                newSingleContexts2[[length(newSingleContexts2)+1]] <- singleContextClass$new(
+                    indexVarExpr = quote(.newidx),
+                    indexRangeExpr = substitute(A:B, list(A = int$end+1, B = RHS$end)))
+                expr2[[nonIdenticalIndices+2]] <- newSingleContexts2[[length(newSingleContexts2)]]$indexVarExpr
+
+                if(inherits(focalRule, 'rhsRuleClass')) {
+                    resultRule1 <- rhsRuleClass$new(expr1, context = modelContextClass$new(newSingleContexts1),
+                                                    constants = constants, usedInIndex = focalRule$usedInIndex)
+                    resultRule2 <- rhsRuleClass$new(expr2, context = modelContextClass$new(newSingleContexts2),
+                                                    constants = constants, usedInIndex = focalRule$usedInIndex)
+                } else {
+                    resultRule1 <- calcRuleClass$new(focalRule$declRule, expr1,
+                                                     context = modelContextClass$new(newSingleContexts1),
+                                                     constants = constants, usedInIndex = focalRule$usedInIndex)
+                    resultRule2 <- calcRuleClass$new(focalRule$declRule, expr2,
+                                                     context = modelContextClass$new(newSingleContexts2),
+                                                     constants = constants, usedInIndex = focalRule$usedInIndex)
+
+
+                }
+                return(list(resultRule1, resultRule2))
+            }
+        }
+    } else { 
+        ## Scenarios that are not the simple setting of a single index slot that needs to be considered.
+        ## Create fully unrolled matrix of indices for non-identical indices, do exclusion,
+        ## then create new arbitrary focalRule by creating a complicated context, crossed with any indices that are identical
+        unrolledRHS <- focalRange$extractIndexRange(nonIdenticalIndices)
+        unrolledIntersection <- intersection$extractIndexRange(nonIdenticalIndices)
+
+        ## Convert matrices of index values by row to strings to allow matching.
+        rhsAsChar <- do.call(paste, as.data.frame(unrolledRHS$values))
+        intAsChar <- do.call(paste, as.data.frame(unrolledIntersection$values))
+
+        remaining <- !rhsAsChar %in% intAsChar
+        remainingVals <- unrolledRHS$values[remaining, , drop = FALSE]
+
+        ## Retain singleContexts for identical indices.
+        focalSingleContexts <- sapply(names(singleContexts), function(nm)
+            nm %in% unlist(lapply(2+nonIdenticalIndices, function(x) all.vars(expr[[x]]))))
+        if(sum(!focalSingleContexts)) {
+            newSingleContexts <- singleContexts[!focalSingleContexts]
+        } else newSingleContexts <- list()
+
+        newSingleContexts[[length(newSingleContexts) + 1]] <- singleContextClass$new(
+                               indexVarExpr = quote(.newidx),
+            indexRangeExpr = substitute(1:L, list(L = nrow(remainingVals))))
+
+        newcode <- paste0(".idx", nonIdenticalIndices, "[.newidx]")
+        for(i in seq_along(nonIdenticalIndices)) 
+            expr[[nonIdenticalIndices[i]+2]] <- parse(text = newcode[i])[[1]]
+
+        ## Replace any constants related to an index slot processed in a previous
+        ## call to `exclude`.
+        oldConstants <- constants
+        constants <- lapply(seq_len(ncol(remainingVals)), function(i) remainingVals[ , i])
+        names(constants) <- paste0(".idx", nonIdenticalIndices)
+        oldConstants[names(oldConstants) %in% names(constants)] <- NULL
+        if(inherits(focalRule, 'rhsRuleClass')) {
+            resultRule <- rhsRuleClass$new(expr, context = modelContextClass$new(newSingleContexts),
+                                           constants = c(constants, oldConstants), usedInIndex = focalRule$usedInIndex)
+        } else resultRule <- calcRuleClass$new(focalRule$declRule, expr,
+                                               context = modelContextClass$new(newSingleContexts),
+                                               constants = c(constants, oldConstants), usedInIndex = focalRule$usedInIndex)
+        return(list(resultRule))
+     }
+}
+

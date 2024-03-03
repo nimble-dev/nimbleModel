@@ -60,11 +60,8 @@ dataRuleClass <- R6Class(
             name <- getVarName(varRange)
             if(name != varName)  # variable names don't match
                 return(NULL)  
-            if(is.character(varRange)) 
-                if(name == varRange) {
-                    varRange <- rule$getFromRange()  # e.g., 'y' -- produce full range of the rule
-                } else varRange <- varRangeClass$new(varRange)  # e.g., 'y[1:3]'
-
+            if(is.character(varRange) && name != varRange)
+                varRange <- varRangeClass$new(varRange)  # e.g., 'y[1:3]'
             rule$apply(varRange)
         }
 
