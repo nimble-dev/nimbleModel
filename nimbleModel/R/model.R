@@ -95,9 +95,9 @@ modelClass <- R6Class(
             })) # `unlist` removes length-0 entries.
             candidateRules <- newVarRules(candidateRules)
             
-            dataRanges <- sapply(dataRules, function(oneVarDataRules)
+            dataRanges <- unlist(lapply(dataRules, function(oneVarDataRules)
                 lapply(oneVarDataRules$rules, function(dataRule)
-                    dataRule$rule$apply()))
+                    dataRule$rule$apply(dataRule$varName))))
             predictiveRules <<- excludeFromPredictiveRules(modelDef, dataRanges, candidateRules)
         }
     

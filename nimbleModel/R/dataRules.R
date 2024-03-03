@@ -130,7 +130,7 @@ excludeFromPredictiveRules <- function(modelDef, currentRanges, candidateRules) 
         return(NULL)
     for(range in currentRanges) {
         varName <- range$varName
-        tmp <- lapply(candidateRules[[varName]]$rules, exclude, range)
+        tmp <- unlist(lapply(candidateRules[[varName]]$rules, exclude, range))
         tmp <- tmp[!sapply(tmp, is.null)]
         if(length(tmp)) {
             candidateRules[[varName]] <- varRulesClass$new(tmp, varName)
