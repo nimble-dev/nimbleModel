@@ -123,3 +123,22 @@ makeRulePieces <- function(elements, varName, all, sequenceThreshold = 0.1) {
     }
     return(list(list(expr = expr, singleContexts = singleContexts, constants = constants)))
 }
+
+
+excludeFromPredictiveRules <- function(modelDef, currentRanges, candidateRules) {
+    if(!length(candidateRules))
+        return(NULL)
+    for(range in currentRanges) {
+        varName <- range$varName
+        tmp <- lapply(candidateRules[[varName]]$rules, exclude, range)
+        tmp <- tmp[!sapply(tmp, is.null)]
+        if(length(tmp)) {
+            candidateRules[[varName]] <- varRulesClass$new(tmp, varName)
+        } else candidateRules[[varName]] <- NULL
+        parents <- getParents(modelDef, range)
+        candidateRules <- excludeFromPredictiveRules(modelDef, parents, candidateRules)
+    }
+    return(candidateRules)
+}
+
+
