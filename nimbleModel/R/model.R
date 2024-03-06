@@ -92,8 +92,6 @@ modelClass <- R6Class(
         ## graph processing is declaration-based, this doesn't seem like an efficiency
         ## concern, particularly since `candidateRules` will progressively shrink.
         makePredictiveRules = function() {
-            ## TODO
-            if(exists('paciorek')) browser()
             ## predictive rules
             candidateRules <- unlist(lapply(modelDef$calcRules, function(oneVarRules) {
                 stoch <- sapply(oneVarRules$rules, function(rule) rule$declRule$stoch)
@@ -113,16 +111,6 @@ modelClass <- R6Class(
             })) # `unlist` removes length-0 entries.
             candidateRules <- newVarRules(candidateRules)
 
-            ## candidateRules <- unlist(lapply(modelDef$declRules, function(oneVarRules) {
-            ##     return(lapply(oneVarRules$rules, function(rule)
-            ##         if(rule$stoch) {
-            ##             return(calcRuleClass$new(rule, NULL, NULL, rule$context))
-            ##         } else return(NULL)
-            ##     )) }))
-            ## sapply(seq_along(candidateRules), function(i) candidateRules[[i]]$ID <- as.character(i))
-            ## currentID <- length(candidateRules)
-            ## candidateRules <- newVarRules(candidateRules)
-
             for(oneVarPredictiveRules in predictiveRules)
                 for(predictiveRule in oneVarPredictiveRules$rules) {
                     predictiveRange <- predictiveRule$fullRange
@@ -133,28 +121,7 @@ modelClass <- R6Class(
                         candidateRules[[varName]] <- varRulesClass$new(tmp, varName)
                     } else candidateRules[[varName]] <- NULL
                 }
-                ##     fracturedRules <- rep(FALSE, length(candidateRules[[predictiveRule$varName]]$rules))
-                ##     while(i <= length(candidateRules[[predictiveRule$varName]]$rules)) {
-                ##         result2 <- fracture(candidateRules[[predictiveRule$varName]]$rules[[i]], predictiveRange, currentID = 1) # currentID)
 
-                ##         result <- exclude(candidateRules[[predictiveRule$varName]]$rules[[i]], predictiveRange)
-                ##         if(!is.null(result)) {  ## fractured or fully a nonpredictiveRule
-                ##             if(length(result) > 1 || !all.equal(candidateRules[[predictiveRule$varName]]$rules[[i]], result[[1]])) {
-                ##                 ## fractured case
-                ##                 candidateRules[[predictiveRule$varName]]$rules <- c(candidateRules[[predictiveRule$varName]]$rules, result)
-                ##                 fracturedRules[i] <- TRUE
-                ##                 fracturedRules <- c(fracturedRules, rep(FALSE, length(result)))
-                ##                         #currentID <- currentID + length(result)
-                ##             }
-                ##         } else {  ## fully excluded (a predictiveRule)
-                ##             fracturedRules[i] <- TRUE
-                ##         }
-                ##         i <- i+1
-                ##     }
-                ##     candidateRules[[predictiveRule$varName]]$rules <- candidateRules[[predictiveRule$varName]]$rules[!fracturedRules]
-                ##     if(!length(candidateRules[[predictiveRule$varName]]$rules))
-                ##         candidateRules[[predictiveRule$varName]] <- NULL
-                ## }
             nonpredictiveRules <<- candidateRules   
         }
 
