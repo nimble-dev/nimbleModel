@@ -127,7 +127,6 @@ deparse <- function(...) {
 ## problems. We keep the original nimble:::deparse above as deparse is widely used and there
 ## are cases where not modifying the nlines behavior may be best. 
 safeDeparse <- function(..., warn = FALSE) {
-    if(exists('paciorek')) print('deparsing')
     out <- deparse(...)
     if(TRUE) { ## TODO: nimbleModelOptions('useSafeDeparse')) {
         dotArgs <- list(...)

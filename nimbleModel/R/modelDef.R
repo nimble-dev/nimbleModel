@@ -903,56 +903,6 @@ getParents <- function(modelDef, nodes,
 }
 
 
-## Determine nodes of interest, potentially of particular types.
-## Incorporates functionality formerly in `getNodeNames` and `expandNodeNames`
-## TODO: data-related flags not handled here and presumably can't be handled
-## here as the data are property of model, not of graph.
-getNodes <- function(modelDef, nodes = NULL,
-                     stochOnly = FALSE, determOnly = FALSE,
-                     includeData = TRUE, dataOnly = FALSE,
-                     includeRHSonly = FALSE,
-                     topOnly = FALSE, latentOnly = FALSE, endOnly = FALSE) {
-    ## `nodes` may contain one or more varRanges or varNames.
-    
-    if(topOnly + latentOnly + endOnly > 1)
-        stop("only one of `topOnly`, `latentOnly`, `endOnly` can be `TRUE`.")
-
-    if(is.null(nodes)) {
-        nodes <- names(modelDef$declRules)
-        if(includeRHSonly)
-            nodes <- c(nodes, names(modelDef$rhsOnlyRules))
-    } else {
-        if(inherits(nodes, 'varRangeClass'))
-            nodes <- list(nodes) 
-        if(!all(is.character(nodes) | sapply(nodes, function(node) inherits(node, 'varRangeClass'))))
-            stop("`nodes` must be variable names or `varRange`s.")
-    }
-    
-    if(!topOnly && !latentOnly && !endOnly) 
-        result <- lapply(nodes, function(node) applyRules(modelDef$declRules, node))
-        
-    if(topOnly) result <- lapply(nodes, function(node) applyRules(modelDef$topRules, node))
-    if(latentOnly) result <- lapply(nodes, function(node) applyRules(modelDef$latentRules, node))
-    if(endOnly) result <- lapply(nodes, function(node) applyRules(modelDef$endRules, node))
-
-    result <- flatten(result)  ## Flatten the result so don't have nested list.
-
-    if(includeRHSonly) {
-        rhsResult <- lapply(nodes, function(node) applyRules(modelDef$rhsOnlyRules, node))
-        result <- c(result, flatten(rhsResult))
-    }
-
-    if(stochOnly)
-        result <- result[sapply(result, function(nodeRange) nodeRange$declRule$stoch)]
-    if(determOnly)
-        result <- result[!sapply(result, function(nodeRange) nodeRange$declRule$stoch)]
-
-    if(!length(result)) return(NULL)
-    
-    return(removeDuplicateVarRanges(result))
-
-}
-
 
 
 ## Evaluates `if` statements in model code to generate actual model code

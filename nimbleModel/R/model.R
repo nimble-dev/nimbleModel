@@ -15,6 +15,7 @@ modelClass <- R6Class(
         dataRules = NULL,
         nondataRules = NULL,
         predictiveRules = NULL,
+        nonpredictiveRules = NULL,
 
         defaultModelValues = NULL,
         origData = list(),
@@ -76,9 +77,11 @@ modelClass <- R6Class(
             dataRules <<- lapply(seq_along(nms), function(i)
                 varRulesClass$new(newDataRules(data[[i]], nms[i]), varName = nms[i]))
             dataRules <<- dataRules[!sapply(dataRules, function(oneVarRules) is.null(oneVarRules$rules))]
+            names(dataRules) <<- sapply(dataRules, `[[`, 'varName')
             nondataRules <<- lapply(seq_along(nms), function(i)
                 varRulesClass$new(newDataRules(data[[i]], nms[i], nondata = TRUE), varName = nms[i]))
             nondataRules <<- nondataRules[!sapply(nondataRules, function(oneVarRules) is.null(oneVarRules$rules))]
+            names(nondataRules) <<- sapply(nondataRules, `[[`, 'varName')
         },
 
 
@@ -89,6 +92,9 @@ modelClass <- R6Class(
         ## graph processing is declaration-based, this doesn't seem like an efficiency
         ## concern, particularly since `candidateRules` will progressively shrink.
         makePredictiveRules = function() {
+            ## TODO
+            if(exists('paciorek')) browser()
+            ## predictive rules
             candidateRules <- unlist(lapply(modelDef$calcRules, function(oneVarRules) {
                 stoch <- sapply(oneVarRules$rules, function(rule) rule$declRule$stoch)
                 return(oneVarRules$rules[stoch])
@@ -99,7 +105,112 @@ modelClass <- R6Class(
                 lapply(oneVarDataRules$rules, function(dataRule)
                     dataRule$rule$apply(dataRule$varName))))
             predictiveRules <<- excludeFromPredictiveRules(modelDef, dataRanges, candidateRules)
+
+            ## nonpredictive rules
+            candidateRules <- unlist(lapply(modelDef$calcRules, function(oneVarRules) {
+                stoch <- sapply(oneVarRules$rules, function(rule) rule$declRule$stoch)
+                return(oneVarRules$rules[stoch])
+            })) # `unlist` removes length-0 entries.
+            candidateRules <- newVarRules(candidateRules)
+
+            ## candidateRules <- unlist(lapply(modelDef$declRules, function(oneVarRules) {
+            ##     return(lapply(oneVarRules$rules, function(rule)
+            ##         if(rule$stoch) {
+            ##             return(calcRuleClass$new(rule, NULL, NULL, rule$context))
+            ##         } else return(NULL)
+            ##     )) }))
+            ## sapply(seq_along(candidateRules), function(i) candidateRules[[i]]$ID <- as.character(i))
+            ## currentID <- length(candidateRules)
+            ## candidateRules <- newVarRules(candidateRules)
+
+            for(oneVarPredictiveRules in predictiveRules)
+                for(predictiveRule in oneVarPredictiveRules$rules) {
+                    predictiveRange <- predictiveRule$fullRange
+                    varName <- predictiveRule$varName
+                    tmp <- unlist(lapply(candidateRules[[varName]]$rules, exclude, predictiveRange))
+                    tmp <- tmp[!sapply(tmp, is.null)]
+                    if(length(tmp)) {
+                        candidateRules[[varName]] <- varRulesClass$new(tmp, varName)
+                    } else candidateRules[[varName]] <- NULL
+                }
+                ##     fracturedRules <- rep(FALSE, length(candidateRules[[predictiveRule$varName]]$rules))
+                ##     while(i <= length(candidateRules[[predictiveRule$varName]]$rules)) {
+                ##         result2 <- fracture(candidateRules[[predictiveRule$varName]]$rules[[i]], predictiveRange, currentID = 1) # currentID)
+
+                ##         result <- exclude(candidateRules[[predictiveRule$varName]]$rules[[i]], predictiveRange)
+                ##         if(!is.null(result)) {  ## fractured or fully a nonpredictiveRule
+                ##             if(length(result) > 1 || !all.equal(candidateRules[[predictiveRule$varName]]$rules[[i]], result[[1]])) {
+                ##                 ## fractured case
+                ##                 candidateRules[[predictiveRule$varName]]$rules <- c(candidateRules[[predictiveRule$varName]]$rules, result)
+                ##                 fracturedRules[i] <- TRUE
+                ##                 fracturedRules <- c(fracturedRules, rep(FALSE, length(result)))
+                ##                         #currentID <- currentID + length(result)
+                ##             }
+                ##         } else {  ## fully excluded (a predictiveRule)
+                ##             fracturedRules[i] <- TRUE
+                ##         }
+                ##         i <- i+1
+                ##     }
+                ##     candidateRules[[predictiveRule$varName]]$rules <- candidateRules[[predictiveRule$varName]]$rules[!fracturedRules]
+                ##     if(!length(candidateRules[[predictiveRule$varName]]$rules))
+                ##         candidateRules[[predictiveRule$varName]] <- NULL
+                ## }
+            nonpredictiveRules <<- candidateRules   
         }
+
+        
     
     )
 )
+
+
+## Determine nodes of interest, potentially of particular types.
+## Incorporates functionality formerly in `getNodeNames` and `expandNodeNames`
+getNodes <- function(model, nodes = NULL,
+                     stochOnly = FALSE, determOnly = FALSE,
+                     includeData = TRUE, dataOnly = FALSE,
+                     includePredictive = TRUE, predictiveOnly = FALSE,
+                     includeRHSonly = FALSE,
+                     topOnly = FALSE, latentOnly = FALSE, endOnly = FALSE) {
+    ## `nodes` may contain one or more varRanges or varNames.
+    if(topOnly + latentOnly + endOnly > 1)
+        stop("only one of `topOnly`, `latentOnly`, `endOnly` can be `TRUE`.")
+
+    if(is.null(nodes)) {
+        nodes <- names(model$modelDef$declRules)
+        if(includeRHSonly)
+            nodes <- c(nodes, names(model$modelDef$rhsOnlyRules))
+    } else {
+        if(inherits(nodes, 'varRangeClass'))
+            nodes <- list(nodes) 
+        if(!all(is.character(nodes) | sapply(nodes, function(node) inherits(node, 'varRangeClass'))))
+            stop("`nodes` must be variable names or `varRange`s.")
+    }
+    
+    if(!topOnly && !latentOnly && !endOnly) 
+        result <- lapply(nodes, function(node) applyRules(model$modelDef$declRules, node))
+        
+    if(topOnly) result <- lapply(nodes, function(node) applyRules(model$modelDef$topRules, node))
+    if(latentOnly) result <- lapply(nodes, function(node) applyRules(model$modelDef$latentRules, node))
+    if(endOnly) result <- lapply(nodes, function(node) applyRules(model$modelDef$endRules, node))
+
+    
+
+    result <- flatten(result)  ## Flatten the result so don't have nested list.
+
+    if(includeRHSonly) {
+        rhsResult <- lapply(nodes, function(node) applyRules(model$modelDef$rhsOnlyRules, node))
+        result <- c(result, flatten(rhsResult))
+    }
+
+    if(stochOnly)
+        result <- result[sapply(result, function(nodeRange) nodeRange$declRule$stoch)]
+    if(determOnly)
+        result <- result[!sapply(result, function(nodeRange) nodeRange$declRule$stoch)]
+
+    if(!length(result)) return(NULL)
+    
+    return(removeDuplicateVarRanges(result))
+
+}
+

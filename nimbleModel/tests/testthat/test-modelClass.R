@@ -14,7 +14,7 @@ test_that("dataRules determination works", {
     expect_length(m$dataRules[[2]]$rules, 1)
 })
 
-test_that("predictive rule determination works", {
+test_that("predictive/nonpredictive rule determination works", {
     ## basic cases
     
     code <- quote({
@@ -25,6 +25,9 @@ test_that("predictive rule determination works", {
     data = list(y=rnorm(5))
     m <- modelClass$new(code, data = data)
     expect_identical(m$predictiveRules, NULL)
+    expect_length(m$nonpredictiveRules, 2)
+    expect_identical(names(m$nonpredictiveRules), c('mu','y'))
+    
 
     code <- quote({
         for(i in 1:5)
@@ -33,13 +36,14 @@ test_that("predictive rule determination works", {
         sigma <- exp(logsigma)
         logsigma ~ dunif(0, 1)
         ## predictive nodes:
-        z ~ dnorm(mu, 1)
+        z ~ dnorm(mu, exp(logsigma))
         w_mean <- theta + 1
         w ~ dnorm(w_mean, 1)
         theta ~ dnorm(phi, 1)
     })
     data = list(y=rnorm(5))
     m <- modelClass$new(code, data = data)
+
     expect_length(m$predictiveRules, 3)
     expect_length(m$predictiveRules$w$rules, 1)
     expect_length(m$predictiveRules$z$rules, 1)
@@ -49,7 +53,20 @@ test_that("predictive rule determination works", {
     expect_equal(m$predictiveRules$z$rules[[1]]$fullRange,
                      varRangeClass$new(list(), varName = 'z'))
     expect_equal(m$predictiveRules$theta$rules[[1]]$fullRange,
-                     varRangeClass$new(list(), varName = 'theta'))
+                 varRangeClass$new(list(), varName = 'theta'))
+
+    expect_length(m$nonpredictiveRules, 3)
+    expect_identical(names(m$nonpredictiveRules), c('mu','logsigma','y'))
+    expect_length(m$nonpredictiveRules$mu$rules, 1)
+    expect_length(m$nonpredictiveRules$logsigma$rules, 1)
+    expect_length(m$nonpredictiveRules$y$rules, 1)
+    expect_equal(m$nonpredictiveRules$mu$rules[[1]]$fullRange,
+                     varRangeClass$new(list(), varName = 'mu'))
+    expect_equal(m$nonpredictiveRules$logsigma$rules[[1]]$fullRange,
+                     varRangeClass$new(list(), varName = 'logsigma'))
+    expect_equal(m$nonpredictiveRules$y$rules[[1]]$fullRange,
+                 varRangeClass$new(list(newIndexRange(quote(1:5))), varName = 'y'))
+    
 
     ## more complicated case
     code <- quote({
@@ -86,7 +103,26 @@ test_that("predictive rule determination works", {
     expect_equal(m$predictiveRules$mu_z$rules[[1]]$fullRange,
                      varRangeClass$new(list(newIndexRange(quote(6:8))), varName = 'mu_z'))
     expect_equal(m$predictiveRules$theta_w$rules[[1]]$fullRange,
-                     varRangeClass$new(list(), varName = 'theta_w'))
+                 varRangeClass$new(list(), varName = 'theta_w'))
+
+    expect_length(m$nonpredictiveRules, 6)
+    expect_equal(m$nonpredictiveRules$z$rules[[1]]$fullRange,
+                     varRangeClass$new(list(newIndexRange(quote(1:5))), varName = 'z'))
+    expect_equal(m$nonpredictiveRules$z$rules[[2]]$fullRange,
+                     varRangeClass$new(list(newIndexRange(quote(9:10))), varName = 'z'))
+    expect_equal(m$nonpredictiveRules$mu_z$rules[[1]]$fullRange,
+                 varRangeClass$new(list(newIndexRange(quote(1:5))), varName = 'mu_z'))
+    expect_equal(m$nonpredictiveRules$mu_z$rules[[2]]$fullRange,
+                 varRangeClass$new(list(newIndexRange(quote(9:10))), varName = 'mu_z'))
+    expect_equal(m$nonpredictiveRules$y$rules[[1]]$fullRange,
+                     varRangeClass$new(list(newIndexRange(quote(1:10))), varName = 'y'))
+    expect_equal(m$nonpredictiveRules$mu_y$rules[[1]]$fullRange,
+                     varRangeClass$new(list(newIndexRange(quote(1:10))), varName = 'mu_y'))
+    expect_equal(m$nonpredictiveRules$theta_y$rules[[1]]$fullRange,
+                 varRangeClass$new(list(), varName = 'theta_y'))
+    expect_equal(m$nonpredictiveRules$theta_z$rules[[1]]$fullRange,
+                 varRangeClass$new(list(), varName = 'theta_z'))
+    
     
     ## case with dataRule split into two
     code <- quote({
@@ -101,6 +137,7 @@ test_that("predictive rule determination works", {
     data$y[48:50] <- NA
     m <- modelClass$new(code, data = data)
     expect_length(m$predictiveRules, 2)
+    expect_identical(names(m$predictiveRules), c('y','mu'))
     expect_length(m$predictiveRules[[1]]$rules, 2)
     expect_length(m$predictiveRules[[2]]$rules, 2)
     expect_equal(m$predictiveRules$y$rules[[1]]$fullRange,
@@ -112,6 +149,23 @@ test_that("predictive rule determination works", {
     expect_equal(m$predictiveRules$mu$rules[[2]]$fullRange,
                      varRangeClass$new(list(newIndexRange(quote(48:50))), varName = 'mu'))
 
-})
 
+    expect_length(m$nonpredictiveRules, 3)
+    expect_identical(names(m$nonpredictiveRules), c('mu0','y', 'mu'))
+    expect_length(m$nonpredictiveRules[[1]]$rules, 1)
+    expect_length(m$nonpredictiveRules[[2]]$rules, 2)
+    expect_length(m$nonpredictiveRules[[3]]$rules, 2)
+
+    expect_equal(m$nonpredictiveRules$y$rules[[1]]$fullRange,
+                 varRangeClass$new(list(newIndexRange(quote(1:19))), varName = 'y'))
+    expect_equal(m$nonpredictiveRules$y$rules[[2]]$fullRange,
+                 varRangeClass$new(list(newIndexRange(quote(21:47))), varName = 'y'))
+    expect_equal(m$nonpredictiveRules$mu$rules[[1]]$fullRange,
+                 varRangeClass$new(list(newIndexRange(quote(1:19))), varName = 'mu'))
+    expect_equal(m$nonpredictiveRules$mu$rules[[2]]$fullRange,
+                 varRangeClass$new(list(newIndexRange(quote(21:47))), varName = 'mu'))
+    
+
+    
+})
 
