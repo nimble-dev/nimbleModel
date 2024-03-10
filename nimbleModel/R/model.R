@@ -153,6 +153,17 @@ getNodes <- function(model, nodes = NULL,
         if(!all(is.character(nodes) | sapply(nodes, function(node) inherits(node, 'varRangeClass'))))
             stop("`nodes` must be variable names or `varRange`s.")
     }
+
+    ## Filter out; result is varRanges so do this before applying later rules, which produce nodeRanges.
+    if(dataOnly) 
+        nodes <- lapply(nodes, function(node) applyRules(model$dataRules, node))
+    if(!includeData)
+        nodes <- lapply(nodes, function(node) applyRules(model$nondataRules, node))
+
+    if(predictiveOnly)
+        nodes <- lapply(nodes, function(node) applyRules(model$predictiveRules, node))
+    if(!includePredictive)
+        nodes <- lapply(nodes, function(node) applyRules(model$nonpredictiveRules, node))
     
     if(!topOnly && !latentOnly && !endOnly) 
         result <- lapply(nodes, function(node) applyRules(model$modelDef$declRules, node))
@@ -165,15 +176,15 @@ getNodes <- function(model, nodes = NULL,
 
     result <- flatten(result)  ## Flatten the result so don't have nested list.
 
-    if(includeRHSonly) {
-        rhsResult <- lapply(nodes, function(node) applyRules(model$modelDef$rhsOnlyRules, node))
-        result <- c(result, flatten(rhsResult))
-    }
-
     if(stochOnly)
         result <- result[sapply(result, function(nodeRange) nodeRange$declRule$stoch)]
     if(determOnly)
         result <- result[!sapply(result, function(nodeRange) nodeRange$declRule$stoch)]
+
+    if(includeRHSonly && !stochOnly && !determOnly) {  # RHSonly are considered neither determ not stoch.
+        rhsResult <- lapply(nodes, function(node) applyRules(model$modelDef$rhsOnlyRules, node))
+        result <- c(result, flatten(rhsResult))
+    }
 
     if(!length(result)) return(NULL)
     
