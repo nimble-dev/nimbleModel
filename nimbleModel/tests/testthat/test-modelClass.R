@@ -238,9 +238,9 @@ test_that("getNodes with data or predictive works", {
                  list(newIndexRange(quote(1:5))))
     expect_equal(result[[which(resultNames == 'mu_z')][2]]$indexRanges,
                  list(newIndexRange(quote(9:10))))
-     expect_equal(result[[which(resultNames == 'y')][2]]$indexRanges,
+    expect_equal(result[[which(resultNames == 'y')][2]]$indexRanges,
                  list(newIndexRange(quote(1:10))))
-     expect_equal(result[[which(resultNames == 'mu_y')][2]]$indexRanges,
+    expect_equal(result[[which(resultNames == 'mu_y')][2]]$indexRanges,
                  list(newIndexRange(quote(1:10))))
     expect_length(result[[which(resultNames == 'theta_y')]]$indexRanges, 0)
     expect_length(result[[which(resultNames == 'theta_z')]]$indexRanges, 0)
@@ -262,11 +262,13 @@ test_that("getNodes with data or predictive works", {
     baseNames <- sapply(base, nimbleModel:::getVarName)
 
     result <- getNodes(m, includePredictive = FALSE, latentOnly = TRUE)
+    resultNames <- sapply(result, nimbleModel:::getVarName)
     expect_length(result, 1)
     expect_equal(result[[which(resultNames == 'mu')]]$indexRanges,
                  list(newIndexRange(quote(1:10))))
 
     result <- getNodes(m, includePredictive = FALSE, topOnly = TRUE)
+    resultNames <- sapply(result, nimbleModel:::getVarName)
     expect_length(result, 2)
     expect_equal(result[[which(resultNames == 'mu0')]]$indexRanges,
                  list(newIndexRange(quote(1:10))))
@@ -274,11 +276,13 @@ test_that("getNodes with data or predictive works", {
                  list(newIndexRange(quote(31:40))))
 
     result <- getNodes(m, predictiveOnly = TRUE, latentOnly = TRUE)
+    resultNames <- sapply(result, nimbleModel:::getVarName)
     expect_length(result, 1)
     expect_equal(result[[which(resultNames == 'mu')]]$indexRanges,
                  list(newIndexRange(quote(11:20))))
     
     result <- getNodes(m, predictiveOnly = TRUE, topOnly = TRUE)
+    resultNames <- sapply(result, nimbleModel:::getVarName)
     expect_length(result, 2)
     expect_equal(result[[which(resultNames == 'mu')]]$indexRanges,
                  list(newIndexRange(quote(21:30))))
@@ -288,22 +292,95 @@ test_that("getNodes with data or predictive works", {
 
     ## mv nodes with mixtures of data/nondata
     code <- quote({
-        for(i in 1:3) 
+        for(i in 1:4) 
             y[i,1:3] ~ dmnorm(mu[1:3], pr[1:3,1:3])
     })
 
-    #debugonce(nimbleModel:::excludeFromPredictiveRules)
-    
-    m <- modelClass$new(code, data = list(y = matrix(c(1,2,NA,3,4,NA,rep(NA,3)), 3, 3)))
+    m <- modelClass$new(code, data = list(y = matrix(c(1,2,3,NA,3,4,5,NA,6,rep(NA,3)), 4,3)))
 
     base <- getNodes(m)
 
+    ## Includes nodes that have any data elements.
     result <- getNodes(m, dataOnly = TRUE)
+    resultNames <- sapply(result, nimbleModel:::getVarName)
+    expect_length(result, 1)
+    expect_identical(result[[which(resultNames == 'y')]]$boolExternalIndexRanges, c(TRUE, FALSE))
+    expect_equal(result[[which(resultNames == 'y')]]$indexRanges,
+                 list(newIndexRange(quote(1:3)), newIndexRange(quote(1:3))))
+
+    result <- getNodes(m, predictiveOnly = TRUE)
+    resultNames <- sapply(result, nimbleModel:::getVarName)
+    expect_length(result, 1)
+    expect_identical(result[[which(resultNames == 'y')]]$boolExternalIndexRanges, c(FALSE, FALSE))
+    expect_identical(result[[which(resultNames == 'y')]]$indexSlotToRange, c(2L,1L))
+    expect_equal(result[[which(resultNames == 'y')]]$indexRanges,
+                 list(newIndexRange(quote(1:3)), newIndexRange(4)))
+
+
+    ## Includes nodes that have any nondata elements.
+    ## CHECK: this returns `y[idx1, 1:3]`, for idx1 in 1:3 because part of all three nodes
+    ## is nondata. Not sure this is what we want.
+    result <- getNodes(m, includeData = FALSE, endOnly = TRUE)
+    resultNames <- sapply(result, nimbleModel:::getVarName)
+    expect_length(result, 1)
+    expect_identical(result[[which(resultNames == 'y')]]$boolExternalIndexRanges, c(TRUE, FALSE))
+    expect_equal(result[[which(resultNames == 'y')]]$indexRanges,
+                 list(newIndexRange(quote(2:4)), newIndexRange(quote(1:3))))
+
+    result <- getNodes(m, includePredictive = FALSE)
+    resultNames <- sapply(result, nimbleModel:::getVarName)
+    expect_length(result, 1)
+    expect_identical(result[[which(resultNames == 'y')]]$boolExternalIndexRanges, c(TRUE, FALSE))
+    expect_equal(result[[which(resultNames == 'y')]]$indexRanges,
+                 list(newIndexRange(quote(1:3)), newIndexRange(quote(1:3))))
+
+    result <- getNodes(m, nodes = "y[2,2]", dataOnly = TRUE)
+    resultNames <- sapply(result, nimbleModel:::getVarName)
+    expect_identical(result[[which(resultNames == 'y')]]$boolExternalIndexRanges, c(FALSE, FALSE))
+    expect_identical(result[[which(resultNames == 'y')]]$indexSlotToRange, c(2L,1L))
+    expect_equal(result[[which(resultNames == 'y')]]$indexRanges,
+                 list(newIndexRange(quote(1:3)), newIndexRange(2)))
+
+    expect_null(getNodes(m, nodes = "y[2,2]", predictiveOnly = TRUE))
+
+    expect_null(getNodes(m, nodes = "y[4,2]", dataOnly = TRUE))
+
+    result <- getNodes(m, nodes = "y[4,2]", predictiveOnly = TRUE)
+    resultNames <- sapply(result, nimbleModel:::getVarName)
+    expect_identical(result[[which(resultNames == 'y')]]$boolExternalIndexRanges, c(FALSE, FALSE))
+    expect_identical(result[[which(resultNames == 'y')]]$indexSlotToRange, c(2L,1L))
+    expect_equal(result[[which(resultNames == 'y')]]$indexRanges,
+                 list(newIndexRange(quote(1:3)), newIndexRange(4)))
+
+    expect_null(getNodes(m, nodes = "y[1,2]", includeData = FALSE))
+
+    result <- getNodes(m, nodes = "y[1,2]", includePredictive = FALSE)
+    resultNames <- sapply(result, nimbleModel:::getVarName)
+    expect_identical(result[[which(resultNames == 'y')]]$boolExternalIndexRanges, c(FALSE, FALSE))
+    expect_identical(result[[which(resultNames == 'y')]]$indexSlotToRange, c(2L,1L))
+    expect_equal(result[[which(resultNames == 'y')]]$indexRanges,
+                 list(newIndexRange(quote(1:3)), newIndexRange(1)))
+    
+    ## CHECK: this does not first get the relevant node and then realize it has nondata elements,
+    ## so might be considered inconsistent with above behavior when `nodes` is missing?
+    expect_null(getNodes(m, nodes = "y[2,2]", includeData = FALSE))
+
+    result <- getNodes(m, nodes = "y[2,2]", includePredictive = FALSE)
+    resultNames <- sapply(result, nimbleModel:::getVarName)
+    expect_identical(result[[which(resultNames == 'y')]]$boolExternalIndexRanges, c(FALSE, FALSE))
+    expect_identical(result[[which(resultNames == 'y')]]$indexSlotToRange, c(2L,1L))
+    expect_equal(result[[which(resultNames == 'y')]]$indexRanges,
+                 list(newIndexRange(quote(1:3)), newIndexRange(2)))
+    
+    result <- getNodes(m, nodes = "y[4,2]", includeData = FALSE)
+    resultNames <- sapply(result, nimbleModel:::getVarName)
+    expect_identical(result[[which(resultNames == 'y')]]$boolExternalIndexRanges, c(FALSE, FALSE))
+    expect_identical(result[[which(resultNames == 'y')]]$indexSlotToRange, c(2L,1L))
+    expect_equal(result[[which(resultNames == 'y')]]$indexRanges,
+                 list(newIndexRange(quote(1:3)), newIndexRange(4)))
+    
+    expect_null(getNodes(m, nodes = "y[4,2]", includePredictive = FALSE))
+
     
 })
 
-    code <- quote({
-        for(i in 1:3) 
-            y[i,1:3] ~ dmnorm(mu[1:3], pr[1:3,1:3])
-    })
-    m <- modelClass$new(code)
