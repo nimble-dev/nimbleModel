@@ -156,14 +156,17 @@ getNodes <- function(model, nodes = NULL,
 
     ## Filter out; result is varRanges so do this before applying later rules, which produce nodeRanges.
     if(dataOnly) 
-        nodes <- lapply(nodes, function(node) applyRules(model$dataRules, node))
-    if(!includeData)
-        nodes <- lapply(nodes, function(node) applyRules(model$nondataRules, node))
+        nodes <- flatten(lapply(nodes, function(node) applyRules(model$dataRules, node)))
+    if(!includeData) {
+        dataNodes <- sapply(nodes, getVarName) %in% names(model$dataRules)  
+        nodes <- c(nodes[!dataNodes], flatten(lapply(nodes[dataNodes],
+                                                     function(node) applyRules(model$nondataRules, node))))
+    }        
 
     if(predictiveOnly)
-        nodes <- lapply(nodes, function(node) applyRules(model$predictiveRules, node))
+        nodes <- flatten(lapply(nodes, function(node) applyRules(model$predictiveRules, node)))
     if(!includePredictive)
-        nodes <- lapply(nodes, function(node) applyRules(model$nonpredictiveRules, node))
+        nodes <- flatten(lapply(nodes, function(node) applyRules(model$nonpredictiveRules, node)))
     
     if(!topOnly && !latentOnly && !endOnly) 
         result <- lapply(nodes, function(node) applyRules(model$modelDef$declRules, node))
@@ -171,8 +174,6 @@ getNodes <- function(model, nodes = NULL,
     if(topOnly) result <- lapply(nodes, function(node) applyRules(model$modelDef$topRules, node))
     if(latentOnly) result <- lapply(nodes, function(node) applyRules(model$modelDef$latentRules, node))
     if(endOnly) result <- lapply(nodes, function(node) applyRules(model$modelDef$endRules, node))
-
-    
 
     result <- flatten(result)  ## Flatten the result so don't have nested list.
 
