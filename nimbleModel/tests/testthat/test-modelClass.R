@@ -165,7 +165,145 @@ test_that("predictive/nonpredictive rule determination works", {
     expect_equal(m$nonpredictiveRules$mu$rules[[2]]$fullRange,
                  varRangeClass$new(list(newIndexRange(quote(21:47))), varName = 'mu'))
     
+})
 
+test_that("getNodes with data or predictive works", {
+
+    code <- quote({
+        for(i in 1:10) {
+            z[i] ~ dnorm(mu_z[i], 1)  # partly predictive
+            mu_z[i] ~ dnorm(theta_z, 1)  # partly predictive
+        }
+        for(i in 1:10) {
+            y[i] ~ dnorm(mu_y[i], 1)
+            mu_y[i] ~ dnorm(theta_y, 1)
+        }
+        for(i in 1:10) {
+            w[i] ~ dnorm(mu_w[i], 1)  # predictive
+            mu_w[i] ~ dnorm(theta_w, 1) # predictive
+        }
+        theta_y ~ dnorm(theta, 1)
+        theta_w ~ dnorm(theta, 1) # predictive
+        theta_z ~ dnorm(theta, 1)
+    })
+    y <- z <- w <- rnorm(1:10)
+    w[1:10] <- NA
+    z[6:8] <- NA
+    m <- modelClass$new(code, data = list(z = z, y = y, w = w))
+
+    base <- getNodes(m)
+    expect_length(base, 9)
+    baseNames <- sapply(base, nimbleModel:::getVarName)
+
+    result <- getNodes(m, includeData = FALSE)
+    resultNames <- sapply(result, nimbleModel:::getVarName)
+    for(nm in c('mu_z','w','mu_w','mu_y','theta_y','theta_w','theta_z')) {
+        expect_equal(base[[which(nm == baseNames)]], result[[which(nm == resultNames)]])
+    }
+    
+    expect_length(result, 8)
+    expect_false('y' %in% resultNames)
+    expect_equal(result[[which(resultNames == 'z')]]$indexRanges,
+                 list(newIndexRange(quote(6:8))))
+        
+    result <- getNodes(m, dataOnly = TRUE)
+    resultNames <- sapply(result, nimbleModel:::getVarName)
+    expect_length(result, 2)
+    expect_equal(result[[which(resultNames == 'y')]]$indexRanges,
+                 list(newIndexRange(quote(1:10))))
+    expect_equal(result[[which(resultNames == 'z')]]$indexRanges,
+                 list(newIndexRange(matrix(c(1:5,9:10), ncol=1))))
+
+    result <- getNodes(m, predictiveOnly = TRUE)
+    resultNames <- sapply(result, nimbleModel:::getVarName)
+    expect_length(result, 5)
+    expect_equal(result[[which(resultNames == 'z')]]$indexRanges,
+                 list(newIndexRange(quote(6:8))))
+    expect_equal(result[[which(resultNames == 'mu_z')]]$indexRanges,
+                 list(newIndexRange(quote(6:8))))
+    expect_equal(result[[which(resultNames == 'w')]]$indexRanges,
+                 list(newIndexRange(quote(1:10))))
+    expect_equal(result[[which(resultNames == 'mu_w')]]$indexRanges,
+                 list(newIndexRange(quote(1:10))))
+    expect_length(result[[which(resultNames == 'theta_w')]]$indexRanges, 0)
+
+    result <- getNodes(m, includePredictive = FALSE)
+    resultNames <- sapply(result, nimbleModel:::getVarName)
+    expect_length(result, 8)
+    expect_equal(result[[which(resultNames == 'z')][1]]$indexRanges,
+                 list(newIndexRange(quote(1:5))))
+    expect_equal(result[[which(resultNames == 'z')][2]]$indexRanges,
+                 list(newIndexRange(quote(9:10))))
+    expect_equal(result[[which(resultNames == 'mu_z')][1]]$indexRanges,
+                 list(newIndexRange(quote(1:5))))
+    expect_equal(result[[which(resultNames == 'mu_z')][2]]$indexRanges,
+                 list(newIndexRange(quote(9:10))))
+     expect_equal(result[[which(resultNames == 'y')][2]]$indexRanges,
+                 list(newIndexRange(quote(1:10))))
+     expect_equal(result[[which(resultNames == 'mu_y')][2]]$indexRanges,
+                 list(newIndexRange(quote(1:10))))
+    expect_length(result[[which(resultNames == 'theta_y')]]$indexRanges, 0)
+    expect_length(result[[which(resultNames == 'theta_z')]]$indexRanges, 0)
+   
+
+    ## "interaction" of top/latent with data/predictive.
+    code <- quote({
+        for(i in 1:40) {
+            mu[i] ~ dnorm(mu0[i], 1)
+            y[i] ~ dnorm(mu[i], 1)
+        }
+        for(i in 1:20)
+            mu0[i] ~ dnorm(0, 1)
+    })
+    m <- modelClass$new(code, data = list(y = c(rnorm(10),rep(NA, 20), rnorm(10))))
+
+    base <- getNodes(m)
+    expect_length(base, 3)
+    baseNames <- sapply(base, nimbleModel:::getVarName)
+
+    result <- getNodes(m, includePredictive = FALSE, latentOnly = TRUE)
+    expect_length(result, 1)
+    expect_equal(result[[which(resultNames == 'mu')]]$indexRanges,
+                 list(newIndexRange(quote(1:10))))
+
+    result <- getNodes(m, includePredictive = FALSE, topOnly = TRUE)
+    expect_length(result, 2)
+    expect_equal(result[[which(resultNames == 'mu0')]]$indexRanges,
+                 list(newIndexRange(quote(1:10))))
+    expect_equal(result[[which(resultNames == 'mu')]]$indexRanges,
+                 list(newIndexRange(quote(31:40))))
+
+    result <- getNodes(m, predictiveOnly = TRUE, latentOnly = TRUE)
+    expect_length(result, 1)
+    expect_equal(result[[which(resultNames == 'mu')]]$indexRanges,
+                 list(newIndexRange(quote(11:20))))
+    
+    result <- getNodes(m, predictiveOnly = TRUE, topOnly = TRUE)
+    expect_length(result, 2)
+    expect_equal(result[[which(resultNames == 'mu')]]$indexRanges,
+                 list(newIndexRange(quote(21:30))))
+    expect_equal(result[[which(resultNames == 'mu0')]]$indexRanges,
+                 list(newIndexRange(quote(11:20))))
+
+
+    ## mv nodes with mixtures of data/nondata
+    code <- quote({
+        for(i in 1:3) 
+            y[i,1:3] ~ dmnorm(mu[1:3], pr[1:3,1:3])
+    })
+
+    #debugonce(nimbleModel:::excludeFromPredictiveRules)
+    
+    m <- modelClass$new(code, data = list(y = matrix(c(1,2,NA,3,4,NA,rep(NA,3)), 3, 3)))
+
+    base <- getNodes(m)
+
+    result <- getNodes(m, dataOnly = TRUE)
     
 })
 
+    code <- quote({
+        for(i in 1:3) 
+            y[i,1:3] ~ dmnorm(mu[1:3], pr[1:3,1:3])
+    })
+    m <- modelClass$new(code)

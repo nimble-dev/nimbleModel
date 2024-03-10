@@ -69,7 +69,7 @@ indexConstraintSequenceClass <- R6Class(
                        indexRange$start <= end && indexRange$end >= start,
                    indexRangeMatrixClass =
                        (end == .Machine$integer.max && any(indexRange$values >= start)) ||
-                       (end != .Machine$integer.max && any(indexRange$values >= start && indexRange$values <= end))
+                       (end != .Machine$integer.max && any(indexRange$values >= start & indexRange$values <= end))
                    )                   
         },
 
