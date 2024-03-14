@@ -115,7 +115,7 @@ modelDeclClass <- R6Class(
 
         ## Create declRule and symbolic RHS pieces.
         processDecl = function(nimFunNames, constants = list(), envir) {
-            declRule <<- declRuleClass$new(code, sourceLineNumber, context, constants)
+            declRule <<- declRuleClass$new(self, sourceLineNumber, context, constants)
             makeSymbolicParentNodes(nimFunNames, constants, envir)
             invisible(NULL)
         },
@@ -147,13 +147,13 @@ modelDeclClass <- R6Class(
                                        symbolicParentNodes[[i]],
                                        context,
                                        constants,
-                                       declRule$stoch)
+                                       declRule$decl$stoch)
                 upstreamRules[[i]] <<-
                     graphRuleClass$new(symbolicParentNodes[[i]],
                                        targetNodeExpr,
                                        context,
                                        constants,
-                                       declRule$stoch)
+                                       declRule$decl$stoch)
                 
             }
             invisible(NULL)
@@ -173,7 +173,7 @@ modelDeclClass <- R6Class(
         genAltParams = function() {
             altParamExprs <<- list()
             calculateCode <<- code
-            if(declRule$stoch) {
+            if(declRule$decl$stoch) {
                 RHSreplaced <- code[[3]]
                 if(length(RHSreplaced) > 1) { # It actually has argument(s).
                     paramNamesAll <- names(RHSreplaced)
@@ -198,7 +198,7 @@ modelDeclClass <- R6Class(
 
         genBounds = function() {
             boundExprs <<- list()
-            if(declRule$stoch) {
+            if(declRule$decl$stoch) {
                 RHSreplaced <- calculateCode[[3]]
                 if(length(RHSreplaced) > 1) { # It actually has argument(s).
                     boundNames <- c('lower_', 'upper_')
@@ -285,7 +285,7 @@ modelDeclClass <- R6Class(
         },
 
         genLogProbExpr = function() {
-            if(declRule$stoch) {
+            if(declRule$decl$stoch) {
                 logProbExpr <- code[[2]]   
                 if(length(logProbExpr) == 1) {  # No indexing present.
                     logProbExpr <- as.name(makeLogProbName(logProbExpr))   

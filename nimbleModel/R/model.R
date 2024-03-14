@@ -94,7 +94,7 @@ modelClass <- R6Class(
         makePredictiveRules = function() {
             ## predictive rules
             candidateRules <- unlist(lapply(modelDef$calcRules, function(oneVarRules) {
-                stoch <- sapply(oneVarRules$rules, function(rule) rule$declRule$stoch)
+                stoch <- sapply(oneVarRules$rules, function(rule) rule$declRule$decl$stoch)
                 return(oneVarRules$rules[stoch])
             })) # `unlist` removes length-0 entries.
             candidateRules <- newVarRules(candidateRules)
@@ -106,7 +106,7 @@ modelClass <- R6Class(
 
             ## nonpredictive rules
             candidateRules <- unlist(lapply(modelDef$calcRules, function(oneVarRules) {
-                stoch <- sapply(oneVarRules$rules, function(rule) rule$declRule$stoch)
+                stoch <- sapply(oneVarRules$rules, function(rule) rule$declRule$decl$stoch)
                 return(oneVarRules$rules[stoch])
             })) # `unlist` removes length-0 entries.
             candidateRules <- newVarRules(candidateRules)
@@ -125,13 +125,75 @@ modelClass <- R6Class(
             nonpredictiveRules <<- candidateRules   
         },
 
+        getVarNames = function(includeLogProb = FALSE, nodeRanges) {
+            if(missing(nodeRanges)){
+                if(includeLogProb) return(modelDef$varNames)
+                else return(names(modelDef$varInfo))
+            } else {
+                if(!is.list(nodeRanges))
+                    nodeRanges <- list(nodeRanges)
+                return(unique(sapply(nodeRanges, `[[`, 'varName')))
+            }
+        }, 
+
+        getDistribution = function(nodeRanges) {
+            if(!is.list(nodeRanges))
+                nodeRanges <- list(nodeRanges)
+            if(!all(sapply(nodeRanges, inherits, "nodeRangeClass")))
+                stop("getDistribution: input must be a `nodeRange` or list of `nodeRange`s") 
+            sapply(nodeRanges, function(x) x$decl$distributionName)
+        }, 
+
+        getDimension = function(nodeRange, params = NULL, valueOnly = is.null(params)
+                                    && !includeParams, includeParams = !is.null(params)) {
+            if(!inherits(nodeRange, "nodeRangeClass"))
+                stop("getDimension: input must be a `nodeRange`")
+            return(nimble:::getDimension(nodeRange$decl$distributionName, params, valueOnly, includeParams))
+        }, 
+
         isStoch = function(nodeRanges) {
             if(!is.list(nodeRanges))
                 nodeRanges <- list(nodeRanges)
             if(!all(sapply(nodeRanges, inherits, "nodeRangeClass")))
                 stop("isStoch: input must be a `nodeRange` or list of `nodeRange`s") 
-            sapply(nodeRanges, function(x) x$declRule$stoch)
+            sapply(nodeRanges, function(x) x$decl$stoch)
+        },
+
+        isDeterm = function(nodeRanges) {
+            if(!is.list(nodeRanges))
+                nodeRanges <- list(nodeRanges)
+            if(!all(sapply(nodeRanges, inherits, "nodeRangeClass")))
+                stop("isDeterm: input must be a `nodeRange` or list of `nodeRange`s") 
+            sapply(nodeRanges, function(x) !x$decl$stoch)
+        },
+
+        isDiscrete = function(nodeRanges) {
+            if(!is.list(nodeRanges))
+                nodeRanges <- list(nodeRanges)
+            if(!all(sapply(nodeRanges, inherits, "nodeRangeClass")))
+                stop("isDiscrete: input must be a `nodeRange` or list of `nodeRange`s") 
+            sapply(nodeRanges, function(x) nimbleModel:::isDiscrete(x$decl$distributionName))
+        },
+
+        isMultivariate = function(nodeRanges) {
+            if(!is.list(nodeRanges))
+                nodeRanges <- list(nodeRanges)
+            if(!all(sapply(nodeRanges, inherits, "nodeRangeClass")))
+                stop("isMultivariate: input must be a `nodeRange` or list of `nodeRange`s")
+            stoch <- isStoch(nodeRanges)
+            result <- rep(NA, length(nodeRanges))
+            result[stoch] <- sapply(nodeRanges[stoch], function(x) getValueDim(getDistributionInfo(x$decl$distributionName)) > 0)
+            return(result)
+        },
+
+        isTruncated = function(nodeRanges) {
+            if(!is.list(nodeRanges))
+                nodeRanges <- list(nodeRanges)
+            if(!all(sapply(nodeRanges, inherits, "nodeRangeClass")))
+                stop("isTruncated: input must be a `nodeRange` or list of `nodeRange`s") 
+            sapply(nodeRanges, function(x) x$decl$truncated)
         }
+
     )
 )
 
@@ -183,9 +245,9 @@ getNodes <- function(model, nodes = NULL,
     result <- flatten(result)  ## Flatten the result so don't have nested list.
 
     if(stochOnly)
-        result <- result[sapply(result, function(nodeRange) nodeRange$declRule$stoch)]
+        result <- result[sapply(result, function(nodeRange) nodeRange$decl$stoch)]
     if(determOnly)
-        result <- result[!sapply(result, function(nodeRange) nodeRange$declRule$stoch)]
+        result <- result[!sapply(result, function(nodeRange) nodeRange$decl$stoch)]
 
     if(includeRHSonly && !stochOnly && !determOnly) {  # RHSonly are considered neither determ not stoch.
         rhsResult <- lapply(nodes, function(node) applyRules(model$modelDef$rhsOnlyRules, node))

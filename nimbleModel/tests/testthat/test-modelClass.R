@@ -384,3 +384,30 @@ test_that("getNodes with data or predictive works", {
     
 })
 
+test_that("`is` queries of nodes works", {
+
+    code <- quote({
+        for(i in 1:5)
+            y[i] ~ dpois(mu[i])
+        mu[1:5] <- exp(theta[1:5])
+        theta[1:5] ~ dmnorm(z[1:5],pr[1:5,1:5])
+        pr[1:5,1:5] ~ dwish(R[1:5,1:5], nu)
+        nu ~ T(dnorm(0,1),0,Inf)
+    })
+    m <- modelClass$new(code, data = list(y = rpois(5,1)), inits = list(nu = 2, R = diag(5), pr = diag(5)))
+    nodes <- getNodes(m)
+    expect_identical(m$isDiscrete(nodes), c(TRUE, NA, NA, FALSE, NA, FALSE, FALSE))
+    expect_identical(m$isStoch(nodes), c(TRUE, FALSE, FALSE, TRUE, FALSE,TRUE, TRUE))
+    expect_identical(m$isDeterm(nodes), !c(TRUE, FALSE, FALSE, TRUE, FALSE,TRUE, TRUE))
+    expect_identical(m$isTruncated(nodes), c(rep(FALSE, 6), TRUE))
+    expect_identical(m$isMultivariate(nodes), c(FALSE, NA, NA, TRUE, NA, TRUE, FALSE))
+    expect_identical(m$getDistribution(nodes), c("dpois",NA,NA,"dmnorm","NA","dwish","dnorm"))
+    expect_equal(m$getDimension(nodes[[1]]), 0)
+    expect_equal(m$getDimension(nodes[[4]]), 1)
+    expect_equal(m$getDimension(nodes[[6]]), 2)
+    expect_identical(m$getDimension(nodes[[2]]), NA)
+    expect_identical(m$getVarNames(includeLogProb = TRUE)[10:14],
+                     c('logProb_y','logProb_theta','logProb_pr','logProb <- nu'))
+    
+    # what about RHSonly
+})

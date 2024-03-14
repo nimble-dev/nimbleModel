@@ -105,13 +105,13 @@ nodeRuleClass <- R6Class(
                 if(is.null(internalRange)) return(NULL)
             } else internalRange <- varRangeClass$new(list())
 
-            declRule <- NULL
-            if(inherits(self, "declRuleClass")) declRule <- self
-            if(inherits(self, "calcRuleClass")) declRule <- self$declRule
+            decl <- NULL
+            if(inherits(self, "declRuleClass")) decl <- self$decl
+            if(inherits(self, "calcRuleClass")) decl <- self$declRule$decl
             
             return(
                 nodeRangeClass$new(varName, externalRange, internalRange,
-                                   indexSlotToSet, declRule)
+                                   indexSlotToSet, decl)
             )
         }
     )
@@ -124,18 +124,16 @@ declRuleClass <- R6Class(
     portable = FALSE,
     inherit = nodeRuleClass,
     public = list(
-        stoch = logical(),
         originalIndexingRule = NULL, # Determines original indexing (based on context).
-        decl = NULL,                 # Full code of declaration (RHS and LHS); nodeRuleClass$expr is just LHS.
+        decl = NULL,                 # Full declInfo; nodeRuleClass$expr is just LHS.
         calculate = NULL,            # Generic function for calculation.
         ## TODO: remove this:
         test = rep(0, 10),  ## test element used for testing calculation while modelDef doesn't have acccess to a model
         test2 = matrix(0, 3, 5),
         
         initialize = function(decl, ID, context = modelContextClass$new(), constants = list()) {
-            stoch <<- decl[[1]] == '~'
-            decl <<- decl        
-            super$initialize(decl[[2]], ID, context = context, constants = constants)
+            decl <<- decl
+            super$initialize(decl$code[[2]], ID, context = context, constants = constants)
 
             ## `expr` in is parent class.
             originalIndexingRule <<- originalIndexingRuleClass$new(expr, context, constants)
@@ -160,7 +158,7 @@ declRuleClass <- R6Class(
                 logProbExpr <- eval(substitute(substitute(e, replacements), list(e = logProbExpr)))
             }
             
-            if(stoch) {
+            if(decl$stoch) {
                 ## Insert 'logProb_' and change to assignment, moving LHS in as first argument.
                 finalCode <- quote(A <<- B)
                 finalCode[[2]] <- logProbExpr
@@ -277,7 +275,7 @@ calcRuleClass <- R6Class(
 
         ## Check for only constants on RHS, in which case this is a top rule.
         checkAllRHSconstants = function(constants) {
-            vars <- all.vars(declRule$decl[[3]])
+            vars <- all.vars(declRule$decl$code[[3]])
             if(all(vars %in% c(names(constants), declRule$context$indexVarNames)))
                 return(TRUE) else return(FALSE)
         },
@@ -308,7 +306,7 @@ calcRuleClass <- R6Class(
             }
             ## First check if any children are stochastic.
             stoch <- sapply(children, function(idx)
-                calcRules[[idx]]$declRule$stoch)
+                calcRules[[idx]]$declRule$decl$stoch)
             if(any(stoch)) {
                 return(set('stochDep'))
             } else {   ## Check if children (all deterministic) have stoch dependents.
@@ -335,7 +333,7 @@ calcRuleClass <- R6Class(
             }
             ## First check if any parents are stochastic.
             stoch <- sapply(parents, function(idx)
-                calcRules[[idx]]$declRule$stoch)
+                calcRules[[idx]]$declRule$decl$stoch)
             if(any(stoch)) {
                 return(set('stochParent'))
             } else {   ## Check if parents (all deterministic) have stoch parents.
@@ -482,7 +480,7 @@ nodeRangeClass <- R6Class(
     portable = FALSE,
     inherit = varRangeClass,
     public = list(
-        declRule = NULL,
+        decl = NULL,
         boolExternalIndexRanges = NULL,
         numExternalIndexRanges = NULL,
         nodeChars = NULL,
@@ -491,7 +489,7 @@ nodeRangeClass <- R6Class(
                               externalRange,
                               internalRange,
                               indexSlotToSet,
-                              declRule) {
+                              decl) {
 
             ## Convert scalar external indexRanges to internal.
             if(length(externalRange$indexRanges)) {
@@ -513,7 +511,7 @@ nodeRangeClass <- R6Class(
             numExternalIndexRanges <<- length(externalRange$indexRanges)
             boolExternalIndexRanges <<- c(rep(TRUE, numExternalIndexRanges),
                                           rep(FALSE, length(internalRange$indexRanges)))
-            declRule <<- declRule  ## pointer to governing declRule
+            decl <<- decl  ## pointer to governing declaration
 
             ## Set up mappings between indexSlots and indexRanges, taking
             ## mappings in externalRange and internalRange (which are local to each of those)
@@ -542,7 +540,7 @@ nodeRangeClass <- R6Class(
         },
         
         toVarRange = function() {
-            varRangeClass$new(indexRanges, rangeToIndexSlot = rangeToIndexSlot, varName = varName, fromStochRule = declRule$stoch)
+            varRangeClass$new(indexRanges, rangeToIndexSlot = rangeToIndexSlot, varName = varName, fromStochRule = decl$stoch)
         },
 
         toChar = function() {
