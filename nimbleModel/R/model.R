@@ -123,10 +123,15 @@ modelClass <- R6Class(
                 }
 
             nonpredictiveRules <<- candidateRules   
-        }
+        },
 
-        
-    
+        isStoch = function(nodeRanges) {
+            if(!is.list(nodeRanges))
+                nodeRanges <- list(nodeRanges)
+            if(!all(sapply(nodeRanges, inherits, "nodeRangeClass")))
+                stop("isStoch: input must be a `nodeRange` or list of `nodeRange`s") 
+            sapply(nodeRanges, function(x) x$declRule$stoch)
+        }
     )
 )
 

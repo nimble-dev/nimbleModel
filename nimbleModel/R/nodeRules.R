@@ -104,9 +104,14 @@ nodeRuleClass <- R6Class(
                 internalRange <- internalRule$apply(varRange)
                 if(is.null(internalRange)) return(NULL)
             } else internalRange <- varRangeClass$new(list())
+
+            declRule <- NULL
+            if(inherits(self, "declRuleClass")) declRule <- self
+            if(inherits(self, "calcRuleClass")) declRule <- self$declRule
+            
             return(
                 nodeRangeClass$new(varName, externalRange, internalRange,
-                                   indexSlotToSet, self)
+                                   indexSlotToSet, declRule)
             )
         }
     )
