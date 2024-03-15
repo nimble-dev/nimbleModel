@@ -403,8 +403,8 @@ test_that("`is` queries of nodes works", {
     expect_identical(m$isMultivariate(nodes), c(FALSE, NA, NA, TRUE, NA, TRUE, FALSE, NA, NA))
     expect_identical(m$getDistribution(nodes), c("dpois",NA,NA,"dmnorm",NA,"dwish","dnorm",NA,NA))
     v0 <- 0; names(v0) <- 'value'
-    v1 <- 1; names(v0) <- 'value'
-    v2 <- 2; names(v0) <- 'value'
+    v1 <- 1; names(v1) <- 'value'
+    v2 <- 2; names(v2) <- 'value'
     expect_identical(m$getDimension(nodes[[1]]), v0)
     expect_identical(m$getDimension(nodes[[4]]), v1)
     expect_identical(m$getDimension(nodes[[6]]), v2)
