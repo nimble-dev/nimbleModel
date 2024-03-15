@@ -199,6 +199,27 @@ modelClass <- R6Class(
             return(result)
         },
 
+        isBinary = function(nodeRanges) {
+            if(!is.list(nodeRanges))
+                nodeRanges <- list(nodeRanges)
+            if(!all(sapply(nodeRanges, inherits, "nodeRangeClass")))
+                stop("isBinary: argument must be a `nodeRange` or list of `nodeRange`s")
+
+            result <- rep(NA, length(nodeRanges))
+            stoch <- isStoch(nodeRanges)
+            dists <- getDistribution(nodeRanges[stoch])
+            binary <- rep(FALSE, length(dists))
+            binary[dists == 'dbern'] <- TRUE
+            binomInds <- which(dists == 'dbin')
+            if(length(binomInds)) {
+                tmp <- sapply(binomInds, function(ind) getParamExpr(nodeRanges[stoch][[ind]], 'size') == 1)
+                binary[binomInds[tmp]] <- TRUE
+            }
+            result[stoch] <- binary
+            return(result)
+        },
+        
+
         isTruncated = function(nodeRanges) {
             if(!is.list(nodeRanges))
                 nodeRanges <- list(nodeRanges)

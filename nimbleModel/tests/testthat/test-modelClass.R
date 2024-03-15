@@ -412,5 +412,16 @@ test_that("`is` queries of nodes works", {
     expect_identical(m$getDimension(nodes[[8]]), NA)
     expect_identical(m$getVarNames(includeLogProb = TRUE)[10:14],
                      c('logProb_y','logProb_theta','logProb_pr','logProb <- nu'))
- 
+
+
+    code <- quote({
+        y ~ dbern(p)
+        p ~ dunif(0,1)
+        z ~ dbin(p, 1)
+        z ~ dbin(p, c)
+        w ~ dbin(p, n)
+    })
+    m <- modelClass$new(code)
+    nodes <- getNodes(m, includeRHSonly = TRUE)
+    expect_identical(m$isBinary(nodes), c(TRUE,FALSE,TRUE,TRUE,FALSE,NA))
 })
