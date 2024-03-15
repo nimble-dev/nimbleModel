@@ -140,7 +140,7 @@ modelClass <- R6Class(
             if(!is.list(nodeRanges))
                 nodeRanges <- list(nodeRanges)
             if(!all(sapply(nodeRanges, inherits, "nodeRangeClass")))
-                stop("getDistribution: input must be a `nodeRange` or list of `nodeRange`s")
+                stop("getDistribution: argument must be a `nodeRange` or list of `nodeRange`s")
             RHSonly <- sapply(nodeRanges, function(x) is.null(x$decl))
             result <- rep(NA, length(RHSonly))
             result[!RHSonly] <- sapply(nodeRanges[!RHSonly], function(x) x$decl$distributionName)
@@ -150,7 +150,7 @@ modelClass <- R6Class(
         getDimension = function(nodeRange, params = NULL, valueOnly = is.null(params)
                                     && !includeParams, includeParams = !is.null(params)) {
             if(!inherits(nodeRange, "nodeRangeClass"))
-                stop("getDimension: input must be a `nodeRange`")
+                stop("getDimension: argument must be a `nodeRange`")
             if(is.null(nodeRange$decl)) return(NA)  # RHSonly
             return(nimble:::getDimension(nodeRange$decl$distributionName, params, valueOnly, includeParams))
         }, 
@@ -159,7 +159,7 @@ modelClass <- R6Class(
             if(!is.list(nodeRanges))
                 nodeRanges <- list(nodeRanges)
             if(!all(sapply(nodeRanges, inherits, "nodeRangeClass")))
-                stop("isStoch: input must be a `nodeRange` or list of `nodeRange`s") 
+                stop("isStoch: argument must be a `nodeRange` or list of `nodeRange`s") 
             RHSonly <- sapply(nodeRanges, function(x) is.null(x$decl))
             result <- rep(FALSE, length(RHSonly))
             result[!RHSonly] <- sapply(nodeRanges[!RHSonly], function(x) x$decl$stoch)
@@ -170,7 +170,7 @@ modelClass <- R6Class(
             if(!is.list(nodeRanges))
                 nodeRanges <- list(nodeRanges)
             if(!all(sapply(nodeRanges, inherits, "nodeRangeClass")))
-                stop("isDeterm: input must be a `nodeRange` or list of `nodeRange`s") 
+                stop("isDeterm: argument must be a `nodeRange` or list of `nodeRange`s") 
             RHSonly <- sapply(nodeRanges, function(x) is.null(x$decl))
             result <- rep(FALSE, length(RHSonly))
             result[!RHSonly] <- sapply(nodeRanges[!RHSonly], function(x) !x$decl$stoch)
@@ -181,7 +181,7 @@ modelClass <- R6Class(
             if(!is.list(nodeRanges))
                 nodeRanges <- list(nodeRanges)
             if(!all(sapply(nodeRanges, inherits, "nodeRangeClass")))
-                stop("isDiscrete: input must be a `nodeRange` or list of `nodeRange`s") 
+                stop("isDiscrete: argument must be a `nodeRange` or list of `nodeRange`s") 
             RHSonly <- sapply(nodeRanges, function(x) is.null(x$decl))
             result <- rep(NA, length(RHSonly))
             result[!RHSonly] <- sapply(nodeRanges[!RHSonly], function(x) nimbleModel:::isDiscrete(x$decl$distributionName))
@@ -192,7 +192,7 @@ modelClass <- R6Class(
             if(!is.list(nodeRanges))
                 nodeRanges <- list(nodeRanges)
             if(!all(sapply(nodeRanges, inherits, "nodeRangeClass")))
-                stop("isMultivariate: input must be a `nodeRange` or list of `nodeRange`s")
+                stop("isMultivariate: argument must be a `nodeRange` or list of `nodeRange`s")
             stoch <- isStoch(nodeRanges)
             result <- rep(NA, length(nodeRanges))
             result[stoch] <- sapply(nodeRanges[stoch], function(x) getValueDim(getDistributionInfo(x$decl$distributionName)) > 0)
@@ -203,11 +203,31 @@ modelClass <- R6Class(
             if(!is.list(nodeRanges))
                 nodeRanges <- list(nodeRanges)
             if(!all(sapply(nodeRanges, inherits, "nodeRangeClass")))
-                stop("isTruncated: input must be a `nodeRange` or list of `nodeRange`s") 
+                stop("isTruncated: argument must be a `nodeRange` or list of `nodeRange`s") 
             RHSonly <- sapply(nodeRanges, function(x) is.null(x$decl))
             result <- rep(NA, length(RHSonly))
             result[!RHSonly] <- sapply(nodeRanges[!RHSonly], function(x) x$decl$truncated)
             return(result)
+        },
+
+        ## Returns the expr corresponding to 'param' in the distribution of `nodeRange`.
+        getParamExpr = function(nodeRange, param) {
+            if(!inherits(nodeRange, "nodeRangeClass"))
+                stop("getParamExpr: argument `nodeRange` must be a `nodeRange` object")
+            decl <- nodeRange$decl
+            if(!nodeRange$decl$stoch) stop("getParamExpr: `nodeRange` must be stochastic")
+            if(param %in% names(decl$valueExpr)) {
+                return(decl$valueExpr[[param]])
+            } else if(param %in% names(decl$altParamExprs)) {
+                return(decl$altParamExprs[[param]])
+            } else stop("getParamExpr: `", param, "` is not present in the parameterization")
+        },
+        
+        ## Returns the entire RHS valueExpr for `nodeRange`.
+        getValueExpr = function(nodeRange) {
+            if(!inherits(nodeRange, "nodeRangeClass"))
+                stop("getValueExpr: argument must be a `nodeRange`")
+            return(nodeRange$decl$valueExpr)
         }
 
     )
