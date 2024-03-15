@@ -140,14 +140,18 @@ modelClass <- R6Class(
             if(!is.list(nodeRanges))
                 nodeRanges <- list(nodeRanges)
             if(!all(sapply(nodeRanges, inherits, "nodeRangeClass")))
-                stop("getDistribution: input must be a `nodeRange` or list of `nodeRange`s") 
-            sapply(nodeRanges, function(x) x$decl$distributionName)
+                stop("getDistribution: input must be a `nodeRange` or list of `nodeRange`s")
+            RHSonly <- sapply(nodeRanges, function(x) is.null(x$decl))
+            result <- rep(NA, length(RHSonly))
+            result[!RHSonly] <- sapply(nodeRanges[!RHSonly], function(x) x$decl$distributionName)
+            return(result)
         }, 
 
         getDimension = function(nodeRange, params = NULL, valueOnly = is.null(params)
                                     && !includeParams, includeParams = !is.null(params)) {
             if(!inherits(nodeRange, "nodeRangeClass"))
                 stop("getDimension: input must be a `nodeRange`")
+            if(is.null(nodeRange$decl)) return(NA)  # RHSonly
             return(nimble:::getDimension(nodeRange$decl$distributionName, params, valueOnly, includeParams))
         }, 
 
@@ -156,7 +160,10 @@ modelClass <- R6Class(
                 nodeRanges <- list(nodeRanges)
             if(!all(sapply(nodeRanges, inherits, "nodeRangeClass")))
                 stop("isStoch: input must be a `nodeRange` or list of `nodeRange`s") 
-            sapply(nodeRanges, function(x) x$decl$stoch)
+            RHSonly <- sapply(nodeRanges, function(x) is.null(x$decl))
+            result <- rep(FALSE, length(RHSonly))
+            result[!RHSonly] <- sapply(nodeRanges[!RHSonly], function(x) x$decl$stoch)
+            return(result)
         },
 
         isDeterm = function(nodeRanges) {
@@ -164,7 +171,10 @@ modelClass <- R6Class(
                 nodeRanges <- list(nodeRanges)
             if(!all(sapply(nodeRanges, inherits, "nodeRangeClass")))
                 stop("isDeterm: input must be a `nodeRange` or list of `nodeRange`s") 
-            sapply(nodeRanges, function(x) !x$decl$stoch)
+            RHSonly <- sapply(nodeRanges, function(x) is.null(x$decl))
+            result <- rep(FALSE, length(RHSonly))
+            result[!RHSonly] <- sapply(nodeRanges[!RHSonly], function(x) !x$decl$stoch)
+            return(result)
         },
 
         isDiscrete = function(nodeRanges) {
@@ -172,7 +182,10 @@ modelClass <- R6Class(
                 nodeRanges <- list(nodeRanges)
             if(!all(sapply(nodeRanges, inherits, "nodeRangeClass")))
                 stop("isDiscrete: input must be a `nodeRange` or list of `nodeRange`s") 
-            sapply(nodeRanges, function(x) nimbleModel:::isDiscrete(x$decl$distributionName))
+            RHSonly <- sapply(nodeRanges, function(x) is.null(x$decl))
+            result <- rep(NA, length(RHSonly))
+            result[!RHSonly] <- sapply(nodeRanges[!RHSonly], function(x) nimbleModel:::isDiscrete(x$decl$distributionName))
+            return(result)
         },
 
         isMultivariate = function(nodeRanges) {
@@ -191,7 +204,10 @@ modelClass <- R6Class(
                 nodeRanges <- list(nodeRanges)
             if(!all(sapply(nodeRanges, inherits, "nodeRangeClass")))
                 stop("isTruncated: input must be a `nodeRange` or list of `nodeRange`s") 
-            sapply(nodeRanges, function(x) x$decl$truncated)
+            RHSonly <- sapply(nodeRanges, function(x) is.null(x$decl))
+            result <- rep(NA, length(RHSonly))
+            result[!RHSonly] <- sapply(nodeRanges[!RHSonly], function(x) x$decl$truncated)
+            return(result)
         }
 
     )

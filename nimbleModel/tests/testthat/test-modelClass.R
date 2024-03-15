@@ -395,19 +395,22 @@ test_that("`is` queries of nodes works", {
         nu ~ T(dnorm(0,1),0,Inf)
     })
     m <- modelClass$new(code, data = list(y = rpois(5,1)), inits = list(nu = 2, R = diag(5), pr = diag(5)))
-    nodes <- getNodes(m)
-    expect_identical(m$isDiscrete(nodes), c(TRUE, NA, NA, FALSE, NA, FALSE, FALSE))
-    expect_identical(m$isStoch(nodes), c(TRUE, FALSE, FALSE, TRUE, FALSE,TRUE, TRUE))
-    expect_identical(m$isDeterm(nodes), !c(TRUE, FALSE, FALSE, TRUE, FALSE,TRUE, TRUE))
-    expect_identical(m$isTruncated(nodes), c(rep(FALSE, 6), TRUE))
-    expect_identical(m$isMultivariate(nodes), c(FALSE, NA, NA, TRUE, NA, TRUE, FALSE))
-    expect_identical(m$getDistribution(nodes), c("dpois",NA,NA,"dmnorm","NA","dwish","dnorm"))
-    expect_equal(m$getDimension(nodes[[1]]), 0)
-    expect_equal(m$getDimension(nodes[[4]]), 1)
-    expect_equal(m$getDimension(nodes[[6]]), 2)
+    nodes <- getNodes(m, includeRHSonly = TRUE)
+    expect_identical(m$isDiscrete(nodes), c(TRUE, NA, NA, FALSE, NA, FALSE, FALSE, NA, NA))
+    expect_identical(m$isStoch(nodes), c(TRUE, FALSE, FALSE, TRUE, FALSE,TRUE, TRUE, FALSE, FALSE))
+    expect_identical(m$isDeterm(nodes), c(!c(TRUE, FALSE, FALSE, TRUE, FALSE,TRUE, TRUE), FALSE, FALSE))
+    expect_identical(m$isTruncated(nodes), c(rep(FALSE, 6), TRUE, NA, NA))
+    expect_identical(m$isMultivariate(nodes), c(FALSE, NA, NA, TRUE, NA, TRUE, FALSE, NA, NA))
+    expect_identical(m$getDistribution(nodes), c("dpois",NA,NA,"dmnorm",NA,"dwish","dnorm",NA,NA))
+    v0 <- 0; names(v0) <- 'value'
+    v1 <- 1; names(v0) <- 'value'
+    v2 <- 2; names(v0) <- 'value'
+    expect_identical(m$getDimension(nodes[[1]]), v0)
+    expect_identical(m$getDimension(nodes[[4]]), v1)
+    expect_identical(m$getDimension(nodes[[6]]), v2)
     expect_identical(m$getDimension(nodes[[2]]), NA)
+    expect_identical(m$getDimension(nodes[[8]]), NA)
     expect_identical(m$getVarNames(includeLogProb = TRUE)[10:14],
                      c('logProb_y','logProb_theta','logProb_pr','logProb <- nu'))
-    
-    # what about RHSonly
+ 
 })
