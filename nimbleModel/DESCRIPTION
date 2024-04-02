@@ -25,6 +25,9 @@ Collate:
     indexConstraint.R
     getSymbolicParentNodes.R
     graphRules.R
+    MCMC_configuration.R
+    MCMC_conjugacy.R
+    MCMC_samplers.R
     mathCompatibility.R
     miscFunctions.R
     modelDecl.R
