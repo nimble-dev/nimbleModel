@@ -236,19 +236,36 @@ modelClass <- R6Class(
             if(!inherits(nodeRange, "nodeRangeClass"))
                 stop("getParamExpr: argument `nodeRange` must be a `nodeRange` object")
             decl <- nodeRange$decl
-            if(!nodeRange$decl$stoch) stop("getParamExpr: `nodeRange` must be stochastic")
+            if(!decl$stoch) stop("getParamExpr: `nodeRange` must be stochastic")
             if(param %in% names(decl$valueExpr)) {
-                return(decl$valueExpr[[param]])
+                expr <- decl$valueExpr[[param]]
             } else if(param %in% names(decl$altParamExprs)) {
-                return(decl$altParamExprs[[param]])
+                expr <- decl$altParamExprs[[param]]
             } else stop("getParamExpr: `", param, "` is not present in the parameterization")
+            if(length(expr) > 1) {
+                ## Substitute original index values into the expression.
+                indexVarRange <- decl$declRule$originalIndexingRule$apply(nodeRange)
+                indexValues <- indexVarRange$indexRangeExprs
+                names(indexValues) <- decl$context$indexVarNames
+                expr <- eval(substitute(substitute(EXPR, indexValues), list(EXPR = expr)))
+                return(evalNumeric(expr))
+            } else return(expr)
         },
         
         ## Returns the entire RHS valueExpr for `nodeRange`.
         getValueExpr = function(nodeRange) {
             if(!inherits(nodeRange, "nodeRangeClass"))
                 stop("getValueExpr: argument must be a `nodeRange`")
-            return(nodeRange$decl$valueExpr)
+            decl <- nodeRange$decl
+            expr <- decl$valueExpr
+            if(length(expr) > 1) {
+                ## Substitute original index values into the expression.
+                indexVarRange <- decl$declRule$originalIndexingRule$apply(nodeRange)
+                indexValues <- indexVarRange$indexRangeExprs
+                names(indexValues) <- decl$context$indexVarNames
+                expr <- eval(substitute(substitute(EXPR, indexValues), list(EXPR = expr)))
+                return(evalNumeric(expr))
+            } else return(expr)
         }
 
     )

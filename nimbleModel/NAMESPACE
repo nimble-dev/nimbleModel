@@ -36,13 +36,13 @@ export(rhsRuleClass)
 export(calcRuleClass)
 export(calcRangeClass)
 export(originalIndexingRuleClass)
+
+## functions and other objects
 export(makeCalcRules)
 export(makeRHSonlyRules)
 export(setSortIDs)
 export(setEndRules)
 export(setTopRules)
-
-## functions and other objects
 export(getDependencies)
 export(getParents)
 export(getNodes)

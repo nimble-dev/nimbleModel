@@ -169,3 +169,14 @@ nimbleModelID  <- labelFunctionCreator("MID")
 nimC <- function(...) {
     c(...)
 }
+
+evalNumeric <- function(expr) {
+    if(length(expr) == 1) return(expr)
+    if(!length(all.vars(expr)))
+        return(eval(expr))
+    for(i in 2:length(expr))
+        expr[[i]] <- evalNumeric(expr[[i]])
+    return(expr)
+}
+    
+

@@ -543,6 +543,7 @@ nodeRangeClass <- R6Class(
             varRangeClass$new(indexRanges, rangeToIndexSlot = rangeToIndexSlot, varName = varName, fromStochRule = decl$stoch)
         },
 
+        ## FIX: for a scalar node this seems to return a name object not a char.
         toChar = function() {
             if(is.null(varName)) {
                 nm <- as.name("no_name")
