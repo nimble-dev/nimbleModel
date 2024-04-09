@@ -490,7 +490,6 @@ nodeRangeClass <- R6Class(
                               internalRange,
                               indexSlotToSet,
                               decl) {
-
             ## Convert scalar external indexRanges to internal.
             if(length(externalRange$indexRanges)) {
                 scalars <- sapply(externalRange$indexRanges,
@@ -498,7 +497,7 @@ nodeRangeClass <- R6Class(
                 if(sum(scalars)) {
                     internalRange$indexRanges <- c(internalRange$indexRanges, externalRange$indexRanges[scalars])
                     externalRange$indexRanges <- externalRange$indexRanges[!scalars]
-                    indexSlotToSet[indexSlotToSet %in% which(scalars)] <- -1
+                    indexSlotToSet[indexSlotToSet != 0][unlist(externalRange$rangeToIndexSlot[scalars])]  <- -1
                     externalRange$indexSlotToRange <- externalRange$indexSlotToRange[!externalRange$indexSlotToRange %in% which(scalars)]
                     for(idx in which(scalars)) 
                         externalRange$indexSlotToRange[externalRange$indexSlotToRange > idx] <-
