@@ -296,12 +296,15 @@ varRangeClass <- R6Class(
     )
 )
 
-## NOTE: This will not catch cases where the order of the indexRanges
+## This now catches cases where the order of the indexRanges
 ## is permuted consistent with `rangeToIndexSlot` and `indexSlotToRange`.
+## TODO: check testing and perhaps add more testing.
 varRange_isEqual <- function(vr1, vr2) {
-    return(identical(vr1$indexSlotToRange, vr2$indexSlotToRange) &&
-        identical(vr1$rangeToIndexSlot, vr2$rangeToIndexSlot) &&
-        isTRUE(all.equal(vr1$indexRanges, vr2$indexRanges)))
+    if(!identical(sort(vr1$indexSlotToRange), sort(vr1$indexSlotToRange)))
+        return(FALSE)
+    mtch <- match(vr1$indexSlotToRange, vr2$indexSlotToRange)
+    return(identical(vr1$indexSlotToRange, vr2$indexSlotToRange[mtch]) &&
+        isTRUE(all.equal(vr1$indexRanges, vr2$indexRanges[mtch])))
 }
 
 getVarName <- function(x) {
