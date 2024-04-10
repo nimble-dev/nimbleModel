@@ -276,6 +276,7 @@ conjugacyClass <- R6Class(
 
         ## see checkConjugacy for more explanation of each step
         checkConjugacyOneDep = function(model, targetNode, depNode, restrictLink = NULL) {
+            if(exists('paciorek')) browser()
             if(model$getDistribution(targetNode) != prior)     return(NULL)    # check prior distribution of targetNode
             if(model$isTruncated(depNode)) return(NULL)   # if depNode is truncated, then not conjugate
             depNodeDist <- model$getDistribution(depNode)
@@ -996,7 +997,13 @@ cc_expandDetermNodesInExpr <- function(model, expr, targetNode = NULL, skipExpan
             }
         }
         exprText <- safeDeparse(expr, warn = TRUE)
-        expandedNodeNamesRaw <- getNodes(model, exprText)[[1]]$toNodeChars()
+        tmp <- getNodes(model, exprText)[[1]]
+        if(is.null(tmp)) return(expr)   ## RHSonly case
+        expandedNodeNamesRaw <- tmp$toNodeChars()
+
+        ## CHECK: look at biops case discussed in `nimble:::cc_expandDetermNodesInExpr` comment
+        ## involving both RHSonly and stoch.
+        
         ## skipExpansionsNode was added specifically for CAR model target nodes:
         ## CHECK: see about handling of CAR stuff here
         if(!is.null(skipExpansionsNode) && (exprText %in% getNodes(model, nodes = skipExpansionsNode)[[1]]$toNodeChars)) return(expr)
@@ -1006,7 +1013,7 @@ cc_expandDetermNodesInExpr <- function(model, expr, targetNode = NULL, skipExpan
         } else {
             ## if exprText is itself *not* a formal node name, but rather a subset of a larger formal node,
             ## then we don't want it to be expanded to include the subsubming full node
-                                        #            if(length(setdiff(model$expandNodeNames(expandedNodeNamesRaw, returnScalarComponents = TRUE), model$expandNodeNames(exprText, returnScalarComponents = TRUE)))) {
+            ## if(length(setdiff(model$expandNodeNames(expandedNodeNamesRaw, returnScalarComponents = TRUE), model$expandNodeNames(exprText, returnScalarComponents = TRUE)))) {
             ## CHECK: how think about scalar components here?
             if(length(setdiff(getNodes(model,expandedNodeNamesRaw)[[1]]$toNodeChars(), varRangeClass$new(exprText)$toVarChars()))) {
                 expandedNodeNames <- exprText
@@ -1053,7 +1060,11 @@ cc_structureExprName <- quote(structureExpr)
 
 ## creates an expression of the form [cc_structureExprName](element11, element12, etc...) to represent vectors / arrays defined in terms of other stoch/determ nodes,
 cc_createStructureExpr <- function(model, exprText) {
-    expandedNodeNamesVector <- model$expandNodeNames(exprText)
+    nodeRanges <- getNodes(model, exprText)
+    ## CHECK: would this ever have more than one nodeRange?
+    expandedNodeNamesVector <- unlist(lapply(nodeRanges, function(x) x$toNodeChars()))
+
+    if(F) {
     ## remove expanded node names which are not fully represented in the original scalar components of exprText:
     exprTextScalarComponents <- model$expandNodeNames(exprText, returnScalarComponents=TRUE)
     expandedNodeNamesToKeepBool <- sapply(expandedNodeNamesVector, function(n) all(model$expandNodeNames(n, returnScalarComponents=TRUE) %in% exprTextScalarComponents))
@@ -1063,6 +1074,8 @@ cc_createStructureExpr <- function(model, exprText) {
     nodesForStructureExpr <- c(expandedNodeNamesVector, scalarComponentsToAdd)
     ## if exprText is a non-node scalar component, then just return that parse(exprText); (rather than structureExpr(exprText))
     if((length(nodesForStructureExpr) == 1) && identical(nodesForStructureExpr, scalarComponentsToAdd)) return(parse(text=exprText)[[1]])
+    }
+    nodesForStructureExpr <- expandedNodeNamesVector
     ## otherwise, create and return a structureExpr
     structureExprExprList <- lapply(nodesForStructureExpr, function(x) parse(text=x)[[1]])
     structureExpr <- c(cc_structureExprName, structureExprExprList)
