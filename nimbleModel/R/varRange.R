@@ -300,11 +300,12 @@ varRangeClass <- R6Class(
 ## is permuted consistent with `rangeToIndexSlot` and `indexSlotToRange`.
 ## TODO: check testing and perhaps add more testing.
 varRange_isEqual <- function(vr1, vr2) {
-    if(!identical(sort(vr1$indexSlotToRange), sort(vr1$indexSlotToRange)))
+    if(length(vr1$indexRanges) != length(vr2$indexRanges))
         return(FALSE)
-    mtch <- match(vr1$indexSlotToRange, vr2$indexSlotToRange)
-    return(identical(vr1$indexSlotToRange, vr2$indexSlotToRange[mtch]) &&
-        isTRUE(all.equal(vr1$indexRanges, vr2$indexRanges[mtch])))
+    ## mtch <- match(vr1$indexSlotToRange, vr2$indexSlotToRange)
+    crossref <- unique(cbind(vr1$indexSlotToRange,vr2$indexSlotToRange))
+    return(nrow(crossref) == length(vr1$indexRanges) && 
+        isTRUE(all.equal(vr1$indexRanges[crossref[,1]], vr2$indexRanges[crossref[,2]])))
 }
 
 getVarName <- function(x) {
