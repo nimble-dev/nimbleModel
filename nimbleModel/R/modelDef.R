@@ -641,6 +641,8 @@ modelDefClass <- R6Class(
                 if(anyStoch) lhsLogProbVar <- makeLogProbName(lhsVar)
                 if(varInfo[[lhsVar]]$nDim > 0) {
                     newMinMax <- decl$declRule$fullRange$getMinMax()
+                    ## Force overwrite of placeholder max based on LHS info.
+                    varInfo[[lhsVar]]$maxs[varInfo[[lhsVar]]$maxs == .Machine$integer.max] <<- 0
                     varInfo[[lhsVar]]$mins <<- pmin(varInfo[[lhsVar]]$mins, newMinMax[ , 1])
                     varInfo[[lhsVar]]$maxs <<- pmax(varInfo[[lhsVar]]$maxs, newMinMax[ , 2])
                     if(anyStoch) {
@@ -648,7 +650,6 @@ modelDefClass <- R6Class(
                         logProbVarInfo[[lhsLogProbVar]]$maxs <<- pmax(logProbVarInfo[[lhsLogProbVar]]$maxs, newMinMax[ , 2])
                     }
                 }
-
                 for(iRHR in seq_along(decl$rhsOriginalRules)) {
                     rhsRule <- decl$rhsOriginalRules[[iRHR]]
                     rhsVar <- rhsRule$varName
@@ -662,19 +663,7 @@ modelDefClass <- R6Class(
                                                                anyStoch = FALSE)
                     }
                     if(varInfo[[rhsVar]]$nDim) {
-                        ## If the index is dynamic, there is nothing to learn about index range of the variable.
-                        ## Replace initial (Inf, 0) placeholders as needed.
-                        if(getNimbleModelOption('allowDynamicIndexing') && isDynamicIndex(rhsRule$code)) {
-                            ## CHECK: given work below this `if` block on newMinMax in case of dynamic indexing, I don't think this
-                            ## is ever invoked and DYN_INDEXED may not ever even be in `rhsRule$code`?
-                            varInfo[[rhsVar]]$mins <<- pmin(varInfo[[rhsVar]]$mins, 1)
-                            varInfo[[rhsVar]]$maxs <<- pmax(varInfo[[rhsVar]]$maxs, 1) 
-                            next
-                        }
-                        ## Otherwise extend the range of known mins and maxs.
                         newMinMax <- rhsRule$fullRange$getMinMax()
-                        # Nothing to learn if index is dynamic; replace initial (Inf, 0) placeholders as needed.
-                        newMinMax[newMinMax == .Machine$integer.max] <- 1  
                         varInfo[[rhsVar]]$mins <<- pmin(varInfo[[rhsVar]]$mins, newMinMax[ , 1])
                         varInfo[[rhsVar]]$maxs <<- pmax(varInfo[[rhsVar]]$maxs, newMinMax[ , 2])
                     }
