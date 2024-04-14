@@ -665,12 +665,16 @@ modelDefClass <- R6Class(
                         ## If the index is dynamic, there is nothing to learn about index range of the variable.
                         ## Replace initial (Inf, 0) placeholders as needed.
                         if(getNimbleModelOption('allowDynamicIndexing') && isDynamicIndex(rhsRule$code)) {
-                            varInfo[[rhsVar]]$mins[iDim] <<- min(varInfo[[rhsVar]]$mins[iDim], 1)
-                            varInfo[[rhsVar]]$maxs[iDim] <<- max(varInfo[[rhsVar]]$maxs[iDim], 1) 
+                            ## CHECK: given work below this `if` block on newMinMax in case of dynamic indexing, I don't think this
+                            ## is ever invoked and DYN_INDEXED may not ever even be in `rhsRule$code`?
+                            varInfo[[rhsVar]]$mins <<- pmin(varInfo[[rhsVar]]$mins, 1)
+                            varInfo[[rhsVar]]$maxs <<- pmax(varInfo[[rhsVar]]$maxs, 1) 
                             next
                         }
                         ## Otherwise extend the range of known mins and maxs.
                         newMinMax <- rhsRule$fullRange$getMinMax()
+                        # Nothing to learn if index is dynamic; replace initial (Inf, 0) placeholders as needed.
+                        newMinMax[newMinMax == .Machine$integer.max] <- 1  
                         varInfo[[rhsVar]]$mins <<- pmin(varInfo[[rhsVar]]$mins, newMinMax[ , 1])
                         varInfo[[rhsVar]]$maxs <<- pmax(varInfo[[rhsVar]]$maxs, newMinMax[ , 2])
                     }
