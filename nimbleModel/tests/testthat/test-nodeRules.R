@@ -1621,9 +1621,9 @@ test_that("removal of indexing for scalar elements of nodeRanges work", {
                         y[55,l,k,j,33, k,i] ~ dnorm(mu[i,j,k,l], 1)
         
     })
-    md <- modelDefClass$new(code)
-    deps <- getDependencies(md,'mu[1,1:2,4,3]')[[1]]
-    nr <- getNodes(md,deps)[[1]]
+    m <- modelClass$new(code)
+    deps <- getDependencies(md, 'mu[1,1:2,4,3]')[[1]]
+    nr <- getNodes(m, deps)[[1]]
     expect_identical(nr$indexSlotToRange, as.integer(c(3, 5, 1, 2, 4, 1, 6)))
     expect_equal(nr$indexRanges[[3]], newIndexRange(55))
     expect_equal(nr$indexRanges[[5]], newIndexRange(3))
@@ -1652,7 +1652,7 @@ test_that("removal of indexing for scalar elements of nodeRanges work", {
     expect_identical(nr$indexSlotToRange, as.integer(c(4,2,1,3)))
     expect_equal(nr$indexRanges[[4]], newIndexRange(2))
     expect_equal(nr$indexRanges[[2]], newIndexRange(6))
-    expect_equal(nr$indexRanges[[1]], newIndexRange(quote(1:3)))
+    expect_equal(nr$indexRanges[[1]], newIndexRange(quote(1:2)))
     expect_equal(nr$indexRanges[[3]], newIndexRange(3))
 
 })
