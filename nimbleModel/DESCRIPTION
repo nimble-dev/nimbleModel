@@ -38,6 +38,7 @@ Collate:
     originalIndexingRules.R
     processModelGraph.R
     rhsRules.R
+    types_util.R
     varRange.R
     varRules.R
     varStore.R

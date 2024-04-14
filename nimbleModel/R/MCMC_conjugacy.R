@@ -287,10 +287,10 @@ conjugacyClass <- R6Class(
             } else currentLink <- restrictLink
 
             targetNodeChar <- targetNode$toNodeChars()
-            depNodeChar <- depNode$toNodeChars(1)
+            depNodeOne <- getNodes(model, depNode$toNodeChars(1))[[1]]
             if(currentLink != 'stickbreaking') {
                 depNodeParamName <- dependentObj$param
-                linearityCheckExprRaw <- model$getParamExpr(depNode, depNodeParamName)   # extracts the expression for 'param' from 'depNode'
+                linearityCheckExprRaw <- model$getParamExpr(depNodeOne, depNodeParamName)   # extracts the expression for 'param' from 'depNode'
                 linearityCheckExpr <- cc_expandDetermNodesInExpr(model, linearityCheckExprRaw, targetNode = targetNodeChar)
                 if(!cc_nodeInExpr(targetNodeChar, linearityCheckExpr))                return(NULL)
                 if(cc_vectorizedComponentCheck(targetNodeChar, linearityCheckExpr))   return(NULL)   # if targetNode is vectorized, make sure none of its components appear in expr
@@ -298,9 +298,9 @@ conjugacyClass <- R6Class(
                 realizedLink <- cc_linkCheck(linearityCheck, currentLink)
                 if(is.null(realizedLink)) return(NULL)
                 ## ensure targetNode appears in only *one* depNode parameter expression
-                if(!cc_otherParamsCheck(model, depNode, targetNodeChar, depNodeExprExpanded = linearityCheckExpr, depParamNodeName = depNodeParamName))   return(NULL)
+                if(!cc_otherParamsCheck(model, depNodeOne, targetNodeChar, depNodeExprExpanded = linearityCheckExpr, depParamNodeName = depNodeParamName))   return(NULL)
             } else {
-                stickbreakingCheckExpr <- model$getParamExpr(depNode, dependentObj$param)   # extracts the expression for 'param' from 'depNode'
+                stickbreakingCheckExpr <- model$getParamExpr(depNodeOne, dependentObj$param)   # extracts the expression for 'param' from 'depNode'
                 stickbreakingCheckExpr <- cc_expandDetermNodesInExpr(model, stickbreakingCheckExpr, targetNode = targetNodeChar)
                 if(is.null(cc_checkStickbreaking(stickbreakingCheckExpr, targetNodeChar))) return(NULL)
                 realizedLink <- 'stickbreaking'
@@ -1007,18 +1007,16 @@ cc_expandDetermNodesInExpr <- function(model, expr, targetNode = NULL, skipExpan
         ## skipExpansionsNode was added specifically for CAR model target nodes:
         ## CHECK: see about handling of CAR stuff here
         if(!is.null(skipExpansionsNode) && (exprText %in% getNodes(model, nodes = skipExpansionsNode)[[1]]$toNodeChars)) return(expr)
-        ## if exprText is a node itself (and also part of a larger node), then we only want the expansion to be the exprText node:
+
+        ## If `exprText` is itself *not* a node, but rather a subset of a larger formal node,
+        ## then we don't want it to be expanded to include the subsubming full node.
         if(exprText %in% expandedNodeNamesRaw) {
             expandedNodeNames <- exprText
         } else {
-            ## if exprText is itself *not* a formal node name, but rather a subset of a larger formal node,
-            ## then we don't want it to be expanded to include the subsubming full node
-            ## if(length(setdiff(model$expandNodeNames(expandedNodeNamesRaw, returnScalarComponents = TRUE), model$expandNodeNames(exprText, returnScalarComponents = TRUE)))) {
-            ## CHECK: how think about scalar components here?
             if(length(setdiff(getNodes(model,expandedNodeNamesRaw)[[1]]$toNodeChars(), varRangeClass$new(exprText)$toVarChars()))) {
                 expandedNodeNames <- exprText
             } else {
-                expandedNodeNames <- expandedNodeNamesRaw
+                expandedNodeNames <- expandedNodeNamesRaw  ## CHECK: I don't this is ever invoked.
             }
         }
 
@@ -1033,8 +1031,6 @@ cc_expandDetermNodesInExpr <- function(model, expr, targetNode = NULL, skipExpan
                 newExpr <- model$getValueExpr(getNodes(model, exprText)[[1]])
                 return(cc_expandDetermNodesInExpr(model, newExpr, targetNode, skipExpansionsNode))
             }
-            ## CHECK: what about RHSonly?
-            # if(type == 'RHSonly') return(expr)
             stop(paste0('Unexpected model structure for expression: ', exprText, '. Please report this to the NIMBLE development team.'))
         }
         newExpr <- cc_createStructureExpr(model, exprText)
@@ -1064,7 +1060,8 @@ cc_createStructureExpr <- function(model, exprText) {
     ## CHECK: would this ever have more than one nodeRange?
     expandedNodeNamesVector <- unlist(lapply(nodeRanges, function(x) x$toNodeChars()))
 
-    if(F) {
+    ## CHECK: make sure this block of logic is no longer needed.
+    if(FALSE) {
     ## remove expanded node names which are not fully represented in the original scalar components of exprText:
     exprTextScalarComponents <- model$expandNodeNames(exprText, returnScalarComponents=TRUE)
     expandedNodeNamesToKeepBool <- sapply(expandedNodeNamesVector, function(n) all(model$expandNodeNames(n, returnScalarComponents=TRUE) %in% exprTextScalarComponents))
@@ -1075,6 +1072,7 @@ cc_createStructureExpr <- function(model, exprText) {
     ## if exprText is a non-node scalar component, then just return that parse(exprText); (rather than structureExpr(exprText))
     if((length(nodesForStructureExpr) == 1) && identical(nodesForStructureExpr, scalarComponentsToAdd)) return(parse(text=exprText)[[1]])
     }
+    
     nodesForStructureExpr <- expandedNodeNamesVector
     ## otherwise, create and return a structureExpr
     structureExprExprList <- lapply(nodesForStructureExpr, function(x) parse(text=x)[[1]])

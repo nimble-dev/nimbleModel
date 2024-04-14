@@ -259,6 +259,11 @@ modelClass <- R6Class(
             decl <- nodeRange$decl
             expr <- decl$valueExpr
             if(length(expr) > 1) {
+                ## First get canonical parameterization for stoch cases.
+                if(decl$stoch) {
+                    expr <- expr[!names(expr)%in% c("lower_","upper_") &
+                                 !grepl("^\\.", names(expr))]
+                }
                 ## Substitute original index values into the expression.
                 indexVarRange <- decl$declRule$originalIndexingRule$apply(nodeRange)
                 indexValues <- indexVarRange$indexRangeExprs
