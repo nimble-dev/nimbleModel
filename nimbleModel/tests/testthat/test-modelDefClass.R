@@ -246,3 +246,42 @@ test_that("truncation processing", {
         quote(logProb_y <<- dnorm(y, mean = mu, sd = sigma, lower_ = 3, upper_ = b, 
                                   log = 1)))
 })
+
+test_that("detection of duplicated declarations", {
+    code <- quote({
+        z ~ dbin(p, 1)
+        z ~ dbin(p, c)
+    })
+    expect_error(m <- modelClass$new(code), "There are multiple definitions")
+    
+    code <- quote({
+        z ~ dbin(p, 1)
+        z[1:2] <- tmp[1:2]
+    })
+    expect_error(m <- modelClass$new(code), "Inconsistent dimensions")
+    
+    code <- quote({
+        z[1:2] <- tmp[3:4]
+        z[1:2] <- tmp[1:2]
+    })
+    expect_error(m <- modelClass$new(code), "overlaps")
+
+    code <- quote({
+        z[1:2] <- tmp[3:4]
+        z[2:3] <- tmp[1:2]
+    })
+    expect_error(m <- modelClass$new(code), "overlaps")
+    
+    code <- quote({
+        z[1:2,1:2] <- tmp[3:4,1:2]
+        z[2:3,1:2] <- tmp[1:2,1:2]
+    })
+    expect_error(m <- modelClass$new(code), "overlaps")
+    
+    code <- quote({
+        z[1:2,1:2] <- tmp[3:4,1:2]
+        z[3:4,1:2] <- tmp[1:2,1:2]
+    })
+    m <- modelClass$new(code)
+    
+})

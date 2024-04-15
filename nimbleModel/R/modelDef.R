@@ -618,6 +618,12 @@ modelDefClass <- R6Class(
                                                            maxs = rep(0, nDim),
                                                            nDim = nDim,
                                                            anyStoch = FALSE)
+                } else {  # Multiple LHS variable declarations with mismatched dimensions.
+                    nDim <- if(length(decl$targetNodeExpr) == 1) 0 else length(decl$targetNodeExpr)-2
+                    if(nDim == 0)
+                        stop("There are multiple definitions for variable `", lhsVar, "`.")
+                    if(nDim != varInfo[[lhsVar]]$nDim)
+                        stop("Inconsistent dimensions in declarations for variable `", lhsVar, "`.")
                 }
                 varInfo[[lhsVar]]$anyStoch <<- varInfo[[lhsVar]]$anyStoch | decl$stoch
             }
@@ -643,6 +649,13 @@ modelDefClass <- R6Class(
                     newMinMax <- decl$declRule$fullRange$getMinMax()
                     ## Force overwrite of placeholder max based on LHS info.
                     varInfo[[lhsVar]]$maxs[varInfo[[lhsVar]]$maxs == .Machine$integer.max] <<- 0
+                    ## Check for overlap in all dimensions, indicating duplicate declaration.
+                    if(sum(varInfo[[lhsVar]]$maxs)) {   # On repeated declaration for a variable.
+                        overlap <- !(varInfo[[lhsVar]]$maxs < newMinMax[ , 1] |
+                            varInfo[[lhsVar]]$mins > newMinMax[ , 2])
+                        if(all(overlap))
+                            stop("Indexing for declarations for variable `", lhsVar, "` overlaps.")
+                    }
                     varInfo[[lhsVar]]$mins <<- pmin(varInfo[[lhsVar]]$mins, newMinMax[ , 1])
                     varInfo[[lhsVar]]$maxs <<- pmax(varInfo[[lhsVar]]$maxs, newMinMax[ , 2])
                     if(anyStoch) {
