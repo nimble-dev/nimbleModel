@@ -68,6 +68,8 @@ modelDeclClass <- R6Class(
                     indexExpr <<- as.list(targetExpr[-c(1,2)]) 
                     targetVarExpr <- targetExpr[[2]]
                     targetNodeExpr <<- targetExpr
+                    indexedBlocks <- sapply(indexExpr, checkForIndexedIntervals, context)
+                        stop("Non-constant indexing found in `", safeDeparse(indexExpr[[which(indexedBlocks)[1]]]), "` in `", safeDeparse(targetNodeExpr), "`. Block indices must be constant.")
                 } else {
                     ## There is a transformation, possibly with a subscript.
                     transExpr <<- targetExpr[[1]]
@@ -334,4 +336,9 @@ checkForExpr <- function(expr) {
     ## for(i in 2:length(expr)) 
     ##     if(checkForExpr(expr[[i]])) output <- TRUE
     ## return(output)
+}
+
+checkForIndexedIntervals <- function(indexExpr, context) {
+    if(length(indexExpr) > 1 && indexExpr[[1]] == ":" && any(all.vars(indexExpr) %in% context$indexVarNames))
+        return(TRUE) else return(FALSE)
 }
