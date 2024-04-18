@@ -45,6 +45,7 @@ mcmcConfClass <- R6Class(
         controlDefaults = NULL,
 
         initialize = function(model, nodes, control = list(), useConjugacy = TRUE, ...) {
+            model <<- model
             samplerConfs <<- list()
             samplerExecutionOrder <<- numeric()
             controlDefaults <<- list(...)
@@ -75,12 +76,14 @@ mcmcConfClass <- R6Class(
             controlDefaultsArg <- list(...)
             for(i in seq_along(control))     controlDefaultsArg[[names(control)[i]]] <- control[[i]]
 
-            if(useConjugacy) conjugate <- nimbleModel:::conjugacyRelationshipsObject$checkConjugacy(model, nodeRange)
-            if(conjugate) {
-                addConjugateSampler(conjugacyResult = conjugacyResult,
-                                    dynamicallyIndexed = model$modelDef$varInfo[[nodeRange$varName]]$anyDynamicallyIndexed)
-                ## CHECK: should we use getVarName(nodeRange) (could nodeRange be character?)
-                invisible(NULL)
+            if(useConjugacy) {
+                conjugacyResult <- nimbleModel:::conjugacyRelationshipsObject$checkConjugacy(model, nodeRange)
+                if(length(conjugacyResult)) {
+                    addConjugateSampler(conjugacyResult = conjugacyResult,
+                                        dynamicallyIndexed = model$modelDef$varInfo[[nodeRange$varName]]$anyDynamicallyIndexed)
+                    ## CHECK: should we use getVarName(nodeRange) (could nodeRange be character?)
+                    invisible(NULL)
+                }
             }
 
             dist <- model$getDistribution(nodeRange)
@@ -130,11 +133,12 @@ mcmcConfClass <- R6Class(
             ## nodes with that conjugacy, as the dynamically-indexed
             ## sampler has a check for zero contributions for each dependent
             conjSamplerName <- createDynamicConjugateSamplerName(prior = prior, dependentCounts = dependentCounts, dynamicallyIndexed = dynamicallyIndexed)
-            if(!dynamicConjugateSamplerExists(conjSamplerName)) {
-                conjSamplerDef <- conjugacyRelationshipsObject$generateDynamicConjugateSamplerDefinition(prior = prior, dependentCounts = dependentCounts, doDependentScreen = dynamicallyIndexed)
-                dynamicConjugateSamplerAdd(conjSamplerName, conjSamplerDef)
-            }
-            conjSamplerFunction <- dynamicConjugateSamplerGet(conjSamplerName)
+            ## Placeholder: do not generate sampler functions for now.
+            ## if(!dynamicConjugateSamplerExists(conjSamplerName)) {
+            ##     conjSamplerDef <- conjugacyRelationshipsObject$generateDynamicConjugateSamplerDefinition(prior = prior, dependentCounts = dependentCounts, doDependentScreen = dynamicallyIndexed)
+            ##     dynamicConjugateSamplerAdd(conjSamplerName, conjSamplerDef)
+            ## }
+            conjSamplerFunction <- function() {} # dynamicConjugateSamplerGet(conjSamplerName) # Placeholder
             nameToPrint <- gsub('^sampler_', '', conjSamplerName)
             addSampler(target = conjugacyResult$target, type = conjSamplerFunction, control = conjugacyResult$control, name = nameToPrint)
         },
@@ -155,11 +159,11 @@ mcmcConfClass <- R6Class(
                     messageIfVerbose('  [Note] Assigning an RW_block sampler to nodes with very different scales can result in low MCMC efficiency.  If all nodes assigned to RW_block are not on a similar scale, we recommend providing an informed value for the \"propCov\" control list argument, or using the AFSS sampler instead.')
                 }
                 if(exists(type, inherits = TRUE) && is.nfGenerator(eval(as.name(type)))) {   ## try to find sampler function 'type'
-                    samplerFunction <- eval(as.name(type))
+                    samplerFunction <- function() {}  # eval(as.name(type))  # Placeholder
                 } else {
                     sampler_type <- paste0('sampler_', type)   ## next, try to find sampler function 'sampler_type'
-                    if(exists(sampler_type) && is.nfGenerator(eval(as.name(sampler_type)))) {   ## try to find sampler function 'sampler_type'
-                        samplerFunction <- eval(as.name(sampler_type))
+                    if(exists(sampler_type)) { #  && is.nfGenerator(eval(as.name(sampler_type)))) {   ## try to find sampler function 'sampler_type'
+                        samplerFunction <- function() {} # eval(as.name(sampler_type))
                     } else stop(paste0('cannot find sampler type \'', type, '\''))
                 }
             } else if(is.function(type)) {

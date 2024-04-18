@@ -323,11 +323,13 @@ getNodes <- function(model, nodes = NULL,
 
     result <- flatten(result)  ## Flatten the result so don't have nested list.
 
-    if(stochOnly)
-        result <- result[sapply(result, function(nodeRange) nodeRange$decl$stoch)]
-    if(determOnly)
-        result <- result[!sapply(result, function(nodeRange) nodeRange$decl$stoch)]
-
+    if(length(result)) {
+        if(stochOnly)
+            result <- result[sapply(result, function(nodeRange) nodeRange$decl$stoch)]
+        if(determOnly)
+            result <- result[!sapply(result, function(nodeRange) nodeRange$decl$stoch)]
+    }
+    
     if(includeRHSonly && !stochOnly && !determOnly) {  # RHSonly are considered neither determ not stoch.
         rhsResult <- lapply(nodes, function(node) applyRules(model$modelDef$rhsOnlyRules, node))
         result <- c(result, flatten(rhsResult))

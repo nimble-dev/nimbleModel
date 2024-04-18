@@ -27,6 +27,7 @@ Collate:
     graphRules.R
     MCMC_configuration.R
     MCMC_conjugacy.R
+    MCMC_utils.R
     mathCompatibility.R
     miscFunctions.R
     modelDecl.R
