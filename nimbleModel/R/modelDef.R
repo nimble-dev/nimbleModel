@@ -663,6 +663,8 @@ modelDefClass <- R6Class(
                         logProbVarInfo[[lhsLogProbVar]]$maxs <<- pmax(logProbVarInfo[[lhsLogProbVar]]$maxs, newMinMax[ , 2])
                     }
                 }
+            }
+            for(iDI in seq_along(declInfo)) { # Do RHS after all LHS so that check for overlap only concerns LHS  
                 for(iRHR in seq_along(decl$rhsOriginalRules)) {
                     rhsRule <- decl$rhsOriginalRules[[iRHR]]
                     rhsVar <- rhsRule$varName

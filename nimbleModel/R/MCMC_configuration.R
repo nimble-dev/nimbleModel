@@ -1,8 +1,13 @@
 ## TODO: conjugacyRelationshipsObject$checkConjugacy
 ## getNodeSize (see toNodeChars code for ideas)
 
-samplerConf <- R6Class(
-    classname = 'samplerConf',
+## Placeholders:
+sampler_binary <- sampler_prior_samples <- sampler_posterior_predictive <- sampler_binary <- sampler_categorical<- sampler_RW <- sampler_RW_block<- sampler_RW_llFunction<- sampler_slice<- sampler_ess<- sampler_AF_slice<- sampler_crossLevel<- sampler_RW_llFunction_block<- sampler_RW_dirichlet<- sampler_RW_wishart<- sampler_RW_lkj_corr_cholesky<- sampler_RW_block_lkj_corr_cholesky<- sampler_CAR_normal <- sampler_CAR_proper <- function() {}
+
+
+samplerConfClass <- R6Class(
+    classname = 'samplerConfClass',
+    portable = FALSE,
     public = list(
         name            = NULL,
         samplerFunction = NULL,
@@ -11,7 +16,7 @@ samplerConf <- R6Class(
         control         = NULL,
         initialize = function(name, samplerFunction, target, control, model) {
             baseClassName <<- environment(environment(samplerFunction)$contains)$className
-            if(is.null(baseClassName) || (baseClassName != 'sampler_BASE')) warning('MCMC sampler nimbleFunctions should inherit from (using "contains" argument) base class sampler_BASE.')
+            ## if(is.null(baseClassName) || (baseClassName != 'sampler_BASE')) warning('MCMC sampler nimbleFunctions should inherit from (using "contains" argument) base class sampler_BASE.')  ## Placeholder: inactivated for now
             name <<- name
             samplerFunction <<- samplerFunction
             target <<- target
@@ -82,7 +87,7 @@ mcmcConfClass <- R6Class(
                     addConjugateSampler(conjugacyResult = conjugacyResult,
                                         dynamicallyIndexed = model$modelDef$varInfo[[nodeRange$varName]]$anyDynamicallyIndexed)
                     ## CHECK: should we use getVarName(nodeRange) (could nodeRange be character?)
-                    invisible(NULL)
+                    return()
                 }
             }
 
@@ -90,9 +95,9 @@ mcmcConfClass <- R6Class(
             
             if(model$isMultivariate(nodeRange)) {
                 if(dist == 'dmulti')   stop('  [Error] Support for sampling multinomial distributions was removed from nimble due to incorrect sampling results.\n  Please contact nimble developers at the nimble-users google group or at nimble.stats@gmail.com to let them know this happened.  \n Thank you.', call. = FALSE)
-                if(dist == 'ddirch')              { addSampler(target = nodeRange, type = 'RW_dirichlet',   control = controlDefaultsArg);     invisible(NULL) }
-                if(dist == 'dwish')               { addSampler(target = nodeRange, type = 'RW_wishart',     control = controlDefaultsArg);     invisible(NULL) }
-                if(dist == 'dinvwish')            { addSampler(target = nodeRange, type = 'RW_wishart',     control = controlDefaultsArg);     invisible(NULL) }
+                if(dist == 'ddirch')              { addSampler(target = nodeRange, type = 'RW_dirichlet',   control = controlDefaultsArg);     return() }
+                if(dist == 'dwish')               { addSampler(target = nodeRange, type = 'RW_wishart',     control = controlDefaultsArg);     return() }
+                if(dist == 'dinvwish')            { addSampler(target = nodeRange, type = 'RW_wishart',     control = controlDefaultsArg);     return() }
                 if(dist == 'dlkj_corr_cholesky')  {
                     nodeSize <- nodeRange$getNodeSize()
                     if(nodeSize >= 9) {
@@ -102,12 +107,11 @@ mcmcConfClass <- R6Class(
                             addSampler(target = nodeRange, type = 'RW_lkj_corr_cholesky', control = controlDefaultsArg)  ## only a scalar free param in 2x2 case
                         } else warning("Not assigning sampler to dlkj_corr_cholesky node for 1x1 case.")
                     }
-                    invisible(NULL)
+                    return()
                 }
-                if(dist == 'dcar_normal')         { addSampler(target = nodeRange, type = 'CAR_normal', control = controlDefaultsArg);         invisible(NULL) }
-                if(dist == 'dcar_proper')         { addSampler(target = nodeRange, type = 'CAR_proper', control = controlDefaultsArg);         invisible(NULL) }
-                addSampler(target = nodeRange, type = 'RW_block', silent = TRUE, control = controlDefaultsArg)
-                invisible(NULL)
+                if(dist == 'dcar_normal')         { addSampler(target = nodeRange, type = 'CAR_normal', control = controlDefaultsArg);         return() }
+                if(dist == 'dcar_proper')         { addSampler(target = nodeRange, type = 'CAR_proper', control = controlDefaultsArg);         return() }
+                addSampler(target = nodeRange, type = 'RW_block', control = controlDefaultsArg)
             }
 
             ## if node is discrete 0/1 (binary), assign 'binary' sampler
@@ -119,8 +123,7 @@ mcmcConfClass <- R6Class(
             ## if node distribution is discrete, assign 'slice' sampler
             if(model$isDiscrete(nodeRange)) { addSampler(target = nodeRange, type = 'slice', control = controlDefaultsArg);     invisible(NULL) }
 
-            addSampler(target = node, type = 'RW', control = controlDefaultsArg)
-            invisible(NULL)
+            addSampler(target = nodeRange, type = 'RW', control = controlDefaultsArg)
         },
 
         addConjugateSampler = function(conjugacyResult, dynamicallyIndexed = FALSE) {
@@ -143,22 +146,39 @@ mcmcConfClass <- R6Class(
             addSampler(target = conjugacyResult$target, type = conjSamplerFunction, control = conjugacyResult$control, name = nameToPrint)
         },
 
-        addSampler = function(target, type = "RW", control = list(), name) {
+        addSampler = function(target, type = "RW", control = list(), name, ...) {
+            ## `target` should be one or more strings, or a single varRange/nodeRange
+            ## or a list of varRanges or nodeRanges.
+            
+            ## TODO: will need to address `targetByNode` and `multivariateNodesAsScalars` cases.
             nameProvided <- !missing(name)
+            if(is.character(target)) {
+                target <- lapply(target, function(x) varRangeClass$new(x))
+                if(length(target) == 1) target <- target[[1]]
+            } else if(!(inherits(target, 'varRangeClass') || all(sapply(target, function(x) inherits(x, 'varRangeClass')))))
+                stop("`target` must be one more character strings, `varRange`s or `nodeRange`s")
             if(is.character(type)) {
                 if(type == 'conjugate') {
-                    conjugacyResult <- model$checkConjugacy(target)[[target]]
+                    if(is.list(target)) stop('Cannot assign conjugate sampler to multiple nodes')
+                    if(!inherits(target, 'nodeRangeClass')) {
+                        targetNodes <- getNodes(model, target)
+                        if(length(targetNodes) > 1 || target$toVarChars() != targetNodes[[1]]$toNodeChars())
+                            stop('Cannot assign conjugate sampler to non-conjugate node: `', target$toVarChars(), '`')
+                        target <- targetNodes[[1]]
+                    }
+                    if(target$numExternalIndexRanges) stop('Cannot assign conjugate sampler to multiple nodes')
+                    conjugacyResult <- nimbleModel:::conjugacyRelationshipsObject$checkConjugacy(model, target)
                     if(!is.null(conjugacyResult)) {
                         return(addConjugateSampler(conjugacyResult = conjugacyResult,
-                                                   dynamicallyIndexed = model$modelDef$varInfo[[varName]]$anyDynamicallyIndexed,
-                                                   print = print))
-                    } else stop(paste0('Cannot assign conjugate sampler to non-conjugate node: \'', target, '\''))
+                                                   dynamicallyIndexed = model$modelDef$varInfo[[target$varName]]$anyDynamicallyIndexed))
+                    }
+                    stop('Cannot assign conjugate sampler to non-conjugate node: `', target, '`')
                 }
                 thisSamplerName <- if(nameProvided) name else gsub('^sampler_', '', type)   ## removes 'sampler_' from beginning of name, if present
-                if(thisSamplerName == 'RW_block' && !silent) {
+                if(thisSamplerName == 'RW_block') {
                     messageIfVerbose('  [Note] Assigning an RW_block sampler to nodes with very different scales can result in low MCMC efficiency.  If all nodes assigned to RW_block are not on a similar scale, we recommend providing an informed value for the \"propCov\" control list argument, or using the AFSS sampler instead.')
                 }
-                if(exists(type, inherits = TRUE) && is.nfGenerator(eval(as.name(type)))) {   ## try to find sampler function 'type'
+                if(exists(type, inherits = TRUE)) { #  && is.nfGenerator(eval(as.name(type)))) {   ## try to find sampler function 'type'
                     samplerFunction <- function() {}  # eval(as.name(type))  # Placeholder
                 } else {
                     sampler_type <- paste0('sampler_', type)   ## next, try to find sampler function 'sampler_type'
@@ -191,7 +211,7 @@ mcmcConfClass <- R6Class(
 
         addOneSampler = function(thisSamplerName, samplerFunction, targetOne, thisControlList) {
             newSamplerInd <- length(samplerConfs) + 1
-            samplerConfs[[newSamplerInd]] <<- samplerConf(name=thisSamplerName, samplerFunction=samplerFunction, target=targetOne, control=thisControlList, model=model)
+            samplerConfs[[newSamplerInd]] <<- samplerConfClass$new(name=thisSamplerName, samplerFunction=samplerFunction, target=targetOne, control=thisControlList, model=model)
             samplerExecutionOrder <<- c(samplerExecutionOrder, newSamplerInd)
 
         }

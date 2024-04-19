@@ -296,7 +296,7 @@ getNodes <- function(model, nodes = NULL,
     } else {
         if(inherits(nodes, 'varRangeClass'))
             nodes <- list(nodes) 
-        if(!all(is.character(nodes) | sapply(nodes, function(node) inherits(node, 'varRangeClass'))))
+        if(!all(is.character(nodes) || sapply(nodes, function(node) inherits(node, 'varRangeClass'))))
             stop("`nodes` must be variable names or `varRange`s.")
     }
 
