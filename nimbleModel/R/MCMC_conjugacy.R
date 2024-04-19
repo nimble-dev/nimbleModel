@@ -220,7 +220,7 @@ conjugacyRelationshipsClass <- R6Class(
                                       deps[boolMatch]
                                   })
                 names(control) <- uniqueDepTypes
-                return(list(prior = conjugacyObj$prior, type = conjugacyObj$samplerType, target = targetNode, control = control))
+                return(list(prior = conjugacyObj$prior, type = conjugacyObj$samplerType, target = nodeRange, control = control))
             } else return(NULL)
 
             if(length(ansList) > 0) ansList <- do.call('c', ansList)
@@ -276,7 +276,6 @@ conjugacyClass <- R6Class(
 
         ## see checkConjugacy for more explanation of each step
         checkConjugacyOneDep = function(model, targetNode, depNode, restrictLink = NULL) {
-            if(exists('paciorek')) browser()
             if(model$getDistribution(targetNode) != prior)     return(NULL)    # check prior distribution of targetNode
             if(model$isTruncated(depNode)) return(NULL)   # if depNode is truncated, then not conjugate
             depNodeDist <- model$getDistribution(depNode)

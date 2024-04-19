@@ -4,6 +4,9 @@
 ## Placeholders:
 sampler_binary <- sampler_prior_samples <- sampler_posterior_predictive <- sampler_binary <- sampler_categorical<- sampler_RW <- sampler_RW_block<- sampler_RW_llFunction<- sampler_slice<- sampler_ess<- sampler_AF_slice<- sampler_crossLevel<- sampler_RW_llFunction_block<- sampler_RW_dirichlet<- sampler_RW_wishart<- sampler_RW_lkj_corr_cholesky<- sampler_RW_block_lkj_corr_cholesky<- sampler_CAR_normal <- sampler_CAR_proper <- function() {}
 
+## NOTE: samplers will be assigned to entire nodeRanges by default.
+## Samplers that block across elements of multiple nodes will be assigned by passing in one or more varRanges.
+
 
 samplerConfClass <- R6Class(
     classname = 'samplerConfClass',
@@ -14,6 +17,7 @@ samplerConfClass <- R6Class(
         baseClassName   = NULL,
         target          = NULL,
         control         = NULL,
+        ## NOTE: for conjugate samplers, the dependence info in `control` will be for deps of the first node in the target nodeRange
         initialize = function(name, samplerFunction, target, control, model) {
             baseClassName <<- environment(environment(samplerFunction)$contains)$className
             ## if(is.null(baseClassName) || (baseClassName != 'sampler_BASE')) warning('MCMC sampler nimbleFunctions should inherit from (using "contains" argument) base class sampler_BASE.')  ## Placeholder: inactivated for now
@@ -162,7 +166,7 @@ mcmcConfClass <- R6Class(
                     if(is.list(target)) stop('Cannot assign conjugate sampler to multiple nodes')
                     if(!inherits(target, 'nodeRangeClass')) {
                         targetNodes <- getNodes(model, target)
-                        if(length(targetNodes) > 1 || target$toVarChars() != targetNodes[[1]]$toNodeChars())
+                        if(length(targetNodes) > 1 || !identical(target$toVarChars(), targetNodes[[1]]$toNodeChars()))
                             stop('Cannot assign conjugate sampler to non-conjugate node: `', target$toVarChars(), '`')
                         target <- targetNodes[[1]]
                     }
