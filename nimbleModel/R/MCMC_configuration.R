@@ -147,7 +147,7 @@ mcmcConfClass <- R6Class(
             ## }
             conjSamplerFunction <- function() {} # dynamicConjugateSamplerGet(conjSamplerName) # Placeholder
             nameToPrint <- gsub('^sampler_', '', conjSamplerName)
-            addSampler(target = conjugacyResult$target, type = conjSamplerFunction, control = conjugacyResult$control, targetByNode = TRUE, name = nameToPrint)
+            addSampler(target = conjugacyResult$target, type = conjSamplerFunction, control = conjugacyResult$control, name = nameToPrint)
         },
 
         addSampler = function(target, type = "RW", control = list(), targetAsScalars = FALSE, name, ...) {
@@ -160,6 +160,7 @@ mcmcConfClass <- R6Class(
             ## varRanges are assigned a single sampler, unless `targetAsScalars = TRUE`.
             ## character strings are converted to varRanges and handled as above.
             ## CHECK: might consider other approaches.
+            ## NOTE: to assign a single block sampler to multiple nodes in a nodeRange, would need to pass in a varRange or char. 
             
             nameProvided <- !missing(name)
             
@@ -171,7 +172,7 @@ mcmcConfClass <- R6Class(
             if(is.character(type)) {
                 if(type == 'conjugate') {
                     if(is.list(target) || !inherits(target, 'nodeRangeClass'))
-                        stop('Can only assign conjugate sampler a single nodeRange')
+                        stop('Can only assign conjugate sampler to a single nodeRange')
                     conjugacyResult <- nimbleModel:::conjugacyRelationshipsObject$checkConjugacy(model, target)
                     if(!is.null(conjugacyResult)) {
                         return(addConjugateSampler(conjugacyResult = conjugacyResult,
@@ -180,17 +181,15 @@ mcmcConfClass <- R6Class(
                     stop('Cannot assign conjugate sampler to non-conjugate node: `', target, '`')
                 }
 
-                if(targetAsScalar) {
+                if(targetAsScalars) {
                     if(is.list(target))
-                        stop("Cannot provide multiple inputs when `targetAsScalar = TRUE`")
-                    ## This is probably not very efficient.
-                    ## We would need the notion of a nodeRange but where the external indexing is not based on nodes.
+                        stop("Cannot provide multiple inputs when `targetAsScalars = TRUE`")
 
                     ## For efficiency, first see if can be treated as a single nodeRange.
                     targetNodes <- getNodes(model, target)
                     ## Otherwise, expand (inefficiently).
-                    if(length(targetNodes) > 1) {
-                        target <- lapply(target$toVarChars(returnScalars = TRUE), function(x) varRangeClass$new(x))
+                    if(length(targetNodes) > 1 || model$isMultivariate(targetNodes[[1]])) {
+                        target <- lapply(target$toVarChars(expandScalars = TRUE), function(x) varRangeClass$new(x))
                     } else target <- targetNodes[[1]]
                 }
                 
@@ -225,7 +224,7 @@ mcmcConfClass <- R6Class(
             controlArgs <- c(control, list(...))
             thisControlList <- mcmc_generateControlListArgument(control=controlArgs, controlDefaults=controlDefaults)  ## should name arguments
 
-            if(length(target) > 1) {
+            if(targetAsScalars && !inherits(target, 'nodeRangeClass')) {
                 tmp <- sapply(target, function(x) addOneSampler(thisSamplerName, samplerFunction, x, thisControlList))
             } else addOneSampler(thisSamplerName, samplerFunction, target, thisControlList)
             invisible(samplerConfs)
