@@ -208,13 +208,27 @@ varRangeClass <- R6Class(
         ## similar to format of nodes in original nimble, but without
         ## consideration of what is a node.
         ## e.g., "y[1:3, 1:5]" and c("y[1, 1:5]", "y[3, 1:5]").
-        toVarChars = function() {
+        toVarChars = function(expandScalars = FALSE) {
             if(isNone())
                 return(varName)
             indexRangeClasses <- sapply(indexRanges, function(x) class(x)[1])
             if(any(indexRangeClasses == "indexRangeMatrixListClass"))
                 stop("`toVarChars` does not handle indexRangeMatrixList class elements.")
 
+            if(expandScalars) {
+                if(length(indexRanges) == 1) {
+                    externalMatrix <- indexRanges[[1]]$getValuesAsMatrix()
+                } else  externalMatrix <- crossIndexRanges(indexRanges)$values # not ordered
+                tmp <- t(apply(externalMatrix, 1, as.character))
+                if(ncol(externalMatrix) == 1)
+                    tmp <- t(tmp)
+                indicesList <- list()
+                indices <- unlist(rangeToIndexSlot)
+                for(i in seq_along(indices))
+                    indicesList[[indices[i]]] <- tmp[ , i]
+                return(paste0(varName, "[", do.call(pasteIndices, indicesList), "]"))
+            }
+            
             boolMatrixIndexRanges <- indexRangeClasses == "indexRangeMatrixClass"
             matrixIndices <- unlist(rangeToIndexSlot[boolMatrixIndexRanges])
             nonMatrixIndices <- unlist(rangeToIndexSlot[!boolMatrixIndexRanges])

@@ -147,15 +147,22 @@ mcmcConfClass <- R6Class(
             ## }
             conjSamplerFunction <- function() {} # dynamicConjugateSamplerGet(conjSamplerName) # Placeholder
             nameToPrint <- gsub('^sampler_', '', conjSamplerName)
-            addSampler(target = conjugacyResult$target, type = conjSamplerFunction, control = conjugacyResult$control, name = nameToPrint)
+            addSampler(target = conjugacyResult$target, type = conjSamplerFunction, control = conjugacyResult$control, targetByNode = TRUE, name = nameToPrint)
         },
 
-        addSampler = function(target, type = "RW", control = list(), name, ...) {
+        addSampler = function(target, type = "RW", control = list(), targetAsScalars = FALSE, name, ...) {
             ## `target` should be one or more strings, or a single varRange/nodeRange
             ## or a list of varRanges or nodeRanges.
+
+            ## nodeRanges are assigned separate, identical samplers to each element in the node.
+            ## (This mimics current `targetByNode = TRUE`.) If one wants the alternative,
+            ## one can pass in a varRange rather than a nodeRange.
+            ## varRanges are assigned a single sampler, unless `targetAsScalars = TRUE`.
+            ## character strings are converted to varRanges and handled as above.
+            ## CHECK: might consider other approaches.
             
-            ## TODO: will need to address `targetByNode` and `multivariateNodesAsScalars` cases.
             nameProvided <- !missing(name)
+            
             if(is.character(target)) {
                 target <- lapply(target, function(x) varRangeClass$new(x))
                 if(length(target) == 1) target <- target[[1]]
@@ -163,14 +170,8 @@ mcmcConfClass <- R6Class(
                 stop("`target` must be one more character strings, `varRange`s or `nodeRange`s")
             if(is.character(type)) {
                 if(type == 'conjugate') {
-                    if(is.list(target)) stop('Cannot assign conjugate sampler to multiple nodes')
-                    if(!inherits(target, 'nodeRangeClass')) {
-                        targetNodes <- getNodes(model, target)
-                        if(length(targetNodes) > 1 || !identical(target$toVarChars(), targetNodes[[1]]$toNodeChars()))
-                            stop('Cannot assign conjugate sampler to non-conjugate node: `', target$toVarChars(), '`')
-                        target <- targetNodes[[1]]
-                    }
-                    if(target$numExternalIndexRanges) stop('Cannot assign conjugate sampler to multiple nodes')
+                    if(is.list(target) || !inherits(target, 'nodeRangeClass'))
+                        stop('Can only assign conjugate sampler a single nodeRange')
                     conjugacyResult <- nimbleModel:::conjugacyRelationshipsObject$checkConjugacy(model, target)
                     if(!is.null(conjugacyResult)) {
                         return(addConjugateSampler(conjugacyResult = conjugacyResult,
@@ -178,6 +179,21 @@ mcmcConfClass <- R6Class(
                     }
                     stop('Cannot assign conjugate sampler to non-conjugate node: `', target, '`')
                 }
+
+                if(targetAsScalar) {
+                    if(is.list(target))
+                        stop("Cannot provide multiple inputs when `targetAsScalar = TRUE`")
+                    ## This is probably not very efficient.
+                    ## We would need the notion of a nodeRange but where the external indexing is not based on nodes.
+
+                    ## For efficiency, first see if can be treated as a single nodeRange.
+                    targetNodes <- getNodes(model, target)
+                    ## Otherwise, expand (inefficiently).
+                    if(length(targetNodes) > 1) {
+                        target <- lapply(target$toVarChars(returnScalars = TRUE), function(x) varRangeClass$new(x))
+                    } else target <- targetNodes[[1]]
+                }
+                
                 thisSamplerName <- if(nameProvided) name else gsub('^sampler_', '', type)   ## removes 'sampler_' from beginning of name, if present
                 if(thisSamplerName == 'RW_block') {
                     messageIfVerbose('  [Note] Assigning an RW_block sampler to nodes with very different scales can result in low MCMC efficiency.  If all nodes assigned to RW_block are not on a similar scale, we recommend providing an informed value for the \"propCov\" control list argument, or using the AFSS sampler instead.')
@@ -209,7 +225,9 @@ mcmcConfClass <- R6Class(
             controlArgs <- c(control, list(...))
             thisControlList <- mcmc_generateControlListArgument(control=controlArgs, controlDefaults=controlDefaults)  ## should name arguments
 
-            addOneSampler(thisSamplerName, samplerFunction, target, thisControlList)
+            if(length(target) > 1) {
+                tmp <- sapply(target, function(x) addOneSampler(thisSamplerName, samplerFunction, x, thisControlList))
+            } else addOneSampler(thisSamplerName, samplerFunction, target, thisControlList)
             invisible(samplerConfs)
         },
 

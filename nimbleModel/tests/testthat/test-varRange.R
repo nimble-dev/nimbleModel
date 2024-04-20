@@ -192,6 +192,9 @@ test_that("toVarChars works correctly", {
     vr <- varRangeClass$new(list(newIndexRange(matrix(c(2,4,5), ncol = 1)),
                                  newIndexRange(quote(3:4))), varName = "y")
     expect_identical(vr$toVarChars(), paste0("y[", c(2,4,5), ", 3:4]"))
+    gr <- expand.grid(3:4, c(2,4,5))[c(2,1)]
+    expect_identical(vr$toVarChars(expandScalars = TRUE),
+                     paste0("y[", gr[,1], ", ", gr[,2], "]"))
     
     code <- quote({
         for(i in 1:4)
@@ -204,6 +207,29 @@ test_that("toVarChars works correctly", {
     vr <- getDependencies(md, 'z', self=FALSE)[[1]]
     expect_identical(vr$toVarChars(),
                      c("y[2, 2, 3, 1:2, 1, 2:4]", "y[2, 3, 3, 1:2, 2, 2:4]", "y[2, 4, 3, 1:2, 3, 2:4]", "y[2, 5, 3, 1:2, 4, 2:4]", "y[4, 2, 3, 1:2, 1, 2:4]", "y[4, 3, 3, 1:2, 2, 2:4]", "y[4, 4, 3, 1:2, 3, 2:4]", "y[4, 5, 3, 1:2, 4, 2:4]", "y[5, 2, 3, 1:2, 1, 2:4]", "y[5, 3, 3, 1:2, 2, 2:4]", "y[5, 4, 3, 1:2, 3, 2:4]", "y[5, 5, 3, 1:2, 4, 2:4]"))
+
+    tmp <- vr$toVarChars()
+    result <- unlist(lapply(tmp, function(x) varRangeClass$new(x)$toVarChars(expandScalars = TRUE)))
+    expect_identical(vr$toVarChars(expandScalars = TRUE), result)
+                     
+
+    code <- quote({
+        for(i in 1:2)
+            for(j in 1:3)
+                y[j,i] ~ dnorm(0,1)
+    })
+    md <- modelDefClass$new(code)
+    vr <- getDependencies(md, 'y')[[1]]
+    gr <- expand.grid(1:2, 1:3)[c(2,1)]
+    expect_identical(vr$toVarChars(expandScalars = TRUE),
+                     paste0("y[", gr[,1], ", ", gr[,2], "]"))
+
+    vr <- varRangeClass$new(list(newIndexRange(quote(1:2)),newIndexRange(quote(1:3))),
+                            rangeToIndexSlot = c(2,1), varName = 'y')
+    gr <- expand.grid(1:3,1:2)
+    expect_identical(vr$toVarChars(expandScalars = TRUE),
+                     paste0("y[", gr[,1], ", ", gr[,2], "]"))
+    
 })
 
                      
