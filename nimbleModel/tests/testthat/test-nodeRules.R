@@ -3,9 +3,9 @@ test_that("declRules are generated correctly", {
         singleContextClass$new(forCode = quote(for(i in 2:8){}))
     context_i <- modelContextClass$new(list(singleContext1))
 
-    modelDecl <- modelDeclClass$new(quote(y[i+2] ~ dnorm(0,1)), 1, context_i)
+    modelDecl <- modelDeclClass$new(quote(y[i+2] ~ dnorm(0,1)), context_i, 1)
     modelDecl$processDecl(NULL, list(), .GlobalEnv) 
-    expect_identical(modelDecl$declRule$stoch, TRUE)
+    expect_identical(modelDecl$stoch, TRUE)
     expect_equal(
         modelDecl$declRule$originalIndexingRule$apply(
                   varRangeClass$new(list(
