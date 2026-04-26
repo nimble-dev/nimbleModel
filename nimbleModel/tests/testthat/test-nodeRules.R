@@ -348,13 +348,17 @@ test_that("calcRanges are generated correctly", {
     context_ijk <- modelContextClass$new(list(singleContext1, singleContext2, singleContext3))
     context_0 <- modelContextClass$new()
 
-    declRule <- declRuleClass$new(quote(y ~ dnorm(mu, sigma)), 1, context_0)
+    modelDecl <- modelDeclClass$new(quote(y ~ dnorm(mu, sigma)), context_0, 1)
+    modelDecl$processDecl(NULL, list(), .GlobalEnv)
+    declRule <- declRuleClass$new(modelDecl, 1, context_0)
     calcRule <- calcRuleClass$new(declRule, NULL, NULL, context_0)
     result <- calcRule$apply(varRangeClass$new(list(), varName = 'y'))
     expect_identical(result$numExternalIndexRanges, 0L)
     expect_true(result$isNone())
     
-    declRule_i <- declRuleClass$new(quote(y[i+1] ~ dnorm(0,1)), 1, context_i)
+    modelDecl <- modelDeclClass$new(quote(y[i+1] ~ dnorm(0,1)), context_i, 1)
+    modelDecl$processDecl(NULL, list(), .GlobalEnv)
+    declRule_i <- declRuleClass$new(modelDecl, 1, context_i)
     
     calcRule <- calcRuleClass$new(declRule_i, NULL, NULL, context_i)
 
@@ -386,7 +390,9 @@ test_that("calcRanges are generated correctly", {
                  varRangeClass$new(list(newIndexRange(quote(2:8))), varName = 'y'))
 
     ## Multiple indices
-    declRule_i <- declRuleClass$new(quote(y[7:9, i+1] ~ dmnorm(z[1:3],pr[1:3,1:3])), 1, context_i)
+    modelDecl <- modelDeclClass$new(quote(y[7:9, i+1] ~ dmnorm(z[1:3],pr[1:3,1:3])), context_i, 1)
+    modelDecl$processDecl(NULL, list(), .GlobalEnv) 
+    declRule_i <- declRuleClass$new(modelDecl, 1, context_i)
     calcRule <- calcRuleClass$new(declRule_i, NULL, NULL, context_i)
  
     calcRange <- calcRule$makeCalcRange(varRangeClass$new(list(newIndexRange(quote(2:4)), newIndexRange(quote(3:5)))))
@@ -425,7 +431,9 @@ test_that("calcRanges are generated correctly", {
                  varRangeClass$new(list(newIndexRange(quote(4:8))), varName = 'y'))
 
     ## Multiple loops
-    declRule_ijk <- declRuleClass$new(quote(y[j, i+1, k, 2] ~ dnorm(0,1)), 1, context_ijk)
+    modelDecl <- modelDeclClass$new(quote(y[j, i+1, k, 2] ~ dnorm(0,1)), context_ijk, 1)
+    modelDecl$processDecl(NULL, list(), .GlobalEnv) 
+    declRule_ijk <- declRuleClass$new(modelDecl, 1, context_ijk)
     calcRule <- calcRuleClass$new(declRule_ijk, NULL, NULL, context_ijk)
     
     calcRange <- calcRule$makeCalcRange(varRangeClass$new(list(
@@ -475,7 +483,9 @@ test_that("calcRanges are generated correctly", {
     context_ijni <- modelContextClass$new(list(singleContext1,
                                                singleContext2ni))
     n <- c(1,3,2)
-    declRule_ijni <- declRuleClass$new(quote(y[j, i+1] ~ dnorm(0,1)), 1, context_ijni, constants = list(n = n))
+    modelDecl <- modelDeclClass$new(quote(y[j, i+1] ~ dnorm(0,1)), context_ijni, 1)
+    modelDecl$processDecl(NULL, constants = list(n = n), .GlobalEnv) 
+    declRule_ijni <- declRuleClass$new(modelDecl, 1, context_ijni, constants = list(n = n))
     calcRule <- calcRuleClass$new(declRule_ijni, NULL, NULL, context_ijni, constants = list(n = n))
 
     calcRange <- calcRule$makeCalcRange(varRangeClass$new(list(
