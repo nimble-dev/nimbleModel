@@ -16,8 +16,11 @@ originalIndexingRuleClass <- R6Class(
                               constants = list()) {
             varName <<- getVarName(LHS)
             if(length(context$indexVarNames)) {
-                dummyLHS <- parse(text = paste0(varName, "[",
-                                                paste(context$indexVarNames, collapse = ","),
+                ## Exclude indices not used in lifted expression, e.g., `i` in `y[i,j] ~ dnorm(mu[i], sigma[j])`
+                indexVarNames <- context$indexVarNames
+                indexVarNames <- indexVarNames[indexVarNames %in% all.vars(LHS)]
+                dummyLHS <- parse(text = paste0(varName, "[", 
+                                                paste(indexVarNames, collapse = ","),
                                                 "]"))[[1]]
             } else dummyLHS <- as.name(varName)
             graphRule <<- graphRuleClass$new(dummyLHS,

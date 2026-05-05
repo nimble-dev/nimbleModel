@@ -228,8 +228,9 @@ calcRuleClass <- R6Class(
         ## Create calcRange given a varRange (possibly a nodeRange).
         ## (calcRuleClass$apply generates a nodeRange (inheriting from nodeRuleClass$apply().)
         makeCalcRange = function(inputRange = NULL) {
-            if(is.null(inputRange))
-                inputRange <- canonicalRange
+            if(is.null(inputRange)) return(NULL)
+            ## if(is.null(inputRange))
+            ##     inputRange <- canonicalRange  ## TODO: where/how handle this case?
             if(!is.null(inputRange$varName) && !is.null(varName) && inputRange$varName != varName)
                 stop("`inputRange` variable name does not match the `calcRule` variable name.")
 
