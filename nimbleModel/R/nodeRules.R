@@ -127,6 +127,7 @@ declRuleClass <- R6Class(
         originalIndexingRule = NULL, # Determines original indexing (based on context).
         decl = NULL,                 # Full declInfo; nodeRuleClass$expr is just LHS.
         calculate = NULL,            # Generic function for calculation.
+        ID = NULL,                   # Unique ID that will be the index of the declClass in C++ (TBD how this is baked in).
         ## TODO: remove this:
         test = rep(0, 10),  ## test element used for testing calculation while modelDef doesn't have acccess to a model
         test2 = matrix(0, 3, 5),
@@ -239,7 +240,7 @@ calcRuleClass <- R6Class(
             indexingRange <- declRule$originalIndexingRule$apply(inputRange)
             if(is.null(indexingRange))
                 return(NULL)
-            result <- calcRangeClass$new(varName, indexingRange, declRule$calculate, sortID, multiSortIDindex)
+            result <- calcRangeClass$new(varName, indexingRange, declRule$ID, sortID, multiSortIDindex)
             return(result)
         },
 
@@ -395,75 +396,15 @@ calcRangeClass <- R6Class(
         sortID = NULL,
         calcFun = NULL,
         multiSortIDindex = NULL,
-        initialize = function(varName, indexingRange, calcFun, sortID, multiSortIDindex) {
+        declID = NULL,
+        initialize = function(varName, indexingRange, declID, sortID, multiSortIDindex) {
             varName <<- varName
             indexingRange <<- indexingRange
             calcFun <<- calcFun  ## note that calcFun itself is not vectorized
             sortID <<- sortID
+            declID <<- declID
             multiSortIDindex <<- multiSortIDindex
-        },
-
-        ## Generic calculate function that crosses the indexRanges in the indexingRange (a varRange)
-        ## and extracts the original indices to feed into calculate nodeFunction
-        ## that operates on set of scalar indices.
-
-        ## Keep indexing internal to the indexRange to avoid complicated and possibly repetitive
-        ## calculation of internal indexing.
-        
-        ## Will need to figure out how this is going to get compiled.
-        ## This will rely on nCompiler indexing of eigen tensors for static block indexes, e.g. '3:5' in x[i, 3:5]
-        ## which will presumably use the information in the symbolicParentNodes.
-
-        calculate = function() {
-            numRanges <- length(indexingRange$indexRanges)
-            if(!numRanges) {  # no indexing
-                result <- calcFun(NULL)
-            } else {
-                indexRange_lengths <- sapply(indexingRange$indexRanges,
-                                             function(x) x$numElements)
-                indexPositions <- indexingRange$rangeToIndexSlot
-                len <- prod(indexRange_lengths)
-                
-                ## TODO: This is a placeholder so we can test numerical results
-                ## once fuller workflow is in place, remove this and assignment of output of calcFun()
-                result <- rep(0, len)
-
-                ## Set up information so `getNext` repeats index values for outer loop indices.
-                delay <- 1
-                for(irIndex in rev(seq_len(numRanges))) {  # work from inner-most loop outwards
-                    indexingRange$indexRanges[[irIndex]]$setDelay(delay)
-                    delay <- delay * indexingRange$indexRanges[[irIndex]]$numElements
-                }
-
-                if(length(sortID) == 1 || len == 1) {
-                    index <- numeric(length(indexingRange$indexSlotToRange))  ## vector to hold the original index values
-                    for(item in seq_len(len)) {
-                        for(irIndex in seq_len(numRanges)) 
-                            index[indexPositions[[irIndex]]] <- indexingRange$indexRanges[[irIndex]]$getNext()
-                        result[item] <- calcFun(index)  ## scalar calculation
-                    }
-                } else {
-                    index <- matrix(0, len, length(indexingRange$indexSlotToRange))  ## vector to hold the original index values
-                    sortIDvals <- rep(0, len)
-                    for(item in seq_len(len)) {
-                        for(irIndex in seq_len(numRanges)) {
-                            index[item, indexPositions[[irIndex]]] <- indexingRange$indexRanges[[irIndex]]$getNext()
-                        }
-                        sortIDvals[item] <- sortID[index[item, multiSortIDindex]]
-                    }
-                    for(item in order(sortIDvals))
-                        result[item] <- calcFun(index[item, ])
-                }
-            }
-            ## Note that result will be vectorized based on the loop ordering so in simple rectangular
-            ## settings such as `y[i,j]` with `i` the outer index, it will be row-major.
-            return(result)
-
         }
-
-        ## simulate() should be very similar to calculate()
-        ## need to think more about getParam, getBound, etc., but probably also very similar,
-        ## just swapping out calcFun() for appropriate function.
     )
 )
 
