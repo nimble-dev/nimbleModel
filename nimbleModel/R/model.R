@@ -42,7 +42,9 @@ modelClass <- R6Class(
                 }
             }
 
-
+            origInits <<- inits
+            origData <<- data
+            
             if(length(data) && sum(names(data) == ""))
                 stop("modelClass: 'data' must be a named list")
             if(any(!sapply(data, function(x) {
