@@ -2,6 +2,7 @@
 ## but with nCompiler, we need a modelClass to compile and then we can create an instance.
 ## If we create an instance as the output here, one can't then compile that with an algorithm via `nCompile`.
 ## Need to think more about the workflow for nimble 2.0.
+#' @export
 nimbleModel <- function(code,
                         constants = list(),
                         data = list(),
@@ -17,41 +18,39 @@ nimbleModel <- function(code,
                         buildDerivs = getNimbleOption('buildModelDerivs'),
                         userEnv = parent.frame()) {
     ## TODO: arg list taken from `nimble`. Revisit which options are needed.
-    ## For the moment this goes through nimbleModel R6 class and then nCompiler class. Clean that up once ideas are in place.
+    ## For the moment this goes through (original) nimbleModel R6 class and then nimbleModel nClass. Clean that up once ideas are in place.
     ## Presumably everything would be in Rpublic initialize for modelBaseClass, so this function will just call modelBase_nClass$new().
-    m <- modelClass$new(name = name, code = code, constants = constants, data = data, inits = inits, dimensions = dimensions, userEnv = userEnv)
-    modelClassInstance <- make_modelClass_from_nimbleModel(m)
-    if(compile) modelClassInstance <- nCompile(modelClassInstance)
-    if(returnClass) return(modelClassInstance)  # Standard use for when compiling a model(class) and algo(class) together.
-    model <- modelClassInstance$new()  # Otherwise return model object for manipulation from R.
+    nm <- modelClass$new(name = name, code = code, constants = constants, data = data, inits = inits, dimensions = dimensions, userEnv = userEnv)
+    specificModelClass <- make_modelClass_from_nimbleModel(nm)
+    if(compile) specificModelClass <- nCompile(specificModelClass)
+    if(returnClass) return(specificModelClass)  # Standard use for when compiling a model(class) and algo(class) together.
+    model <- specificModelClass$new()  # Otherwise return model object for manipulation from R.
 }
 
 make_modelClass_from_nimbleModel <- function(m, compile=FALSE) {
   mDef <- m$modelDef
-  allVarInfo <- get_varInfo_from_nimbleModel(m)
-  modelVarInfo <- allVarInfo$vars
-  declFxnNames <- character()
+  modelVarInfo <- get_varInfo_from_nimbleModel(m)
   declInfoList <- list()
-  declFxnList <- list()
+  declFunClassList <- list()
   # two vectors for canonical use for calculation instructions
   # to move between names and indices of declFxns:
+  declFunNames <- names(mDef$declFunNameToIndex)
   for(i in seq_along(mDef$declInfo)) {
     declInfo <- mDef$declInfo[[i]]
     decl_methods <- make_decl_methods_from_declInfo(declInfo)
     declVars <- decl_methods |> lapply(\(x) all.vars(body(x))) |> unlist() |> unique() |> setdiff(c("idx", "LocalNewLogProb_", "LocalAns_", "model")) %||% character()
-    declVarInfo <- modelVarInfo[declVars]
-    SLN <- declInfo$sourceLineNumber
-    decl_classname <- paste0("declClass_", SLN) # name of an nClass generator
-    decl_RvarName <- paste0("declFxn_", SLN)    # name of an R variable holding the nClass generator
-    decl_membername <- paste0("decl_", SLN)     # name of model member variable holding an instance of the nClass
-    # Currently, we can't just make a list of these but need them as named objects in the environment
-    declFxnList[[decl_RvarName]] <- make_declFxn_nClass(declVarInfo, decl_methods, decl_classname)
-    assign(decl_RvarName,
-      declFxnList[[decl_RvarName]]
-    )
-    declInfoList[[i]] <- make_decl_info_for_model_nClass(decl_membername, decl_RvarName, decl_classname, declVarInfo)
+    declVarInfo <- modelVarInfo$vars[declVars]
+    declID <- as.numeric(declInfo$declRule$ID)  # Formerly `sourceLineNumber`, which may not be unique.
+    declFun_membername <- declFunNames[i]
+    declFun_classname <- sub("declFun", "declFunClass", declFun_membername) # name of an nClass generator
+    declFun_RvarName <- sub("declFun", "declFunClassGen", declFun_membername) # name of R var holding the nClass generator
+    # Currently, we can't just make a list of these but need them as named objects in the environment,
+    # which is passed into the nClass() call so that `initialize()` can use them via R's scoping.
+    assign(declFun_RvarName, make_declFun_nClass(declVarInfo, decl_methods, declFun_classname, declID))
+    declInfoList[[i]] <- make_decl_info_for_model_nClass(declFun_membername, declFun_RvarName, declFun_classname, declVarInfo)
   }
-  modelClassInstance <- makeModel_nClass(modelVarInfo, declInfoList, inits = m$origInits, data = m$origData, model = m, classname = "my_model", env = environment())
+  modelClassInstance <- makeModel_nClass(modelVarInfo, declInfoList, inits = m$origInits, data = m$origData,
+                                         model = m, classname = "my_model", env = environment())
 }
 
 
@@ -79,10 +78,11 @@ nm_addModelDollarSign <- function(expr, exceptionNames = character(0)) {
     return(expr)
 }
 
-# Turn variables and methods into a declFxn nClass
-make_declFxn_nClass <- function(varInfo = list(),
+# Turn variables and methods into a declFun nClass
+make_declFun_nClass <- function(varInfo = list(),
                             methods = list(),
-                            classname) {
+                            classname,
+                            declID) {
   # varInfo will be a list (names not used) of name, nDim, sizes.
   # These are the model member variables to be used by the declFxn.
   # They will be used in a constructor to set up C++ references to model variables.
@@ -115,10 +115,11 @@ make_declFxn_nClass <- function(varInfo = list(),
   } else {
     initializersList <- character()
   }
+  ## TODO: I don't think this labelCreator (or the one for the model) exist (though they shouldn't be used...)
   if(missing(classname))
-    classname <- declFxnLabelCreator()
+    classname <- declLabelCreator()
 
-  baseclass <- paste0("declFxnClass_<", classname, ">")
+  baseclass <- paste0("declFunClass_<", classname, ">")
 
   # Rpublic method to set the model pointer/reference.
   setModel <- function(model) {
@@ -131,9 +132,9 @@ make_declFxn_nClass <- function(varInfo = list(),
   }
 
 #  This was a prototype
-  declFxn_nClass <- substitute(
+  declFun_nClass <- substitute(
     nClass(
-      inherit = declFxnBase_nClass,
+      inherit = declFunBase_nClass,
       classname = CLASSNAME,
       Rpublic = RPUBLIC,
       Cpublic = CPUBLIC,
@@ -143,6 +144,7 @@ make_declFxn_nClass <- function(varInfo = list(),
     ),
     list(
       CPUBLIC = c(
+        declID = declID,
         list(
           nFunction(
             initFun,
@@ -158,40 +160,39 @@ make_declFxn_nClass <- function(varInfo = list(),
       CLASSNAME = classname,
       BASECLASS = baseclass
     ))
-  eval(declFxn_nClass)
+  eval(declFun_nClass)
 }
 #test <- nCompiler:::type2symbol('CppVar(baseType = type2cpp("numericVector"), ref=TRUE, const=TRUE)')
 
 # Make all the info needed to include a decl in a model class.
-# The declFxn_nClass should be created first.
+# The decl_nClass should be created first.
 # Currently it needs to have a name to include in nCompile(). Later we might be able to pass the object itself
 # At first drafting this is fairly trivial but could grow in complexity.
 
 make_decl_info_for_model_nClass <- function(membername,
-                           declFxnName,
+                           declFunName,
                            classname,
                            varInfo = list()
                            ) {
   ctorArgs <- varInfo |> lapply(\(x) x$name) |> unlist()
 
-  list(declFxnName = declFxnName,
+  list(declFunName = declFunName,
        membername = membername,
        classname = classname,
        ctorArgs = ctorArgs)
 }
 
-makeModel_nClass <- function(varInfo,
+makeModel_nClass <- function(modelVarInfo,
                              decls = list(),
                              classname,
-                             sizes = list(),
                              inits = list(),
                              data = list(),
                              model = NULL,
                              env = parent.frame()
                              ) {
-  # varInfo will be a list (names not used) of name, nDim, sizes.
-  CpublicModelVars <- varInfo |> lapply(\(x) paste0("numericArray(nDim=",x$nDim,")"))
-  names(CpublicModelVars) <- varInfo |> lapply(\(x) x$name) |> unlist()
+  ## varInfo will be a list (names not used) of name, nDim, sizes.
+  CpublicModelVars <- modelVarInfo$vars |> lapply(\(x) paste0("numericArray(nDim=",x$nDim,")"))
+  names(CpublicModelVars) <- modelVarInfo$vars |> lapply(\(x) x$name) |> unlist()
   opDefs <- list(
     base_ping = nCompiler:::getOperatorDef("custom_call"),
     setup_decl_mgmt = nCompiler:::getOperatorDef("custom_call"),
@@ -236,26 +237,21 @@ makeModel_nClass <- function(varInfo,
     resize_from_list = nFunction(
       name = "resize_from_list",
       function(Rlist) {for(v in names(Rlist))
-        if(exists(v, self, inherits=FALSE)) self[[v]] <- nArray(dim=Rlist[[v]])},
+        if(exists(v, self, inherits=FALSE)) self[[v]] <- nArray(value = NA, dim=Rlist[[v]])},
       compileInfo = list(
         C_fun=function(Rlist = 'RcppList') {cppLiteral('modelClass_::resize_from_list(Rlist);')})
     )
   )
-  # decls will be a list of membername, declFxnName, (decl) classname, ctorArgs (list)
+  # decls will be a list of membername, declName, (decl) classname, ctorArgs (list)
   decl_pieces <- decls |> lapply(\(x) {
     #nClass_type <- paste0(x$declFxnName, "()")
     init_string <- paste0('nCpp("', x$membername, '( new ', x$classname, '(',
                                     paste0(x$ctorArgs, collapse=","), '))")')
-    list(nClass_type = x$declFxnName,
-         init_string = init_string,
-         membername = x$membername)
+    list(nClass_type = x$declFunName,
+         init_string = init_string)
   })
-  declObjNames <- (decl_pieces |> lapply(\(x) x$membername) |> unlist()) %||% character()
-  # declObjNames also serves for canonical lookup of names by index.
-  # e.g. declObjNames[i] gives the member name of the index=i decl member.
-  declObjName_2_declIndex <- seq_along(declObjNames) |> structure(names=declObjNames)
-  # Inversely, declobjName_2_declIndex["decl_3"] gives the index of that decl.
-  CpublicDeclFuns <- decl_pieces |> lapply(\(x) x$nClass_type) |> setNames(declObjNames)
+
+  CpublicDeclFuns <- decl_pieces |> lapply(\(x) x$nClass_type) |> setNames(names(model$modelDef$declFunNameToIndex))
   # CpublicDeclFuns <- list(
   #   beta_decl = 'decl_dnorm()'
   # )
@@ -272,33 +268,51 @@ makeModel_nClass <- function(varInfo,
     # here is a magic flag.
     if(isTRUE(.GlobalEnv$.debugModelInit)) browser()
     super$initialize()
-    if(isCompiled())
-      self$setup_decl_mgmt_from_names(self$declObjNames)
-    if(!isCompiled()) {
-      for(declObj in self$declObjNames) {
-        self[[declObj]] <- eval(as.name(self$CpublicDeclFuns[[declObj]]))$new()
-        self[[declObj]]$setModel(self)
+    ## TODO: figure out which  of the following to the base class initialize.
+    ## For now just putting these here in one place.
+    declFunNames <- names(self$declFunNameToIndex)  
+    if(isCompiled()) {
+      self$setup_decl_mgmt_from_names(declFunNames)
+    } else {
+      self$declFunList <- list()
+      length(self$declFunList) <- length(declFunNames)
+      names(self$declFunList) <- declFunNames
+      for(declFunName in declFunNames) {
+        self[[declFunName]] <- eval(as.name(self$CpublicDeclFuns[[declFunName]]))$new()
+        self[[declFunName]]$setModel(self)
+        self$declFunList[[self$declFunNameToIndex[[declFunName]]]] <- self[[declFunName]]
       }
     }
+
+    ## TODO: create a merge_and_set function that handles all three of the following.
       
-    # First expand any provided or default sizes
-    # To-Do possibly merge the argument sizes and defaultSizes by element.
-    if(missing(sizes)) sizes <- self$defaultSizes
-    if(length(sizes)) resize_from_list(sizes)
-  
-    # Then any provided inits over-ride any provided sizes
-    # To-Do: Ditto
-    if(missing(inits)) inits <- self$defaultInits
+    allSizes <- self$defaultSizes
+    if(!missing(sizes))
+      for(nm in names(sizes))
+        allSizes[[nm]] <- sizes[[nm]]
+    ## TODO: should we handle 0-dim sizes elsewhere?
+    allSizes <- allSizes[sapply(allSizes, length) > 0]
+    if(length(allSizes)) resize_from_list(allSizes[sapply(allSizes, length) > 0])
+
+    allInits <- self$defaultInits
+    if(!missing(inits))
+      for(nm in names(inits))
+        allInits[[nm]] <- inits[[nm]]
+    if(length(allInits)) set_from_list(allInits)
+      
+      if(missing(inits)) {
+          allInits <- self$defaultInits
+      } else 
     if(length(inits)) set_from_list(inits)
 
     # TODO: do we want to handle data differently?
     # TODO: need to work through not setting as 'data' if values are NA;
     #   check back against how dataRules work in nimbleModel work.
-    if(missing(data)) data <- self$defaultData
-    if(length(data)) set_from_list(data)
-browser()
-      
-      
+    allData <- self$defaultData
+    if(!missing(inits))
+      for(nm in names(inits))
+        allData[[nm]] <- inits[[nm]]
+    if(length(allData)) set_from_list(allData)
   }
   baseclass <- paste0("modelClass_<", classname, ">")
   # CpublicDeclFuns has elements like "decl_1 = quote(declFxn_1())"
@@ -311,7 +325,7 @@ browser()
       classname = CLASSNAME,
       inherit = modelBase_nClass,
       compileInfo = list(opDefs = OPDEFS,
-                         nClass_inherit = list(base=BASECLASS)#,
+                         nClass_inherit = list(base=BASECLASS) #,
 #                         needed_units = list("declFxnBase_nClass"), # needed for package=TRUE
 #                         Hincludes = '"declFxnBase_nClass_c_.h"' # needed for package=TRUE
                          ),
@@ -322,9 +336,8 @@ browser()
     list(OPDEFS = opDefs,
         # A list of individual elements
         RPUBLIC = list(initialize=initialize,
-                      declObjNames = declObjNames,
-                      declObjName_2_declIndex = declObjName_2_declIndex,
-                      defaultSizes = sizes,
+                      declFunNameToIndex = model$modelDef$declFunNameToIndex,  
+                      defaultSizes = modelVarInfo$sizes,
                       defaultInits = inits,
                       defaultData = data,
                       modelDef = model$modelDef,
@@ -346,6 +359,8 @@ get_varInfo_from_nimbleModel <- function(model) {
   logProbVars <- mDef$logProbVarInfo |> extract()
   # The resize_from_list method will error out if a scalar is included.
   # The maxs is empty for scalars, so they are automatically omitted from the sizes result here.
+  # TODO: CJP sees scalars included as numeric(0) in sizes, so not omitted. Will this be a problem for resize_from_list?
+  # TODO: If ok, put sizes info into the same list as vars info.
   extract_sizes <- \(x) x|> lapply(\(x) x$maxs)
   sizes <- mDef$varInfo |> extract_sizes()
   logProb_sizes <- mDef$logProbVarInfo |> extract_sizes()

@@ -207,30 +207,32 @@ if(FALSE) {
 ## CJP experimentation with nimbleModel, modelClass stuff.
 library(nimbleModel);library(nCompiler)
 
-# source('modelBaseClass.R')
-# source('declFxnBaseClass.R')
-# source('nimbleModel.R')
-# source('instructions.R')
-
 code <- quote({
     sd ~ dunif(0, 10)
     for(i in 1:5) {
-        z[i] <- x[i+1] + 10
+    #    z[i] <- x[i+1] + 10
         y[i] ~ dnorm(x[i+1], sd = sd)
     }
 })
+
 inits <- list(sd = 1.5)
 data <- list(y = rnorm(5))
 nm <- modelClass$new(code, inits = inits, data = data)
 mclass <- nimbleModel:::make_modelClass_from_nimbleModel(nm)
-m <- mclass$new(inits=list(sd=5))  
 
-## m$calculate('sd')  # Doesn't work because Cpublic calculate can't run makeInstrList as it can't access modelDef.
+# .debugModelInit <- TRUE
+m <- mclass$new(inits=list(sd=5, x = rnorm(6))) 
 
-instrList <- nimbleModel:::makeInstrList(m, 'sd')
+m$calculate('sd')
+instrList <- makeInstrList(m, 'sd')
 m$calculate(instrList)
-instrList <- nimbleModel:::makeInstrList(m, 'y')
+instrList <- makeInstrList(m, 'y')
 m$calculate(instrList)
+
+instrList <- makeInstrList(m, c('y','sd'))  # ordering should be done internally
+m$calculate(instrList)
+
+m$calculate(c('y','sd'))  # ordering should be done internally
 
 # cr <- m$modelDef$calcRules[['y']]$rules[[1]]$makeCalcRange(m$modelDef$calcRules[['y']]$rules[[1]]$apply('y'))
 # cr <- m$modelDef$calcRules[['sd']]$rules[[1]]$makeCalcRange(m$modelDef$calcRules[['sd']]$rules[[1]]$apply('sd'))
@@ -240,7 +242,14 @@ out = m$private$Cpublic_obj$decl_1$private$Cpublic_obj$calc_one(0)
 out = m$private$Cpublic_obj$decl_1$private$Cpublic_obj$calc_0(instrList[[1]])
 out = m$private$Cpublic_obj$decl_1$private$Cpublic_obj$calculate(instrList[[1]])
 
-# how initialize a list of declFxns?
+mclass <- nimbleModel(code, data = data, inits = inits)
+m <- mclass$new(inits=list(sd=5, x = rnorm(6)))
+m$calculate(c('y','sd')) 
+
+m <- nimbleModel(code, data = data, inits = inits, returnClass = FALSE)
+
+## Try out compilation; see nCompiler's test-nimbleModel.R. 
+
 
 # How get nCompiler to know about base class not in nCompiler?
 # tmp=nList(nimbleModel:::declFxnBase_nClass)
@@ -272,8 +281,4 @@ obj$myfun(3)
 
 
 ## full workflow with  getDeps
-
-## work on sortID
-
-
 

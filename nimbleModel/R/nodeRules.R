@@ -127,11 +127,6 @@ declRuleClass <- R6Class(
         originalIndexingRule = NULL, # Determines original indexing (based on context).
         decl = NULL,                 # Full declInfo; nodeRuleClass$expr is just LHS.
         calculate = NULL,            # Generic function for calculation.
-        ID = NULL,                   # Unique ID that will be the index of the declClass in C++ (TBD how this is baked in).
-        ## TODO: remove this:
-        test = rep(0, 10),  ## test element used for testing calculation while modelDef doesn't have acccess to a model
-        test2 = matrix(0, 3, 5),
-        
         initialize = function(decl, ID, context = modelContextClass$new(), constants = list()) {
             decl <<- decl
             super$initialize(decl$code[[2]], ID, context = context, constants = constants)
@@ -240,7 +235,7 @@ calcRuleClass <- R6Class(
             indexingRange <- declRule$originalIndexingRule$apply(inputRange)
             if(is.null(indexingRange))
                 return(NULL)
-            result <- calcRangeClass$new(varName, indexingRange, declRule$ID, sortID, multiSortIDindex)
+            result <- calcRangeClass$new(varName, indexingRange, as.numeric(declRule$ID), sortID, multiSortIDindex)
             return(result)
         },
 

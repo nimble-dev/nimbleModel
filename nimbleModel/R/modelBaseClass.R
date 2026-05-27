@@ -20,49 +20,45 @@ modelBase_nClass <- nClass(
         },
         getDependencies = function(nodes, self = TRUE, downstream = FALSE, immediateOnly = FALSE) {
             nimbleModel:::getDependencies(modelDef, nodes, self, downstream, immediateOnly)
+        },
+        calculate = function(instrList) {
+            if(inherits(instrList, 'instr_nClass')) {
+              oneInstr <- instrList
+              instrList <- nList(instr_nClass)$new()
+              instrList$setLength(1)
+              instrList[[1]] <- oneInstr
+            }
+            if(!((inherits(instrList, 'nList') || is.list(instrList)) && inherits(instrList[[1]], 'instr_nClass')))
+                instrList <- makeInstrList(self, instrList)
+            ## Assume instrList is ordered (it is done `makeInstrList`).
+            if(isCompiled())
+                return(calculate_impl(instrList))
+            logProb <- 0
+            for(i in 1:length(instrList)) {
+                logProb <- logProb + declFunList[[instrList[[i]]$declID]]$calculate(instrList[[i]])
+            }
+            return(logProb)
         }
     ),
     Cpublic = list(
-        declList = 'nList(declFxnBase_nClass)',
+        declFunList = 'RcppObject',  # This won't actually be used in C++, but needs to be in Cpublic for accessibility.
+        declFunMapping = 'RcppList',  # Not sure what type this should be for use in C++.
         ping = nFunction(
             name = "ping",
             function() {return(TRUE); returnType(logical())},
             compileInfo = list(virtual=TRUE)
         ),
-        calculate = nFunction(
-            ## TODO: What is the difference between having this as Cpublic with separate C_fun and having in R_public?
-            name = "calculate",
+        calculate_impl = nFunction(
+            name = "calculate_impl",
             function(instrList) {
-                cat("In uncompiled calculate\n")
-                if(inherits(instrList, 'instr_nClass'))
-                    instrList <- list(instrList)
-                if(FALSE) {
-                   ## TODO: self is a Cpub_uncompiled obj, not full specialized model class.
-                   ## So this doesn't work as we need self$modelDef in `makeInstrList()`.
-                if(!(is.list(instrList) && inherits(instrList[[1]], 'instr_nClass')))
-                    instrList <- makeInstrList(self, instrList)
-                }
-                logProb <- 0
-                ord <- order(unlist(lapply(instrList, function(x) x$sortID)))
-                ## This is where uncompiled stepping through the calcInstrList happens.
-                for(i in 1:length(ord)) {
-                    ## TODO: need to sort out this lookup process.
-                    ## nodeIdx <- instr$declID
-                    ## nodemember_name <- self$nodeObjNames[nodeIdx] # nodeObjNames is found in the derived class
-                    logProb <- logProb + declList[[instrList[[ord[i]]]$declID]]$calculate(instrList[[ord[i]]])
-                }
-                return(logProb)
+                cat("Uncompiled `calculate_impl` should never be called.\n")
+                return(0)
             },
             returnType = 'numericScalar',
             compileInfo = list(
-                C_fun = function(instrList='nList(instr_nClass)') {
-                    logProb <- 0
-                    ## For now assuming instructions are in order.
-                    for(i in 1:length(instrList)) {
-                        ## nodemember_name <- self$nodeObjNames[instrList[[i]]$declID]
-                        logProb <- logProb + declList[[instrList[[i]]$declID]]$calculate(instrList[[i]])
-                    }
-                    return(logProb)
+                C_fun = function(instrList = 'nList(instr_nClass)') {
+                    ## TODO: consider whether instrList will be ordered and/or how C++ will see the decl indexing info.
+                    cppLiteral('modelClass_::calculate(instrList);')
                 },
                 virtual=TRUE
             )
@@ -72,8 +68,8 @@ modelBase_nClass <- nClass(
     predefined = quote(system.file(file.path("include","nimbleModel", "predef"), package="nimbleModel") |> file.path("modelBase_nC")),
     compileInfo=list(interface="full",
                      createFromR = FALSE,
-                     Hincludes = c('"declFxnBase_nClass_c_.h"'), #, '"calcInstrList_nClass_c_.h"'), # "declFxnBase_nClass_c_.h" needed for package = TRUE
-                     needed_units = list("declFxnBase_nClass","instr_nClass"),
+                     Hincludes = c('"declFunBase_nClass_c_.h"'), 
+                     needed_units = list("declFunBase_nClass","instr_nClass"),
                      exportName = "modelBase_nClass_new",
                      packageNames = c(uncompiled="modelBase_nClass_R", compiled="modelBase_nClass")
                      )

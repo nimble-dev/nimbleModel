@@ -69,3 +69,6 @@ export(messageIfVerbose)
 
 export(calc_dmnormAltParams)
 export(calc_dwishAltParams)
+
+export(nimbleModel)
+export(makeInstrList)
