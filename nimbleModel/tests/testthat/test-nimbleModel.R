@@ -203,8 +203,8 @@ if(FALSE) {
 }
 ########
 
-
 ## CJP experimentation with nimbleModel, modelClass stuff.
+
 library(nimbleModel);library(nCompiler)
 
 code <- quote({
@@ -234,6 +234,10 @@ m$calculate(instrList)
 
 m$calculate(c('y','sd'))  # ordering should be done internally
 
+m$y
+m$simulate('y')
+m$y
+
 # cr <- m$modelDef$calcRules[['y']]$rules[[1]]$makeCalcRange(m$modelDef$calcRules[['y']]$rules[[1]]$apply('y'))
 # cr <- m$modelDef$calcRules[['sd']]$rules[[1]]$makeCalcRange(m$modelDef$calcRules[['sd']]$rules[[1]]$apply('sd'))
 
@@ -249,6 +253,7 @@ m$calculate(c('y','sd'))
 m <- nimbleModel(code, data = data, inits = inits, returnClass = FALSE)
 
 m$calculate(m$getDependencies('sd'))
+m$calculate(m$getDependencies('sd', self = FALSE))
 
 
 ## Try out compilation; see nCompiler's test-nimbleModel.R. 

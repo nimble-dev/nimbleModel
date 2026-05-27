@@ -23,12 +23,14 @@ modelBase_nClass <- nClass(
         getParents = function(nodes, self = TRUE, upstream = FALSE, immediateOnly = FALSE) {
             nimbleModel::getParents(modelDef, nodes, self, upstream, immediateOnly)
         },
-        getNodes = function(nodes, stochOnly = FALSE, determOnly = FALSE,
+        ## TODO: not working because `nimbleModel::getNodes` needs the model not just modelDef.
+        ## Once we integrate modelClass with modelBase_nClass, we should be able to pass `self`.
+        getNodes = function(nodes = NULL, stochOnly = FALSE, determOnly = FALSE,
                      includeData = TRUE, dataOnly = FALSE,
                      includePredictive = TRUE, predictiveOnly = FALSE,
                      includeRHSonly = FALSE,
                      topOnly = FALSE, latentOnly = FALSE, endOnly = FALSE) {
-            nimbleModel::getNodes(modelDef, stochOnly, determOnly, includeData, dataOnly,
+            nimbleModel::getNodes(modelDef, nodes, stochOnly, determOnly, includeData, dataOnly,
                      includePredictive, predictiveOnly, includeRHSonly,
                      topOnly, latentOnly, endOnly)
         }, 
@@ -49,6 +51,22 @@ modelBase_nClass <- nClass(
                 logProb <- logProb + declFunList[[instrList[[i]]$declID]]$calculate(instrList[[i]])
             }
             return(logProb)
+        },
+        simulate = function(instrList) {
+            if(inherits(instrList, 'instr_nClass')) {
+              oneInstr <- instrList
+              instrList <- nList(instr_nClass)$new()
+              instrList$setLength(1)
+              instrList[[1]] <- oneInstr
+            }
+            if(!((inherits(instrList, 'nList') || is.list(instrList)) && inherits(instrList[[1]], 'instr_nClass')))
+                instrList <- makeInstrList(self, instrList)
+            ## Assume instrList is ordered (it is done `makeInstrList`).
+            if(isCompiled())
+                return(simulate_impl(instrList))
+            for(i in 1:length(instrList)) {
+                declFunList[[instrList[[i]]$declID]]$simulate(instrList[[i]])
+            }
         }
     ),
     Cpublic = list(
@@ -68,8 +86,22 @@ modelBase_nClass <- nClass(
             returnType = 'numericScalar',
             compileInfo = list(
                 C_fun = function(instrList = 'nList(instr_nClass)') {
-                    ## TODO: consider whether instrList will be ordered and/or how C++ will see the decl indexing info.
+                    ## NOTE: instrList input will be ordered.
                     cppLiteral('modelClass_::calculate(instrList);')
+                },
+                virtual=TRUE
+            )
+        ), 
+        simulate_impl = nFunction(
+            name = "simulate_impl",
+            function(instrList) {
+                cat("Uncompiled `simulate_impl` should never be called.\n")
+                return(0)
+            },
+            returnType = 'numericScalar',
+            compileInfo = list(
+                C_fun = function(instrList = 'nList(instr_nClass)') {
+                    cppLiteral('modelClass_::simulate(instrList);')
                 },
                 virtual=TRUE
             )

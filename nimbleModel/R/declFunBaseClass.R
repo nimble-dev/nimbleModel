@@ -20,11 +20,9 @@ declFunBase_nClass <- nClass(
       }, returnType = 'numericScalar',
       compileInfo = list(virtual=TRUE)
     ),    
-    ## TODO: for all these type-specific calculates, how do we call the methods of the decl_nClass object?
     calc_0 = nFunction(
         name = 'calc_0',
         function(instr = 'instr_nClass') {
-            ## Presumably this will have access to derived class' `calc_one`?
             return(calc_one(0))  ## calc_one will always has `idx` as arg?
         }, returnType = 'numericScalar'
     ),
@@ -54,6 +52,45 @@ declFunBase_nClass <- nClass(
                 logProb <- logProb + calc_one(instr$values[[1]][(instr$dims[1]*(i-1) + 1):(instr$dims[1]*i)])  ## Ok to call with a vector?
             return(logProb)
         }, returnType = 'numericScalar'
+    ),
+    
+    simulate = nFunction(
+      name = "simulate",
+      fun = function(instr = 'instr_nClass') {
+          ## TODO: how embed determination of vec and parallel cases here?
+          if(instr$type == 0) return(sim_0(instr))
+          if(instr$type == 1) return(sim_1_seq(instr))
+          if(instr$type == 2) return(sim_1_mat(instr))
+          if(instr$type == 3) return(sim_1_matp(instr))
+      },
+      compileInfo = list(virtual=TRUE)
+    ),    
+    sim_0 = nFunction(
+        name = 'sim_0',
+        function(instr = 'instr_nClass') {
+            sim_one(0) ## sim_one will always has `idx` as arg?
+        }
+    ),
+    sim_1_seq = nFunction(
+        name = 'sim_1_seq',
+        function(instr = 'instr_nClass') {
+            for(i in 1:instr$lens[1])
+                sim_one(instr$values[[1]][1]+i)
+        }
+    ),
+    sim_1_mat = nFunction(
+        name = 'sim_1_mat',
+        function(instr = 'instr_nClass') {
+            for(i in 1:instr$lens[1])
+                sim_one(instr$values[[1]][i])
+        }
+    ),
+    sim_1_matp = nFunction(
+        name = 'sim_1_mat',
+        function(instr = 'instr_nClass') {
+            for(i in 1:instr$lens[1])
+                sim_one(instr$values[[1]][(instr$dims[1]*(i-1) + 1):(instr$dims[1]*i)])  ## Ok to call with a vector?
+        }
     )
   ),
   ## We haven't dealt with ensuring a virtual destructor when any method is virtual
