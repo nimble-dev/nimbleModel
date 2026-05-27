@@ -118,7 +118,7 @@ modelDeclClass <- R6Class(
 
         ## Create declRule and symbolic RHS pieces.
         processDecl = function(nimFunNames, constants = list(), envir) {
-            declRule <<- declRuleClass$new(self, sourceLineNumber, context, constants)
+            declRule <<- declRuleClass$new(self, 0, context, constants)
             makeSymbolicParentNodes(nimFunNames, constants, envir)
             invisible(NULL)
         },

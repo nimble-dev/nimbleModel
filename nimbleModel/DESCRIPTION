@@ -43,7 +43,7 @@ Collate:
     varRange.R
     varRules.R
     varStore.R
-    declFxnBaseClass.R
+    declFunBaseClass.R
     modelBaseClass.R
     instructions.R
     nimbleModel.R

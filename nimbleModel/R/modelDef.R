@@ -16,6 +16,8 @@ modelDefClass <- R6Class(
         contexts = list(),
         constants = list(),
         declInfo = list(),
+        declFunNameToIndex = list(),
+        declFunIndexToName = NULL,
         downstreamRules = NULL,
         upstreamRules = NULL,
         calcRules = NULL,
@@ -53,6 +55,7 @@ modelDefClass <- R6Class(
             addRemainingDotParams()       ## Add additional altParams as needed.
             replaceAllConstants()         ## Simplify expressions introduced in `addRemainingDotParams`.
             processDecls(userEnv)         ## Create declRules and set up symbolicParentNodes (and flags dynamic indexing).
+            assignDeclIDs()               ## Set sequential declID values and declFun mapping.
             genAltParams()                ## Create altParam expressions and create `calculateCode` (without altParams).
             genBounds()                   ## Create bound expressions (modifying `calculateCode`).
 
@@ -546,6 +549,13 @@ modelDefClass <- R6Class(
             invisible(NULL)
         },
 
+        assignDeclIDs = function() {
+            for(i in seq_along(declInfo))
+              declInfo[[i]]$declRule$ID <- as.character(i)
+            declFunNameToIndex <<- as.list(1:length(declInfo))
+            names(declFunNameToIndex) <<- paste("declFun", 1:length(declInfo), sep = "_")
+        },            
+        
         ## Add additional altParams not already addressed in getting canonical params.
         addRemainingDotParams = function() {
             for(iDecl in seq_along(declInfo)) {

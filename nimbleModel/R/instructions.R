@@ -46,7 +46,7 @@ range2instr <- function(range) {
 }
 
 ## Eventually think about reordering order of looping for efficiency (and take parallelization into account).
-## For the moment, we determine mat vs. seq here and then in declClass calculate we will determine whether to
+## For the moment, we determine mat vs. seq here and then in declFunClass calculate we will determine whether to
 ## vectorize based on whether possible based on the declaration.
 ## Open question of when to determine if to use parallel calculate.
 determineInstrType <- function(instr, use_vec = FALSE) {
@@ -83,6 +83,7 @@ determineInstrType <- function(instr, use_vec = FALSE) {
     return(type2itype[[type]])
 }
 
+#' @export
 makeInstrList <- function(model, varRanges, use_vec = FALSE) {
     if(missing(varRanges))
         varRanges <- model$getVarNames()
@@ -98,8 +99,9 @@ makeInstrList <- function(model, varRanges, use_vec = FALSE) {
     instrList <- nList(instr_nClass)$new()
     numRanges <- length(ranges)
     instrList$setLength(numRanges)
+    ord <- order(unlist(lapply(ranges, function(x) x$sortID)))
     for(i in 1:numRanges)
-        instrList[[i]] <- instr_nClass$new(ranges[[i]])
+        instrList[[i]] <- instr_nClass$new(ranges[[ord[i]]])
     return(instrList)
 }
 
@@ -132,9 +134,12 @@ instr_nClass <- nClass(
     type = 'integerScalar',
     sortID = 'integerVector',
     declID = 'integerScalar'
-  ), compileInfo = list(interface = "full")  # TODO: check on this.
+  ), compileInfo = list(interface = "full",
+                        createFromR = FALSE,
+                        exportName = "instr_nClass_new",
+                        packageNames = c(uncompiled="instr_nClass_R", compiled="instr_nClass")
+                        )
 )
-## TODO: determine how to handle this in terms of it being a predefined nClass
-## TODO: see PdV version and determine what `compileInfo` elements are needed.
+
 
 

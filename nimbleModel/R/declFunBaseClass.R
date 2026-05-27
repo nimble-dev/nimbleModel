@@ -1,6 +1,6 @@
 #' @export
-declFxnBase_nClass <- nClass(
-  classname = "declFxnBase_nClass",
+declFunBase_nClass <- nClass(
+  classname = "declFunBase_nClass",
   Cpublic = list(
     ## model = 'modelBase_nClass',
     ping = nFunction(
@@ -20,11 +20,11 @@ declFxnBase_nClass <- nClass(
       }, returnType = 'numericScalar',
       compileInfo = list(virtual=TRUE)
     ),    
-    ## TODO: for all these type-specific calculates, how do we call the methods of the declFxn_nClass object?
+    ## TODO: for all these type-specific calculates, how do we call the methods of the decl_nClass object?
     calc_0 = nFunction(
         name = 'calc_0',
         function(instr = 'instr_nClass') {
-            ## Presumably this will have access to derive class' `calc_one`?
+            ## Presumably this will have access to derived class' `calc_one`?
             return(calc_one(0))  ## calc_one will always has `idx` as arg?
         }, returnType = 'numericScalar'
     ),
@@ -59,11 +59,11 @@ declFxnBase_nClass <- nClass(
   ## We haven't dealt with ensuring a virtual destructor when any method is virtual
   ## For now I did it manually by editing the .h and .cpp
   predefined = quote(system.file(file.path("include","nimbleModel", "predef"), package="nimbleModel") |>
-               file.path("declFxnBase_nC")),
+               file.path("declFunBase_nC")),
   compileInfo=list(interface="full",
                    createFromR = FALSE,
-                   exportName = "declFxnBase_nClass_new",
-                   needed_units = list("nodeInstr_nClass"),
-                   packageNames = c(uncompiled="declFxnBase_nClass_R", compiled="declFxnBase_nClass")
+                   exportName = "declFunBase_nClass_new",
+                   needed_units = list("instr_nClass"),
+                   packageNames = c(uncompiled="declFunBase_nClass_R", compiled="declFunBase_nClass")
                    )
 )
