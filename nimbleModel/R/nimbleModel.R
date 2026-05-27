@@ -341,7 +341,10 @@ makeModel_nClass <- function(modelVarInfo,
                       defaultInits = inits,
                       defaultData = data,
                       modelDef = model$modelDef,
-                      ## TODO: add other fields from `nimbleModel::modelClass` such as dataRules, predictiveRules, etc.
+                      dataRules = model$dataRules,
+                      nondataRules = model$nondataRules,
+                      predictiveRules = model$predictiveRules,
+                      nonpredictiveRules = model$nonpredictiveRules,
                       CpublicDeclFuns = CpublicDeclFuns),
         # A concatenation of lists
         CPUBLIC = c(CpublicDeclFuns, CpublicModelVars, CpublicCtor, CpublicMethods),

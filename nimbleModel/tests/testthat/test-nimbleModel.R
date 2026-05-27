@@ -248,6 +248,9 @@ m$calculate(c('y','sd'))
 
 m <- nimbleModel(code, data = data, inits = inits, returnClass = FALSE)
 
+m$calculate(m$getDependencies('sd'))
+
+
 ## Try out compilation; see nCompiler's test-nimbleModel.R. 
 
 
@@ -280,5 +283,4 @@ obj$pop(rnorm(3),rnorm(5))
 obj$myfun(3)
 
 
-## full workflow with  getDeps
 
