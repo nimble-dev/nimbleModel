@@ -7,6 +7,55 @@ modelBase_nClass <- nClass(
         nondataRules = NULL,
         predictiveRules = NULL,
         nonpredictiveRules = NULL,
+        initialize = function(sizes = list(), inits = list(), data = list()) {
+           # It is not very easy to set debug onto the initialize function, so
+           # here is a magic flag.
+           if(isTRUE(.GlobalEnv$.debugModelInit)) browser()
+            super$initialize()
+
+            declFunNames <- names(self$declFunNameToIndex)  
+            if(isCompiled()) {
+                self$setup_decl_mgmt_from_names(declFunNames)
+            } else {
+                self$declFunList <- list()
+                length(self$declFunList) <- length(declFunNames)
+                names(self$declFunList) <- declFunNames
+                for(declFunName in declFunNames) {
+                    self[[declFunName]] <- eval(as.name(self$CpublicDeclFuns[[declFunName]]))$new()
+                    self[[declFunName]]$setModel(self)
+                    self$declFunList[[self$declFunNameToIndex[[declFunName]]]] <- self[[declFunName]]
+                }
+            }
+
+            ## TODO: create a merge_and_set function that handles all three of the following.
+            allSizes <- self$defaultSizes
+            if(!missing(sizes))
+                for(nm in names(sizes))
+                    allSizes[[nm]] <- sizes[[nm]]
+            ## TODO: should we handle 0-dim sizes elsewhere?
+            allSizes <- allSizes[sapply(allSizes, length) > 0]
+            if(length(allSizes)) resize_from_list(allSizes[sapply(allSizes, length) > 0])
+            
+            allInits <- self$defaultInits
+            if(!missing(inits))
+                for(nm in names(inits))
+                    allInits[[nm]] <- inits[[nm]]
+            if(length(allInits)) set_from_list(allInits)
+            
+            if(missing(inits)) {
+                allInits <- self$defaultInits
+            } else 
+                if(length(inits)) set_from_list(inits)
+            
+            ## TODO: do we want to handle data differently?
+            ## TODO: need to work through not setting as 'data' if values are NA;
+            ##   check back against how dataRules work in nimbleModel work.
+            allData <- self$defaultData
+            if(!missing(inits))
+                for(nm in names(inits))
+                    allData[[nm]] <- inits[[nm]]
+            if(length(allData)) set_from_list(allData)
+        },
         getVarNames = function(includeLogProb = FALSE, nodeRanges) {
             if(missing(nodeRanges)){
                 if(includeLogProb) return(modelDef$varNames)
