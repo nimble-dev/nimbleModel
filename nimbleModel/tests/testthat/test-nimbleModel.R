@@ -220,6 +220,8 @@ data <- list(y = rnorm(5))
 nm <- modelClass$new(code, inits = inits, data = data)
 mclass <- nimbleModel:::make_modelClass_from_nimbleModel(nm)
 
+cmclass <- nCompile(mclass)
+
 # .debugModelInit <- TRUE
 m <- mclass$new(inits=list(sd=5, x = rnorm(6))) 
 
@@ -257,7 +259,4 @@ m$calculate(m$getDependencies('sd', self = FALSE))
 
 
 ## Try out compilation; see nCompiler's test-nimbleModel.R. 
-
-
-
 
