@@ -2,7 +2,6 @@
 modelBase_nClass <- nClass(
     classname = "modelBase_nClass",
     Rpublic = list(
-        ## TODO: bring in methods and fields from nimbleModel:::modelClass.
         modelDef = NULL,
         dataRules = NULL,
         nondataRules = NULL,
@@ -19,8 +18,20 @@ modelBase_nClass <- nClass(
             }
         },
         getDependencies = function(nodes, self = TRUE, downstream = FALSE, immediateOnly = FALSE) {
-            nimbleModel:::getDependencies(modelDef, nodes, self, downstream, immediateOnly)
+            nimbleModel::getDependencies(modelDef, nodes, self, downstream, immediateOnly)
         },
+        getParents = function(nodes, self = TRUE, upstream = FALSE, immediateOnly = FALSE) {
+            nimbleModel::getParents(modelDef, nodes, self, upstream, immediateOnly)
+        },
+        getNodes = function(nodes, stochOnly = FALSE, determOnly = FALSE,
+                     includeData = TRUE, dataOnly = FALSE,
+                     includePredictive = TRUE, predictiveOnly = FALSE,
+                     includeRHSonly = FALSE,
+                     topOnly = FALSE, latentOnly = FALSE, endOnly = FALSE) {
+            nimbleModel::getNodes(modelDef, stochOnly, determOnly, includeData, dataOnly,
+                     includePredictive, predictiveOnly, includeRHSonly,
+                     topOnly, latentOnly, endOnly)
+        }, 
         calculate = function(instrList) {
             if(inherits(instrList, 'instr_nClass')) {
               oneInstr <- instrList

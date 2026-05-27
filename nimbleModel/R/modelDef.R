@@ -76,7 +76,6 @@ modelDefClass <- R6Class(
 
             warnRHSonlyDynamicIndexing()
 
-            buildFunctions()              ## Generate calculate and other functions.
             invisible(NULL)
         },
 
@@ -875,13 +874,6 @@ modelDefClass <- R6Class(
                                          "`.\n         For computational efficiency we recommend specifying these in `constants`.")
                     }
                 }
-            }
-            invisible(NULL)
-        },
-
-        buildFunctions = function() {
-            for(i in seq_along(declInfo)) {
-                declInfo[[i]]$buildFunctions()
             }
             invisible(NULL)
         }

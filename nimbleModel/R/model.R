@@ -2,6 +2,12 @@
 ## static information, data information, and methods for querying the model
 ## structure.
 
+## For the moment this overlaps with the custom model class we create
+## for each model using nCompiler. That model class takes some of the
+## fields and calls some of the methods set up here.
+
+## TODO: possibly work all of this into modelBase_nClass.
+
 ## Will need to do some work to extend this to get full current behavior
 ## where the model is created by `nimbleModel` and the custom model class
 ## contains fields for the different variables.
@@ -67,11 +73,6 @@ modelClass <- R6Class(
 
             makeDataRules(data)
             makePredictiveRules()
-
-            ## Do this once we have a custom model class with fields we can assign into.
-            ## setData(data)
-            ## setInits(inits)
-            
         },
 
         makeDataRules = function(data) {
@@ -126,7 +127,7 @@ modelClass <- R6Class(
 
             nonpredictiveRules <<- candidateRules   
         },
-
+        ## TODO: should this be a standalone function like getNodes, getDependencies?
         getVarNames = function(includeLogProb = FALSE, nodeRanges) {
             if(missing(nodeRanges)){
                 if(includeLogProb) return(modelDef$varNames)
