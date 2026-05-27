@@ -259,33 +259,5 @@ m$calculate(m$getDependencies('sd', self = FALSE))
 ## Try out compilation; see nCompiler's test-nimbleModel.R. 
 
 
-# How get nCompiler to know about base class not in nCompiler?
-# tmp=nList(nimbleModel:::declFxnBase_nClass)
-#Error in self$resolveSym(project_env, ...) : 
-#  In resolveSym method for symbolTBD (, :::), could not resolve an nClass generator.
-
-## experimenting ((not working) with creating and populating nLists
-rNL <- nList(numericVector)
-cl <- nClass(
-    Cpublic =list(
-        x = 'rNL',
-        myfun = nFunction(
-            function(y = 'numericScalar') {
-                return(y*x[[2]])
-            }, returnType = 'numericVector'
-        ),
-        pop = nFunction(
-            function(x1 = 'numericVector', x2='numericVector') {
-                length(x) <- 3
-                
-                x[[1]] <- x1   # this is still `1` as index in C++
-                x[[2]] <- x2
-            })
-    ))
-ccl <- nCompile(cl, rNL=rNL)
-obj <- ccl[[1]]$new()
-obj$pop(rnorm(3),rnorm(5))
-obj$myfun(3)
-
 
 
