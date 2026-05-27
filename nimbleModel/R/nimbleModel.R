@@ -32,8 +32,6 @@ make_modelClass_from_nimbleModel <- function(m, compile=FALSE) {
   modelVarInfo <- get_varInfo_from_nimbleModel(m)
   declInfoList <- list()
   declFunClassList <- list()
-  # two vectors for canonical use for calculation instructions
-  # to move between names and indices of declFxns:
   declFunNames <- names(mDef$declFunNameToIndex)
   for(i in seq_along(mDef$declInfo)) {
     declInfo <- mDef$declInfo[[i]]
@@ -132,6 +130,7 @@ make_declFun_nClass <- function(varInfo = list(),
   }
 
 #  This was a prototype
+  # Actually, we are using this. Ok? // CJP
   declFun_nClass <- substitute(
     nClass(
       inherit = declFunBase_nClass,
@@ -263,57 +262,7 @@ makeModel_nClass <- function(modelVarInfo,
                          initializers = decl_pieces |> lapply(\(x) x$init_string) |> unlist())
     )
   ) |> structure(names = classname)
-  initialize <- function(sizes = list(), inits = list(), data = list()) {
-    # It is not very easy to set debug onto the initialize function, so
-    # here is a magic flag.
-    if(isTRUE(.GlobalEnv$.debugModelInit)) browser()
-    super$initialize()
-    ## TODO: figure out which  of the following to the base class initialize.
-    ## For now just putting these here in one place.
-    declFunNames <- names(self$declFunNameToIndex)  
-    if(isCompiled()) {
-      self$setup_decl_mgmt_from_names(declFunNames)
-    } else {
-      self$declFunList <- list()
-      length(self$declFunList) <- length(declFunNames)
-      names(self$declFunList) <- declFunNames
-      for(declFunName in declFunNames) {
-        self[[declFunName]] <- eval(as.name(self$CpublicDeclFuns[[declFunName]]))$new()
-        self[[declFunName]]$setModel(self)
-        self$declFunList[[self$declFunNameToIndex[[declFunName]]]] <- self[[declFunName]]
-      }
-    }
 
-    ## TODO: create a merge_and_set function that handles all three of the following.
-      
-    allSizes <- self$defaultSizes
-    if(!missing(sizes))
-      for(nm in names(sizes))
-        allSizes[[nm]] <- sizes[[nm]]
-    ## TODO: should we handle 0-dim sizes elsewhere?
-    allSizes <- allSizes[sapply(allSizes, length) > 0]
-    if(length(allSizes)) resize_from_list(allSizes[sapply(allSizes, length) > 0])
-
-    allInits <- self$defaultInits
-    if(!missing(inits))
-      for(nm in names(inits))
-        allInits[[nm]] <- inits[[nm]]
-    if(length(allInits)) set_from_list(allInits)
-      
-      if(missing(inits)) {
-          allInits <- self$defaultInits
-      } else 
-    if(length(inits)) set_from_list(inits)
-
-    # TODO: do we want to handle data differently?
-    # TODO: need to work through not setting as 'data' if values are NA;
-    #   check back against how dataRules work in nimbleModel work.
-    allData <- self$defaultData
-    if(!missing(inits))
-      for(nm in names(inits))
-        allData[[nm]] <- inits[[nm]]
-    if(length(allData)) set_from_list(allData)
-  }
   baseclass <- paste0("modelClass_<", classname, ">")
   # CpublicDeclFuns has elements like "decl_1 = quote(declFxn_1())"
   # We provide it in Cpublic to declare C++ member variables with types.
@@ -335,7 +284,7 @@ makeModel_nClass <- function(modelVarInfo,
     ),
     list(OPDEFS = opDefs,
         # A list of individual elements
-        RPUBLIC = list(initialize=initialize,
+        RPUBLIC = list(
                       declFunNameToIndex = model$modelDef$declFunNameToIndex,  
                       defaultSizes = modelVarInfo$sizes,
                       defaultInits = inits,
