@@ -896,6 +896,10 @@ modelDefClass <- R6Class(
 ## Note: data-related flags not handled as that relates to flags on a model
 ## and not part of modelDef.
 
+## TODO: these should presumably take the model not modelDef as the first arg.
+## Once we integrate modelClass with modelBase_nClass, we should be able to
+## pass `self` from the getDeps and getParents methods to these functions.
+
 getDependencies <- function(modelDef, nodes,
                             self = TRUE,
                             downstream = FALSE, immediateOnly = FALSE) {
