@@ -58,10 +58,10 @@ declFunBase_nClass <- nClass(
       name = "simulate",
       fun = function(instr = 'instr_nClass') {
           ## TODO: how embed determination of vec and parallel cases here?
-          if(instr$type == 0) return(sim_0(instr))
-          if(instr$type == 1) return(sim_1_seq(instr))
-          if(instr$type == 2) return(sim_1_mat(instr))
-          if(instr$type == 3) return(sim_1_matp(instr))
+          if(instr$type == 0) sim_0(instr)
+          if(instr$type == 1) sim_1_seq(instr)
+          if(instr$type == 2) sim_1_mat(instr)
+          if(instr$type == 3) sim_1_matp(instr)
       },
       compileInfo = list(virtual=TRUE)
     ),    

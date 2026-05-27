@@ -51,6 +51,8 @@ make_modelClass_from_nimbleModel <- function(m, compile=FALSE) {
                                          model = m, classname = "my_model", env = environment())
 }
 
+## The two "addModelDollarSign" functions are borrowed directly from nimble.
+## This should add model$ in front of any names that are not already part of a '$' expression
 
 nm_addModelDollarSign <- function(expr, exceptionNames = character(0)) {
     if(is.numeric(expr)) return(expr)

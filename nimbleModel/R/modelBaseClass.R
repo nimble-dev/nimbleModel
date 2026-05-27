@@ -174,5 +174,3 @@ modelBase_nClass <- nClass(
 
 # nCompile(modelBase_nClass, control=list(generate_predefined=TRUE))
 
-## The two "addModelDollarSign" functions are borrowed directly from nimble.
-## This should add model$ in front of any names that are not already part of a '$' expression
