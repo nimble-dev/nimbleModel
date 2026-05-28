@@ -16,12 +16,13 @@ originalIndexingRuleClass <- R6Class(
                               constants = list()) {
             varName <<- getVarName(LHS)
             if(length(context$indexVarNames)) {
-                ## Exclude indices not used in lifted expression, e.g., `i` in `y[i,j] ~ dnorm(mu[i], sigma[j])`
+                ## Exclude indices not used in lifted expression, e.g., `i` in `y[i,j] ~ dnorm(mu[i], var = sigma2[j])`
                 indexVarNames <- context$indexVarNames
                 indexVarNames <- indexVarNames[indexVarNames %in% all.vars(LHS)]
-                dummyLHS <- parse(text = paste0(varName, "[", 
-                                                paste(indexVarNames, collapse = ","),
-                                                "]"))[[1]]
+                indexing <- if(length(indexVarNames))
+                                paste0("[", paste(indexVarNames, collapse = ","), "]") else ""
+                dummyLHS <- parse(text = paste0(varName, indexing))[[1]]
+                ## Unused singleContexts will be removed in graphRuleClass$new().
             } else dummyLHS <- as.name(varName)
             graphRule <<- graphRuleClass$new(dummyLHS,
                                              LHS,
