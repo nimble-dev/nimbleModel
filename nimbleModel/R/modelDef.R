@@ -664,7 +664,8 @@ modelDefClass <- R6Class(
                     }
                 }
             }
-            for(iDI in seq_along(declInfo)) { # Do RHS after all LHS so that check for overlap only concerns LHS  
+            for(iDI in seq_along(declInfo)) { # Do RHS after all LHS so that check for overlap only concerns LHS
+                decl <- declInfo[[iDI]]
                 for(iRHR in seq_along(decl$rhsOriginalRules)) {
                     rhsRule <- decl$rhsOriginalRules[[iRHR]]
                     rhsVar <- rhsRule$varName
