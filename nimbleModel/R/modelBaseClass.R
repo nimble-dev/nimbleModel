@@ -119,8 +119,9 @@ modelBase_nClass <- nClass(
         }
     ),
     Cpublic = list(
-        declFunList = 'RcppObject',  # This won't actually be used in C++, but needs to be in Cpublic for accessibility.
-        declFunMapping = 'RcppList',  # Not sure what type this should be for use in C++.
+        ## TODO: using 'RcppObject' was resulting in a symbolTBD error - probably nCompiler issue 186.
+        declFunList = 'numericScalar', # 'RcppObject',  # This won't actually be used in C++, but needs to be in Cpublic for accessibility.
+        declFunNameToIndex = 'RcppList',  # Not sure what type this should be for use in C++.
         ping = nFunction(
             name = "ping",
             function() {return(TRUE); returnType(logical())},
@@ -160,7 +161,7 @@ modelBase_nClass <- nClass(
     predefined = quote(system.file(file.path("include","nimbleModel", "predef"), package="nimbleModel") |> file.path("modelBase_nC")),
     compileInfo=list(interface="full",
                      createFromR = FALSE,
-                     Hincludes = c('"declFunBase_nClass_c_.h"'), 
+                     Hincludes = c('"declFunBase_nClass_c_.h","instr_nClass_c_.h"'), 
                      needed_units = list("declFunBase_nClass","instr_nClass"),
                      exportName = "modelBase_nClass_new",
                      packageNames = c(uncompiled="modelBase_nClass_R", compiled="modelBase_nClass")
