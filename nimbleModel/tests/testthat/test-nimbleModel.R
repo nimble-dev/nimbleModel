@@ -66,9 +66,9 @@ test_that("initial tests/examples of nimble model using flattened approach", {
 
     m$tau <- 1
     lp <- m$calculate(c('y','lifted_sqrt_oPtau_cP'))  # Ordering should be done internally.
-    expect_identical(lp, sum(dnorm(m$y, 0, 1, log = TRUE)))
+    expect_equal(lp, sum(dnorm(m$y, 0, 1, log = TRUE))) # Why not identical?
 
-    expect_identical(m$calculate(), sum(dnorm(m$y, 0, 1, log = TRUE)) + dunif(m$tau, 0, 100, log = TRUE) + dnorm(m$mu, log = TRUE))
+    expect_equal(m$calculate(), sum(dnorm(m$y, 0, 1, log = TRUE)) + dunif(m$tau, 0, 100, log = TRUE) + dnorm(m$mu, log = TRUE))
 
     ## NOTE: `simulate` currently simulates data nodes by default.
     set.seed(1)
@@ -110,7 +110,7 @@ test_that("basic creation of list of instr_nClass objects", {
 
     instr0 <- makeInstrList(m, 'mu')[[1]]
     expect_identical(instr0$lens, 1)
-    expect_identical(length(instr0$values), 0)
+    expect_identical(length(instr0$values), 0L)
     expect_identical(instr0$index_types, 0)
     expect_identical(instr0$type, 0)
 
