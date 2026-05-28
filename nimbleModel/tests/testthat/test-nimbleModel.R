@@ -1,34 +1,141 @@
 # Test code needed for new nimbleModel system.
 
+library(nCompiler)
 library(nimbleModel)
 library(testthat)
 
 ## TODO: will location and access to predefined nClasses be as described below given they will live
 ## in `nimbleModel` package? How will dependence on nCompiler work?
 
-## TODO: before I generate the predefined code, need to check on what needs to be done in terms of
-## compileInfo for modelBaseClass and declFxnBaseClass.
-
 ## # To update the set of predefined nClasses
-## # generate new predef/instr_nC. Move that directly to package code inst/nimbleModel/predef/nodeInstr_nC
+## # generate new predef/instr_nC. Move that directly to package code inst/nimbleModel/predef/instr_nC
 ## nCompile(instr_nClass, control=list(generate_predefined=TRUE))
 ## test <- nCompile(instr_nClass)
 ## #
-## # generate new predef/nodeFxnBase_nC. Move to package and add
-## # "#include <nimbleModel/predef/nodeFxnClass_/nodeFxnClass_.h>" in the hContent
-## # after declaration of newFxnBase_nClass
-## nCompile(nodeFxnBase_nClass, control=list(generate_predefined=TRUE))
-## test <- nCompile(nodeFxnBase_nClass)
+## # generate new predef/declFunBase_nC. Move to package and add
+## # "#include <nimbleModel/predef/declFunBase_nC_/declFunBase_nC_.h>" in the hContent
+## # after declaration of declFunBase_nClass
+## nCompile(declFunBase_nClass, control=list(generate_predefined=TRUE))
+## test <- nCompile(declFunBase_nClass)
 ## #
 ## # generate new predef/modelBase_nC. Move to package and add
-## # "#include <nimbleModel/predef/modelClass_/modelClass_.h>" to that file,
+## # "#include <nimbleModel/predef/modelBase_nClass/modelBase_nCl_.h>" to that file,
 ## # after the declaration of modelBase_nClass.
 ## nCompile(modelBase_nClass, control=list(generate_predefined=TRUE))
 ## test <- nCompile(modelBase_nClass)
-## #nCompile(nodeFxnBase_nClass, nodeInstr_nClass, control=list(generate_predefined=TRUE))
-## #nCompile(nodeInstr_nClass, calcInstr_nClass, modelBase_nClass, nodeFxnBase_nClass, calcInstrList_nClass, control=list(generate_predefined=TRUE))
+## #nCompile(instr_nClass, modelBase_nClass, declFunBase_nClass, control=list(generate_predefined=TRUE))
 
 ## TODO: revise these tests for instrClass (flattened approach)
+
+test_that("initial tests/examples of nimble model using flattened approach", {
+
+    code <- quote({
+        tau ~ dunif(0, 100)
+        mu ~ dnorm(0,1)
+        for(i in 1:5) {
+            y[i] ~ dnorm(mu, var = tau)
+        }
+    })
+
+    inits <- list(tau = 25, mu = 0)
+    data <- list(y = rnorm(5))
+
+    ## "Manual" workflow not using `nimbleModel()`.
+    nm <- modelClass$new(code, inits = inits, data = data)
+    mclass <- nimbleModel:::make_modelClass_from_nimbleModel(nm)
+    m <- mclass$new()
+
+    expect_identical(m$calculate('tau'), dunif(m$tau, 0, 100, log = TRUE))
+
+    instrList <- makeInstrList(m, 'tau')
+    expect_identical(m$calculate(instrList), dunif(m$tau, 0, 100, log = TRUE))
+
+    deps <- m$getDependencies('tau', self = FALSE)
+    lp <-m$calculate(deps)
+    expect_identical(m$lifted_sqrt_oPtau_cP, 5)
+    expect_identical(lp, sum(dnorm(m$y, 0, 5, log = TRUE)))
+
+    ## Check that instrList is in correct order.
+    instrList <- makeInstrList(m, c('y','lifted_sqrt_oPtau_cP'))
+    expect_identical(instrList[[1]]$lens, 1)  # lifted node first
+    lp <- m$calculate(instrList)
+    expect_identical(m$lifted_sqrt_oPtau_cP, 5)
+    expect_identical(lp, sum(dnorm(m$y, 0, 5, log = TRUE)))
+
+    expect_identical(m$logProb_y, dnorm(m$y, 0, 5, log = TRUE))
+
+    m$tau <- 1
+    lp <- m$calculate(c('y','lifted_sqrt_oPtau_cP'))  # Ordering should be done internally.
+    expect_identical(lp, sum(dnorm(m$y, 0, 1, log = TRUE)))
+
+    expect_identical(m$calculate(), sum(dnorm(m$y, 0, 1, log = TRUE)) + dunif(m$tau, 0, 100, log = TRUE) + dnorm(m$mu, log = TRUE))
+
+    ## NOTE: `simulate` currently simulates data nodes by default.
+    set.seed(1)
+    m$simulate()
+    expect_identical(m$lifted_sqrt_oPtau_cP, sqrt(m$tau))
+    expect_equal(m$mu, -0.326233360706)
+    m$mu <- 100
+    m$tau <- 1
+    m$simulate(m$getDependencies('tau', self = FALSE))
+    expect_true(all(m$y > 95))
+
+    ## Use of nimbleModel
+    mclass <- nimbleModel(code, data = data, inits = inits)
+    m <- mclass$new()
+    expect_identical(m$calculate('tau'), dunif(m$tau, 0, 100, log = TRUE))
+
+    m <- nimbleModel(code, data = data, inits = inits, returnClass = FALSE)
+    expect_identical(m$calculate('tau'), dunif(m$tau, 0, 100, log = TRUE))
+
+    ## Override init value when creating model instance.
+    mclass <- nimbleModel(code, data = data, inits = inits)
+    m <- mclass$new(inits = list(tau = 7))
+    expect_identical(m$tau, 7)
+    
+})
+
+test_that("basic creation of list of instr_nClass objects", {
+
+    code <- quote({
+        for(i in 1:5) {
+            mu ~ dnorm(0, 1)
+            y[i] ~ dnorm(mu, 1)
+        }
+    })
+
+    data <- list(y = rnorm(5))
+
+    m <- nimbleModel(code, data = data, returnClass = FALSE)
+
+    instr0 <- makeInstrList(m, 'mu')[[1]]
+    expect_identical(instr0$lens, 1)
+    expect_identical(length(instr0$values), 0)
+    expect_identical(instr0$index_types, 0)
+    expect_identical(instr0$type, 0)
+
+    instr1 <- makeInstrList(m, 'y[3:4]')[[1]]
+    expect_identical(instr1$lens, 2)
+    expect_identical(instr1$values[[1]], 2) # offset
+    expect_identical(instr1$index_types, 1)
+    expect_identical(instr1$type, 1)
+    
+    instr2 <- makeInstrList(m, c('y[c(2,5)]'))[[1]]
+    expect_identical(instr2$lens, 2)
+    expect_identical(instr2$values[[1]], c(2,5))
+    expect_identical(instr2$index_types, 2)
+    expect_identical(instr2$type, 2)
+
+    instr2 <- makeInstrList(m, varRangeClass$new(list(newIndexRange(matrix(c(2,5), ncol=1))), varName='y'))[[1]]
+    expect_identical(instr2$lens, 2)
+    expect_identical(instr2$values[[1]], c(2,5))
+    expect_identical(instr2$index_types, 2)
+    expect_identical(instr2$type, 2)
+
+    ## TODO: flesh this out with multiple index cases.
+})
+
+## TODO: modify tests below in light of flattened approach.
 
 test_that("nimble model prototype works", {
   nodeVarInfo <- list(list(name = "x", nDim  = 1), list(name = "mu", nDim = 1),
@@ -201,62 +308,3 @@ if(FALSE) {
 
   obj$calculate(calcInstrList)
 }
-########
-
-## CJP experimentation with nimbleModel, modelClass stuff.
-
-library(nimbleModel);library(nCompiler)
-
-code <- quote({
-    sd ~ dunif(0, 10)
-    for(i in 1:5) {
-    #    z[i] <- x[i+1] + 10
-        y[i] ~ dnorm(x[i+1], sd = sd)
-    }
-})
-
-inits <- list(sd = 1.5)
-data <- list(y = rnorm(5))
-nm <- modelClass$new(code, inits = inits, data = data)
-mclass <- nimbleModel:::make_modelClass_from_nimbleModel(nm)
-
-cmclass <- nCompile(mclass)
-
-# .debugModelInit <- TRUE
-m <- mclass$new(inits=list(sd=5, x = rnorm(6))) 
-
-m$calculate('sd')
-instrList <- makeInstrList(m, 'sd')
-m$calculate(instrList)
-instrList <- makeInstrList(m, 'y')
-m$calculate(instrList)
-
-instrList <- makeInstrList(m, c('y','sd'))  # ordering should be done internally
-m$calculate(instrList)
-
-m$calculate(c('y','sd'))  # ordering should be done internally
-
-m$y
-m$simulate('y')
-m$y
-
-# cr <- m$modelDef$calcRules[['y']]$rules[[1]]$makeCalcRange(m$modelDef$calcRules[['y']]$rules[[1]]$apply('y'))
-# cr <- m$modelDef$calcRules[['sd']]$rules[[1]]$makeCalcRange(m$modelDef$calcRules[['sd']]$rules[[1]]$apply('sd'))
-
-## Direct access to decl calculation works.
-out = m$private$Cpublic_obj$decl_1$private$Cpublic_obj$calc_one(0)
-out = m$private$Cpublic_obj$decl_1$private$Cpublic_obj$calc_0(instrList[[1]])
-out = m$private$Cpublic_obj$decl_1$private$Cpublic_obj$calculate(instrList[[1]])
-
-mclass <- nimbleModel(code, data = data, inits = inits)
-m <- mclass$new(inits=list(sd=5, x = rnorm(6)))
-m$calculate(c('y','sd')) 
-
-m <- nimbleModel(code, data = data, inits = inits, returnClass = FALSE)
-
-m$calculate(m$getDependencies('sd'))
-m$calculate(m$getDependencies('sd', self = FALSE))
-
-
-## Try out compilation; see nCompiler's test-nimbleModel.R. 
-

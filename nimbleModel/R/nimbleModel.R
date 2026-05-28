@@ -287,7 +287,7 @@ makeModel_nClass <- function(modelVarInfo,
     list(OPDEFS = opDefs,
         # A list of individual elements
         RPUBLIC = list(
-                      declFunNameToIndex = model$modelDef$declFunNameToIndex,  
+                      declFunNameToIndex_ = model$modelDef$declFunNameToIndex,  
                       defaultSizes = modelVarInfo$sizes,
                       defaultInits = inits,
                       defaultData = data,

@@ -13,7 +13,10 @@ modelBase_nClass <- nClass(
            if(isTRUE(.GlobalEnv$.debugModelInit)) browser()
             super$initialize()
 
-            declFunNames <- names(self$declFunNameToIndex)  
+            ## TODO: is there a better way to populate declFunNameToIndex in Cpublic?
+            declFunNameToIndex <- self$declFunNameToIndex_
+
+            declFunNames <- names(declFunNameToIndex)  
             if(isCompiled()) {
                 self$setup_decl_mgmt_from_names(declFunNames)
             } else {
@@ -23,7 +26,7 @@ modelBase_nClass <- nClass(
                 for(declFunName in declFunNames) {
                     self[[declFunName]] <- eval(as.name(self$CpublicDeclFuns[[declFunName]]))$new()
                     self[[declFunName]]$setModel(self)
-                    self$declFunList[[self$declFunNameToIndex[[declFunName]]]] <- self[[declFunName]]
+                    self$declFunList[[declFunNameToIndex[[declFunName]]]] <- self[[declFunName]]
                 }
             }
 
@@ -55,6 +58,7 @@ modelBase_nClass <- nClass(
                 for(nm in names(inits))
                     allData[[nm]] <- inits[[nm]]
             if(length(allData)) set_from_list(allData)
+
         },
         getVarNames = function(includeLogProb = FALSE, nodeRanges) {
             if(missing(nodeRanges)){
@@ -84,6 +88,8 @@ modelBase_nClass <- nClass(
                      topOnly, latentOnly, endOnly)
         }, 
         calculate = function(instrList) {
+            if(missing(instrList))
+              instrList <- getVarNames()
             if(inherits(instrList, 'instr_nClass')) {
               oneInstr <- instrList
               instrList <- nList(instr_nClass)$new()
@@ -102,6 +108,8 @@ modelBase_nClass <- nClass(
             return(logProb)
         },
         simulate = function(instrList) {
+            if(missing(instrList))
+              instrList <- getVarNames()
             if(inherits(instrList, 'instr_nClass')) {
               oneInstr <- instrList
               instrList <- nList(instr_nClass)$new()
