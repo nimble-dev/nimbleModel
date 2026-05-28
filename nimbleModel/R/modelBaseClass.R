@@ -58,7 +58,6 @@ modelBase_nClass <- nClass(
                 for(nm in names(inits))
                     allData[[nm]] <- inits[[nm]]
             if(length(allData)) set_from_list(allData)
-
         },
         getVarNames = function(includeLogProb = FALSE, nodeRanges) {
             if(missing(nodeRanges)){
