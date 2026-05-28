@@ -134,7 +134,9 @@ instr_nClass <- nClass(
     type = 'integerScalar',
     sortID = 'integerVector',
     declID = 'integerScalar'
-  ), compileInfo = list(interface = "full",
+  ),
+  predefined = quote(system.file(file.path("include","nimbleModel", "predef"), package="nimbleModel") |> file.path("instr_nClass")),
+  compileInfo = list(interface = "full",
                         createFromR = FALSE,
                         exportName = "instr_nClass_new",
                         packageNames = c(uncompiled="instr_nClass_R", compiled="instr_nClass")
