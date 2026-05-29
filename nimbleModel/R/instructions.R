@@ -158,10 +158,11 @@ instr_nClass <- nClass(
   ),
   predefined = quote(system.file(file.path("include","nimbleModel", "predef"), package="nimbleModel") |> file.path("instr_nClass")),
   compileInfo = list(interface = "full",
-                        createFromR = FALSE,
-                        exportName = "instr_nClass_new",
-                        packageNames = c(uncompiled="instr_nClass_R", compiled="instr_nClass")
-                        )
+                     createFromR = TRUE,
+                     exportName = "instr_nClass_new",
+                     needed_units = list("nList(integerVector)"),
+                     packageNames = c(uncompiled="instr_nClass_R", compiled="instr_nClass")
+                    )
 )
 
 

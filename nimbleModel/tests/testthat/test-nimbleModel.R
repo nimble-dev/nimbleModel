@@ -9,20 +9,20 @@ library(testthat)
 
 ## # To update the set of predefined nClasses
 ## # generate new predef/instr_nC. Move that directly to package code inst/nimbleModel/predef/instr_nC
-## nCompile(instr_nClass, control=list(generate_predefined=TRUE))
-## test <- nCompile(instr_nClass)
+nCompile(instr_nClass = nimbleModel:::instr_nClass, control=list(generate_predefined=TRUE))
+test <- nCompile(instr_nClass = nimbleModel:::instr_nClass)
 ## #
 ## # generate new predef/declFunBase_nC. Move to package and add
 ## # "#include <nimbleModel/predef/declFunBase_nC_/declFunBase_nC_.h>" in the hContent
 ## # after declaration of declFunBase_nClass
-## nCompile(declFunBase_nClass, control=list(generate_predefined=TRUE))
-## test <- nCompile(declFunBase_nClass)
+nCompile(nimbleModel:::declFunBase_nClass, control=list(generate_predefined=TRUE))
+test <- nCompile(nimbleModel:::declFunBase_nClass)
 ## #
 ## # generate new predef/modelBase_nC. Move to package and add
 ## # "#include <nimbleModel/predef/modelBase_nClass/modelBase_nCl_.h>" to that file,
 ## # after the declaration of modelBase_nClass.
-## nCompile(modelBase_nClass, control=list(generate_predefined=TRUE))
-## test <- nCompile(modelBase_nClass)
+ nCompile(modelBase_nClass = nimbleModel:::modelBase_nClass, control=list(generate_predefined=TRUE))
+ test <- nCompile(nimbleModel:::modelBase_nClass)
 ## #nCompile(instr_nClass, modelBase_nClass, declFunBase_nClass, control=list(generate_predefined=TRUE))
 
 ## TODO: revise these tests for instrClass (flattened approach)
@@ -43,6 +43,13 @@ test_that("initial tests/examples of nimble model using flattened approach", {
     ## "Manual" workflow not using `nimbleModel()`.
     nm <- modelClass$new(code, inits = inits, data = data)
     mclass <- nimbleModel:::make_modelClass_from_nimbleModel(nm)
+
+    # Begin Perry
+
+
+    # End Perry
+
+
     m <- mclass$new()
 
     lp_tau <- dunif(m$tau, 0, 100, log = TRUE)
@@ -100,7 +107,7 @@ test_that("initial tests/examples of nimble model using flattened approach", {
     mclass <- nimbleModel(code, data = data, inits = inits)
     m <- mclass$new(inits = list(tau = 7))
     expect_identical(m$tau, 7)
-    
+
 })
 
 test_that("basic creation of list of instr_nClass objects", {
@@ -127,7 +134,7 @@ test_that("basic creation of list of instr_nClass objects", {
     expect_identical(instr1$values[[1]], 2) # offset
     expect_identical(instr1$index_types, 1)
     expect_identical(instr1$type, 1)
-    
+
     instr2 <- makeInstrList(m, c('y[c(2,5)]'))[[1]]
     expect_identical(instr2$lens, 2)
     expect_identical(instr2$values[[1]], c(2,5))
