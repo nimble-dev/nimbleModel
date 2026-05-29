@@ -85,19 +85,11 @@ modelBase_nClass <- nClass(
             nimbleModel::getNodes(modelDef, nodes, stochOnly, determOnly, includeData, dataOnly,
                      includePredictive, predictiveOnly, includeRHSonly,
                      topOnly, latentOnly, endOnly)
-        }, 
-        calculate = function(instrList) {
-            if(missing(instrList))
-              instrList <- getVarNames()
-            if(inherits(instrList, 'instr_nClass')) {
-              oneInstr <- instrList
-              instrList <- nList(instr_nClass)$new()
-              instrList$setLength(1)
-              instrList[[1]] <- oneInstr
-            }
-            if(!((inherits(instrList, 'nList') || is.list(instrList)) && inherits(instrList[[1]], 'instr_nClass')))
-                instrList <- makeInstrList(self, instrList)
-            ## Assume instrList is ordered (it is done `makeInstrList`).
+        },
+        calculate = function(input) {
+            if(missing(input))
+                input <- getVarNames()
+            instrList <- makeInstrList(self,input)
             if(isCompiled())
                 return(calculate_impl(instrList))
             logProb <- 0
@@ -106,23 +98,40 @@ modelBase_nClass <- nClass(
             }
             return(logProb)
         },
-        simulate = function(instrList) {
-            if(missing(instrList))
-              instrList <- getVarNames()
-            if(inherits(instrList, 'instr_nClass')) {
-              oneInstr <- instrList
-              instrList <- nList(instr_nClass)$new()
-              instrList$setLength(1)
-              instrList[[1]] <- oneInstr
-            }
-            if(!((inherits(instrList, 'nList') || is.list(instrList)) && inherits(instrList[[1]], 'instr_nClass')))
-                instrList <- makeInstrList(self, instrList)
-            ## Assume instrList is ordered (it is done `makeInstrList`).
+        calculateDiff = function(input) {
+            if(missing(input))
+                input <- getVarNames()
+            instrList <- makeInstrList(self, input)
             if(isCompiled())
-                return(simulate_impl(instrList))
+                return(calculateDiff_impl(instrList))
+            logProb <- 0
             for(i in 1:length(instrList)) {
-                declFunList[[instrList[[i]]$declID]]$simulate(instrList[[i]])
+                logProb <- logProb + declFunList[[instrList[[i]]$declID]]$calculateDiff(instrList[[i]])
             }
+            return(logProb)
+        },
+        simulate = function(input) {
+            if(missing(input))
+                input <- getVarNames()
+            instrList <- makeInstrList(self, input)
+            if(isCompiled()) {
+                simulate_impl(instrList)
+            } else 
+                for(i in 1:length(instrList)) {
+                    declFunList[[instrList[[i]]$declID]]$simulate(instrList[[i]])
+                }
+        },
+        getLogProb = function(input) {
+            if(missing(input))
+                input <- getVarNames()
+            instrList <- makeInstrList(self, input)
+            if(isCompiled())
+                return(getLogProb_impl(instrList))
+            logProb <- 0
+            for(i in 1:length(instrList)) {
+                logProb <- logProb + declFunList[[instrList[[i]]$declID]]$getLogProb(instrList[[i]])
+            }
+            return(logProb)
         }
     ),
     Cpublic = list(
@@ -149,16 +158,42 @@ modelBase_nClass <- nClass(
                 virtual=TRUE
             )
         ), 
-        simulate_impl = nFunction(
-            name = "simulate_impl",
+        calculateDiff_impl = nFunction(
+            name = "calculateDiff_impl",
             function(instrList) {
-                cat("Uncompiled `simulate_impl` should never be called.\n")
+                cat("Uncompiled `calculateDiff_impl` should never be called.\n")
                 return(0)
             },
             returnType = 'numericScalar',
             compileInfo = list(
                 C_fun = function(instrList = 'nList(instr_nClass)') {
+                    ## NOTE: instrList input will be ordered.
+                    cppLiteral('modelClass_::calculateDiff(instrList);')
+                },
+                virtual=TRUE
+            )
+        ), 
+        simulate_impl = nFunction(
+            name = "simulate_impl",
+            function(instrList) {
+                cat("Uncompiled `simulate_impl` should never be called.\n")
+            },
+            compileInfo = list(
+                C_fun = function(instrList = 'nList(instr_nClass)') {
                     cppLiteral('modelClass_::simulate(instrList);')
+                },
+                virtual=TRUE
+            )
+        ),
+        getLogProb_impl = nFunction(
+            name = "getLogProb_impl",
+            function(instrList) {
+                cat("Uncompiled `getLogProb_impl` should never be called.\n")
+            },
+            returnType = 'numericScalar',
+            compileInfo = list(
+                C_fun = function(instrList = 'nList(instr_nClass)') {
+                    cppLiteral('modelClass_::getLogProb(instrList);')
                 },
                 virtual=TRUE
             )

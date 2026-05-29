@@ -45,22 +45,28 @@ test_that("initial tests/examples of nimble model using flattened approach", {
     mclass <- nimbleModel:::make_modelClass_from_nimbleModel(nm)
     m <- mclass$new()
 
-    expect_identical(m$calculate('tau'), dunif(m$tau, 0, 100, log = TRUE))
+    lp_tau <- dunif(m$tau, 0, 100, log = TRUE)
+    expect_identical(m$calculate('tau'), lp_tau)
+    expect_identical(m$getLogProb('tau'), lp_tau)
 
     instrList <- makeInstrList(m, 'tau')
-    expect_identical(m$calculate(instrList), dunif(m$tau, 0, 100, log = TRUE))
+    expect_identical(m$calculate(instrList), lp_tau)
+    expect_identical(m$getLogProb(instrList), lp_tau)
 
     deps <- m$getDependencies('tau', self = FALSE)
-    lp <-m$calculate(deps)
+    lp_y <- sum(dnorm(m$y, 0, 5, log = TRUE))
+    lp <- m$calculate(deps)
     expect_identical(m$lifted_sqrt_oPtau_cP, 5)
-    expect_identical(lp, sum(dnorm(m$y, 0, 5, log = TRUE)))
+    expect_equal(lp, lp_y)
+    expect_identical(m$getLogProb('y'), lp)
 
     ## Check that instrList is in correct order.
     instrList <- makeInstrList(m, c('y','lifted_sqrt_oPtau_cP'))
     expect_identical(instrList[[1]]$lens, 1)  # lifted node first
     lp <- m$calculate(instrList)
     expect_identical(m$lifted_sqrt_oPtau_cP, 5)
-    expect_identical(lp, sum(dnorm(m$y, 0, 5, log = TRUE)))
+    expect_equal(lp, lp_y)
+    expect_identical(m$getLogProb(c('y','lifted_sqrt_oPtau_cP')), lp_y)
 
     expect_identical(m$logProb_y, dnorm(m$y, 0, 5, log = TRUE))
 
@@ -68,7 +74,9 @@ test_that("initial tests/examples of nimble model using flattened approach", {
     lp <- m$calculate(c('y','lifted_sqrt_oPtau_cP'))  # Ordering should be done internally.
     expect_equal(lp, sum(dnorm(m$y, 0, 1, log = TRUE))) # Why not identical?
 
-    expect_equal(m$calculate(), sum(dnorm(m$y, 0, 1, log = TRUE)) + dunif(m$tau, 0, 100, log = TRUE) + dnorm(m$mu, log = TRUE))
+    lp <- sum(dnorm(m$y, 0, 1, log = TRUE)) + dunif(m$tau, 0, 100, log = TRUE) + dnorm(m$mu, log = TRUE)
+    expect_equal(m$calculate(), lp)
+    expect_equal(m$getLogProb(), lp)
 
     ## NOTE: `simulate` currently simulates data nodes by default.
     set.seed(1)

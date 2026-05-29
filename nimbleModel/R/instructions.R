@@ -83,16 +83,37 @@ determineInstrType <- function(instr, use_vec = FALSE) {
     return(type2itype[[type]])
 }
 
+## TODO: document this since it may be user-facing.
 #' @export
-makeInstrList <- function(model, varRanges, use_vec = FALSE) {
-    if(missing(varRanges))
-        varRanges <- model$getVarNames()
-    ## This works with a char vector of "nodes" or a list of (or single) varRanges
-    if(is(varRanges, 'varRangeClass')) varRanges <- list(varRanges)
+makeInstrList <- function(model, input, use_vec = FALSE) {
+    ## `model` simply must contain `modelDef`, so it can be a modelClass or modelBase_nClass object.
+    ## This works with:
+    ## (1) a char vector of "nodes"
+    ## (2) a list of (or single) varRanges 
+    ## (3) an nList of (or single) instr_nClass objects (assumed to be in sort order)
+    ## (4) an R list of instr_nClass objects (not assumed to be in sort order)
+    if(is(input, 'nList')) 
+        if(!inherits(input[[1]], 'instr_nClass')) {
+            stop("nList input to `makeInstrList` should contain `instr_nClass` objects")
+        } else return(input)  # Idempotent case.
+    if(is(input, 'instr_nClass'))
+        input <- list(input)
+    if(is.list(input) && all(sapply(input, function(x) inherits(x, 'instr_nClass')))) {
+        ## Create sort-ordered nList.
+        instrList <- nList(instr_nClass)$new()
+        numInstrs <- length(input)
+        instrList$setLength(numInstrs)
+        ord <- order(unlist(lapply(input, function(x) x$sortID)))
+        for(i in 1:numInstrs)
+            instrList[[i]] <- input[[ord[i]]]
+        return(instrList)
+    }
+    ## At this point we presumably are working with varRange(s).
+    if(is(input, 'varRangeClass')) input <- list(input)
     ## First apply calcRule to get overlap between input and the rule.
     ## Then make the calcRange to convert to loop indexing.
     ## Note that `calcRule$apply` handles converting char to varRange and handling full variable extent.
-    ranges <- unlist(lapply(varRanges, function(vr)
+    ranges <- unlist(lapply(input, function(vr)
         lapply(model$modelDef$calcRules[[nimbleModel:::getVarName(vr)]]$rules, function(rule)
             rule$makeCalcRange(rule$apply(vr))
             )))
@@ -109,20 +130,20 @@ instr_nClass <- nClass(
   classname = "instr_nClass",
   Rpublic = list(
       initialize = function(calcRange) {
-          instrList <- range2instr(calcRange)  # This processing could simply be included here in `initialize`.
-          self$lens <- instrList$lens
-          self$index_types <- instrList$index_types
-          self$dim <- instrList$dim
-          self$dims <- instrList$dims
-          self$slots <- instrList$slots
+          instr <- range2instr(calcRange)  # This processing could simply be included here in `initialize`.
+          self$lens <- instr$lens
+          self$index_types <- instr$index_types
+          self$dim <- instr$dim
+          self$dims <- instr$dims
+          self$slots <- instr$slots
           self$values <- nList(integerVector)$new()
           self$values$setLength(length(self$dims))
           if(self$dim)
               for(i in 1:length(self$dims))
-                  self$values[[i]] <- instrList$values[[i]]
-          self$type <- instrList$type    # Use integer for compilation (would char be ok?).
-          self$sortID <- instrList$sortID
-          self$declID <- instrList$declID
+                  self$values[[i]] <- instr$values[[i]]
+          self$type <- instr$type    # Use integer for compilation (would char be ok?).
+          self$sortID <- instr$sortID
+          self$declID <- instr$declID
       }),      
   Cpublic = list(
     lens = 'integerVector',
