@@ -11,6 +11,7 @@ using namespace Rcpp;
 // [[Rcpp::plugins(nCompiler_Eigen_plugin)]]
 // [[Rcpp::depends(RcppParallel)]]
 // [[Rcpp::depends(nCompiler)]]
+// [[Rcpp::depends(nimbleModel)]]
 // [[Rcpp::depends(Rcereal)]]
 
     bool  declFunBase_nClass::ping (  ) {

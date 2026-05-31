@@ -7,11 +7,11 @@ modelBase_nClass <- nClass(
         nondataRules = NULL,
         predictiveRules = NULL,
         nonpredictiveRules = NULL,
-        initialize = function(sizes = list(), inits = list(), data = list()) {
+        initialize = function(sizes = list(), inits = list(), data = list(), ...) {
            # It is not very easy to set debug onto the initialize function, so
            # here is a magic flag.
            if(isTRUE(.GlobalEnv$.debugModelInit)) browser()
-            super$initialize()
+            super$initialize(...)
 
             ## TODO: is there a better way to populate declFunNameToIndex in Cpublic?
             declFunNameToIndex <- self$declFunNameToIndex_
@@ -90,8 +90,10 @@ modelBase_nClass <- nClass(
             if(missing(input))
                 input <- getVarNames()
             instrList <- makeInstrList(self,input)
-            if(isCompiled())
+            if(isCompiled()) {
+                if(!instrList$isCompiled()) instrList <- makeCompiledInstrList(instrList)
                 return(calculate_impl(instrList))
+            }
             logProb <- 0
             for(i in 1:length(instrList)) {
                 logProb <- logProb + declFunList[[instrList[[i]]$declID]]$calculate(instrList[[i]])
@@ -142,6 +144,15 @@ modelBase_nClass <- nClass(
             name = "ping",
             function() {return(TRUE); returnType(logical())},
             compileInfo = list(virtual=TRUE)
+        ),
+        makeCompiledInstrList = nFunction(
+            name = "makeCompiledInstrList",
+            function(input = 'SEXP') {
+                ans <- nList(instr_nClass)$new()
+                cppLiteral("ans->set_all_values(input);")
+                return(ans)
+            },
+            returnType = 'nList(instr_nClass)'
         ),
         calculate_impl = nFunction(
             name = "calculate_impl",
@@ -203,7 +214,7 @@ modelBase_nClass <- nClass(
     predefined = quote(system.file(file.path("include","nimbleModel", "predef"), package="nimbleModel") |> file.path("modelBase_nC")),
     compileInfo=list(interface="full",
                      createFromR = FALSE,
-                     Hincludes = c('"declFunBase_nClass_c_.h","instr_nClass_c_.h"'), 
+                     Hincludes = c('"declFunBase_nClass_c_.h"','"instr_nClass_c_.h"'), 
                      needed_units = list("declFunBase_nClass","instr_nClass", "nList(instr_nClass)"),
                      exportName = "modelBase_nClass_new",
                      packageNames = c(uncompiled="modelBase_nClass_R", compiled="modelBase_nClass")

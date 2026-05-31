@@ -20,5 +20,6 @@ public:
 
     Rcpp::Environment  get_CnClass_env_declFunBase_nClass (  ) ;
 
+#include <nimbleModel/predef/declFunClass_/declFunClass_.h>
 
 #endif

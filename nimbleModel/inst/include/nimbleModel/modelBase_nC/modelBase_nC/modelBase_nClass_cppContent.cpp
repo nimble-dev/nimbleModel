@@ -12,10 +12,18 @@ using namespace Rcpp;
 // [[Rcpp::depends(RcppParallel)]]
 // [[Rcpp::depends(nCompiler)]]
 // [[Rcpp::depends(Rcereal)]]
+// [[Rcpp::depends(nimbleModel)]]
 
     bool  modelBase_nClass::ping (  ) {
 RESET_EIGEN_ERRORS
 return(true);
+}
+    std::shared_ptr<nList_instr_nClass>  modelBase_nClass::makeCompiledInstrList ( SEXP input ) {
+RESET_EIGEN_ERRORS
+std::shared_ptr<nList_instr_nClass> ans;
+ans = nClass_builder<nList_instr_nClass>()();
+ans->set_all_values(input);;
+return(ans);
 }
     double  modelBase_nClass::calculate_impl ( std::shared_ptr<nList_instr_nClass> instrList ) {
 RESET_EIGEN_ERRORS
@@ -46,6 +54,7 @@ field("declFunNameToIndex", &modelBase_nClass::declFunNameToIndex)
 ),
 NCOMPILER_METHODS(
 method("ping", &modelBase_nClass::ping, args({{}})),
+method("makeCompiledInstrList", &modelBase_nClass::makeCompiledInstrList, args({{arg("input",copy)}})),
 method("calculate_impl", &modelBase_nClass::calculate_impl, args({{arg("instrList",copy)}}))
 )
 )

@@ -222,12 +222,12 @@ makeModel_nClass <- function(modelVarInfo,
       compileInfo=list(
         C_fun = function(declNames="RcppCharacterVector") {do_setup_decl_mgmt_from_names(declNames)})
     ),
-    print_decls = nFunction(
-      name = "print_decls",
-      function() {},
-      compileInfo=list(
-        C_fun = function() {cppLiteral('modelClass_::c_print_decls();')})
-    ),
+    # print_decls = nFunction(
+    #   name = "print_decls",
+    #   function() {},
+    #   compileInfo=list(
+    #     C_fun = function() {cppLiteral('modelClass_::c_print_decls();')})
+    # ),
     set_from_list = nFunction(
       name = "set_from_list",
       function(Rlist) {for(v in names(Rlist))

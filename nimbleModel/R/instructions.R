@@ -129,21 +129,24 @@ makeInstrList <- function(model, input, use_vec = FALSE) {
 instr_nClass <- nClass(
   classname = "instr_nClass",
   Rpublic = list(
-      initialize = function(calcRange) {
-          instr <- range2instr(calcRange)  # This processing could simply be included here in `initialize`.
-          self$lens <- instr$lens
-          self$index_types <- instr$index_types
-          self$dim <- instr$dim
-          self$dims <- instr$dims
-          self$slots <- instr$slots
-          self$values <- nList(integerVector)$new()
-          self$values$setLength(length(self$dims))
-          if(self$dim)
-              for(i in 1:length(self$dims))
-                  self$values[[i]] <- instr$values[[i]]
-          self$type <- instr$type    # Use integer for compilation (would char be ok?).
-          self$sortID <- instr$sortID
-          self$declID <- instr$declID
+      initialize = function(calcRange, ...) {
+          super$initialize(...)
+          if(!missing(calcRange)) {
+            instr <- range2instr(calcRange)  # This processing could simply be included here in `initialize`.
+            self$lens <- instr$lens %||% integer()
+            self$index_types <- instr$index_types %||% integer()
+            self$dim <- instr$dim %||% 0L
+            self$dims <- instr$dims %||% integer()
+            self$slots <- instr$slots %||% integer()
+            self$values <- nList(integerVector)$new()
+            self$values$setLength(length(self$dims))
+            if(self$dim)
+                for(i in 1:length(self$dims))
+                    self$values[[i]] <- instr$values[[i]]
+            self$type <- instr$type  %||% 0L   # Use integer for compilation (would char be ok?).
+            self$sortID <- instr$sortID %||% integer()
+            self$declID <- instr$declID %||% 0L
+          }
       }),      
   Cpublic = list(
     lens = 'integerVector',
@@ -154,7 +157,13 @@ instr_nClass <- nClass(
     values = 'nList(integerVector)', 
     type = 'integerScalar',
     sortID = 'integerVector',
-    declID = 'integerScalar'
+    declID = 'integerScalar',
+    instr_nClass = nFunction(
+        function() {
+            values <- nList(integerVector)$new()
+        },
+        compileInfo = list(constructor=TRUE)
+    )
   ),
   predefined = quote(system.file(file.path("include","nimbleModel", "predef"), package="nimbleModel") |> file.path("instr_nClass")),
   compileInfo = list(interface = "full",

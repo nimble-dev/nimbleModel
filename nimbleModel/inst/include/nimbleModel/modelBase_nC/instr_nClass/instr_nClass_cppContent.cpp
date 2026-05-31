@@ -15,6 +15,7 @@ using namespace Rcpp;
 
       instr_nClass::instr_nClass (  ) {
 RESET_EIGEN_ERRORS
+values = nClass_builder<nList_I1>()();
 }
 
 // [[Rcpp::export(name = "instr_nClass_new")]]

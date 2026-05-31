@@ -13,16 +13,18 @@ nCompile(instr_nClass = nimbleModel:::instr_nClass, control=list(generate_predef
 test <- nCompile(instr_nClass = nimbleModel:::instr_nClass)
 ## #
 ## # generate new predef/declFunBase_nC. Move to package and add
-## # "#include <nimbleModel/predef/declFunBase_nC_/declFunBase_nC_.h>" in the hContent
+## # "#include <nimbleModel/predef/declFunClass_/declFunClass_.h>" in the hContent
+## # And add "// [[Rcpp::depends(nimbleModel)]]" to the cppContent
 ## # after declaration of declFunBase_nClass
 nCompile(nimbleModel:::declFunBase_nClass, control=list(generate_predefined=TRUE))
 test <- nCompile(nimbleModel:::declFunBase_nClass)
 ## #
 ## # generate new predef/modelBase_nC. Move to package and add
-## # "#include <nimbleModel/predef/modelBase_nClass/modelBase_nCl_.h>" to that file,
+## # "#include <nimbleModel/predef/modelClass_/modelClass_.h>" to the hContent
+## # And add "// [[Rcpp::depends(nimbleModel)]]" to the cppContent
 ## # after the declaration of modelBase_nClass.
- nCompile(modelBase_nClass = nimbleModel:::modelBase_nClass, control=list(generate_predefined=TRUE))
- test <- nCompile(nimbleModel:::modelBase_nClass)
+nCompile(modelBase_nClass = nimbleModel:::modelBase_nClass, control=list(generate_predefined=TRUE))
+test <- nCompile(nimbleModel:::modelBase_nClass)
 ## #nCompile(instr_nClass, modelBase_nClass, declFunBase_nClass, control=list(generate_predefined=TRUE))
 
 ## TODO: revise these tests for instrClass (flattened approach)
@@ -45,7 +47,58 @@ test_that("initial tests/examples of nimble model using flattened approach", {
     mclass <- nimbleModel:::make_modelClass_from_nimbleModel(nm)
 
     # Begin Perry
+    Cmclass <- nCompile(mclass)
+    Cobj <- Cmclass$new()
+    Cobj$calculate_impl
+    Cobj$calculate
+    debug(Cobj$calculate)
+    Cobj$calculate('tau')
+    # PROBLEM, in nList_<>::set_from_list for uncompiled list input.
+    # I guess set_all_values should skip NULLs? Or maybe only for non-R targets?
+    # Give a better message than "Bad type". Pass the name? Check for NULL?
 
+    # Next steps
+    # initialize the instrs from uncompiled if needed
+    #
+
+    # check technique of building and copying nList(instr_nClass) as a method:
+    inC <- nimbleModel:::instr_nClass
+    test1 <- nFunction(
+      function(Robj = 'SEXP') {
+        ans <- inC$new()
+        cppLiteral("ans->set_all_values(Robj);")
+        cppLiteral("std::cout<<ans->dim<<std::endl;")
+        return(ans)
+      },
+      returnType = 'inC'
+    )
+    ctest1 <- nCompile(test1)
+    #check_obj <- function(x) {browser(); NULL;}
+    ctest1(list())
+    obj1 <- ctest1(list(dim = 2L, dims = c(3L, 3L)))
+    obj1$dim
+    obj1$dims
+    obj1$values
+
+    #####
+    inC <- nimbleModel:::instr_nClass
+    test1 <- nFunction(
+      function(Robj = 'SEXP') {
+        ans <- nList(inC)$new()
+        cppLiteral("ans->set_all_values(Robj);")
+#        cppLiteral("std::cout<<ans->dim<<std::endl;")
+        return(ans)
+      },
+      returnType = 'nList(inC)'
+    )
+    ctest1 <- nCompile(test1)
+    #check_obj <- function(x) {browser(); NULL;}
+    ctest1(list())
+    obj1 <- ctest1(list(list(dim = 2L, dims = c(3L, 3L))))
+    obj1[[1]]$dim
+    obj1[[1]]$dims
+    obj1[[1]]$values
+    obj1[[1]]$lens
 
     # End Perry
 
