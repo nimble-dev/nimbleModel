@@ -15,6 +15,9 @@ public:
    virtual  bool  ping (  ) ;
     std::shared_ptr<nList_instr_nClass>  makeCompiledInstrList ( SEXP input ) ;
    virtual  double  calculate_impl ( std::shared_ptr<nList_instr_nClass> instrList ) ;
+   virtual  double  calculateDiff_impl ( std::shared_ptr<nList_instr_nClass> instrList ) ;
+   virtual  double  getLogProb_impl ( std::shared_ptr<nList_instr_nClass> instrList ) ;
+   virtual  void  simulate_impl ( std::shared_ptr<nList_instr_nClass> instrList ) ;
       modelBase_nClass (  ) ;
   double declFunList;
   Rcpp::List declFunNameToIndex;

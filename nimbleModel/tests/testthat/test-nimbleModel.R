@@ -9,25 +9,104 @@ library(testthat)
 
 ## # To update the set of predefined nClasses
 ## # generate new predef/instr_nC. Move that directly to package code inst/nimbleModel/predef/instr_nC
-nCompile(instr_nClass = nimbleModel:::instr_nClass, control=list(generate_predefined=TRUE))
-test <- nCompile(instr_nClass = nimbleModel:::instr_nClass)
+## nCompile(instr_nClass = nimbleModel:::instr_nClass, control=list(generate_predefined=TRUE))
+## test <- nCompile(instr_nClass = nimbleModel:::instr_nClass)
 ## #
 ## # generate new predef/declFunBase_nC. Move to package and add
 ## # "#include <nimbleModel/predef/declFunClass_/declFunClass_.h>" in the hContent
 ## # And add "// [[Rcpp::depends(nimbleModel)]]" to the cppContent
 ## # after declaration of declFunBase_nClass
-nCompile(nimbleModel:::declFunBase_nClass, control=list(generate_predefined=TRUE))
-test <- nCompile(nimbleModel:::declFunBase_nClass)
+## nCompile(nimbleModel:::declFunBase_nClass, control=list(generate_predefined=TRUE))
+## test <- nCompile(nimbleModel:::declFunBase_nClass)
 ## #
 ## # generate new predef/modelBase_nC. Move to package and add
 ## # "#include <nimbleModel/predef/modelClass_/modelClass_.h>" to the hContent
 ## # And add "// [[Rcpp::depends(nimbleModel)]]" to the cppContent
 ## # after the declaration of modelBase_nClass.
-nCompile(modelBase_nClass = nimbleModel:::modelBase_nClass, control=list(generate_predefined=TRUE))
-test <- nCompile(nimbleModel:::modelBase_nClass)
+## nCompile(modelBase_nClass = nimbleModel:::modelBase_nClass, control=list(generate_predefined=TRUE))
+## test <- nCompile(nimbleModel:::modelBase_nClass)
 ## #nCompile(instr_nClass, modelBase_nClass, declFunBase_nClass, control=list(generate_predefined=TRUE))
 
 ## TODO: revise these tests for instrClass (flattened approach)
+
+test_that("initial test of compiled model", {
+    code <- quote({
+        tau ~ dunif(0, 100)
+        mu ~ dnorm(0,1)
+        for(i in 1:5) {
+            y[i] ~ dnorm(mu, var = tau)
+        }
+    })
+
+    inits <- list(tau = 25, mu = 0)
+    data <- list(y = rnorm(5))
+
+    ## "Manual" workflow not using `nimbleModel()`.
+    nm <- modelClass$new(code, inits = inits, data = data)
+    mclass <- nimbleModel:::make_modelClass_from_nimbleModel(nm)
+
+    Cmclass <- nCompile(mclass)
+    Cobj <- Cmclass$new()
+    obj <- mclass$new()
+
+    # Check a first calculation on a simple node
+    Cans <- Cobj$calculate('tau')
+    ans <- obj$calculate('tau')
+    check <- dunif(Cobj$tau, 0, 100, log = TRUE)
+    expect_equal(Cans, ans)
+    expect_equal(Cans, check)
+
+    # Check entire model, also getting lifted sd node computed
+    Cans <- Cobj$calculate()
+    ans <- obj$calculate()
+    expect_equal(Cans, ans)
+
+    # Check a sequence
+    Cans <- Cobj$calculate('y[1:3]')
+    ans <- obj$calculate('y[1:3]')
+    check <- dnorm(Cobj$y[1:3], Cobj$mu, sqrt(Cobj$tau), log=TRUE) |> sum()
+    expect_equal(Cans, ans)
+    expect_equal(Cans, check)
+
+    # Check a non-contiguous pair of nodes (a mat case)
+    nodes <- c('y[2]','y[4]')
+    Cans <- Cobj$calculate(nodes)
+    ans <- obj$calculate(nodes)
+    check <- dnorm(Cobj$y[c(2, 4)], Cobj$mu, sqrt(Cobj$tau), log=TRUE) |> sum()
+    expect_equal(Cans, ans)
+    expect_equal(Cans, check)
+
+    # Check getLogProb
+    Cans <- Cobj$getLogProb('y[1:4]')
+    ans <- obj$calculate('y[1:4]')
+    check <- dnorm(Cobj$y[1:4], Cobj$mu, sqrt(Cobj$tau), log=TRUE) |> sum()
+    expect_equal(Cans, ans)
+    expect_equal(Cans, check)
+
+    # Prepare for calculateDiff test below
+    old_logProb <- dnorm(Cobj$y[3:4], Cobj$mu, sqrt(Cobj$tau), log=TRUE) |> sum()
+
+    # Check simulate
+    set.seed(1)
+    Cobj$simulate('y[3:4]')
+    set.seed(1)
+    obj$simulate('y[3:4]')
+    expect_equal(Cobj$y, obj$y)
+
+    # Check getLogProb
+    # Do this assignment in case the previous test of repeatability fails
+    obj$y[3:4] <- Cobj$y[3:4]
+    Cans <- Cobj$calculateDiff('y[3:4]')
+    ans <- obj$calculateDiff('y[3:4]')
+    new_logProb <- dnorm(Cobj$y[3:4], Cobj$mu, sqrt(Cobj$tau), log=TRUE) |> sum()
+    check <- new_logProb - old_logProb
+    expect_equal(Cans, ans)
+    expect_equal(Cans, check)
+
+    # Always end compiled tests with removing and garbage collecting
+    # to ensure gc() happens while the DLL is still in place.
+    rm(Cobj, obj); gc()
+})
 
 test_that("initial tests/examples of nimble model using flattened approach", {
 
@@ -44,15 +123,32 @@ test_that("initial tests/examples of nimble model using flattened approach", {
 
     ## "Manual" workflow not using `nimbleModel()`.
     nm <- modelClass$new(code, inits = inits, data = data)
+    #debug(nimbleModel:::make_modelClass_from_nimbleModel)
+    #debug(nimbleModel:::makeModel_nClass)
     mclass <- nimbleModel:::make_modelClass_from_nimbleModel(nm)
 
     # Begin Perry
     Cmclass <- nCompile(mclass)
     Cobj <- Cmclass$new()
-    Cobj$calculate_impl
-    Cobj$calculate
-    debug(Cobj$calculate)
+    #Cobj$calculate_impl
+    #Cobj$calculate
+    #debug(Cobj$calculate)
     Cobj$calculate('tau')
+    Cobj$calculate()
+    Cobj$calculate('y[1]')
+    dnorm(Cobj$y[1], Cobj$mu, sqrt(Cobj$tau), log=TRUE)
+    Cobj$calculate('y[1:3]')
+    dnorm(Cobj$y[1:3], Cobj$mu, sqrt(Cobj$tau), log=TRUE) |> sum()
+
+
+    NULL
+
+    obj <- mclass$new()
+    obj$calculate()
+    #debug(obj$calculate)
+    obj$calculate('y[1]')
+    obj$calculate('y[1:3]')
+    NULL
     # PROBLEM, in nList_<>::set_from_list for uncompiled list input.
     # I guess set_all_values should skip NULLs? Or maybe only for non-R targets?
     # Give a better message than "Bad type". Pass the name? Check for NULL?

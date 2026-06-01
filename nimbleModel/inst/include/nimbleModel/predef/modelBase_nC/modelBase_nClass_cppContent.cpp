@@ -30,6 +30,20 @@ RESET_EIGEN_ERRORS
 Rprintf("modelBase_nClass calculate_impl (should not see this)\n");;
 return(0.0);
 }
+    double  modelBase_nClass::calculateDiff_impl ( std::shared_ptr<nList_instr_nClass> instrList ) {
+RESET_EIGEN_ERRORS
+Rprintf("modelBase_nClass calculateDiff_impl (should not see this)\n");;
+return(0.0);
+}
+    double  modelBase_nClass::getLogProb_impl ( std::shared_ptr<nList_instr_nClass> instrList ) {
+RESET_EIGEN_ERRORS
+Rprintf("modelBase_nClass getLogProb_impl (should not see this)\n");;
+return(0.0);
+}
+    void  modelBase_nClass::simulate_impl ( std::shared_ptr<nList_instr_nClass> instrList ) {
+RESET_EIGEN_ERRORS
+Rprintf("modelBase_nClass simulate_impl (should not see this)\n");;
+}
       modelBase_nClass::modelBase_nClass (  ) {
 RESET_EIGEN_ERRORS
 }
@@ -55,7 +69,10 @@ field("declFunNameToIndex", &modelBase_nClass::declFunNameToIndex)
 NCOMPILER_METHODS(
 method("ping", &modelBase_nClass::ping, args({{}})),
 method("makeCompiledInstrList", &modelBase_nClass::makeCompiledInstrList, args({{arg("input",copy)}})),
-method("calculate_impl", &modelBase_nClass::calculate_impl, args({{arg("instrList",copy)}}))
+method("calculate_impl", &modelBase_nClass::calculate_impl, args({{arg("instrList",copy)}})),
+method("calculateDiff_impl", &modelBase_nClass::calculateDiff_impl, args({{arg("instrList",copy)}})),
+method("getLogProb_impl", &modelBase_nClass::getLogProb_impl, args({{arg("instrList",copy)}})),
+method("simulate_impl", &modelBase_nClass::simulate_impl, args({{arg("instrList",copy)}}))
 )
 )
 #endif

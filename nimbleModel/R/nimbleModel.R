@@ -47,6 +47,11 @@ make_modelClass_from_nimbleModel <- function(m, compile=FALSE) {
     assign(declFun_RvarName, make_declFun_nClass(declVarInfo, decl_methods, declFun_classname, declID))
     declInfoList[[i]] <- make_decl_info_for_model_nClass(declFun_membername, declFun_RvarName, declFun_classname, declVarInfo)
   }
+  ## We have a canonical ordering of decls, but it does arise from a couple of places that should match.
+  # so we check here.
+  ordered_decl_names <- lapply(declInfoList, function(x) x$membername) |> unlist()
+  if(!identical(ordered_decl_names, names(mDef$declFunNameToIndex)))
+   stop("declaration ordering in declInfoList does not matchdeclFunNameToIndex")
   modelClassInstance <- makeModel_nClass(modelVarInfo, declInfoList, inits = m$origInits, data = m$origData,
                                          model = m, classname = "my_model", env = environment())
 }
@@ -196,13 +201,13 @@ makeModel_nClass <- function(modelVarInfo,
   names(CpublicModelVars) <- modelVarInfo$vars |> lapply(\(x) x$name) |> unlist()
   opDefs <- list(
     base_ping = nCompiler:::getOperatorDef("custom_call"),
-    setup_decl_mgmt = nCompiler:::getOperatorDef("custom_call"),
+    setup_auto_decl_mgmt = nCompiler:::getOperatorDef("custom_call"),
     do_setup_decl_mgmt_from_names = nCompiler:::getOperatorDef("custom_call")
   )
   opDefs$base_ping$returnType <- nCompiler:::type2symbol(quote(void()))   # How can this be passed into nClass?
   opDefs$base_ping$labelAbstractTypes$recurse <- FALSE
-  opDefs$setup_decl_mgmt$returnType <- nCompiler:::type2symbol(quote(void()))
-  opDefs$setup_decl_mgmt$labelAbstractTypes$recurse <- FALSE
+  opDefs$setup_auto_decl_mgmt$returnType <- nCompiler:::type2symbol(quote(void()))
+  opDefs$setup_auto_decl_mgmt$labelAbstractTypes$recurse <- FALSE
   opDefs$do_setup_decl_mgmt_from_names$returnType <- nCompiler:::type2symbol(quote(void()))
   opDefs$do_setup_decl_mgmt_from_names$labelAbstractTypes$recurse <- FALSE
 
@@ -210,11 +215,11 @@ makeModel_nClass <- function(modelVarInfo,
     classname <- modelLabelCreator()
 
   CpublicMethods <- list(
-    do_setup_decl_mgmt = nFunction(
-      name = "call_setup_decl_mgmt",
+    do_setup_auto_decl_mgmt = nFunction(
+      name = "call_setup_auto_decl_mgmt",
       function() {},
       compileInfo=list(
-        C_fun = function() {setup_decl_mgmt()})
+        C_fun = function() {setup_auto_decl_mgmt()})
     ),
     setup_decl_mgmt_from_names = nFunction(
       name = "call_setup_decl_mgmt_from_names",
@@ -252,18 +257,31 @@ makeModel_nClass <- function(modelVarInfo,
          init_string = init_string)
   })
 
-  CpublicDeclFuns <- decl_pieces |> lapply(\(x) x$nClass_type) |> setNames(names(model$modelDef$declFunNameToIndex))
+  declFunNameToIndex <- model$modelDef$declFunNameToIndex
+
+  CpublicDeclFuns <- decl_pieces |> lapply(\(x) x$nClass_type) |> setNames(names(declFunNameToIndex))
   # CpublicDeclFuns <- list(
   #   beta_decl = 'decl_dnorm()'
   # )
   CpublicCtor <- list(
     nFunction(
-      function(){},
+      function(){
+        cppLiteral("setup_decl_mgmt();")  # This will be the default but can be overridden by decls that need to do something special. We could also have a version that takes decl names as input and only sets up those.
+      },
       compileInfo = list(constructor=TRUE,
                          #initializers = c('nCpp("beta_decl(new decl_dnorm(mu, beta, 1))")'))
                          initializers = decl_pieces |> lapply(\(x) x$init_string) |> unlist())
     )
   ) |> structure(names = classname)
+
+  declFunPtrsSetupLiterals <- paste0("declFunPtrs[(", as.integer(declFunNameToIndex) , ")-1] = ", names(declFunNameToIndex))
+  declFunPtrsResizeLiteral <- paste0("declFunPtrs.resize(", length(declFunNameToIndex) , ")")
+  setup_decl_mgmt_body <- as.list(c(declFunPtrsResizeLiteral, declFunPtrsSetupLiterals)) |>
+    lapply(\(x) substitute(nCpp(X), list(X = x)))
+  setup_decl_mgmt_fun <- function() {}
+  for(i in seq_along(setup_decl_mgmt_body))
+    body(setup_decl_mgmt_fun)[[i+1]] <- setup_decl_mgmt_body[[i]]
+  Cpublic_setup_decl_mgmt <- list(setup_decl_mgmt = nFunction(name = "setup_decl_mgmt", fun = setup_decl_mgmt_fun))
 
   baseclass <- paste0("modelClass_<", classname, ">")
   # CpublicDeclFuns has elements like "decl_1 = quote(declFxn_1())"
@@ -287,7 +305,7 @@ makeModel_nClass <- function(modelVarInfo,
     list(OPDEFS = opDefs,
         # A list of individual elements
         RPUBLIC = list(
-                      declFunNameToIndex_ = model$modelDef$declFunNameToIndex,  
+                      declFunNameToIndex_ = model$modelDef$declFunNameToIndex,
                       defaultSizes = modelVarInfo$sizes,
                       defaultInits = inits,
                       defaultData = data,
@@ -298,7 +316,7 @@ makeModel_nClass <- function(modelVarInfo,
                       nonpredictiveRules = model$nonpredictiveRules,
                       CpublicDeclFuns = CpublicDeclFuns),
         # A concatenation of lists
-        CPUBLIC = c(CpublicDeclFuns, CpublicModelVars, CpublicCtor, CpublicMethods),
+        CPUBLIC = c(CpublicDeclFuns, Cpublic_setup_decl_mgmt, CpublicModelVars, CpublicCtor, CpublicMethods),
         CLASSNAME = classname,
         BASECLASS = baseclass)
   )
@@ -476,5 +494,3 @@ make_decl_methods_from_declInfo <- function(declInfo) {
   }
   methodList
 }
-
-

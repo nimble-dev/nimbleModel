@@ -7,33 +7,51 @@ template<class Derived>
 class modelClass_ : public modelBase_nClass {
 public:
     modelClass_() {};
-    std::vector< std::shared_ptr<declFunBase_nClass> > nodeFxnPtrs;
+    std::vector< std::shared_ptr<declFunBase_nClass> > declFunPtrs;
     std::map<std::string, size_t> name2index_map;
-    double calculate_impl(std::shared_ptr<nList_instr_nClass> calcInstrList) override {
-        double logProb(0.0);
-        // const auto& calcInstrVec = calcInstrList->contents();
-        // auto calcInstr = calcInstrVec.cbegin();
-        // auto calcInstrEnd = calcInstrVec.cend();
-        // for( ; calcInstr != calcInstrEnd; ++calcInstr) {
-        //     auto nodeFxnPtr = nodeFxnPtrs[(*calcInstr)->nodeIndex-1];
-        //     const auto& nodeInstrVec = (*calcInstr)->nodeInstrVec->contents();
-        //     auto nodeInstr = nodeInstrVec.cbegin();
-        //     auto nodeInstrEnd = nodeInstrVec.cend();
-        //     for( ; nodeInstr != nodeInstrEnd; ) {
-        //         logProb += nodeFxnPtr->calculate(*nodeInstr++);
-        //     }
+    double calculate_impl(std::shared_ptr<nList_instr_nClass> instrList) override {
+        // double logProb(0.0);
+        // const auto& instrVec = instrList->contents();
+        // for (const auto& instr : instrVec) {
+        //     logProb += declFunPtrs[instr->declID - 1 ]->calculate_cpp(instr);
         // }
+        // return(logProb);
+        return calc_op_impl< &declFunBase_nClass::calculate_cpp >(instrList);
+    }
+    double calculateDiff_impl(std::shared_ptr<nList_instr_nClass> instrList) override {
+        return calc_op_impl< &declFunBase_nClass::calculateDiff_cpp >(instrList);
+    }
+    double getLogProb_impl(std::shared_ptr<nList_instr_nClass> instrList) override {
+        return calc_op_impl< &declFunBase_nClass::getLogProb_cpp >(instrList);
+    }
+
+    template <auto Method>
+    double calc_op_impl(std::shared_ptr<nList_instr_nClass> instrList) {
+        double logProb(0.0);
+        const auto& instrVec = instrList->contents();
+        for (const auto& instr : instrVec) {
+            logProb += ((*(declFunPtrs[instr->declID - 1 ])).*Method)(instr);
+        }
         return(logProb);
     }
-    
+
+    void simulate_impl(std::shared_ptr<nList_instr_nClass> instrList) {
+        const auto& instrVec = instrList->contents();
+        for (const auto& instr : instrVec) {
+            declFunPtrs[instr->declID - 1 ]->simulate_cpp(instr);
+        }
+    }
+
     // This version takes a character vector of names from R so that
     // the ordering of nodeFxns matches that in R, which is important for
     // the calculation instructions.
+    // This may become rarely used because we will generate into a derived
+    // model class a canonical ordering
     void do_setup_decl_mgmt_from_names(Rcpp::CharacterVector names)   {
-        Rprintf("Attempting setup_decl_mgmt_from_names with %d names\n", (int)names.length());
+        // Rprintf("Attempting setup_decl_mgmt_from_names with %d names\n", (int)names.length());
         Derived *self = static_cast<Derived*>(this);
         const auto& name2access = self->get_name2access();
-        nodeFxnPtrs.clear();
+        declFunPtrs.clear();
         name2index_map.clear();
         size_t n = names.length();
         for(size_t i = 0; i < n; ++i) {
@@ -45,18 +63,18 @@ public:
                 // So we can turn these messages into errors once things are working.
                 bool got_one = (ptr != nullptr);
                 if(got_one) {
-                    Rprintf("HOORAY: field %s is genericInterfaceBaseC\n", name.c_str());
+                   // Rprintf("HOORAY: field %s is genericInterfaceBaseC\n", name.c_str());
                     std::shared_ptr<declFunBase_nClass> ptr2 = std::dynamic_pointer_cast<declFunBase_nClass>(ptr);
                     bool step_two = (ptr2 != nullptr);
                     if(step_two) {
-                        Rprintf("AND IT IS A NODEFXN PTR!\n");
-                        name2index_map.emplace(name, nodeFxnPtrs.size());
-                        nodeFxnPtrs.push_back(ptr2);
+                        // Rprintf("AND IT IS A NODEFXN PTR!\n");
+                        name2index_map.emplace(name, declFunPtrs.size());
+                        declFunPtrs.push_back(ptr2);
                     } else {
-                        Rprintf("but it is not a nodefxn ptr\n");
+                        // Rprintf("but it is not a nodefxn ptr\n");
                     }
                 } else {
-                    Rprintf("field %s is NOT a genericInterfaceBaseC\n", name.c_str());
+                    // Rprintf("field %s is NOT a genericInterfaceBaseC\n", name.c_str());
                 }
             }
         }
@@ -65,33 +83,36 @@ public:
     // This version scans all members to find nodeFxns.
     // The resulting ordering comes from the order of the name2access map,
     // and so may not match R. This was written first but may fall out of common use.
-    void setup_decl_mgmt() {
+    // This may become rarely used because we will generate into a derived
+    // model class a canonical ordering
+    void setup_auto_decl_mgmt() {
         Derived *self = static_cast<Derived*>(this);
         const auto& name2access = self->get_name2access();
         size_t n = name2access.size();
-        Rprintf("There are %d member variables indexed:\n", (int)n);
+        //Rprintf("There are %d member variables indexed:\n", (int)n);
         auto i_n2a = name2access.begin();
         auto end_n2a = name2access.end();
-        nodeFxnPtrs.clear();
+        declFunPtrs.clear();
         name2index_map.clear();
         size_t index = 0;
         for(; i_n2a != end_n2a; ++i_n2a) {
             std::shared_ptr<genericInterfaceBaseC> ptr = i_n2a->second->getInterfacePtr(dynamic_cast<genericInterfaceBaseC*>(self));
             bool got_one = (ptr != nullptr);
             if(got_one) {
-                Rprintf("HOORAY: field %s is genericInterfaceBaseC\n", i_n2a->first.c_str());
+               // Rprintf("HOORAY: field %s is genericInterfaceBaseC\n", i_n2a->first.c_str());
                 std::shared_ptr<declFunBase_nClass> ptr2 = std::dynamic_pointer_cast<declFunBase_nClass>(ptr);
                 bool step_two = (ptr2 != nullptr);
                 if(step_two) {
-                    Rprintf("AND IT IS A NODEFXN PTR!\n");
-                    nodeFxnPtrs.push_back(ptr2);
+                //    Rprintf("AND IT IS A NODEFXN PTR!\n");
+                    declFunPtrs.push_back(ptr2);
                     name2index_map.emplace(i_n2a->first, index++);
                 } else {
-                    Rprintf("but it is not a nodefxn ptr\n");
+                  //  Rprintf("but it is not a nodefxn ptr\n");
                 }
             }
-            else
-                Rprintf("field %s is NOT a genericInterfaceBaseC\n", i_n2a->first.c_str());
+            else {
+              //  Rprintf("field %s is NOT a genericInterfaceBaseC\n", i_n2a->first.c_str());
+            }
         }
     }
     void c_print_nodes() {

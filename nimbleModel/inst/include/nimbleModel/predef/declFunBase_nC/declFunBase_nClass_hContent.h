@@ -11,8 +11,10 @@
 class declFunBase_nClass : public interface_resolver< genericInterfaceC<declFunBase_nClass> >, public loadedObjectHookC<declFunBase_nClass> {
 public:
    virtual  bool  ping (  ) ;
-   virtual  double  calculate ( std::shared_ptr<instr_nClass> instr ) ;
-   virtual  double  calc_0 ( std::shared_ptr<instr_nClass> instr ) ;
+   virtual  double  calculate_cpp ( std::shared_ptr<instr_nClass> instr ) ;
+   virtual  double  calculateDiff_cpp ( std::shared_ptr<instr_nClass> instr ) ;
+   virtual  double  getLogProb_cpp ( std::shared_ptr<instr_nClass> instr ) ;
+   virtual  void  simulate_cpp ( std::shared_ptr<instr_nClass> instr ) ;
       declFunBase_nClass (  ) ;
 };
 
