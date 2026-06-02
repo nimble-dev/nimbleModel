@@ -36,7 +36,7 @@ range2instr <- function(range) {
         instr$values <- lapply(range$indexingRange$indexRanges, function(x)
             switch(class(x)[1],
                    "indexRangeScalarClass" = x$value,
-                   "indexRangeSequenceClass" = x$start-1,  # -1 to avoid constantly adding 1 in calculate()
+                   "indexRangeSequenceClass" = x$start,  
                    "indexRangeMatrixClass" = c(t(matrix(x$values, nc = x$numColumns)))))  # in calcRange, column major; need row major here for simpler/more efficient determination of indices
     }
     instr$type <- determineInstrType(instr)

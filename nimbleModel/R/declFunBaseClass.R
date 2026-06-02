@@ -24,7 +24,7 @@ declFunBase_nClass <- nClass(
     calc_1_seq = 
     function(instr, fn) {
       logProb = 0
-      iStart <- instr$values[[1]][1] # Values seem to start offset by -1, a bit confusing
+      iStart <- instr$values[[1]][1]-1
       for(i in 1:instr$lens[1])
         logProb <- logProb + self[[fn]](iStart + i)
       return(logProb)
