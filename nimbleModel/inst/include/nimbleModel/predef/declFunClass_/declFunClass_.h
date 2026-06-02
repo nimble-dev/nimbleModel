@@ -34,7 +34,7 @@ public:
     double calc_1_seq_(std::shared_ptr<instr_nClass> instr) {
         int len = instr->lens[0];
         if(len < 1) return(0);
-        int iStart = instr->values->operator[](0)[0] + 1;
+        int iStart = instr->values->operator[](0)[0];
         int iEnd = iStart + len;
         Eigen::Tensor<int, 1> idx(1);
         double logProb(0.);

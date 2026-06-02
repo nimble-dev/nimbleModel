@@ -259,6 +259,24 @@ test_that("initial tests/examples of nimble model using flattened approach", {
 
 })
 
+test_that("multiple index slot, single indexRange case", {
+    code <- quote({
+        for(i in 1:5) 
+            for(j in 1:3)
+                y[i,j] ~ dnorm(0,1)
+    })
+    data <- list(y = matrix(rnorm(15),5))
+    mclass <- nimbleModel(code, data = data)
+    m <- mclass$new()
+    vr <- varRangeClass$new(list(newIndexRange(matrix(c(2,4,3,1), ncol=2))), varName='y')
+    expect_equal(m$calculate(vr), dnorm(data$y[2,3],log=TRUE) + dnorm(data$y[4,1],log=TRUE))
+    cmclass <- nCompile(mclass)
+    cm <- cmclass$new()
+    ## TODO: this is giving back 0.
+    expect_equal(cm$calculate(vr), dnorm(data$y[2,3],log=TRUE) + dnorm(data$y[4,1],log=TRUE))
+
+})
+
 test_that("basic creation of list of instr_nClass objects", {
 
     code <- quote({
