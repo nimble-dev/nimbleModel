@@ -259,7 +259,8 @@ test_that("initial tests/examples of nimble model using flattened approach", {
 
 })
 
-test_that("multiple index slot, single indexRange case", {
+test_that("multiple index slots, single indexRange case", {
+    library(nimbleModel); library(nCompiler); library(testthat)
     code <- quote({
         for(i in 1:5) 
             for(j in 1:3)
@@ -275,6 +276,12 @@ test_that("multiple index slot, single indexRange case", {
     ## TODO: this is giving back 0.
     expect_equal(cm$calculate(vr), dnorm(data$y[2,3],log=TRUE) + dnorm(data$y[4,1],log=TRUE))
 
+    set.seed(1)
+    m$simulate(vr)
+    set.seed(1)
+    cm$simulate(vr)
+    expect_equal(m$y, cm$y)
+    
 })
 
 test_that("basic creation of list of instr_nClass objects", {

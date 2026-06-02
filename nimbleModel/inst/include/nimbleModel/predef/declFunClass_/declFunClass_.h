@@ -24,6 +24,7 @@ public:
         if(instr_type == 0) return calc_0_< Method >(instr);
         if(instr_type == 1) return calc_1_seq_< Method >(instr);
         if(instr_type == 2) return calc_1_mat_< Method >(instr);
+        if(instr_type == 3) return calc_1_matp_< Method >(instr);
         return(0);
     }
     template<auto Method>
@@ -53,18 +54,35 @@ public:
         Eigen::Tensor<int, 1> idx(1);
         double logProb(0.);
         for(int i = 0; i < len; ++i) {
-            idx[0] = vals[i];
+            idx[0] = vals[i];           // TODO: do we need this additional assignment?
             logProb += (static_cast<Derived*>(this)->*Method)(idx);
         }
         return(logProb);
     }
-    // simulate
+    template<auto Method>
+    double calc_1_matp_(std::shared_ptr<instr_nClass> instr) {
+        int len = instr->lens[0];
+        int dm = instr->dims[0];
+        const auto& vals = instr->values->operator[](0);
+        if(len*dm != vals.size()) std::cout<<"len*dm != vals.size() in calc_1_matp_"<<std::endl;
+        if(len < 1) return(0);
+        Eigen::Tensor<int, 1> idx(dm);
+        double logProb(0.);
+        for(int i = 0; i < len; ++i) {
+            for(int p = 0; p < dm; ++p)
+                idx[p] = vals[i*dm+p];
+            logProb += (static_cast<Derived*>(this)->*Method)(idx); // TODO: can we just pass vals, starting_point
+        }
+        return(logProb);
+    }
+     // simulate
     void  simulate_cpp ( std::shared_ptr<instr_nClass> instr ) {
         RESET_EIGEN_ERRORS;
         int instr_type = instr->type;
         if(instr_type == 0) return sim_0_(instr);
         if(instr_type == 1) return sim_1_seq_(instr);
         if(instr_type == 2) return sim_1_mat_(instr);
+        if(instr_type == 3) return sim_1_matp_(instr);
     }
     void sim_0_ (std::shared_ptr<instr_nClass> instr) {
        static_cast<Derived*>(this)->sim_one(instr->lens); // lens serves as a dummy here, to have the right type to pass
@@ -91,8 +109,19 @@ public:
             static_cast<Derived*>(this)->sim_one(idx);
         }
     }
-
-
+    void sim_1_matp_(std::shared_ptr<instr_nClass> instr) {
+        int len = instr->lens[0];
+        int dm = instr->dims[0];
+        const auto& vals = instr->values->operator[](0);
+        if(len*dm != vals.size()) std::cout<<"len*dm != vals.size() in sim_1_matp_"<<std::endl;
+        if(len < 1) return;
+        Eigen::Tensor<int, 1> idx(dm);
+        for(int i = 0; i < len; ++i) {
+          for(int p = 0; p < dm; ++p)
+            idx[p] = vals[i*dm+p];
+          static_cast<Derived*>(this)->sim_one(idx);
+        }
+    }
 
     virtual ~declFunClass_() {};
 };
