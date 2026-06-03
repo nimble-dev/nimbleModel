@@ -36,11 +36,11 @@ range2instr <- function(range) {
     if(!length(range$indexingRange$indexRanges)) {  # No indexing
         instr$lens <- 1
         instr$index_types <- 0
-        instr$dim <- 0
+        instr$nDim <- 0
     } else {
         instr$lens <-  sapply(range$indexingRange$indexRanges, function(x) x$numElements)
         instr$dims <- sapply(range$indexingRange$rangeToIndexSlot, length)
-        instr$dim <- sum(instr$dims)
+        instr$nDim <- sum(instr$dims)
         instr$slots <- unlist(range$indexingRange$rangeToIndexSlot)
         instr$index_types <- sapply(range$indexingRange$indexRanges, function(x)
             switch(class(x)[1],
@@ -94,7 +94,7 @@ determineInstrType <- function(instr, use_vec = FALSE) {
     if(length(instr$dims) == 3) type <- "3_generic"
     if(is.null(type)) stop("no available specific instruction type")
     ## TODO: determine how much about slots will be pre-baked.
-    if(length(instr$dims) && !identical(instr$slots, 1:instr$dim))  # Non-canonical slot ordering
+    if(length(instr$dims) && !identical(instr$slots, 1:instr$nDim))  # Non-canonical slot ordering
         type <- paste(type, "slots", sep = "_")  
     return(type2itype[[type]])
 }
@@ -151,12 +151,12 @@ instr_nClass <- nClass(
             instr <- range2instr(calcRange)  # This processing could simply be included here in `initialize`.
             self$lens <- instr$lens %||% integer()
             self$index_types <- instr$index_types %||% integer()
-            self$dim <- instr$dim %||% 0L
+            self$nDim <- instr$nDim %||% 0L
             self$dims <- instr$dims %||% integer()
             self$slots <- instr$slots %||% integer()
             self$values <- nList(integerVector)$new()
             self$values$setLength(length(self$dims))
-            if(self$dim)
+            if(self$nDim)
                 for(i in 1:length(self$dims))
                     self$values[[i]] <- instr$values[[i]]
             self$type <- instr$type  %||% 0L   # Use integer for compilation (would char be ok?).
@@ -167,7 +167,7 @@ instr_nClass <- nClass(
   Cpublic = list(
     lens = 'integerVector',
     index_types = 'integerVector',
-    dim = 'integerScalar',
+    nDim = 'integerScalar',
     dims =  'integerVector',
     slots =  'integerVector',
     values = 'nList(integerVector)', 

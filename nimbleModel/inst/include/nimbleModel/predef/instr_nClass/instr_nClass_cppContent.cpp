@@ -41,7 +41,7 @@ instr_nClass,
 NCOMPILER_FIELDS(
 field("lens", &instr_nClass::lens),
 field("index_types", &instr_nClass::index_types),
-field("dim", &instr_nClass::dim),
+field("nDim", &instr_nClass::nDim),
 field("dims", &instr_nClass::dims),
 field("slots", &instr_nClass::slots),
 field("values", &instr_nClass::values),

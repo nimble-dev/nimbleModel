@@ -13,7 +13,7 @@ public:
       instr_nClass (  ) ;
   Eigen::Tensor<int, 1> lens;
   Eigen::Tensor<int, 1> index_types;
-  int dim;
+  int nDim;
   Eigen::Tensor<int, 1> dims;
   Eigen::Tensor<int, 1> slots;
   std::shared_ptr<nList_I1> values;
