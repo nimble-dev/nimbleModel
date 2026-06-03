@@ -329,16 +329,18 @@ test_that("two sequences case", {
     expect_equal(m$y, cm$y)
 
     ## 2-d case for ordering check.
+    ## This does not test calc_2_seq_seq_ord because rule application in creating instr
+    ## already re-sorts the indexRanges.
     code <- quote({
         for(i in 1:5) 
             for(j in 1:2)
                 y[i,j] ~ dnorm(0,1)
     })
-    data <- list(y = matrix(rnorm(20),5))
+    data <- list(y = matrix(rnorm(10),5))
     mclass <- nimbleModel(code, data = data)
     m <- mclass$new()
     vr <- varRangeClass$new(list(newIndexRange(quote(1:2)), newIndexRange(quote(1:5))),
-                                 rangeToIndexSlot = list(c(2,1)), varName='y')
+                                 rangeToIndexSlot = list(2,1), varName='y')
     truth <- sum(dnorm(data$y, log = TRUE))
     expect_equal(m$calculate(vr), truth)
     cmclass <- nCompile(mclass)

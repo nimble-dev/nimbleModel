@@ -117,6 +117,7 @@ public:
           }
         }
         return(logProb);
+    }
     template<auto Method>
     double calc_2_seq_seq_ord_(std::shared_ptr<instr_nClass> instr) {
         if(instr->slots[0] != 2 || instr->slots[1] != 1)

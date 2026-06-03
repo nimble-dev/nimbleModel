@@ -3,18 +3,30 @@ type2itype <- list(
     "1_seq" = 1,
     "1_mat" = 2,
     "1_matp" = 3,
-    "1_matp_ord" = 4,
-    "2_seq_seq" = 5,
-    "2_seq_seq_ord" = 6,
-    "2_seq_mat" = 7,
-    "2_mat_seq" = 8,
-    "2_mat_mat" = 9,
-    "2_seq_matp" = 10,
-    "2_matp_seq" = 11,
-    "2_matp_matp" = 12,
-    "2_mat_matp" = 13,
-    "2_matp_mat" = 14,
-    "3_generic" = 15 # Need to deal with itype for _slot cases.
+    "2_seq_seq" = 4,  # done
+    "2_seq_mat" = 5,
+    "2_mat_seq" = 6,
+    "2_mat_mat" = 7,
+    "2_seq_matp" = 8,
+    "2_matp_seq" = 9,
+    "2_mat_matp" = 10,
+    "2_matp_mat" = 11,
+    "2_matp_matp" = 12,     
+    "3_seq_seq_seq" = 13,
+    "3_generic" = 14, 
+    "1_matp_ord" = 15,  # done
+    ### Probably not needed given reordering when apply graph rules to create instrList. ###
+    "2_seq_seq_ord" = 16,    # done
+    "2_seq_mat_ord" = 17,
+    "2_mat_seq_ord" = 18,
+    "2_mat_mat_ord" = 19,
+    #########################################################################################
+    "2_seq_matp_ord" = 20,
+    "2_matp_seq_ord" = 21,
+    "2_mat_matp_ord" = 22,
+    "2_matp_mat_ord" = 23,
+    "2_matp_matp_ord" = 24,
+    "3_generic_ord" = 25
 )
 
 ## Stand-alone function for setting up inputs to instrClass constructor.
