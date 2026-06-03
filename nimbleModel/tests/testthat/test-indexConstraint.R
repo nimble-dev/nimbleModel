@@ -216,7 +216,7 @@ test_that("checkIndexConstraints", {
         nimbleModel:::checkIndexConstraints(varRangeClass$new(list(newIndexRange(matrix(c(2,3,3,2), ncol = 2)),
                                                                    newIndexRange(3:5),
                                                                    newIndexRange(quote(6:9))),
-                                                              rangeToIndex <- list(c(1,3),2,4),
+                                                              rangeToIndexSlot <- list(c(1,3),2,4),
                                                               varName = 'x'),
                                             constraints),
         list(c(TRUE,FALSE), expResult, expResult)

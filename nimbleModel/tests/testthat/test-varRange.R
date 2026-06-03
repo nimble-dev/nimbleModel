@@ -96,7 +96,7 @@ test_that('varRangeClass', {
     expect_identical(xVar$toExpr(), expr)
 
     xVar <- varRangeClass$new(list(newIndexRange(matrix(c(2,3,5,1,2,4), ncol = 2)),
-                                    newIndexRange(quote(2:3))), rangeToIndex = list(c(3,1),2),
+                                    newIndexRange(quote(2:3))), rangeToIndexSlot = list(c(3,1),2),
                                     varName = 'x')
     expect_identical(sapply(xVar$indexRanges, function(x) class(x)[1]),
                      c('indexRangeMatrixClass', 'indexRangeSequenceClass'))
@@ -128,7 +128,7 @@ test_that("extractIndexRange", {
 
     vals <- matrix(c(2,3,5,1,2,4), ncol = 2)
     xVar <- varRangeClass$new(list(newIndexRange(vals),
-                                   newIndexRange(quote(2:3))), rangeToIndex = list(c(3,1),2),
+                                   newIndexRange(quote(2:3))), rangeToIndexSlot = list(c(3,1),2),
                                    varName = 'x')
     fullResult <- xVar$extractIndexRange(1:3)
     mat <- expand.grid(seq_len(nrow(vals)), 2:3)
