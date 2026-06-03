@@ -282,7 +282,7 @@ test_that("multiple index slots, single indexRange case", {
 
     ## Now with slot reordering.
     vr <- varRangeClass$new(list(newIndexRange(matrix(c(2,4,3,1), ncol=2))),
-                            rangeToIndex = list(2:1), varName='y')
+                            rangeToIndexSlot = list(2:1), varName='y')
     expect_equal(m$calculate(vr), dnorm(data$y[3,2],log=TRUE) + dnorm(data$y[1,4],log=TRUE))
     expect_equal(cm$calculate(vr), dnorm(data$y[3,2],log=TRUE) + dnorm(data$y[1,4],log=TRUE))
 
@@ -297,7 +297,7 @@ test_that("multiple index slots, single indexRange case", {
     mclass <- nimbleModel(code, data = data)
     m <- mclass$new()
     vr <- varRangeClass$new(list(newIndexRange(matrix(c(2,3,1,3,5,2,1,2,4), ncol=3))),
-                            rangeToIndex = list(c(3,1,2)), varName='y')
+                            rangeToIndexSlot = list(c(3,1,2)), varName='y')
     truth <- dnorm(data$y[3,1,2],log=TRUE) + dnorm(data$y[5,2,3],log=TRUE) + dnorm(data$y[2,4,1],log=TRUE)
     expect_equal(m$calculate(vr), truth)
     cmclass <- nCompile(mclass)
@@ -338,7 +338,7 @@ test_that("two sequences case", {
     mclass <- nimbleModel(code, data = data)
     m <- mclass$new()
     vr <- varRangeClass$new(list(newIndexRange(quote(1:2)), newIndexRange(quote(1:5))),
-                                 rangeToIndex = list(c(2,1)), varName='y')
+                                 rangeToIndexSlot = list(c(2,1)), varName='y')
     truth <- sum(dnorm(data$y, log = TRUE))
     expect_equal(m$calculate(vr), truth)
     cmclass <- nCompile(mclass)
