@@ -16,7 +16,9 @@ declFunBase_nClass <- nClass(
       if(instr$type == 1) return(calc_1_seq(instr, fn))
       if(instr$type == 2) return(calc_1_mat(instr, fn))
       if(instr$type == 3) return(calc_1_matp(instr, fn))
-      if(instr$type == 4) return(calc_2_seq_seq(instr, fn))
+      if(instr$type == 4) return(calc_1_matp_ord(instr, fn))
+      if(instr$type == 5) return(calc_2_seq_seq(instr, fn))
+      if(instr$type == 6) return(calc_2_seq_seq_ord(instr, fn))
       return(0)
     },
     calc_0 = function(instr, fn) {
@@ -44,6 +46,13 @@ declFunBase_nClass <- nClass(
           logProb <- logProb + self[[fn]](instr$values[[1]][(instr$dims[1]*(i-1) + 1):(instr$dims[1]*i)]) 
         return(logProb)
       },
+    calc_1_matp_ord = 
+      function(instr, fn) {
+        logProb = 0
+        for(i in 1:instr$lens[1])
+          logProb <- logProb + self[[fn]](instr$values[[1]][(instr$dims[1]*(i-1) + 1):(instr$dims[1]*i)][instr$slots]) 
+        return(logProb)
+      },
     calc_2_seq_seq = 
         function(instr, fn) {
             logProb <- 0
@@ -59,12 +68,31 @@ declFunBase_nClass <- nClass(
             }
             return(logProb)
         },
+    calc_2_seq_seq_ord = 
+        function(instr, fn) {
+            if(!identical(instr$slots, 1:2))
+              stop("Slots not equal to 2,1 in calc_2_seq_seq_ord")
+            logProb <- 0
+            idx <- rep(0, 2)
+            iStart1 <- instr$values[[1]][1]-1
+            for(i in 1:instr$lens[1]) {
+                idx[2] <- iStart1 + i
+                iStart2 <- instr$values[[2]][1]-1
+                for(j in 1:instr$lens[2]) {
+                    idx[1] <- iStart2 + j
+                    logProb <- logProb + self[[fn]](idx)
+                }
+            }
+            return(logProb)
+        },
     simulate = function(instr) {
         if(instr$type == 0) return(sim_0(instr))
         if(instr$type == 1) return(sim_1_seq(instr))
         if(instr$type == 2) return(sim_1_mat(instr))
         if(instr$type == 3) return(sim_1_matp(instr))
-        if(instr$type == 4) return(sim_2_seq_seq(instr))
+        if(instr$type == 4) return(sim_1_matp_ord(instr))
+        if(instr$type == 5) return(sim_2_seq_seq(instr))
+        if(instr$type == 6) return(sim_2_seq_seq_ord(instr))
       },
     sim_0 = function(instr) {
         sim_one(0) 
@@ -81,6 +109,10 @@ declFunBase_nClass <- nClass(
         for(i in 1:instr$lens[1])
           sim_one(instr$values[[1]][(instr$dims[1]*(i-1) + 1):(instr$dims[1]*i)]) 
     },
+    sim_1_matp_ord = function(instr) {
+        for(i in 1:instr$lens[1])
+          sim_one(instr$values[[1]][(instr$dims[1]*(i-1) + 1):(instr$dims[1]*i)][instr$slots]) 
+    },
     sim_2_seq_seq = 
         function(instr, fn) {
             idx <- rep(0, 2)
@@ -93,8 +125,26 @@ declFunBase_nClass <- nClass(
                     sim_one(idx)
                 }
             }
+        },
+    sim_2_seq_seq_ord = 
+        function(instr, fn) {
+            if(!identical(instr$slots, 1:2))
+              stop("Slots not equal to 2,1 in calc_2_seq_seq_ord")
+            idx <- rep(0, 2)
+            iStart1 <- instr$values[[1]][1]-1
+            for(i in 1:instr$lens[1]) {
+                idx[2] <- iStart1 + i
+                iStart2 <- instr$values[[2]][1]-1
+                for(j in 1:instr$lens[2]) {
+                    idx[1] <- iStart2 + j
+                    sim_one(idx)
+                }
+            }
         }
+
+
   ),
+  
   Cpublic = list(
     ## model = 'modelBase_nClass',
     ping = nFunction(

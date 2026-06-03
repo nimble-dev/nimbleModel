@@ -3,16 +3,18 @@ type2itype <- list(
     "1_seq" = 1,
     "1_mat" = 2,
     "1_matp" = 3,
-    "2_seq_seq" = 4,
-    "2_seq_mat" = 5,
-    "2_mat_seq" = 6,
-    "2_mat_mat" = 7,
-    "2_seq_matp" = 8,
-    "2_matp_seq" = 9,
-    "2_matp_matp" = 10,
-    "2_mat_matp" = 11,
-    "2_matp_mat" = 12,
-    "3_generic" = 13 # Need to deal with itype for _slot cases.
+    "1_matp_ord" = 4,
+    "2_seq_seq" = 5,
+    "2_seq_seq_ord" = 6,
+    "2_seq_mat" = 7,
+    "2_mat_seq" = 8,
+    "2_mat_mat" = 9,
+    "2_seq_matp" = 10,
+    "2_matp_seq" = 11,
+    "2_matp_matp" = 12,
+    "2_mat_matp" = 13,
+    "2_matp_mat" = 14,
+    "3_generic" = 15 # Need to deal with itype for _slot cases.
 )
 
 ## Stand-alone function for setting up inputs to instrClass constructor.
@@ -57,13 +59,15 @@ determineInstrType <- function(instr, use_vec = FALSE) {
         if(instr$index_types[1] == 1) {
             type <- "1_seq"
         } else {
-            if(instr$dims[1] == 1) type <- "1_mat" else  type <- "1_matp"
+            if(instr$dims[1] == 1) type <- "1_mat" else {
+              if(identical(instr$slots, 1:length(instr$slots))) type <- "1_matp" else type <- "1_matp_ord"
+            }              
         }
     if(length(instr$dims) == 2) 
         if(identical(instr$dims, c(1L,1L))) {
             ## Some of these not yet written.
             if(identical(instr$index_types, c(1,1)))
-                type <- "2_seq_seq"
+                if(identical(instr$slots, 1:2)) type <- "2_seq_seq" else type <- "2_seq_seq_ord"
             if(identical(instr$index_types, c(1,2)))
                 if(instr$dims[2] == 1) type <- "2_seq_mat" else type <- "2_seq_matp"
             if(identical(instr$index_types, c(2,1))) 

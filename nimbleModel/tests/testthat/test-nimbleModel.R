@@ -279,11 +279,35 @@ test_that("multiple index slots, single indexRange case", {
     set.seed(1)
     cm$simulate(vr)
     expect_equal(m$y, cm$y)
+
+    ## Now with slot reordering.
+    vr <- varRangeClass$new(list(newIndexRange(matrix(c(2,4,3,1), ncol=2))),
+                            rangeToIndex = list(2:1), varName='y')
+    expect_equal(m$calculate(vr), dnorm(data$y[3,2],log=TRUE) + dnorm(data$y[1,4],log=TRUE))
+    expect_equal(cm$calculate(vr), dnorm(data$y[3,2],log=TRUE) + dnorm(data$y[1,4],log=TRUE))
+
+    ## 3-d case for more robust ordering check
+    code <- quote({
+        for(i in 1:5) 
+            for(j in 1:4)
+                for(k in 1:3)
+                y[i,j,k] ~ dnorm(0,1)
+    })
+    data <- list(y = array(rnorm(60),c(5,4,3)))
+    mclass <- nimbleModel(code, data = data)
+    m <- mclass$new()
+    vr <- varRangeClass$new(list(newIndexRange(matrix(c(2,3,1,3,5,2,1,2,4), ncol=3))),
+                            rangeToIndex = list(c(3,1,2)), varName='y')
+    truth <- dnorm(data$y[3,1,2],log=TRUE) + dnorm(data$y[5,2,3],log=TRUE) + dnorm(data$y[2,4,1],log=TRUE)
+    expect_equal(m$calculate(vr), truth)
+    cmclass <- nCompile(mclass)
+    cm <- cmclass$new()
+    expect_equal(cm$calculate(vr), truth)
+    
     
 })
 
 test_that("two sequences case", {
-    library(nCompiler); library(nimbleModel); library(testthat)
     code <- quote({
         for(i in 1:5) 
             for(j in 1:3)
@@ -303,6 +327,23 @@ test_that("two sequences case", {
     set.seed(1)
     cm$simulate('y[2:4,1:3]')
     expect_equal(m$y, cm$y)
+
+    ## 2-d case for ordering check.
+    code <- quote({
+        for(i in 1:5) 
+            for(j in 1:2)
+                y[i,j] ~ dnorm(0,1)
+    })
+    data <- list(y = matrix(rnorm(20),5))
+    mclass <- nimbleModel(code, data = data)
+    m <- mclass$new()
+    vr <- varRangeClass$new(list(newIndexRange(quote(1:2)), newIndexRange(quote(1:5))),
+                                 rangeToIndex = list(c(2,1)), varName='y')
+    truth <- sum(dnorm(data$y, log = TRUE))
+    expect_equal(m$calculate(vr), truth)
+    cmclass <- nCompile(mclass)
+    cm <- cmclass$new()
+    expect_equal(cm$calculate(vr), truth)
     
 })
 
