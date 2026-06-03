@@ -63,7 +63,7 @@ determineInstrType <- function(instr, use_vec = FALSE) {
         if(identical(instr$dims, c(1L,1L))) {
             ## Some of these not yet written.
             if(identical(instr$index_types, c(1,1)))
-                type <- "2_vec_vec"
+                type <- "2_seq_seq"
             if(identical(instr$index_types, c(1,2)))
                 if(instr$dims[2] == 1) type <- "2_seq_mat" else type <- "2_seq_matp"
             if(identical(instr$index_types, c(2,1))) 

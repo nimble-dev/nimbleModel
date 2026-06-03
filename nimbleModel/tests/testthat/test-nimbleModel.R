@@ -260,7 +260,6 @@ test_that("initial tests/examples of nimble model using flattened approach", {
 })
 
 test_that("multiple index slots, single indexRange case", {
-    library(nimbleModel); library(nCompiler); library(testthat)
     code <- quote({
         for(i in 1:5) 
             for(j in 1:3)
@@ -273,13 +272,36 @@ test_that("multiple index slots, single indexRange case", {
     expect_equal(m$calculate(vr), dnorm(data$y[2,3],log=TRUE) + dnorm(data$y[4,1],log=TRUE))
     cmclass <- nCompile(mclass)
     cm <- cmclass$new()
-    ## TODO: this is giving back 0.
     expect_equal(cm$calculate(vr), dnorm(data$y[2,3],log=TRUE) + dnorm(data$y[4,1],log=TRUE))
 
     set.seed(1)
     m$simulate(vr)
     set.seed(1)
     cm$simulate(vr)
+    expect_equal(m$y, cm$y)
+    
+})
+
+test_that("two sequences case", {
+    library(nCompiler); library(nimbleModel); library(testthat)
+    code <- quote({
+        for(i in 1:5) 
+            for(j in 1:3)
+                y[i,j] ~ dnorm(0,1)
+    })
+    data <- list(y = matrix(rnorm(15),5))
+    mclass <- nimbleModel(code, data = data)
+    truth <- sum(dnorm(data$y[2:4,1:3],0,1,log=TRUE))
+    m <- mclass$new()
+    expect_equal(m$calculate('y[2:4,1:3]'), truth)
+    cmclass <- nCompile(mclass)
+    cm <- cmclass$new()
+    expect_equal(cm$calculate('y[2:4,1:3]'), truth)
+
+    set.seed(1)
+    m$simulate('y[2:4,1:3]')
+    set.seed(1)
+    cm$simulate('y[2:4,1:3]')
     expect_equal(m$y, cm$y)
     
 })

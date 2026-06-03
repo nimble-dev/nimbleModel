@@ -25,6 +25,7 @@ public:
         if(instr_type == 1) return calc_1_seq_< Method >(instr);
         if(instr_type == 2) return calc_1_mat_< Method >(instr);
         if(instr_type == 3) return calc_1_matp_< Method >(instr);
+        if(instr_type == 4) return calc_2_seq_seq_< Method >(instr);
         return(0);
     }
     template<auto Method>
@@ -54,7 +55,7 @@ public:
         Eigen::Tensor<int, 1> idx(1);
         double logProb(0.);
         for(int i = 0; i < len; ++i) {
-            idx[0] = vals[i];           // TODO: do we need this additional assignment?
+            idx[0] = vals[i];           
             logProb += (static_cast<Derived*>(this)->*Method)(idx);
         }
         return(logProb);
@@ -75,6 +76,28 @@ public:
         }
         return(logProb);
     }
+    template<auto Method>
+    double calc_2_seq_seq_(std::shared_ptr<instr_nClass> instr) {
+        int len1 = instr->lens[0];
+        int len2 = instr->lens[1];
+        if(len1 < 1) return(0);
+        if(len2 < 1) return(0);
+        int iStart1 = instr->values->operator[](0)[0];
+        int iEnd1 = iStart1 + len1;
+        int iStart2 = instr->values->operator[](1)[0];
+        int iEnd2 = iStart2 + len2;
+        Eigen::Tensor<int, 1> idx(2);
+        double logProb(0.);
+        for(int i = iStart1; i < iEnd1; ++i) {
+          idx[0] = i;
+          for(int j = iStart2; j < iEnd2; ++j) {
+            idx[1] = j;
+            logProb += (static_cast<Derived*>(this)->*Method)(idx); 
+          }
+        }
+        return(logProb);
+        
+    } 
      // simulate
     void  simulate_cpp ( std::shared_ptr<instr_nClass> instr ) {
         RESET_EIGEN_ERRORS;
@@ -83,6 +106,7 @@ public:
         if(instr_type == 1) return sim_1_seq_(instr);
         if(instr_type == 2) return sim_1_mat_(instr);
         if(instr_type == 3) return sim_1_matp_(instr);
+        if(instr_type == 4) return sim_2_seq_seq_(instr);
     }
     void sim_0_ (std::shared_ptr<instr_nClass> instr) {
        static_cast<Derived*>(this)->sim_one(instr->lens); // lens serves as a dummy here, to have the right type to pass
@@ -122,6 +146,23 @@ public:
           static_cast<Derived*>(this)->sim_one(idx);
         }
     }
-
+    void sim_2_seq_seq_(std::shared_ptr<instr_nClass> instr) {
+        int len1 = instr->lens[0];
+        int len2 = instr->lens[1];
+        if(len1 < 1) return;
+        if(len2 < 1) return;
+        int iStart1 = instr->values->operator[](0)[0];
+        int iEnd1 = iStart1 + len1;
+        int iStart2 = instr->values->operator[](1)[0];
+        int iEnd2 = iStart2 + len2;
+        Eigen::Tensor<int, 1> idx(2);
+        for(int i = iStart1; i < iEnd1; ++i) {
+          idx[0] = i;
+          for(int j = iStart2; j < iEnd2; ++j) {
+            idx[1] = j;
+            static_cast<Derived*>(this)->sim_one(idx);
+          }
+        }
+    }
     virtual ~declFunClass_() {};
 };

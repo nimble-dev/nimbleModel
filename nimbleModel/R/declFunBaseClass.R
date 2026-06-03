@@ -16,6 +16,7 @@ declFunBase_nClass <- nClass(
       if(instr$type == 1) return(calc_1_seq(instr, fn))
       if(instr$type == 2) return(calc_1_mat(instr, fn))
       if(instr$type == 3) return(calc_1_matp(instr, fn))
+      if(instr$type == 4) return(calc_2_seq_seq(instr, fn))
       return(0)
     },
     calc_0 = function(instr, fn) {
@@ -40,30 +41,59 @@ declFunBase_nClass <- nClass(
       function(instr, fn) {
         logProb = 0
         for(i in 1:instr$lens[1])
-          logProb <- logProb + self[[fn]](instr$values[[1]][(instr$dims[1]*(i-1) + 1):(instr$dims[1]*i)])  ## Ok to call with a vector?
+          logProb <- logProb + self[[fn]](instr$values[[1]][(instr$dims[1]*(i-1) + 1):(instr$dims[1]*i)]) 
         return(logProb)
       },
-      simulate = function(instr) {
+    calc_2_seq_seq = 
+        function(instr, fn) {
+            logProb <- 0
+            idx <- rep(0, 2)
+            iStart1 <- instr$values[[1]][1]-1
+            for(i in 1:instr$lens[1]) {
+                idx[1] <- iStart1 + i
+                iStart2 <- instr$values[[2]][1]-1
+                for(j in 1:instr$lens[2]) {
+                    idx[2] <- iStart2 + j
+                    logProb <- logProb + self[[fn]](idx)
+                }
+            }
+            return(logProb)
+        },
+    simulate = function(instr) {
         if(instr$type == 0) return(sim_0(instr))
         if(instr$type == 1) return(sim_1_seq(instr))
         if(instr$type == 2) return(sim_1_mat(instr))
         if(instr$type == 3) return(sim_1_matp(instr))
+        if(instr$type == 4) return(sim_2_seq_seq(instr))
       },
-      sim_0 = function(instr) {
-        sim_one(0) ## sim_one will always has `idx` as arg?
+    sim_0 = function(instr) {
+        sim_one(0) 
       },
-      sim_1_seq = function(instr) {
+    sim_1_seq = function(instr) {
         for(i in 1:instr$lens[1])
-          sim_one(instr$values[[1]][1]+i)
+            sim_one(instr$values[[1]][1]+i)
       },
-      sim_1_mat = function(instr) {
+    sim_1_mat = function(instr) {
         for(i in 1:instr$lens[1])
-          sim_one(instr$values[[1]][i])
-      },
-      sim_1_matp = function(instr) {
+            sim_one(instr$values[[1]][i])
+    },
+    sim_1_matp = function(instr) {
         for(i in 1:instr$lens[1])
-          sim_one(instr$values[[1]][(instr$dims[1]*(i-1) + 1):(instr$dims[1]*i)])  ## Ok to call with a vector?
-      }
+          sim_one(instr$values[[1]][(instr$dims[1]*(i-1) + 1):(instr$dims[1]*i)]) 
+    },
+    sim_2_seq_seq = 
+        function(instr, fn) {
+            idx <- rep(0, 2)
+            iStart1 <- instr$values[[1]][1]-1
+            for(i in 1:instr$lens[1]) {
+                idx[1] <- iStart1 + i
+                iStart2 <- instr$values[[2]][1]-1
+                for(j in 1:instr$lens[2]) {
+                    idx[2] <- iStart2 + j
+                    sim_one(idx)
+                }
+            }
+        }
   ),
   Cpublic = list(
     ## model = 'modelBase_nClass',
