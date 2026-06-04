@@ -4,29 +4,25 @@ type2itype <- list(
     "1_mat" = 2,
     "1_matp" = 3,
     "2_seq_seq" = 4,  # done
-    "2_seq_mat" = 5,
-    "2_mat_seq" = 6,
-    "2_mat_mat" = 7,
-    "2_seq_matp" = 8,
-    "2_matp_seq" = 9,
-    "2_mat_matp" = 10,
-    "2_matp_mat" = 11,
-    "2_matp_matp" = 12,     
-    "3_seq_seq_seq" = 13,
-    "3_generic" = 14, 
-    "1_matp_ord" = 15,  # done
+    "2_seq_mat" = 5,  # done R,C calc
+    "2_mat_seq" = 6,  # done R,C calc
+    "2_mat_mat" = 7,  # done R,C calc
+    "2_seq_matp" = 8, # done C calc; includes reord
+    "2_matp_seq" = 9, # done C calc; includes reord
+    "2_matp_matp" = 10, # done C calc; includes reord and mat{1} cases
+    "3_allseq" = 13,  # done C calc
+    "3_generic" = 14, # done C calc
+    "4_allseq" = 13,  # done C calc
+    "4_generic" = 15, # done C calc
+    "5_allseq" = 13,  # done C calc
+    "5_generic" = 16, # done C calc
+    "1_matp_ord" = 15,  # done C calc, but not clear why a user would specify indices out of order for single indexRange case
     ### Probably not needed given reordering when apply graph rules to create instrList. ###
     "2_seq_seq_ord" = 16,    # done
     "2_seq_mat_ord" = 17,
     "2_mat_seq_ord" = 18,
     "2_mat_mat_ord" = 19,
     #########################################################################################
-    "2_seq_matp_ord" = 20,
-    "2_matp_seq_ord" = 21,
-    "2_mat_matp_ord" = 22,
-    "2_matp_mat_ord" = 23,
-    "2_matp_matp_ord" = 24,
-    "3_generic_ord" = 25
 )
 
 ## Stand-alone function for setting up inputs to instrClass constructor.
@@ -65,7 +61,7 @@ range2instr <- function(range) {
 ## Open question of when to determine if to use parallel calculate.
 determineInstrType <- function(instr, use_vec = FALSE) {
     type <- NULL
-    if(!length(instr$dims)) 
+    if(!length(instr$dims))  ## use nDim here and below
         type <- "0"
     if(length(instr$dims) == 1) 
         if(instr$index_types[1] == 1) {
@@ -81,21 +77,37 @@ determineInstrType <- function(instr, use_vec = FALSE) {
             if(identical(instr$index_types, c(1,1)))
                 if(identical(instr$slots, 1:2)) type <- "2_seq_seq" else type <- "2_seq_seq_ord"
             if(identical(instr$index_types, c(1,2)))
-                if(instr$dims[2] == 1) type <- "2_seq_mat" else type <- "2_seq_matp"
+                if(instr$dims[2] == 1) {
+                    type <- "2_seq_mat"
+                } else {
+                    if(identical(instr$slots, 1:length(instr$slots))) type <- "2_seq_matp" else type <- "2_seq_matp_ord"
+                }  ## TODO: check slots are as expected here and in cases below
             if(identical(instr$index_types, c(2,1))) 
-                if(instr$dims[1] == 1) type <- "2_mat_seq" else type <- "2_matp_seq"
+                if(instr$dims[1] == 1) {
+                    type <- "2_mat_seq"
+                } else {
+                    if(identical(instr$slots, 1:length(instr$slots))) type <- "2_matp_seq" else type <- "2_matp_seq_ord"
+                }
             if(identical(instr$index_types, c(2,2))) {
                 if(all(instr$dims == 1)) type <- "2_mat_mat"
-                if(all(instr$dims == 2)) type <- "2_matp_matp"
-                if(instr$dims[[1]] == 2) type <- "2_matp_mat"
-                if(instr$dims[[2]] == 2) type <- "2_mat_matp"
+                if(all(instr$dims > 1)) 
+                    if(identical(instr$slots, 1:length(instr$slots))) type <- "2_matp_matp" else type <- "2_matp_matp_ord"
+                if(instr$dims[[1]] == 1)
+                    if(identical(instr$slots, 1:length(instr$slots))) type <- "2_mat_matp" else type <- "2_mat_matp_ord"
+                if(instr$dims[[2]] == 1)
+                    if(identical(instr$slots, 1:length(instr$slots))) type <- "2_matp_mat" else type <- "2_matp_mat_ord"
             }
-        } else type <- "2_generic"
-    if(length(instr$dims) == 3) type <- "3_generic"
+        } else stop("no available specific instruction type") # type <- "2_generic"
+    if(length(instr$dims) == 3) 
+        if(all(instr$index_types == 1) && identical(instr$slots, 1:length(instr$slots)))
+            type <- "3_allseq" else type <- "3_generic"
+    if(length(instr$dims) == 4) 
+        if(all(instr$index_types == 1) && identical(instr$slots, 1:length(instr$slots)))
+            type <- "4_allseq" else type <- "4_generic"
+    if(length(instr$dims) == 5) 
+        if(all(instr$index_types == 1) && identical(instr$slots, 1:length(instr$slots)))
+            type <- "5_allseq" else type <- "5_generic"
     if(is.null(type)) stop("no available specific instruction type")
-    ## TODO: determine how much about slots will be pre-baked.
-    if(length(instr$dims) && !identical(instr$slots, 1:instr$nDim))  # Non-canonical slot ordering
-        type <- paste(type, "slots", sep = "_")  
     return(type2itype[[type]])
 }
 

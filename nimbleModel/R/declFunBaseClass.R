@@ -16,10 +16,15 @@ declFunBase_nClass <- nClass(
       if(instr$type == 1) return(calc_1_seq(instr, fn))
       if(instr$type == 2) return(calc_1_mat(instr, fn))
       if(instr$type == 3) return(calc_1_matp(instr, fn))
-      if(instr$type == 4) return(calc_1_matp_ord(instr, fn))
-      if(instr$type == 5) return(calc_2_seq_seq(instr, fn))
-      if(instr$type == 6) return(calc_2_seq_seq_ord(instr, fn))
-      return(0)
+      if(instr$type == 4) return(calc_2_seq_seq(instr, fn))
+      if(instr$type == 5) return(calc_2_seq_mat(instr, fn))
+      if(instr$type == 6) return(calc_2_mat_seq(instr, fn))
+      if(instr$type == 7) return(calc_2_mat_mat(instr, fn))
+
+
+      if(instr$type == 15) return(calc_1_matp_ord(instr, fn))
+      if(instr$type == 16) return(calc_2_seq_seq_ord(instr, fn))
+      stop("declaration for type ", instr$type, " no implemented")
     },
     calc_0 = function(instr, fn) {
       return(self[[fn]](0))
@@ -85,6 +90,49 @@ declFunBase_nClass <- nClass(
             }
             return(logProb)
         },
+    calc_2_seq_mat =
+        function(instr, fn) {
+            logProb <- 0
+            idx <- rep(0, 2)
+            iStart1 <- instr$values[[1]][1]-1
+            for(i in 1:instr$lens[1]) {
+                idx[1] <- iStart1 + i
+                for(j in 1:instr$lens[2]) {
+                    idx[2] <- instr$values[[2]][j]
+                    logProb <- logProb + self[[fn]](idx)
+                }
+            }
+            return(logProb)
+        },
+    calc_2_mat_seq =
+        function(instr, fn) {
+            logProb <- 0
+            idx <- rep(0, 2)
+            for(i in 1:instr$lens[1]) {
+                idx[1] <- instr$values[[1]][i]
+                iStart2 <- instr$values[[2]][1]-1
+                for(j in 1:instr$lens[2]) {
+                    idx[2] <- iStart2 + j
+                    logProb <- logProb + self[[fn]](idx)
+                }
+            }
+            return(logProb)
+        },
+    calc_2_mat_mat =
+        function(instr, fn) {
+            logProb <- 0
+            idx <- rep(0, 2)
+            for(i in 1:instr$lens[1]) {
+                idx[1] <- instr$values[[1]][i]
+                for(j in 1:instr$lens[2]) {
+                    idx[2] <- instr$values[[2]][j]
+                    logProb <- logProb + self[[fn]](idx)
+                }
+            }
+            return(logProb)
+        },
+
+    
     simulate = function(instr) {
         if(instr$type == 0) return(sim_0(instr))
         if(instr$type == 1) return(sim_1_seq(instr))
