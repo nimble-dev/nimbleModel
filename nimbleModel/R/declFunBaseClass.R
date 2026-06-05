@@ -131,7 +131,21 @@ declFunBase_nClass <- nClass(
             }
             return(logProb)
         },
-
+    calc_2_seq_matp =
+        function(instr, fn) {
+            logProb <- 0
+            idx <- rep(0, 2)
+            iStart1 <- instr$values[[1]][1]-1
+            for(i in 1:instr$lens[1]) {
+                idx[1] <- iStart1 + i
+                for(j in 1:instr$lens[2]) {
+                    idx[2] <- instr$values[[2]][j]
+                    logProb <- logProb + self[[fn]](idx)
+                }
+            }
+            return(logProb)
+        },
+ logProb <- logProb + self[[fn]](instr$values[[1]][(instr$dims[1]*(i-1) + 1):(instr$dims[1]*i)])
     
     simulate = function(instr) {
         if(instr$type == 0) return(sim_0(instr))
