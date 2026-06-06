@@ -259,6 +259,142 @@ test_that("initial tests/examples of nimble model using flattened approach", {
 
 })
 
+test_that("no indices", {
+    code <- quote({
+        mu ~ dnorm(0, 1)
+        sigma ~ dgamma(1,1)
+    })
+    inits <- list(mu = 1, sigma = .7)
+    mclass <- nimbleModel(code, inits = inits)
+    m <- mclass$new()
+    vr <- varRangeClass$new('mu')
+    expect_equal(m$calculate(vr), dnorm(inits$mu,log=TRUE))
+    expect_equal(m$calculate(), dnorm(inits$mu,log=TRUE) + dgamma(inits$sigma,1,1,log=TRUE))
+    cmclass <- nCompile(mclass)
+    cm <- cmclass$new()
+    expect_equal(cm$calculate(vr), dnorm(inits$mu,log=TRUE))
+    expect_equal(cm$calculate(), dnorm(inits$mu,log=TRUE) + dgamma(inits$sigma,1,1,log=TRUE))
+
+    set.seed(1)
+    result <- rnorm(1)
+    set.seed(1)
+    m$simulate('mu')
+    expect_equal(m$mu, result)
+    set.seed(1)
+    cm$simulate('mu')
+    expect_equal(cm$mu, result)
+})
+
+test_that("one index", {
+    code <- quote({
+        for(i in 3:10)
+            y[i] ~ dnorm(0,1)
+    })
+    data <- list(y = rnorm(10))
+    mclass <- nimbleModel(code, data = data)
+    m <- mclass$new()
+    cmclass <- nCompile(mclass)
+    cm <- cmclass$new()
+
+    ## Scalar
+    vr <- varRangeClass$new(list(newIndexRange(matrix(5,ncol=1))), varName = 'y')
+    truth <- dnorm(m$y[5], log=TRUE)
+    expect_equal(m$calculate(vr), truth)
+    expect_equal(cm$calculate(vr), truth)
+
+    set.seed(1)
+    result <- rnorm(1)
+    set.seed(1)
+    m$simulate(vr)
+    expect_equal(m$y[5], result)
+    set.seed(1)
+    cm$simulate(vr)
+    expect_equal(m$y[5], result)
+
+    ## Sequence
+    vr <- varRangeClass$new(list(newIndexRange(quote(4:6))), varName = 'y')
+    truth <- sum(dnorm(m$y[4:6], log=TRUE))
+    expect_equal(m$calculate(vr), truth)
+    expect_equal(cm$calculate(vr), truth)
+
+    set.seed(1)
+    result <- rnorm(3)
+    set.seed(1)
+    m$simulate(vr)
+    expect_equal(m$y[4:6], result)
+    set.seed(1)
+    cm$simulate(vr)
+    expect_equal(cm$y[4:6], result)
+
+    ## Matrix
+    inds <- c(4,6,9)
+    vr <- varRangeClass$new(list(newIndexRange(matrix(inds,ncol=1))), varName = 'y')
+    truth <- sum(dnorm(m$y[inds], log=TRUE))
+    expect_equal(m$calculate(vr), truth)
+    expect_equal(cm$calculate(vr), truth)
+
+    set.seed(1)
+    result <- rnorm(3)
+    set.seed(1)
+    m$simulate(vr)
+    expect_equal(m$y[inds], result)
+    set.seed(1)
+    cm$simulate(vr)
+    expect_equal(cm$y[inds], result)
+})
+
+test_that("two index slots", {
+    library(nimbleModel); library(nCompiler); library(testthat)
+    code <- quote({
+        for(i in 1:4)
+            for(j in 1:3)
+                y[i,j] ~ dnorm(0,1)
+    })
+    data <- list(y = matrix(rnorm(12),4))
+    mclass <- nimbleModel(code, data = data)
+    m <- mclass$new()
+    cmclass <- nCompile(mclass)
+    cm <- cmclass$new()
+
+    inds <- matrix(c(3,1, 4,2, 2,3), ncol=2, byrow=TRUE)
+    vr <- varRangeClass$new(list(newIndexRange(inds)), varName = 'y')
+    truth <- sum(dnorm(m$y[inds], log=TRUE))
+    expect_equal(m$calculate(vr), truth)
+    expect_equal(cm$calculate(vr), truth)
+
+    set.seed(1)
+    result <- rnorm(3)
+    set.seed(1)
+    m$simulate(vr)
+    expect_equal(m$y[inds], result)
+    set.seed(1)
+    cm$simulate(vr)
+    expect_equal(cm$y[inds], result)
+
+    ## Reverse indices
+    inds <- matrix(c(3,1, 4,2, 2,3), ncol=2, byrow=TRUE)
+    vr <- varRangeClass$new(list(newIndexRange(inds)), rangeToIndexSlot = c(2,1), varName = 'y')
+    truth <- sum(dnorm(m$y[inds[,2:1]], log=TRUE))
+    expect_equal(m$calculate(vr), truth)
+    expect_equal(cm$calculate(vr), truth)
+
+    set.seed(1)
+    result <- rnorm(3)
+    set.seed(1)
+    m$simulate(vr)
+    expect_equal(m$y[inds[,2:1]], result)
+    set.seed(1)
+    cm$simulate(vr)
+    expect_equal(cm$y[inds[,2:1]], result)
+
+    ## seq-seq
+    ## seq-mat
+    ## mat-seq
+    ## mat-mat
+    
+})
+
+
 test_that("multiple index slots, single indexRange case", {
     code <- quote({
         for(i in 1:5) 

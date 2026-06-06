@@ -1,27 +1,26 @@
 type2itype <- list(
-    '0' = 0,
-    "1_seq" = 1,
-    "1_mat" = 2,
-    "1_matp" = 3,
-    "2_seq_seq" = 4,  # done
-    "2_seq_mat" = 5,  # done R,C calc
-    "2_mat_seq" = 6,  # done R,C calc
-    "2_mat_mat" = 7,  # done R,C calc
-    "2_seq_matp" = 8, # done C calc; includes reord
-    "2_matp_seq" = 9, # done C calc; includes reord
-    "2_matp_matp" = 10, # done C calc; includes reord and mat{1} cases
-    "3_allseq" = 13,  # done C calc
-    "3_generic" = 14, # done C calc
-    "4_allseq" = 13,  # done C calc
-    "4_generic" = 15, # done C calc
-    "5_allseq" = 13,  # done C calc
-    "5_generic" = 16, # done C calc
-    "1_matp_ord" = 15,  # done C calc, but not clear why a user would specify indices out of order for single indexRange case
-    ### Probably not needed given reordering when apply graph rules to create instrList. ###
-    "2_seq_seq_ord" = 16,    # done
-    "2_seq_mat_ord" = 17,
-    "2_mat_seq_ord" = 18,
-    "2_mat_mat_ord" = 19,
+    ## Note that conversion to nodeRange orders indices within a set of indices (corresponding to an indexRange)
+    ## so the need for reordering based on slots is only because of slots being disjoint across sets.
+    ## E.g., a rangeToIndexSlot of `list(2, c(3,1))` becomes `list(c(1,3), 2)` while `list(4, c(3,1,2))` becomes `list(1:3, 4)`
+    '0' = 0,         
+    "1_seq" = 1,     
+    "1_mat" = 2,     
+    "1_matp" = 3,    
+    "2_seq_seq" = 4, 
+    "2_seq_mat" = 5, 
+    "2_mat_seq" = 6, 
+    "2_mat_mat" = 7, 
+    "2_seq_matp" = 8, 
+    "2_matp_seq" = 9, 
+    "2_matp_matp" = 10, # includes reordering and mat{1} cases
+    "2_x_y_ord" = 11, # i.e., 2_{mat,seq}_{mat,seq}_ord; should not be needed, but include for safety
+    "3_allseq" = 12,  
+    "3_generic" = 13, 
+    "4_allseq" = 14,  
+    "4_generic" = 15, 
+    "5_allseq" = 16,  
+    "5_generic" = 17, 
+    "1_matp_ord" = 18  # done, but not needed as conversion to nodeRange puts indices in order; also not clear why a user would specify indices out of order for single indexRange case
     #########################################################################################
 )
 
@@ -37,7 +36,7 @@ range2instr <- function(range) {
         instr$lens <-  sapply(range$indexingRange$indexRanges, function(x) x$numElements)
         instr$dims <- sapply(range$indexingRange$rangeToIndexSlot, length)
         instr$nDim <- sum(instr$dims)
-        instr$slots <- unlist(range$indexingRange$rangeToIndexSlot)
+        instr$slots <- as.numeric(unlist(range$indexingRange$rangeToIndexSlot))
         instr$index_types <- sapply(range$indexingRange$indexRanges, function(x)
             switch(class(x)[1],
                    "indexRangeScalarClass" = 2,
@@ -61,7 +60,7 @@ range2instr <- function(range) {
 ## Open question of when to determine if to use parallel calculate.
 determineInstrType <- function(instr, use_vec = FALSE) {
     type <- NULL
-    if(!length(instr$dims))  ## use nDim here and below
+    if(!instr$nDim) 
         type <- "0"
     if(length(instr$dims) == 1) 
         if(instr$index_types[1] == 1) {
@@ -72,32 +71,20 @@ determineInstrType <- function(instr, use_vec = FALSE) {
             }              
         }
     if(length(instr$dims) == 2) 
-        if(identical(instr$dims, c(1L,1L))) {
-            ## Some of these not yet written.
-            if(identical(instr$index_types, c(1,1)))
-                if(identical(instr$slots, 1:2)) type <- "2_seq_seq" else type <- "2_seq_seq_ord"
-            if(identical(instr$index_types, c(1,2)))
-                if(instr$dims[2] == 1) {
-                    type <- "2_seq_mat"
-                } else {
-                    if(identical(instr$slots, 1:length(instr$slots))) type <- "2_seq_matp" else type <- "2_seq_matp_ord"
-                }  ## TODO: check slots are as expected here and in cases below
-            if(identical(instr$index_types, c(2,1))) 
-                if(instr$dims[1] == 1) {
-                    type <- "2_mat_seq"
-                } else {
-                    if(identical(instr$slots, 1:length(instr$slots))) type <- "2_matp_seq" else type <- "2_matp_seq_ord"
-                }
-            if(identical(instr$index_types, c(2,2))) {
-                if(all(instr$dims == 1)) type <- "2_mat_mat"
-                if(all(instr$dims > 1)) 
-                    if(identical(instr$slots, 1:length(instr$slots))) type <- "2_matp_matp" else type <- "2_matp_matp_ord"
-                if(instr$dims[[1]] == 1)
-                    if(identical(instr$slots, 1:length(instr$slots))) type <- "2_mat_matp" else type <- "2_mat_matp_ord"
-                if(instr$dims[[2]] == 1)
-                    if(identical(instr$slots, 1:length(instr$slots))) type <- "2_matp_mat" else type <- "2_matp_mat_ord"
+        if(identical(instr$dims, c(1,1))) {
+            if(identical(instr$slots, c(2,1))) {
+                type <- "2_x_y_ord"
+            } else {
+                if(identical(instr$index_types, c(1,1))) type <- "2_seq_seq" 
+                if(identical(instr$index_types, c(1,2))) type <- "2_seq_mat" 
+                if(identical(instr$index_types, c(2,1))) type <- "2_mat_seq" 
+                if(identical(instr$index_types, c(2,2))) type <- "2_mat_mat"
             }
-        } else stop("no available specific instruction type") # type <- "2_generic"
+        } else {
+            type <- "2_matp_matp"
+            if(instr$index_types[1] == 1) type <- "2_seq_matp"
+            if(instr$index_types[2] == 1) type <- "2_matp_seq"
+        }
     if(length(instr$dims) == 3) 
         if(all(instr$index_types == 1) && identical(instr$slots, 1:length(instr$slots)))
             type <- "3_allseq" else type <- "3_generic"
