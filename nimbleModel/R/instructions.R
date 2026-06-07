@@ -33,8 +33,8 @@ range2instr <- function(range) {
         instr$index_types <- 0
         instr$nDim <- 0
     } else {
-        instr$lens <-  sapply(range$indexingRange$indexRanges, function(x) x$numElements)
-        instr$dims <- sapply(range$indexingRange$rangeToIndexSlot, length)
+        instr$lens <- sapply(range$indexingRange$indexRanges, function(x) x$numElements)
+        instr$dims <- as.numeric(sapply(range$indexingRange$rangeToIndexSlot, length))
         instr$nDim <- sum(instr$dims)
         instr$slots <- as.numeric(unlist(range$indexingRange$rangeToIndexSlot))
         instr$index_types <- sapply(range$indexingRange$indexRanges, function(x)
@@ -67,7 +67,7 @@ determineInstrType <- function(instr, use_vec = FALSE) {
             type <- "1_seq"
         } else {
             if(instr$dims[1] == 1) type <- "1_mat" else {
-              if(identical(instr$slots, 1:length(instr$slots))) type <- "1_matp" else type <- "1_matp_ord"
+              if(identical(instr$slots, as.numeric(1:length(instr$slots)))) type <- "1_matp" else type <- "1_matp_ord"
             }              
         }
     if(length(instr$dims) == 2) 
@@ -86,13 +86,13 @@ determineInstrType <- function(instr, use_vec = FALSE) {
             if(instr$index_types[2] == 1) type <- "2_matp_seq"
         }
     if(length(instr$dims) == 3) 
-        if(all(instr$index_types == 1) && identical(instr$slots, 1:length(instr$slots)))
+        if(all(instr$index_types == 1) && identical(instr$slots, as.numeric(1:length(instr$slots))))
             type <- "3_allseq" else type <- "3_generic"
     if(length(instr$dims) == 4) 
-        if(all(instr$index_types == 1) && identical(instr$slots, 1:length(instr$slots)))
+        if(all(instr$index_types == 1) && identical(instr$slots, as.numeric(1:length(instr$slots))))
             type <- "4_allseq" else type <- "4_generic"
     if(length(instr$dims) == 5) 
-        if(all(instr$index_types == 1) && identical(instr$slots, 1:length(instr$slots)))
+        if(all(instr$index_types == 1) && identical(instr$slots, as.numeric(1:length(instr$slots))))
             type <- "5_allseq" else type <- "5_generic"
     if(is.null(type)) stop("no available specific instruction type")
     return(type2itype[[type]])

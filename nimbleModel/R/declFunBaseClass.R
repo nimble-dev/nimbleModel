@@ -390,9 +390,9 @@ declFunBase_nClass <- nClass(
         function(instr) {
             idx <- rep(0, 2)
             iStart1 <- instr$values[[1]][1]-1
+	    iStart2 <- instr$values[[2]][1]-1
             for(i in 1:instr$lens[1]) {
                 idx[1] <- iStart1 + i
-                iStart2 <- instr$values[[2]][1]-1
                 for(j in 1:instr$lens[2]) {
                     idx[2] <- iStart2 + j
                     sim_one(idx)

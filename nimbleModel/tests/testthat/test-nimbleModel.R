@@ -4,31 +4,6 @@ library(nCompiler)
 library(nimbleModel)
 library(testthat)
 
-## TODO: will location and access to predefined nClasses be as described below given they will live
-## in `nimbleModel` package? How will dependence on nCompiler work?
-
-## # To update the set of predefined nClasses
-## # generate new predef/instr_nC. Move that directly to package code inst/nimbleModel/predef/instr_nC
-## nCompile(instr_nClass = nimbleModel:::instr_nClass, control=list(generate_predefined=TRUE))
-## test <- nCompile(instr_nClass = nimbleModel:::instr_nClass)
-## #
-## # generate new predef/declFunBase_nC. Move to package and add
-## # "#include <nimbleModel/predef/declFunClass_/declFunClass_.h>" in the hContent
-## # And add "// [[Rcpp::depends(nimbleModel)]]" to the cppContent
-## # after declaration of declFunBase_nClass
-## nCompile(nimbleModel:::declFunBase_nClass, control=list(generate_predefined=TRUE))
-## test <- nCompile(nimbleModel:::declFunBase_nClass)
-## #
-## # generate new predef/modelBase_nC. Move to package and add
-## # "#include <nimbleModel/predef/modelClass_/modelClass_.h>" to the hContent
-## # And add "// [[Rcpp::depends(nimbleModel)]]" to the cppContent
-## # after the declaration of modelBase_nClass.
-## nCompile(modelBase_nClass = nimbleModel:::modelBase_nClass, control=list(generate_predefined=TRUE))
-## test <- nCompile(nimbleModel:::modelBase_nClass)
-## #nCompile(instr_nClass, modelBase_nClass, declFunBase_nClass, control=list(generate_predefined=TRUE))
-
-## TODO: revise these tests for instrClass (flattened approach)
-
 test_that("initial test of compiled model", {
     code <- quote({
         tau ~ dunif(0, 100)
@@ -344,7 +319,6 @@ test_that("one index", {
 })
 
 test_that("two index slots", {
-    library(nimbleModel); library(nCompiler); library(testthat)
     code <- quote({
         for(i in 1:4)
             for(j in 1:3)
@@ -358,6 +332,7 @@ test_that("two index slots", {
 
     inds <- matrix(c(3,1, 4,2, 2,3), ncol=2, byrow=TRUE)
     vr <- varRangeClass$new(list(newIndexRange(inds)), varName = 'y')
+    inds <- vr$indexRanges[[1]]$values   # Rows have been shuffled...
     truth <- sum(dnorm(m$y[inds], log=TRUE))
     expect_equal(m$calculate(vr), truth)
     expect_equal(cm$calculate(vr), truth)
@@ -372,9 +347,11 @@ test_that("two index slots", {
     expect_equal(cm$y[inds], result)
 
     ## Reverse indices
-    inds <- matrix(c(3,1, 4,2, 2,3), ncol=2, byrow=TRUE)
-    vr <- varRangeClass$new(list(newIndexRange(inds)), rangeToIndexSlot = c(2,1), varName = 'y')
-    truth <- sum(dnorm(m$y[inds[,2:1]], log=TRUE))
+    inds <- matrix(c(1,3, 2,4, 3,2), ncol=2, byrow=TRUE)
+    vr <- varRangeClass$new(list(newIndexRange(inds)), rangeToIndexSlot = list(c(2,1)), varName = 'y')
+    tmp <- vr$indexRanges[[1]]$values[,2:1]
+    inds <- tmp[order(tmp[,1]),]    # Rows have been shuffled...
+    truth <- sum(dnorm(m$y[inds], log=TRUE))
     expect_equal(m$calculate(vr), truth)
     expect_equal(cm$calculate(vr), truth)
 
@@ -382,19 +359,355 @@ test_that("two index slots", {
     result <- rnorm(3)
     set.seed(1)
     m$simulate(vr)
-    expect_equal(m$y[inds[,2:1]], result)
+    expect_equal(m$y[inds], result)
     set.seed(1)
     cm$simulate(vr)
-    expect_equal(cm$y[inds[,2:1]], result)
+    expect_equal(cm$y[inds], result)
 
     ## seq-seq
-    ## seq-mat
-    ## mat-seq
-    ## mat-mat
+    vr <- varRangeClass$new(list(newIndexRange(quote(2:4)), newIndexRange(quote(1:3))), varName = 'y')
+    truth <- sum(dnorm(m$y[2:4,1:3], log=TRUE))
+    expect_equal(m$calculate(vr), truth)
+    expect_equal(cm$calculate(vr), truth)
+
+    set.seed(1)
+    result <- rnorm(9)
+    set.seed(1)
+    m$simulate(vr)
+    expect_equal(c(t(m$y[2:4,1:3])), result)
+    set.seed(1)
+    cm$simulate(vr)
+    expect_equal(c(t(cm$y[2:4,1:3])), result)
     
+    ## seq-mat
+    vr <- varRangeClass$new(list(newIndexRange(quote(2:4)), newIndexRange(matrix(c(3,1),ncol=1))), varName = 'y')
+    truth <- sum(dnorm(m$y[2:4,c(1,3)], log=TRUE))
+    expect_equal(m$calculate(vr), truth)
+    expect_equal(cm$calculate(vr), truth)
+
+    set.seed(1)
+    result <- rnorm(6)
+    set.seed(1)
+    m$simulate(vr)
+    expect_equal(c(t(m$y[2:4,c(1,3)])), result)
+    set.seed(1)
+    cm$simulate(vr)
+    expect_equal(c(t(cm$y[2:4,c(1,3)])), result)
+    
+    ## mat-seq
+    vr <- varRangeClass$new(list(newIndexRange(matrix(c(3,1),ncol=1)), newIndexRange(quote(2:4))),
+                            varName = 'y')
+    truth <- sum(dnorm(m$y[c(1:3),2:4], log=TRUE))
+    expect_equal(m$calculate(vr), truth)
+    expect_equal(cm$calculate(vr), truth)
+
+    set.seed(1)
+    result <- rnorm(6)
+    set.seed(1)
+    m$simulate(vr)
+    expect_equal(c(t(m$y[c(1:3),2:4])), result)
+    set.seed(1)
+    cm$simulate(vr)
+    expect_equal(c(t(cm$y[c(1:3),2:4])), result)
+
+    ## mat-mat
+    vr <- varRangeClass$new(list(newIndexRange(matrix(c(3,1),ncol=1)), newIndexRange(matrix(c(2,4), ncol=1))),
+                            varName = 'y')
+    truth <- sum(dnorm(m$y[c(1:3),c(2,4)], log=TRUE))
+    expect_equal(m$calculate(vr), truth)
+    expect_equal(cm$calculate(vr), truth)
+
+    set.seed(1)
+    result <- rnorm(4)
+    set.seed(1)
+    m$simulate(vr)
+    expect_equal(c(t(m$y[c(1:3),c(2,4)])), result)
+    set.seed(1)
+    cm$simulate(vr)
+    expect_equal(c(t(cm$y[c(1:3),c(2,4)])), result)
+
 })
 
+test_that("three index slots", {
+    code <- quote({
+        for(i in 1:5)
+            for(j in 1:4)
+                for(k in 1:3)
+                   y[k,j,i] ~ dnorm(0,1)  # This changes order of use of indices.
+    })
+    data <- list(y = array(rnorm(60),c(3,4,5)))
+    mclass <- nimbleModel(code, data = data)
+    m <- mclass$new()
+    cmclass <- nCompile(mclass)
+    cm <- cmclass$new()
+    
+    inds <- matrix(c(3,1,5, 3,4,1, 1,2,4), ncol=3, byrow=TRUE)
+    vr <- varRangeClass$new(list(newIndexRange(inds)), varName = 'y')
+    inds <- vr$indexRanges[[1]]$values   # Rows have been shuffled...
+    truth <- sum(dnorm(m$y[inds], log=TRUE))
+    expect_equal(m$calculate(vr), truth)
+    expect_equal(cm$calculate(vr), truth)
 
+    set.seed(1)
+    result <- rnorm(3)
+    set.seed(1)
+    m$simulate(vr)
+    expect_equal(m$y[inds], result)
+    set.seed(1)
+    cm$simulate(vr)
+    expect_equal(cm$y[inds], result)
+
+    ## Reverse indices
+    inds <- matrix(c(5,3,1, 1,3,4, 4,1,2), ncol=2, byrow=TRUE)
+    vr <- varRangeClass$new(list(newIndexRange(inds)), rangeToIndexSlot = list(c(3,1,2)), varName = 'y')
+    tmp <- vr$indexRanges[[1]]$values[,2:1]
+    inds <- tmp[order(tmp[,1]),]    # Rows have been shuffled...
+    truth <- sum(dnorm(m$y[inds], log=TRUE))
+    expect_equal(m$calculate(vr), truth)
+    expect_equal(cm$calculate(vr), truth)
+
+    set.seed(1)
+    result <- rnorm(3)
+    set.seed(1)
+    m$simulate(vr)
+    expect_equal(m$y[inds], result)
+    set.seed(1)
+    cm$simulate(vr)
+    expect_equal(cm$y[inds], result)
+
+    ## seq-seq-seq
+    vr <- varRangeClass$new(list(newIndexRange(quote(2:3)), newIndexRange(quote(1:4)),
+                               newIndexRange(quote(2:5))), varName = 'y')
+    truth <- sum(dnorm(m$y[2:3,1:4,2:5], log=TRUE))
+    expect_equal(m$calculate(vr), truth)
+    expect_equal(cm$calculate(vr), truth)
+
+    set.seed(1)
+    result <- array(0, c(3,4,5))
+    for(i in 1:3)
+        for(j in 1:4)
+            for(k in 1:5)
+                result[i,j,k] <- rnorm(1)
+    set.seed(1)
+    m$simulate(vr)
+    expect_equal(c(m$y[2:3,1:4,2:5]), result)
+    set.seed(1)
+    cm$simulate(vr)
+    expect_equal(c(cm$y[2:3,1:4,2:5]), result)
+
+    ## seq-matp
+    vr <- varRangeClass$new(list(newIndexRange(quote(2:3)),
+                                 newIndexRange(matrix(c(4,1,1,3,4,5),ncol=2,byrow=TRUE))), varName = 'y')
+    inds <- rbind(c(2,1,3),c(2,4,1),c(2,4,5),c(3,1,3),c(3,4,1),c(3,4,5)) 
+    truth <- sum(dnorm(m$y[inds], log=TRUE))
+    expect_equal(m$calculate(vr), truth)
+    expect_equal(cm$calculate(vr), truth)
+
+    set.seed(1)
+    result <- rnorm(6)
+    set.seed(1)
+    m$simulate(vr)
+    expect_equal(c(m$y[inds])), result)
+    set.seed(1)
+    cm$simulate(vr)
+    expect_equal(c(cm$y[inds])), result)
+
+    ## seq-matp, reordered
+    vr <- varRangeClass$new(list(newIndexRange(quote(2:3)),
+                                 newIndexRange(matrix(c(4,1,1,3,4,5),ncol=2,byrow=TRUE))),
+                            rangeToIndexSlot = list(2,c(1,3)), varName = 'y')
+    inds <- rbind(c(1,2,3),c(1,3,3),c(4,2,1),c(4,3,1),c(4,2,5),c(4,3,5)) 
+    truth <- sum(dnorm(m$y[inds], log=TRUE))
+    expect_equal(m$calculate(vr), truth)
+    expect_equal(cm$calculate(vr), truth)
+
+    set.seed(1)
+    result <- rnorm(6)
+    set.seed(1)
+    m$simulate(vr)
+    expect_equal(c(m$y[inds])), result)
+    set.seed(1)
+    cm$simulate(vr)
+    expect_equal(c(cm$y[inds])), result)
+
+    ## mat-matp
+    vr <- varRangeClass$new(list(newIndexRange(matrix(c(2,3),ncol=1)),
+                                 newIndexRange(matrix(c(4,1,1,3,4,5),ncol=2,byrow=TRUE))), varName = 'y')
+    inds <- rbind(c(2,1,3),c(2,4,1),c(2,4,5),c(3,1,3),c(3,4,1),c(3,4,5)) 
+    truth <- sum(dnorm(m$y[inds], log=TRUE))
+    expect_equal(m$calculate(vr), truth)
+    expect_equal(cm$calculate(vr), truth)
+
+    set.seed(1)
+    result <- rnorm(6)
+    set.seed(1)
+    m$simulate(vr)
+    expect_equal(c(m$y[inds])), result)
+    set.seed(1)
+    cm$simulate(vr)
+    expect_equal(c(cm$y[inds])), result)
+    
+    ## matp-mat
+    vr <- varRangeClass$new(list(newIndexRange(matrix(c(2,3),ncol=1)),,
+                                 newIndexRange(matrix(c(4,1,1,3,4,5),ncol=2,byrow=TRUE))),
+                            rangeToIndexSlot = list(2,c(1,3)), varName = 'y')
+    inds <- rbind(c(1,2,3),c(1,3,3),c(4,2,1),c(4,3,1),c(4,2,5),c(4,3,5)) 
+    truth <- sum(dnorm(m$y[inds], log=TRUE))
+    expect_equal(m$calculate(vr), truth)
+    expect_equal(cm$calculate(vr), truth)
+
+    set.seed(1)
+    result <- rnorm(6)
+    set.seed(1)
+    m$simulate(vr)
+    expect_equal(c(m$y[inds])), result)
+    set.seed(1)
+    cm$simulate(vr)
+    expect_equal(c(cm$y[inds])), result)
+
+    # seq-mat-seq (3-generic)
+    vr <- varRangeClass$new(list(newIndexRange(quote(2:3)), newIndexRange(matrix(c(1,4), ncol=1)),
+                               newIndexRange(quote(2:5))), varName = 'y')
+    truth <- sum(dnorm(m$y[2:3,c(1,4),2:5], log=TRUE))
+    expect_equal(m$calculate(vr), truth)
+    expect_equal(cm$calculate(vr), truth)
+
+    set.seed(1)
+    result <- array(0, c(2,2,4))
+    for(i in 2:3)
+        for(j in c(1,4))
+            for(k in 2:5)
+                result[i,j,k] <- rnorm(1)
+    set.seed(1)
+    m$simulate(vr)
+    expect_equal(c(m$y[2:3,c(1,4),2:5]), result)
+    set.seed(1)
+    cm$simulate(vr)
+    expect_equal(c(cm$y[2:3,c(1,4),2:5]), result)
+
+})
+
+test_that("four index slots", {
+    code <- quote({
+        for(i in 1:5)
+            for(j in 1:4)
+                for(k in 1:3)
+                    for(l in 1:2)
+                        y[l,k,j,i] ~ dnorm(0,1)  # This changes order of use of indices.
+    })
+    data <- list(y = array(rnorm(120),c(2,3,4,5)))
+    mclass <- nimbleModel(code, data = data)
+    m <- mclass$new()
+    cmclass <- nCompile(mclass)
+    cm <- cmclass$new()
+
+    # all seq
+    vr <- varRangeClass$new(list(newIndexRange(quote(1:2)), newIndexRange(quote(2:3)), newIndexRange(quote(1:4)),
+                               newIndexRange(quote(2:5))), varName = 'y')
+    truth <- sum(dnorm(m$y[1:2,2:3,1:4,2:5], log=TRUE))
+    expect_equal(m$calculate(vr), truth)
+    expect_equal(cm$calculate(vr), truth)
+
+    set.seed(1)
+    result <- array(0, c(2,2,4,4))
+    for(i in 1:2)
+        for(j in 2:3)
+            for(k in 1:4)
+                for(l in 2:5)
+                result[i,j,k,l] <- rnorm(1)
+    set.seed(1)
+    m$simulate(vr)
+    expect_equal(c(m$y[1:2,2:3,1:4,2:5]), result)
+    set.seed(1)
+    cm$simulate(vr)
+    expect_equal(c(cm$y[1:2,2:3,1:4,2:5]), result)
+
+    # seq-mat-seq-seq (4-generic)
+    vr <- varRangeClass$new(list(newIndexRange(quote(1:2)), newIndexRange(quote(2:3)), newIndexRange(matrix(c(1,4), ncol=1)),
+                               newIndexRange(quote(2:5))), varName = 'y')
+    truth <- sum(dnorm(m$y[2:3,c(1,4),2:5], log=TRUE))
+    expect_equal(m$calculate(vr), truth)
+    expect_equal(cm$calculate(vr), truth)
+
+    set.seed(1)
+    result <- array(0, c(2,2,2,4))
+    for(i in 1:2)
+        for(j in 2:3)
+            for(k in c(1,4)
+                for(l in 2:5)
+                result[i,j,k,l] <- rnorm(1)
+    set.seed(1)
+    m$simulate(vr)
+    expect_equal(c(m$y[1:2,2:3,c(1,4),2:5]), result)
+    set.seed(1)
+    cm$simulate(vr)
+    expect_equal(c(cm$y[1:2,2:3,c(1,4),2:5]), result)
+
+})
+
+test_that("five index slots", {
+    code <- quote({
+        for(i in 1:5)
+            for(j in 1:4)
+                for(k in 1:3)
+                    for(l in 1:2)
+                        for(m in 1:5)
+                            y[m,l,k,j,i] ~ dnorm(0,1)  # This changes order of use of indices.
+    })
+    data <- list(y = array(rnorm(120*5),c(5,2,3,4,5)))
+    mclass <- nimbleModel(code, data = data)
+    m <- mclass$new()
+    cmclass <- nCompile(mclass)
+    cm <- cmclass$new()
+
+    # all seq
+    vr <- varRangeClass$new(list(newIndexRange(quote(3:5)), newIndexRange(quote(1:2)), newIndexRange(quote(2:3)), newIndexRange(quote(1:4)),
+                               newIndexRange(quote(2:5))), varName = 'y')
+    truth <- sum(dnorm(m$y[3:5,1:2,2:3,1:4,2:5], log=TRUE))
+    expect_equal(m$calculate(vr), truth)
+    expect_equal(cm$calculate(vr), truth)
+
+    set.seed(1)
+    result <- array(0, c(3,2,2,4,4))
+    for(m in 3:5)
+        for(i in 1:2)
+            for(j in 2:3)
+                for(k in 1:4)
+                    for(l in 2:5)
+                        result[m,i,j,k,l] <- rnorm(1)
+    set.seed(1)
+    m$simulate(vr)
+    expect_equal(c(m$y[3:5,1:2,2:3,1:4,2:5]), result)
+    set.seed(1)
+    cm$simulate(vr)
+    expect_equal(c(cm$y[3:5,1:2,2:3,1:4,2:5]), result)
+
+    # 5-generic
+    vr <- varRangeClass$new(list(newIndexRange(quote(3:5)), newIndexRange(quote(1:2)),
+                                 newIndexRange(quote(2:3)), newIndexRange(matrix(c(1,4), ncol=1)),
+                               newIndexRange(quote(2:5))), varName = 'y')
+    truth <- sum(dnorm(m$y[2:3,c(1,4),2:5], log=TRUE))
+    expect_equal(m$calculate(vr), truth)
+    expect_equal(cm$calculate(vr), truth)
+
+    set.seed(1)
+    result <- array(0, c(3,2,2,2,4))
+    for(m in 3:5)
+        for(i in 1:2)
+            for(j in 2:3)
+                for(k in c(1,4)
+                    for(l in 2:5)
+                        result[i,j,k,l] <- rnorm(1)
+    set.seed(1)
+    m$simulate(vr)
+    expect_equal(c(m$y[3:5,1:2,2:3,c(1,4),2:5]), result)
+    set.seed(1)
+    cm$simulate(vr)
+    expect_equal(c(cm$y[3:5,1:2,2:3,c(1,4),2:5]), result)
+
+})
+
+## TODO: some of the older tests below probably duplicate those above.
 test_that("multiple index slots, single indexRange case", {
     code <- quote({
         for(i in 1:5) 
