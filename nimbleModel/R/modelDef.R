@@ -43,7 +43,7 @@ modelDefClass <- R6Class(
             assignDimensions(dimensions, inits, data)
             initializeContexts()          ## Creates empty context.
             processModelCode()            ## Determines declarations and contexts.
-            splitConstantsAndData()       ## Remove LHS variables from constants.
+            removeDataFromConstants()     ## Remove LHS variables from constants.
             addMissingIndexing()          ## Fill in missing indexing using `dimensions`.
             processBoundsAndTruncation()
             expandDistributions()         ## Handle parameterizations.
@@ -248,7 +248,7 @@ modelDefClass <- R6Class(
 
         ## Remove items from `constants` that appear as LHS variables (i.e., `data`).
         ## CHECK: are there any cases where this deals with something other than 'data'?
-        splitConstantsAndData = function() {
+        removeDataFromConstants = function() {
             constantsNames <- names(constants)
             if(length(constantsNames)) {
                 vars <- sapply(declInfo, function(x) x$targetVarName)

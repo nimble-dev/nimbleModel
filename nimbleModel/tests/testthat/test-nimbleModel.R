@@ -16,13 +16,11 @@ test_that("initial test of compiled model", {
     inits <- list(tau = 25, mu = 0)
     data <- list(y = rnorm(5))
 
-    ## "Manual" workflow not using `nimbleModel()`.
-    nm <- modelClass$new(code, inits = inits, data = data)
-    mclass <- nimbleModel:::make_modelClass_from_nimbleModel(nm)
-
-    Cmclass <- nCompile(mclass)
-    Cobj <- Cmclass$new()
+    ## Manual workflow
+    mclass <- nimbleModel(code, inits = inits, data = data, returnClass = TRUE)
     obj <- mclass$new()
+    cmclass <- nCompile(mclass)
+    Cobj <- cmclass$new()
 
     # Check a first calculation on a simple node
     Cans <- Cobj$calculate('tau')
@@ -96,11 +94,8 @@ test_that("initial tests/examples of nimble model using flattened approach", {
     inits <- list(tau = 25, mu = 0)
     data <- list(y = rnorm(5))
 
-    ## "Manual" workflow not using `nimbleModel()`.
-    nm <- modelClass$new(code, inits = inits, data = data)
-    #debug(nimbleModel:::make_modelClass_from_nimbleModel)
-    #debug(nimbleModel:::makeModel_nClass)
-    mclass <- nimbleModel:::make_modelClass_from_nimbleModel(nm)
+    ## "Manual" workflow
+    mclass <- nimbleModel(code, inits = inits, data = data, returnClass = TRUE)
 
     # Begin Perry
     Cmclass <- nCompile(mclass)
@@ -138,7 +133,7 @@ test_that("initial tests/examples of nimble model using flattened approach", {
       function(Robj = 'SEXP') {
         ans <- inC$new()
         cppLiteral("ans->set_all_values(Robj);")
-        cppLiteral("std::cout<<ans->dim<<std::endl;")
+        cppLiteral("std::cout<<ans->nDim<<std::endl;")
         return(ans)
       },
       returnType = 'inC'
@@ -147,7 +142,7 @@ test_that("initial tests/examples of nimble model using flattened approach", {
     #check_obj <- function(x) {browser(); NULL;}
     ctest1(list())
     obj1 <- ctest1(list(dim = 2L, dims = c(3L, 3L)))
-    obj1$dim
+    obj1$nDim
     obj1$dims
     obj1$values
 
@@ -157,7 +152,7 @@ test_that("initial tests/examples of nimble model using flattened approach", {
       function(Robj = 'SEXP') {
         ans <- nList(inC)$new()
         cppLiteral("ans->set_all_values(Robj);")
-#        cppLiteral("std::cout<<ans->dim<<std::endl;")
+#        cppLiteral("std::cout<<ans->dims<<std::endl;")
         return(ans)
       },
       returnType = 'nList(inC)'
@@ -166,7 +161,7 @@ test_that("initial tests/examples of nimble model using flattened approach", {
     #check_obj <- function(x) {browser(); NULL;}
     ctest1(list())
     obj1 <- ctest1(list(list(dim = 2L, dims = c(3L, 3L))))
-    obj1[[1]]$dim
+    obj1[[1]]$nDim
     obj1[[1]]$dims
     obj1[[1]]$values
     obj1[[1]]$lens
@@ -240,7 +235,7 @@ test_that("no indices", {
         sigma ~ dgamma(1,1)
     })
     inits <- list(mu = 1, sigma = .7)
-    mclass <- nimbleModel(code, inits = inits)
+    mclass <- nimbleModel(code, inits = inits, returnClass = TRUE)
     m <- mclass$new()
     vr <- varRangeClass$new('mu')
     expect_equal(m$calculate(vr), dnorm(inits$mu,log=TRUE))
@@ -266,7 +261,7 @@ test_that("one index", {
             y[i] ~ dnorm(0,1)
     })
     data <- list(y = rnorm(10))
-    mclass <- nimbleModel(code, data = data)
+    mclass <- nimbleModel(code, data = data, returnClass = TRUE)
     m <- mclass$new()
     cmclass <- nCompile(mclass)
     cm <- cmclass$new()
@@ -325,7 +320,7 @@ test_that("two index slots", {
                 y[i,j] ~ dnorm(0,1)
     })
     data <- list(y = matrix(rnorm(12),4))
-    mclass <- nimbleModel(code, data = data)
+    mclass <- nimbleModel(code, data = data, returnClass = TRUE)
     m <- mclass$new()
     cmclass <- nCompile(mclass)
     cm <- cmclass$new()
@@ -436,7 +431,7 @@ test_that("three index slots", {
                    y[k,j,i] ~ dnorm(0,1)  # This changes order of use of indices.
     })
     data <- list(y = array(rnorm(60),c(3,4,5)))
-    mclass <- nimbleModel(code, data = data)
+    mclass <- nimbleModel(code, data = data, returnClass = TRUE)
     m <- mclass$new()
     cmclass <- nCompile(mclass)
     cm <- cmclass$new()
@@ -596,7 +591,7 @@ test_that("four index slots", {
                         y[l,k,j,i] ~ dnorm(0,1)  # This changes order of use of indices.
     })
     data <- list(y = array(rnorm(120),c(2,3,4,5)))
-    mclass <- nimbleModel(code, data = data)
+    mclass <- nimbleModel(code, data = data, returnClass = TRUE)
     m <- mclass$new()
     cmclass <- nCompile(mclass)
     cm <- cmclass$new()
@@ -655,7 +650,7 @@ test_that("five index slots", {
                             y[m,l,k,j,i] ~ dnorm(0,1)  # This changes order of use of indices.
     })
     data <- list(y = array(rnorm(120*5),c(5,2,3,4,5)))
-    mclass <- nimbleModel(code, data = data)
+    mclass <- nimbleModel(code, data = data, returnClass = TRUE)
     m <- mclass$new()
     cmclass <- nCompile(mclass)
     cm <- cmclass$new()
@@ -715,7 +710,7 @@ test_that("multiple index slots, single indexRange case", {
                 y[i,j] ~ dnorm(0,1)
     })
     data <- list(y = matrix(rnorm(15),5))
-    mclass <- nimbleModel(code, data = data)
+    mclass <- nimbleModel(code, data = data, returnClass = TRUE)
     m <- mclass$new()
     vr <- varRangeClass$new(list(newIndexRange(matrix(c(2,4,3,1), ncol=2))), varName='y')
     expect_equal(m$calculate(vr), dnorm(data$y[2,3],log=TRUE) + dnorm(data$y[4,1],log=TRUE))
@@ -743,7 +738,7 @@ test_that("multiple index slots, single indexRange case", {
                 y[i,j,k] ~ dnorm(0,1)
     })
     data <- list(y = array(rnorm(60),c(5,4,3)))
-    mclass <- nimbleModel(code, data = data)
+    mclass <- nimbleModel(code, data = data, returnClass = TRUE)
     m <- mclass$new()
     vr <- varRangeClass$new(list(newIndexRange(matrix(c(2,3,1,3,5,2,1,2,4), ncol=3))),
                             rangeToIndexSlot = list(c(3,1,2)), varName='y')
@@ -763,7 +758,7 @@ test_that("two sequences case", {
                 y[i,j] ~ dnorm(0,1)
     })
     data <- list(y = matrix(rnorm(15),5))
-    mclass <- nimbleModel(code, data = data)
+    mclass <- nimbleModel(code, data = data, returnClass = TRUE)
     truth <- sum(dnorm(data$y[2:4,1:3],0,1,log=TRUE))
     m <- mclass$new()
     expect_equal(m$calculate('y[2:4,1:3]'), truth)
@@ -786,7 +781,7 @@ test_that("two sequences case", {
                 y[i,j] ~ dnorm(0,1)
     })
     data <- list(y = matrix(rnorm(10),5))
-    mclass <- nimbleModel(code, data = data)
+    mclass <- nimbleModel(code, data = data, returnClass = TRUE)
     m <- mclass$new()
     vr <- varRangeClass$new(list(newIndexRange(quote(1:2)), newIndexRange(quote(1:5))),
                                  rangeToIndexSlot = list(2,1), varName='y')

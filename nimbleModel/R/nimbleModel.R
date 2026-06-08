@@ -9,7 +9,7 @@ nimbleModel <- function(code,
                         inits = list(),
                         dimensions = list(),
                         compile = FALSE,
-                        returnClass = TRUE,
+                        returnClass = FALSE,   # Match object-based behavior of nimble::nimbleModel().
                         where = globalenv(),
                         debug = FALSE,
                         check = getNimbleOption('checkModel'),
@@ -20,21 +20,52 @@ nimbleModel <- function(code,
     ## TODO: arg list taken from `nimble`. Revisit which options are needed.
     ## For the moment this goes through (original) nimbleModel R6 class and then nimbleModel nClass. Clean that up once ideas are in place.
     ## Presumably everything would be in Rpublic initialize for modelBaseClass, so this function will just call modelBase_nClass$new().
-    nm <- modelClass$new(name = name, code = code, constants = constants, data = data, inits = inits, dimensions = dimensions, userEnv = userEnv)
-    specificModelClass <- make_modelClass_from_nimbleModel(nm)
+
+    if(length(constants) && sum(names(constants) == ""))
+        stop("nimbleModel: 'constants' must be a named list")
+    if(length(dimensions) && sum(names(dimensions) == ""))
+        stop("nimbleModel: 'dimensions' must be a named list")
+    if(length(inits) > 0 && is.list(inits[[1]])) {
+        messageIfVerbose('  [Note] Detected JAGS-style initial values, provided as a list of lists. Using the first set of initial values')
+        inits <- inits[[1]]
+    }
+    if(length(inits)) {
+        unnamed <- which(names(inits) == "")
+        if(length(unnamed) || is.null(names(inits))) {
+            warning("One or more unnamed elements found in inits.")
+            if(length(unnamed))
+                inits <- inits[-unnamed] else inits <- list()
+        }
+    }
+    
+    if(length(data) && sum(names(data) == ""))
+        stop("nimbleModel: 'data' must be a named list")
+    if(any(!sapply(data, function(x) {
+        is.numeric(x) || is.logical(x) ||
+            (is.data.frame(x) && all(sapply(x, 'is.numeric'))) })))
+        stop("nimbleModel: elements of 'data' must be numeric")
+
+    ## TODO: determine if we will need these.
+    origInits <- inits
+    origData <- data
+
+    modelDef <- modelDefClass$new(code, constants = constants,
+                                           dimensions = dimensions, inits = inits,
+                                  data = data, userEnv = userEnv)
+    ## At this point, data will have been removed from constants.
+    specificModelClass <- make_modelClass_from_nimbleModel(modelDef, data, inits, name)
     if(compile) specificModelClass <- nCompile(specificModelClass)
-    if(returnClass) return(specificModelClass)  # Standard use for when compiling a model(class) and algo(class) together.
-    model <- specificModelClass$new()  # Otherwise return model object for manipulation from R.
+    if(returnClass) return(specificModelClass)  
+    model <- specificModelClass$new()  
 }
 
-make_modelClass_from_nimbleModel <- function(m, compile=FALSE) {
-  mDef <- m$modelDef
-  modelVarInfo <- get_varInfo_from_nimbleModel(m)
+make_modelClass_from_nimbleModel <- function(modelDef, data, inits, name=NULL) {
+  modelVarInfo <- get_varInfo_from_nimbleModel(modelDef)
   declInfoList <- list()
   declFunClassList <- list()
-  declFunNames <- names(mDef$declFunNameToIndex)
-  for(i in seq_along(mDef$declInfo)) {
-    declInfo <- mDef$declInfo[[i]]
+  declFunNames <- names(modelDef$declFunNameToIndex)
+  for(i in seq_along(modelDef$declInfo)) {
+    declInfo <- modelDef$declInfo[[i]]
     decl_methods <- make_decl_methods_from_declInfo(declInfo)
     declVars <- decl_methods |> lapply(\(x) all.vars(body(x))) |> unlist() |> unique() |> setdiff(c("idx", "LocalNewLogProb_", "LocalAns_", "model")) %||% character()
     declVarInfo <- modelVarInfo$vars[declVars]
@@ -50,10 +81,11 @@ make_modelClass_from_nimbleModel <- function(m, compile=FALSE) {
   ## We have a canonical ordering of decls, but it does arise from a couple of places that should match.
   # so we check here.
   ordered_decl_names <- lapply(declInfoList, function(x) x$membername) |> unlist()
-  if(!identical(ordered_decl_names, names(mDef$declFunNameToIndex)))
+  if(!identical(ordered_decl_names, names(modelDef$declFunNameToIndex)))
    stop("declaration ordering in declInfoList does not matchdeclFunNameToIndex")
-  modelClassInstance <- makeModel_nClass(modelVarInfo, declInfoList, inits = m$origInits, data = m$origData,
-                                         model = m, classname = "my_model", env = environment())
+  modelClassInstance <- makeModel_nClass(modelVarInfo, declInfoList, inits = inits, data = data,
+                                         modelDef = modelDef, classname = name %||% "my_model",
+                                         env = environment())
 }
 
 ## The two "addModelDollarSign" functions are borrowed directly from nimble.
@@ -193,7 +225,7 @@ makeModel_nClass <- function(modelVarInfo,
                              classname,
                              inits = list(),
                              data = list(),
-                             model = NULL,
+                             modelDef = NULL,
                              env = parent.frame()
                              ) {
   ## varInfo will be a list (names not used) of name, nDim, sizes.
@@ -257,7 +289,7 @@ makeModel_nClass <- function(modelVarInfo,
          init_string = init_string)
   })
 
-  declFunNameToIndex <- model$modelDef$declFunNameToIndex
+  declFunNameToIndex <- modelDef$declFunNameToIndex
 
   CpublicDeclFuns <- decl_pieces |> lapply(\(x) x$nClass_type) |> setNames(names(declFunNameToIndex))
   # CpublicDeclFuns <- list(
@@ -305,15 +337,11 @@ makeModel_nClass <- function(modelVarInfo,
     list(OPDEFS = opDefs,
         # A list of individual elements
         RPUBLIC = list(
-                      declFunNameToIndex_ = model$modelDef$declFunNameToIndex,
+                      declFunNameToIndex_ = modelDef$declFunNameToIndex,
                       defaultSizes = modelVarInfo$sizes,
                       defaultInits = inits,
                       defaultData = data,
-                      modelDef = model$modelDef,
-                      dataRules = model$dataRules,
-                      nondataRules = model$nondataRules,
-                      predictiveRules = model$predictiveRules,
-                      nonpredictiveRules = model$nonpredictiveRules,
+                      modelDef = modelDef,
                       CpublicDeclFuns = CpublicDeclFuns),
         # A concatenation of lists
         CPUBLIC = c(CpublicDeclFuns, Cpublic_setup_decl_mgmt, CpublicModelVars, CpublicCtor, CpublicMethods),
@@ -324,8 +352,7 @@ makeModel_nClass <- function(modelVarInfo,
 }
 
 ## Get varInfo from new nimbleModel
-get_varInfo_from_nimbleModel <- function(model) {
-  mDef <- model$modelDef
+get_varInfo_from_nimbleModel <- function(mDef) {
   extract <- \(x) x |> lapply(\(x) list(name = x$varName, nDim = x$nDim))
   vars <- mDef$varInfo |> extract()
   logProbVars <- mDef$logProbVarInfo |> extract()

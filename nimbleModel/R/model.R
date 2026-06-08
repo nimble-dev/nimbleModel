@@ -1,3 +1,9 @@
+## NOTE: This `modelClass` is no longer used; functionality absorbed into
+## `nimbleModel()` and into `modelBase_nClass`.
+
+## `getNodes` at end of this file is still used.
+## TODO: perhaps relocate and remove this file entirely.
+
 ## A class representing the model, including the model definition, containing
 ## static information, data information, and methods for querying the model
 ## structure.
