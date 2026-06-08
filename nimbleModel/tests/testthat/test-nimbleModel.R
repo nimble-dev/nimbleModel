@@ -160,7 +160,7 @@ test_that("initial tests/examples of nimble model using flattened approach", {
     ctest1 <- nCompile(test1)
     #check_obj <- function(x) {browser(); NULL;}
     ctest1(list())
-    obj1 <- ctest1(list(list(dim = 2L, dims = c(3L, 3L))))
+    obj1 <- ctest1(list(list(nDim = 2L, dims = c(3L, 3L))))
     obj1[[1]]$nDim
     obj1[[1]]$dims
     obj1[[1]]$values
