@@ -12,9 +12,8 @@ code <- quote({
 inits <- list(tau = 25, mu = 0)
 data <- list(y = rnorm(5))
 
-## "Manual" workflow not using `nimbleModel()`.
-nm <- modelClass$new(code, inits = inits, data = data)
-mclass <- nimbleModel:::make_modelClass_from_nimbleModel(nm)
+mclass <- nimbleModel(code, inits = inits, data = data, returnClass = TRUE)
+
 
 nOptions(pause_after_writing_files = FALSE)
 test <- nCompile(mclass)

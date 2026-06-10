@@ -629,10 +629,6 @@ declFunBase_nClass <- nClass(
                 }
             }
         },
-      sim_1_matp = function(instr) {
-        for(i in 1:instr$lens[1])
-          sim_one(instr$values[[1]][(instr$dims[1]*(i-1) + 1):(instr$dims[1]*i)])  ## Ok to call with a vector?
-      },
       getParam = function(instr, param) {
         getParam_one(0, param) # use the "_0" case to check initial wiring
       }
