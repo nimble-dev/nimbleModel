@@ -669,7 +669,7 @@ test_that("basic creation of list of instr_nClass objects", {
 
     instr1 <- makeInstrList(m, 'y[3:4]')[[1]]
     expect_identical(instr1$lens, 2)
-    expect_identical(instr1$values[[1]], 2) # offset
+    expect_identical(instr1$values[[1]], 3) # offset
     expect_identical(instr1$index_types, 1)
     expect_identical(instr1$type, 1)
 
@@ -695,7 +695,7 @@ test_that("basic creation of list of instr_nClass objects", {
 
     data <- list(y = matrix(rnorm(20), 5))
     m <- nimbleModel(code, data = data)
-    instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(2:5)), newIndexRange(quote(1:3)))), varName = 'y')[[1]]
+    instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(2:5)), newIndexRange(quote(1:3))), varName = 'y'))[[1]]
     expect_identical(instr$type, 4)
 
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(2:5)), newIndexRange(matrix(c(1,4),ncol=1))), varName = 'y'))[[1]]
@@ -732,7 +732,7 @@ test_that("basic creation of list of instr_nClass objects", {
 
     data <- list(y = matrix(rnorm(20), 4))
     m <- nimbleModel(code, data = data)
-    instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(1:3)), newIndexRange(quote(2:5)))), varName = 'y')[[1]]
+    instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(1:3)), newIndexRange(quote(2:5))), varName = 'y'))[[1]]
     expect_identical(instr$type, 4)
 
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(1:3)), newIndexRange(matrix(c(2,5),ncol=1))), varName = 'y'))[[1]]
@@ -749,14 +749,14 @@ test_that("basic creation of list of instr_nClass objects", {
                                                 rangeToIndexSlot=list(2,1), varName = 'y'))[[1]]
     expect_identical(instr$type, 5)
     expect_identical(instr$slots, c(1,2))
-    expect_identical(instr$index_types, c(2,1))
+    expect_identical(instr$index_types, c(1,2))
 
     ## order is shuffled to put first index slot in first range
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(matrix(c(1,5),ncol=1)), newIndexRange(quote(2:4))),
                                                 rangeToIndexSlot=list(2,1), varName = 'y'))[[1]]
     expect_identical(instr$type, 6)
     expect_identical(instr$slots, c(1,2))
-    expect_identical(instr$index_types, c(1,2))
+    expect_identical(instr$index_types, c(2,1))
 
     
     code <- quote({
