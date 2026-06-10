@@ -16,6 +16,8 @@ modelDefClass <- R6Class(
         contexts = list(),
         constants = list(),
         declInfo = list(),
+        declFunNameToIndex = list(),
+        declFunIndexToName = NULL,
         downstreamRules = NULL,
         upstreamRules = NULL,
         calcRules = NULL,
@@ -41,7 +43,7 @@ modelDefClass <- R6Class(
             assignDimensions(dimensions, inits, data)
             initializeContexts()          ## Creates empty context.
             processModelCode()            ## Determines declarations and contexts.
-            splitConstantsAndData()       ## Remove LHS variables from constants.
+            removeDataFromConstants()     ## Remove LHS variables from constants.
             addMissingIndexing()          ## Fill in missing indexing using `dimensions`.
             processBoundsAndTruncation()
             expandDistributions()         ## Handle parameterizations.
@@ -53,6 +55,7 @@ modelDefClass <- R6Class(
             addRemainingDotParams()       ## Add additional altParams as needed.
             replaceAllConstants()         ## Simplify expressions introduced in `addRemainingDotParams`.
             processDecls(userEnv)         ## Create declRules and set up symbolicParentNodes (and flags dynamic indexing).
+            assignDeclIDs()               ## Set sequential declID values and declFun mapping.
             genAltParams()                ## Create altParam expressions and create `calculateCode` (without altParams).
             genBounds()                   ## Create bound expressions (modifying `calculateCode`).
 
@@ -73,7 +76,6 @@ modelDefClass <- R6Class(
 
             warnRHSonlyDynamicIndexing()
 
-            buildFunctions()              ## Generate calculate and other functions.
             invisible(NULL)
         },
 
@@ -246,7 +248,7 @@ modelDefClass <- R6Class(
 
         ## Remove items from `constants` that appear as LHS variables (i.e., `data`).
         ## CHECK: are there any cases where this deals with something other than 'data'?
-        splitConstantsAndData = function() {
+        removeDataFromConstants = function() {
             constantsNames <- names(constants)
             if(length(constantsNames)) {
                 vars <- sapply(declInfo, function(x) x$targetVarName)
@@ -546,6 +548,13 @@ modelDefClass <- R6Class(
             invisible(NULL)
         },
 
+        assignDeclIDs = function() {
+            for(i in seq_along(declInfo))
+              declInfo[[i]]$declRule$ID <- as.character(i)
+            declFunNameToIndex <<- as.list(1:length(declInfo))
+            names(declFunNameToIndex) <<- paste("declFun", 1:length(declInfo), sep = "_")
+        },            
+        
         ## Add additional altParams not already addressed in getting canonical params.
         addRemainingDotParams = function() {
             for(iDecl in seq_along(declInfo)) {
@@ -868,13 +877,6 @@ modelDefClass <- R6Class(
                 }
             }
             invisible(NULL)
-        },
-
-        buildFunctions = function() {
-            for(i in seq_along(declInfo)) {
-                declInfo[[i]]$buildFunctions()
-            }
-            invisible(NULL)
         }
     )
 )
@@ -893,6 +895,10 @@ modelDefClass <- R6Class(
 
 ## Note: data-related flags not handled as that relates to flags on a model
 ## and not part of modelDef.
+
+## TODO: these should presumably take the model not modelDef as the first arg.
+## Once we integrate modelClass with modelBase_nClass, we should be able to
+## pass `self` from the getDeps and getParents methods to these functions.
 
 getDependencies <- function(modelDef, nodes,
                             self = TRUE,

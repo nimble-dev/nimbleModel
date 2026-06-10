@@ -8,7 +8,7 @@ modelDeclClass <- R6Class(
     public = list(
         context = NULL,           # FUTURE: might just use declRule$context
         sourceLineNumber = NULL,
-        stoch = FALSE,            # Need this here as used before declRule created.
+        stoch = FALSE,        
         code = NULL,
         distributionName = NA,  
         valueExpr = NULL,
@@ -118,7 +118,7 @@ modelDeclClass <- R6Class(
 
         ## Create declRule and symbolic RHS pieces.
         processDecl = function(nimFunNames, constants = list(), envir) {
-            declRule <<- declRuleClass$new(self, sourceLineNumber, context, constants)
+            declRule <<- declRuleClass$new(self, 0, context, constants)
             makeSymbolicParentNodes(nimFunNames, constants, envir)
             invisible(NULL)
         },
@@ -281,10 +281,6 @@ modelDeclClass <- R6Class(
                 }
             }
             invisible(NULL)
-        },
-
-        buildFunctions = function() {
-            declRule$buildFunctions(calculateCode, genLogProbExpr())
         },
 
         genLogProbExpr = function() {

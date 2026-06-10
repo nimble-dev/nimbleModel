@@ -1,6 +1,18 @@
+## NOTE: This `modelClass` is no longer used; functionality absorbed into
+## `nimbleModel()` and into `modelBase_nClass`.
+
+## `getNodes` at end of this file is still used.
+## TODO: perhaps relocate and remove this file entirely.
+
 ## A class representing the model, including the model definition, containing
 ## static information, data information, and methods for querying the model
 ## structure.
+
+## For the moment this overlaps with the custom model class we create
+## for each model using nCompiler. That model class takes some of the
+## fields and calls some of the methods set up here.
+
+## TODO: possibly work all of this into modelBase_nClass.
 
 ## Will need to do some work to extend this to get full current behavior
 ## where the model is created by `nimbleModel` and the custom model class
@@ -42,7 +54,9 @@ modelClass <- R6Class(
                 }
             }
 
-
+            origInits <<- inits
+            origData <<- data
+            
             if(length(data) && sum(names(data) == ""))
                 stop("modelClass: 'data' must be a named list")
             if(any(!sapply(data, function(x) {
@@ -65,11 +79,6 @@ modelClass <- R6Class(
 
             makeDataRules(data)
             makePredictiveRules()
-
-            ## Do this once we have a custom model class with fields we can assign into.
-            ## setData(data)
-            ## setInits(inits)
-            
         },
 
         makeDataRules = function(data) {
@@ -124,7 +133,7 @@ modelClass <- R6Class(
 
             nonpredictiveRules <<- candidateRules   
         },
-
+        ## TODO: should this be a standalone function like getNodes, getDependencies?
         getVarNames = function(includeLogProb = FALSE, nodeRanges) {
             if(missing(nodeRanges)){
                 if(includeLogProb) return(modelDef$varNames)
