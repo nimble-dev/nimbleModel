@@ -42,6 +42,10 @@ public:
         }
     }
 
+    std::unique_ptr<ETaccessorBase> getParam_impl(std::shared_ptr<instr_nClass> instr, int param) {
+        return declFunPtrs[instr->declID - 1 ]->getParam_cpp(instr, param);
+    }
+
     // This version takes a character vector of names from R so that
     // the ordering of nodeFxns matches that in R, which is important for
     // the calculation instructions.

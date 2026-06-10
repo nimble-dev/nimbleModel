@@ -331,6 +331,20 @@ modelBase_nClass <- nClass(
                 }
             }
             return(invisible(NULL))
+        },
+        getParam = function(instr, param) {
+            if(missing(instr)) stop("instr (e.g. 'x') is required for model$getParam")
+            if(missing(param)) stop("param (e.g. 'mu') is required for model$getParam")
+            # These steps could be cleaned up a bit to not need to go through a list and back.
+            instrList <- makeInstrList(self, instr)
+            if(isCompiled()) {
+                if(!instrList$isCompiled()) instrList <- makeCompiledInstrList(instrList)
+                instr <- instrList[[1]]
+                self$getParam_impl_R(instr, param)
+            } else {
+                instr <- instrList[[1]]
+                declFunList[[instr$declID]]$getParam(instr, param)
+            }
         }
     ),
     Cpublic = list(
@@ -410,6 +424,33 @@ modelBase_nClass <- nClass(
                 },
                 virtual=TRUE
             )
+        ),
+        getParam_impl = nFunction(
+            name = "getParam_impl",
+            function(instr, param) {
+                cat("Uncompiled `getParam_impl` should never be called.\n")
+                return(invisible(NULL))
+            },
+            returnType = 'ETaccessor',
+            compileInfo = list(
+                C_fun = function(instr = 'instr_nClass', param = 'integerScalar') {
+                    cppLiteral('Rprintf("modelBase_nClass getParam_impl (should not see this)\\n");');
+                },
+                virtual=TRUE
+            )
+        ),
+        getParam_impl_R = nFunction(
+            name = "getParam_impl_R",
+            function(instr, param) {
+                cat("Uncompiled `getParam_impl_R` should never be called.\n")
+                return(invisible(NULL))
+            },
+            returnType = 'SEXP',
+            compileInfo = list(
+                C_fun = function(instr = 'instr_nClass', param = 'integerScalar') {
+                    cppLiteral('return getParam_impl(instr, param)->get();');
+                }
+            )
         )
     ),
     ## See comment above about needing to ensure a virtual destructor
@@ -419,6 +460,7 @@ modelBase_nClass <- nClass(
                      Hincludes = c('"declFunBase_nClass_c_.h"','"instr_nClass_c_.h"'), 
                      needed_units = list("declFunBase_nClass","instr_nClass", "nList(instr_nClass)"),
                      exportName = "modelBase_nClass_new",
+                     interfaceExclude = c("getParam_impl"),
                      packageNames = c(uncompiled="modelBase_nClass_R", compiled="modelBase_nClass")
                      )
 )

@@ -44,6 +44,14 @@ return(0.0);
 RESET_EIGEN_ERRORS
 Rprintf("modelBase_nClass simulate_impl (should not see this)\n");;
 }
+    std::unique_ptr<ETaccessorBase>  modelBase_nClass::getParam_impl ( std::shared_ptr<instr_nClass> instr, int param ) {
+RESET_EIGEN_ERRORS
+Rprintf("modelBase_nClass getParam_impl (should not see this)\n");;
+}
+    SEXP  modelBase_nClass::getParam_impl_R ( std::shared_ptr<instr_nClass> instr, int param ) {
+RESET_EIGEN_ERRORS
+return getParam_impl(instr, param)->get();;
+}
       modelBase_nClass::modelBase_nClass (  ) {
 RESET_EIGEN_ERRORS
 }
@@ -72,7 +80,8 @@ method("makeCompiledInstrList", &modelBase_nClass::makeCompiledInstrList, args({
 method("calculate_impl", &modelBase_nClass::calculate_impl, args({{arg("instrList",copy)}})),
 method("calculateDiff_impl", &modelBase_nClass::calculateDiff_impl, args({{arg("instrList",copy)}})),
 method("getLogProb_impl", &modelBase_nClass::getLogProb_impl, args({{arg("instrList",copy)}})),
-method("simulate_impl", &modelBase_nClass::simulate_impl, args({{arg("instrList",copy)}}))
+method("simulate_impl", &modelBase_nClass::simulate_impl, args({{arg("instrList",copy)}})),
+method("getParam_impl_R", &modelBase_nClass::getParam_impl_R, args({{arg("instr",copy)},{arg("param",copy)}}))
 )
 )
 #endif

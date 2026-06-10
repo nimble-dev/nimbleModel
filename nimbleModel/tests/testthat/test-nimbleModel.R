@@ -5,6 +5,32 @@ library(nimbleModel)
 library(testthat)
 
 test_that("basic testing of models, compiled and uncompiled", {
+## TODO: will location and access to predefined nClasses be as described below given they will live
+## in `nimbleModel` package? How will dependence on nCompiler work?
+
+## # To update the set of predefined nClasses
+## # generate new predef/instr_nC. Move that directly to package code inst/nimbleModel/predef/instr_nC
+## nCompile(instr_nClass = nimbleModel:::instr_nClass, control=list(generate_predefined=TRUE))
+## test <- nCompile(instr_nClass = nimbleModel:::instr_nClass)
+## #
+## # generate new predef/declFunBase_nC. Move to package and add
+## # "#include <nimbleModel/predef/declFunClass_/declFunClass_.h>" in the hContent
+## # And add "// [[Rcpp::depends(nimbleModel)]]" to the cppContent
+## # after declaration of declFunBase_nClass
+## nCompile(nimbleModel:::declFunBase_nClass, control=list(generate_predefined=TRUE))
+## test <- nCompile(nimbleModel:::declFunBase_nClass)
+## #
+## # generate new predef/modelBase_nC. Move to package and add
+## # "#include <nimbleModel/predef/modelClass_/modelClass_.h>" to the hContent
+## # And add "// [[Rcpp::depends(nimbleModel)]]" to the cppContent
+## # after the declaration of modelBase_nClass.
+## nCompile(modelBase_nClass = nimbleModel:::modelBase_nClass, control=list(generate_predefined=TRUE))
+## test <- nCompile(nimbleModel:::modelBase_nClass)
+## #nCompile(instr_nClass, modelBase_nClass, declFunBase_nClass, control=list(generate_predefined=TRUE))
+
+## TODO: revise these tests for instrClass (flattened approach)
+
+test_that("initial test of compiled model", {
     code <- quote({
         tau ~ dunif(0, 100)
         mu ~ dnorm(0,1)
@@ -84,7 +110,7 @@ test_that("basic testing of models, compiled and uncompiled", {
     m$tau <- 1
     m$simulate(m$getDependencies('tau', self = FALSE))
     expect_true(all(m$y > 95))
-    
+
     set.seed(1)
     cm$simulate()
     expect_identical(cm$lifted_sqrt_oPtau_cP, sqrt(cm$tau))
@@ -299,7 +325,7 @@ test_that("two index slots", {
     set.seed(1)
     cm$simulate(vr)
     expect_equal(c(t(cm$y[2:4,1:3])), result)
-    
+
     ## seq-mat
     vr <- varRangeClass$new(list(newIndexRange(quote(2:4)), newIndexRange(matrix(c(3,1),ncol=1))), varName = 'y')
     truth <- sum(dnorm(m$y[2:4,c(1,3)], log=TRUE))
@@ -314,7 +340,7 @@ test_that("two index slots", {
     set.seed(1)
     cm$simulate(vr)
     expect_equal(c(t(cm$y[2:4,c(1,3)])), result)
-    
+
     ## mat-seq
     vr <- varRangeClass$new(list(newIndexRange(matrix(c(2,4),ncol=1)), newIndexRange(quote(1:3))),
                             varName = 'y')
@@ -355,13 +381,13 @@ test_that("three index slots (plus different index variable ordering)", {
             for(j in 1:4)
                 for(k in 1:3)
                    y[k,j,i] ~ dnorm(0,1)  # This changes order of use of indices to [idx[3],idx[2],idx[1]].
-    })    
+    })
     data <- list(y = array(rnorm(60),c(3,4,5)))
     mclass <- nimbleModel(code, data = data, returnClass = TRUE)
     m <- mclass$new()
     cmclass <- nCompile(mclass)
     cm <- cmclass$new()
-    
+
     inds <- matrix(c(3,1,5, 3,4,1, 1,2,4), ncol=3, byrow=TRUE)
     vr <- varRangeClass$new(list(newIndexRange(inds)), varName = 'y')
     inds <- vr$indexRanges[[1]]$values   # Rows have been shuffled...
@@ -516,7 +542,7 @@ test_that("four index slots", {
             for(j in 1:4)
                 for(k in 1:3)
                     for(l in 1:2)
-                        y[i,j,k,l] ~ dnorm(0,1) 
+                        y[i,j,k,l] ~ dnorm(0,1)
     })
     data <- list(y = array(rnorm(120),c(5,4,3,2)))
     mclass <- nimbleModel(code, data = data, returnClass = TRUE)
@@ -594,7 +620,7 @@ test_that("five index slots", {
                 for(k in 1:3)
                     for(l in 1:2)
                         for(m in 1:4)
-                            y[i,j,k,l,m] ~ dnorm(0,1) 
+                            y[i,j,k,l,m] ~ dnorm(0,1)
     })
     data <- list(y = array(rnorm(480),c(5,4,3,2,4)))
     mclass <- nimbleModel(code, data = data, returnClass = TRUE)
@@ -653,7 +679,7 @@ test_that("basic creation of list of instr_nClass objects", {
 
     code <- quote({
         mu ~ dnorm(0, 1)
-        for(i in 1:5) 
+        for(i in 1:5)
             y[i] ~ dnorm(mu, 1)
     })
 
@@ -700,10 +726,10 @@ test_that("basic creation of list of instr_nClass objects", {
 
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(2:5)), newIndexRange(matrix(c(1,4),ncol=1))), varName = 'y'))[[1]]
     expect_identical(instr$type, 5)
-    
+
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(matrix(c(1,4),ncol=1)), newIndexRange(quote(2:5))), varName = 'y'))[[1]]
     expect_identical(instr$type, 6)
-    
+
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(matrix(c(1,4),ncol=1)), newIndexRange(matrix(c(2,4),ncol=1))), varName = 'y'))[[1]]
     expect_identical(instr$type, 7)
 
@@ -737,10 +763,10 @@ test_that("basic creation of list of instr_nClass objects", {
 
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(1:3)), newIndexRange(matrix(c(2,5),ncol=1))), varName = 'y'))[[1]]
     expect_identical(instr$type, 6)  # shuffled
-    
+
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(matrix(c(1,4),ncol=1)), newIndexRange(quote(2:5))), varName = 'y'))[[1]]
     expect_identical(instr$type, 5)  # shuffled
-    
+
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(matrix(c(1,4),ncol=1)), newIndexRange(matrix(c(2,5),ncol=1))), varName = 'y'))[[1]]
     expect_identical(instr$type, 7)
 
@@ -758,7 +784,7 @@ test_that("basic creation of list of instr_nClass objects", {
     expect_identical(instr$slots, c(1,2))
     expect_identical(instr$index_types, c(2,1))
 
-    
+
     code <- quote({
         mu ~ dnorm(0, 1)
         for(i in 1:5)
@@ -779,7 +805,7 @@ test_that("basic creation of list of instr_nClass objects", {
     data <- list(y = array(rnorm(60),c(5,4,3)))
     m <- nimbleModel(code, data = data)
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(2:5)), newIndexRange(quote(1:2)),
-                                                     newIndexRange(quote(1:2))), 
+                                                     newIndexRange(quote(1:2))),
                                                 varName = 'y'))[[1]]
     expect_identical(instr$type, 12) # allseq
 
@@ -827,7 +853,6 @@ test_that("basic creation of list of instr_nClass objects", {
     expect_identical(cinstr$dims, 1L)
     expect_identical(cinstr$lens, 4L)
     expect_identical(cinstr$values[[1]], 2L)
-    
+
 
 })
-

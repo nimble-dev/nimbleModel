@@ -6,6 +6,7 @@
 #define R_NO_REMAP
 #endif
 #include <Rinternals.h>
+#include "declFunBase_nClass_c_.h"
 #include "instr_nClass_c_.h"
 
 class declFunBase_nClass : public interface_resolver< genericInterfaceC<declFunBase_nClass> >, public loadedObjectHookC<declFunBase_nClass> {
@@ -15,7 +16,9 @@ public:
    virtual  double  calculateDiff_cpp ( std::shared_ptr<instr_nClass> instr ) ;
    virtual  double  getLogProb_cpp ( std::shared_ptr<instr_nClass> instr ) ;
    virtual  void  simulate_cpp ( std::shared_ptr<instr_nClass> instr ) ;
+   virtual  std::unique_ptr<ETaccessorBase>  getParam_cpp ( std::shared_ptr<instr_nClass> instr, int param ) ;
       declFunBase_nClass (  ) ;
+
 };
 
     void  set_CnClass_env_declFunBase_nClass ( SEXP env ) ;

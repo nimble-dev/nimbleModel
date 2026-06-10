@@ -36,7 +36,7 @@ declFunBase_nClass <- nClass(
     calc_0 = function(instr, fn) {
       return(self[[fn]](0))
     },
-    calc_1_seq = 
+    calc_1_seq =
     function(instr, fn) {
       logProb <- 0
       iStart <- instr$values[[1]][1]
@@ -44,31 +44,31 @@ declFunBase_nClass <- nClass(
         logProb <- logProb + self[[fn]](i)
       return(logProb)
     },
-    calc_1_mat = 
+    calc_1_mat =
       function(instr, fn) {
         logProb <- 0
         for(i in 1:instr$lens[1])
           logProb <- logProb + self[[fn]](instr$values[[1]][i])
         return(logProb)
       },
-    calc_1_matp = 
+    calc_1_matp =
       function(instr, fn) {
         logProb <- 0
         for(i in 1:instr$lens[1])
-          logProb <- logProb + self[[fn]](instr$values[[1]][(instr$dims[1]*(i-1) + 1):(instr$dims[1]*i)]) 
+          logProb <- logProb + self[[fn]](instr$values[[1]][(instr$dims[1]*(i-1) + 1):(instr$dims[1]*i)])
         return(logProb)
       },
-    calc_1_matp_ord = 
+    calc_1_matp_ord =
       function(instr, fn) {
         logProb <- 0
-        idx <- rep(0, instr$dims[1])  
+        idx <- rep(0, instr$dims[1])
         for(i in 1:instr$lens[1]) {
-          idx[instr$slots] <- instr$values[[1]][(instr$dims[1]*(i-1) + 1):(instr$dims[1]*i)]                         
+          idx[instr$slots] <- instr$values[[1]][(instr$dims[1]*(i-1) + 1):(instr$dims[1]*i)]
           logProb <- logProb + self[[fn]](idx)
         }
         return(logProb)
       },
-    calc_2_seq_seq = 
+    calc_2_seq_seq =
         function(instr, fn) {
             logProb <- 0
             idx <- rep(0, 2)
@@ -159,7 +159,7 @@ declFunBase_nClass <- nClass(
             for(i in 1:instr$lens[1]) {
                 idx[instr$slots[1:instr$dims[1]]] <- instr$values[[1]][(instr$dims[1]*(i-1) + 1):(instr$dims[1]*i)]
                 for(j in 1:instr$lens[2]) {
-                    idx[instr$slots[(instr$dims[1]+1):instr$nDim]] <- instr$values[[2]][(instr$dims[2]*(j-1) + 1):(instr$dims[2]*j)]      
+                    idx[instr$slots[(instr$dims[1]+1):instr$nDim]] <- instr$values[[2]][(instr$dims[2]*(j-1) + 1):(instr$dims[2]*j)]
                     logProb <- logProb + self[[fn]](idx)
                 }
             }
@@ -171,8 +171,8 @@ declFunBase_nClass <- nClass(
             idx <- rep(0, 2)
             iStart1 <- instr$values[[1]][1]-1
             iStart2 <- instr$values[[2]][1]-1
-            index_types1 <- instr$index_types[1] 
-            index_types2 <- instr$index_types[2] 
+            index_types1 <- instr$index_types[1]
+            index_types2 <- instr$index_types[2]
             for(i in 1:instr$lens[1]) {
                 if(index_types1 == 1) idx[2] <- iStart1 + i else idx[2] <- instr$values[[1]][i]
                 for(j in 1:instr$lens[2]) {
@@ -182,7 +182,7 @@ declFunBase_nClass <- nClass(
             }
             return(logProb)
         },
-    calc_3_allseq = 
+    calc_3_allseq =
         function(instr, fn) {
             logProb <- 0
             idx <- rep(0, 3)
@@ -208,8 +208,8 @@ declFunBase_nClass <- nClass(
             iStart1 <- instr$values[[1]][1]-1
             iStart2 <- instr$values[[2]][1]-1
             iStart3 <- instr$values[[3]][1]-1
-            index_types1 <- instr$index_types[1] 
-            index_types2 <- instr$index_types[2] 
+            index_types1 <- instr$index_types[1]
+            index_types2 <- instr$index_types[2]
             index_types3 <- instr$index_types[3]
             cumdim2 <- instr$dims[1]+instr$dims[2]
             for(i in 1:instr$lens[1]) {
@@ -230,7 +230,7 @@ declFunBase_nClass <- nClass(
             }
             return(logProb)
         },
-     calc_4_allseq = 
+     calc_4_allseq =
         function(instr, fn) {
             logProb <- 0
             idx <- rep(0, 4)
@@ -280,7 +280,7 @@ declFunBase_nClass <- nClass(
             }
             return(logProb)
         },
-    calc_5_allseq = 
+    calc_5_allseq =
         function(instr, fn) {
             logProb <- 0
             idx <- rep(0, 4)
@@ -338,7 +338,7 @@ declFunBase_nClass <- nClass(
                 }
             }
             return(logProb)
-        },   
+        },
     simulate = function(instr) {
         if(instr$type == 0) return(sim_0(instr))
         if(instr$type == 1) return(sim_1_seq(instr))
@@ -362,7 +362,7 @@ declFunBase_nClass <- nClass(
         stop("declaration for type ", instr$type, " no implemented")
       },
     sim_0 = function(instr) {
-        sim_one(0) 
+        sim_one(0)
       },
     sim_1_seq = function(instr) {
         iStart <- instr$values[[1]][1]
@@ -375,18 +375,18 @@ declFunBase_nClass <- nClass(
     },
     sim_1_matp = function(instr) {
         for(i in 1:instr$lens[1])
-          sim_one(instr$values[[1]][(instr$dims[1]*(i-1) + 1):(instr$dims[1]*i)]) 
+          sim_one(instr$values[[1]][(instr$dims[1]*(i-1) + 1):(instr$dims[1]*i)])
     },
-    sim_1_matp_ord = 
+    sim_1_matp_ord =
       function(instr) {
         logProb <- 0
-        idx <- rep(0, instr$dims[1])  
+        idx <- rep(0, instr$dims[1])
         for(i in 1:instr$lens[1]) {
-          idx[instr$slots] <- instr$values[[1]][(instr$dims[1]*(i-1) + 1):(instr$dims[1]*i)]                         
+          idx[instr$slots] <- instr$values[[1]][(instr$dims[1]*(i-1) + 1):(instr$dims[1]*i)]
           sim_one(idx)
         }
       },
-    sim_2_seq_seq = 
+    sim_2_seq_seq =
         function(instr) {
             idx <- rep(0, 2)
             iStart1 <- instr$values[[1]][1]-1
@@ -464,7 +464,7 @@ declFunBase_nClass <- nClass(
             for(i in 1:instr$lens[1]) {
                 idx[instr$slots[1:instr$dims[1]]] <- instr$values[[1]][(instr$dims[1]*(i-1) + 1):(instr$dims[1]*i)]
                 for(j in 1:instr$lens[2]) {
-                    idx[instr$slots[(instr$dims[1]+1):instr$nDim]] <- instr$values[[2]][(instr$dims[2]*(j-1) + 1):(instr$dims[2]*j)]      
+                    idx[instr$slots[(instr$dims[1]+1):instr$nDim]] <- instr$values[[2]][(instr$dims[2]*(j-1) + 1):(instr$dims[2]*j)]
                     sim_one(idx)
                 }
             }
@@ -474,8 +474,8 @@ declFunBase_nClass <- nClass(
             idx <- rep(0, 2)
             iStart1 <- instr$values[[1]][1]-1
             iStart2 <- instr$values[[2]][1]-1
-            index_types1 <- instr$index_types[1] 
-            index_types2 <- instr$index_types[2] 
+            index_types1 <- instr$index_types[1]
+            index_types2 <- instr$index_types[2]
             for(i in 1:instr$lens[1]) {
                 if(index_types1 == 1) idx[2] <- iStart1 + i else idx[2] <- instr$values[[1]][i]
                 for(j in 1:instr$lens[2]) {
@@ -484,7 +484,7 @@ declFunBase_nClass <- nClass(
                 }
             }
         },
-    sim_3_allseq = 
+    sim_3_allseq =
         function(instr, fn) {
             idx <- rep(0, 3)
             iStart1 <- instr$values[[1]][1]
@@ -507,8 +507,8 @@ declFunBase_nClass <- nClass(
             iStart1 <- instr$values[[1]][1]-1
             iStart2 <- instr$values[[2]][1]-1
             iStart3 <- instr$values[[3]][1]-1
-            index_types1 <- instr$index_types[1] 
-            index_types2 <- instr$index_types[2] 
+            index_types1 <- instr$index_types[1]
+            index_types2 <- instr$index_types[2]
             index_types3 <- instr$index_types[3]
             cumdim2 <- instr$dims[1]+instr$dims[2]
             for(i in 1:instr$lens[1]) {
@@ -528,7 +528,7 @@ declFunBase_nClass <- nClass(
                 }
             }
         },
-     sim_4_allseq = 
+     sim_4_allseq =
         function(instr, fn) {
             idx <- rep(0, 4)
             iStart <- sapply(instr$values, `[`, 1)
@@ -574,7 +574,7 @@ declFunBase_nClass <- nClass(
                 }
             }
         },
-    sim_5_allseq = 
+    sim_5_allseq =
         function(instr, fn) {
             idx <- rep(0, 4)
             iStart <- sapply(instr$values, `[`, 1)
@@ -628,7 +628,14 @@ declFunBase_nClass <- nClass(
                     }
                 }
             }
-        }
+        },
+      sim_1_matp = function(instr) {
+        for(i in 1:instr$lens[1])
+          sim_one(instr$values[[1]][(instr$dims[1]*(i-1) + 1):(instr$dims[1]*i)])  ## Ok to call with a vector?
+      },
+      getParam = function(instr, param) {
+        getParam_one(0, param) # use the "_0" case to check initial wiring
+      }
   ),
   Cpublic = list(
     ## model = 'modelBase_nClass',
@@ -683,6 +690,17 @@ declFunBase_nClass <- nClass(
                          C_fun = function(instr = 'instr_nClass') {
                              cppLiteral('Rprintf("declFunBase_nClass virtual base simulate_cpp should never be called (something is wrong)\\n");')
                          })
+    ),
+    getParam_cpp = nFunction(
+      name = "getParam_cpp",
+      function(instr, param) {
+        stop("Uncompiled version of getParam_cpp should not be called.")
+      },
+      returnType = 'ETaccessor',
+      compileInfo = list(virtual=TRUE,
+                         C_fun = function(instr = 'instr_nClass', param = 'integerScalar') {
+                             cppLiteral('Rprintf("declFunBase_nClass virtual base getParam_cpp should never be called (something is wrong)\\n");')
+                         })
     )
   ),
   ## We haven't dealt with ensuring a virtual destructor when any method is virtual
@@ -693,6 +711,7 @@ declFunBase_nClass <- nClass(
                    createFromR = FALSE,
                    exportName = "declFunBase_nClass_new",
                    needed_units = list("instr_nClass"),
+                   interfaceExclude = c("getParam_cpp"),
                    packageNames = c(uncompiled="declFunBase_nClass_R", compiled="declFunBase_nClass")
                    )
 )

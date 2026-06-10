@@ -37,6 +37,10 @@ return(0.0);
 RESET_EIGEN_ERRORS
 Rprintf("declFunBase_nClass virtual base simulate_cpp should never be called (something is wrong)\n");;
 }
+    std::unique_ptr<ETaccessorBase>  declFunBase_nClass::getParam_cpp ( std::shared_ptr<instr_nClass> instr, int param ) {
+RESET_EIGEN_ERRORS
+Rprintf("declFunBase_nClass virtual base getParam_cpp should never be called (something is wrong)\n");;
+}
       declFunBase_nClass::declFunBase_nClass (  ) {
 RESET_EIGEN_ERRORS
 }

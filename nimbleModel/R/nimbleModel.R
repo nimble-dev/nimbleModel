@@ -67,7 +67,9 @@ make_modelClass_from_nimbleModel <- function(modelDef, data, inits, name=NULL) {
   for(i in seq_along(modelDef$declInfo)) {
     declInfo <- modelDef$declInfo[[i]]
     decl_methods <- make_decl_methods_from_declInfo(declInfo)
-    declVars <- decl_methods |> lapply(\(x) all.vars(body(x))) |> unlist() |> unique() |> setdiff(c("idx", "LocalNewLogProb_", "LocalAns_", "model")) %||% character()
+    decl_getParam <- make_decl_getParam(declInfo)
+    decl_methods <- c(decl_methods, decl_getParam)
+    declVars <- decl_methods |> lapply(\(x) all.vars(body(x))) |> unlist() |> unique() |> setdiff(c("idx", "LocalNewLogProb_", "LocalAns_", "caseID_", "model")) %||% character()
     declVarInfo <- modelVarInfo$vars[declVars]
     declID <- as.numeric(declInfo$declRule$ID)  # Formerly `sourceLineNumber`, which may not be unique.
     declFun_membername <- declFunNames[i]
@@ -75,7 +77,8 @@ make_modelClass_from_nimbleModel <- function(modelDef, data, inits, name=NULL) {
     declFun_RvarName <- sub("declFun", "declFunClassGen", declFun_membername) # name of R var holding the nClass generator
     # Currently, we can't just make a list of these but need them as named objects in the environment,
     # which is passed into the nClass() call so that `initialize()` can use them via R's scoping.
-    assign(declFun_RvarName, make_declFun_nClass(declVarInfo, decl_methods, declFun_classname, declID))
+    assign(declFun_RvarName,
+           make_declFun_nClass(declVarInfo, decl_methods, declFun_classname, declID))
     declInfoList[[i]] <- make_decl_info_for_model_nClass(declFun_membername, declFun_RvarName, declFun_classname, declVarInfo)
   }
   ## We have a canonical ordering of decls, but it does arise from a couple of places that should match.
@@ -125,25 +128,10 @@ make_declFun_nClass <- function(varInfo = list(),
   # They will be used in a constructor to set up C++ references to model variables.
   CpublicVars <- varInfo |> lapply(\(x) paste0("ref(double(", x$nDim ,", interface=FALSE))"))
   names(CpublicVars) <- varInfo |> lapply(\(x) x$name) |> unlist()
-
-
-#  varInfo_2_symbol <- \(x) nCompiler:::symbolBasic$new(
-#    type="double", nDim=x$nDim, name="", isRef=TRUE, isConst=FALSE, interface=FALSE) # In future maybe isConst=TRUE, but it might not matter much
-#  symbolList <- varInfo |> lapply(varInfo_2_symbol)
-#  names(symbolList) <- varInfo |> lapply(\(x) x$name) |> unlist()
   numVars <- length(varInfo)
-
-#  CpublicVars <- names(symbolList) |> lapply(\(x) eval(substitute(quote(T(symbolList$NAME)),
-#                                                    list(NAME=as.name(x)))))
-#  names(CpublicVars) <- names(symbolList)
-  # This is a kluge to have a model field in the Cpublic_obj,
-  # needed for uncompiled purposes, and for compiled purposes
-  # we instead use references to model variables. So
-  # the declared type here is arbitrary.
   initFun <- function(){}
 
   if(numVars > 0) {
-    # ctorArgNames <- paste0(names(symbolList), '_')
     ctorArgNames <- paste0(names(CpublicVars), '_')
     # List used when generating C++ constructor code to allow direct initializers, necessary for references.
     # initializersList <- paste0(names(symbolList), '(', ctorArgNames ,')')
@@ -168,8 +156,6 @@ make_declFun_nClass <- function(varInfo = list(),
        warning("setModel called on compiled object; no action taken")
   }
 
-#  This was a prototype
-  # Actually, we are using this. Ok? // CJP
   declFun_nClass <- substitute(
     nClass(
       inherit = declFunBase_nClass,
@@ -178,6 +164,7 @@ make_declFun_nClass <- function(varInfo = list(),
       Cpublic = CPUBLIC,
       compileInfo = list(
         createFromR = FALSE, # Without a default constructor (which we've disabled here), createFromR is impossible
+        interfaceExclude = 'getParam_one', # this returns an ETaccessorBase, which has no R counterpart.
         nClass_inherit = list(base = BASECLASS))  # Ideally this line would be obtained from a base nClass, but we insert it directly for now
     ),
     list(
@@ -200,7 +187,6 @@ make_declFun_nClass <- function(varInfo = list(),
     ))
   eval(declFun_nClass)
 }
-#test <- nCompiler:::type2symbol('CppVar(baseType = type2cpp("numericVector"), ref=TRUE, const=TRUE)')
 
 # Make all the info needed to include a decl in a model class.
 # The decl_nClass should be created first.
@@ -451,19 +437,81 @@ make_nFxn_from_Cfun <- function(Cfun) {
   nFxn
 }
 
-make_decl_method_nFxn <- function(f, name, returnType='numericScalar') {
+make_decl_method_nFxn <- function(f, name,
+                                  argTypes = list(idx = 'integerVector'),
+                                  returnType='numericScalar',
+                                  exceptionNames = c("idx", "LocalNewLogProb_", "LocalAns_", "caseID_")) {
   Cfun <- f
   Rfun <- f
-  body(Rfun) <- nm_addModelDollarSign(body(f), exceptionNames = c("idx", "LocalNewLogProb_", "LocalAns_"))
+  body(Rfun) <- nm_addModelDollarSign(body(f),
+          exceptionNames = exceptionNames)
   if(is.null(returnType)) returnType <- 'void'
   nFxn <- nFunction(
     name = name,
     fun = Rfun,
-    argTypes = list(idx = 'integerVector'),
+    argTypes = argTypes,
     returnType = T(returnType),
     compileInfo=list(C_fun=Cfun),
   )
   nFxn
+}
+
+make_decl_getParam <- function(declInfo) {
+  if(!isTRUE(declInfo$stoch)) {
+    nFxn <- nFunction(
+      name = "getParam_one",
+      function(idx, caseID_) {
+        stop("getParam_one should not be called for a deterministic node.")
+      },
+      argTypes = list(idx = 'integerVector', caseID_ = 'integerScalar'),
+      returnType = 'ETaccessor',
+      compileInfo = list(
+        C_fun = function(idx, caseID_) {
+          cppLiteral("Rcpp::stop(\"getParam_one should not be called for a deterministic node.\")")
+          cppLiteral("return ETaccessPtr<true, int>(0);")
+        }
+      )
+    )
+    return(list(getParam_one = nFxn))
+  }
+  getParamFun <- function(idx, caseID_) {}
+  altParams <- declInfo$altParamExprs
+  RHS <- declInfo$calculateCode[[3]]
+  LHS <- declInfo$calculateCode[[2]]
+  params <- as.list(RHS[-1])
+  allParams <- c(list(value = LHS), params, altParams)
+
+  # Same replacement steps as for decl_methods below
+  context <- declInfo$declRule$context
+  replacements <- sapply(seq_along(context$singleContexts),
+                         function(i) parse(text = paste0('idx[',i,']'))[[1]])
+  names(replacements) <- context$indexVarNames
+  allParamsRep <- lapply(allParams,
+                         function(expr) eval(substitute(substitute(e, replacements), list(e = expr))))
+  allParamsResExpr <- lapply(allParamsRep,
+                             function(expr) {
+                             copy <- !is.name(expr)
+      substitute(LocalAns_ <- ETaccess(EXPR, copy = COPY), list(EXPR = expr, COPY = copy))
+    })
+  switchExpr <- as.call(c(list(as.name("nSwitch"), quote(caseID_),
+                               substitute(1:N, list(N = length(allParamsResExpr)))),
+                          allParamsResExpr))
+  body(getParamFun) <- substitute(
+  {
+    if(caseID_ < 1 | caseID_ > N) {
+      cppLiteral("Rcpp::stop(\"Invalid parameter ID in getParam.\");")
+      cppLiteral("return ETaccessPtr<true, int>(0);")
+    }
+      SWITCHEXPR
+      return(LocalAns_)
+    },
+    list(SWITCHEXPR = switchExpr, N = length(allParamsResExpr))
+  )
+  # We might need a greater split between R_fun and C_fun here.
+  nFxn <- make_decl_method_nFxn(getParamFun, name = "getParam_one",
+    argTypes = list(idx = 'integerVector', caseID_ = 'integerScalar'),
+    returnType = 'ETaccessor')
+  list(getParam_one  = nFxn)
 }
 
 make_decl_methods_from_declInfo <- function(declInfo) {
@@ -487,7 +535,7 @@ make_decl_methods_from_declInfo <- function(declInfo) {
     methodList <- eval(substitute(
         list(
             sim_one   = (function(idx) {calc_one(idx)}) |>
-              make_decl_method_nFxn("sim_one", NULL),
+              make_decl_method_nFxn("sim_one", returnType = NULL),
             calc_one  = (function(idx) {DETERMCALC; return(invisible(0))}) |>
               make_decl_method_nFxn("calc_one"),
             calcDiff_one = (function(idx) {calc_one(idx);return(invisible(0))}) |>
@@ -504,7 +552,7 @@ make_decl_methods_from_declInfo <- function(declInfo) {
       methodList <- eval(substitute(
         list(
             sim_one   = (function(idx) { STOCHSIM }) |>
-              make_decl_method_nFxn("sim_one", NULL),
+              make_decl_method_nFxn("sim_one", returnType = NULL),
             calc_one  = (function(idx) { STOCHCALC;   return(invisible(LOGPROB)) }) |>
               make_decl_method_nFxn("calc_one"),
             calcDiff_one = (function(idx) {STOCHCALC_DIFF; LocalAns_ <- LocalNewLogProb_ - LOGPROB;
