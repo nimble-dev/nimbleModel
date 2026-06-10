@@ -1,12 +1,16 @@
 Package: nimbleModel
-Title: What the Package Does (one line, title case)
-Version: 0.0.0.9000
-Authors@R: person("First", "Last", email = "first.last@example.com", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
+Title: A System for Creating, Querying, and Calculating with Statistical Models as Directed Acyclic Graphs
+Version: 0.0.1
+Maintainer: Christopher Paciorek <paciorek@stat.berkeley.edu>
+Authors@R: c(
+    person("Christopher", "Paciorek", , "paciorek@stat.berkeley.edu", role = c("aut", "cre")),
+    person("Perry", "de Valpine", role = "aut")
+    )               
+Description: This package provides the ability to create 'nimble' models, generally hierarchical models, not necessarily Bayesian, in R that are compiled to C++. It includes graph processing tools (e.g., finding dependent and parent nodes), abstractions for efficiently storing variable ranges, e.g., `y[1:5, c(2,4)]`  and sets of model nodes (e.g., `y[1,1:5],y[2,1:5],...`), and functions for calculating and simulating variables and nodes in a model. It has been developed to support nimble version 2.0 but can be used more generally for setting up models, doing graph queries and carrying out model calculations.
 Depends: R (>= 4.1.0)
 Imports:
     methods,R6,nCompiler
-License: What license is it under?
+License: BSD_3_clause + file LICENSE | GPL (>= 2)
 Encoding: UTF-8
 LazyData: true
 Collate:
