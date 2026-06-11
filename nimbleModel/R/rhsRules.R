@@ -1,11 +1,11 @@
-## A rhsRuleClass object represents the indexing information for a variable
-## in a right-hand side expression.
-## This may come from the original declaration, or from excluding from that declaration
-## elements that appear on the left-hand side of another expression.
+# A rhsRuleClass object represents the indexing information for a variable
+# in a right-hand side expression.
+# This may come from the original declaration, or from excluding from that declaration
+# elements that appear on the left-hand side of another expression.
 
-## Constant vectors are treated as sequences because we need indexing for them
-## when determining RHSonly.
-## TODO: clarify above statement to be more specific.
+# Constant vectors are treated as sequences because we need indexing for them
+# when determining RHSonly.
+# TODO: clarify above statement to be more specific.
 
 rhsRuleClass <- R6Class(
   classname = "rhsRuleClass",
@@ -16,14 +16,14 @@ rhsRuleClass <- R6Class(
 
     initialize = function(expr, ID = NULL, context = modelContextClass$new(), constants = list(), usedInIndex = FALSE) {
       usedInIndex <<- usedInIndex
-      ## Process any dynamic indexing.
+      # Process any dynamic indexing.
       if (getNimbleModelOption("allowDynamicIndexing") && isUsedInIndex(expr)) {
         usedInIndex <<- TRUE
         expr <- stripIndexWrapping(expr)
       }
 
-      ## Indices for dynamically-indexed RHS vars cannot be determined
-      ## so set to some very large value (can't use `1:Inf`).
+      # Indices for dynamically-indexed RHS vars cannot be determined
+      # so set to some very large value (can't use `1:Inf`).
       if (getNimbleModelOption("allowDynamicIndexing")) {
         if (length(expr) >= 3) {
           expr[3:length(expr)] <- lapply(
@@ -39,11 +39,11 @@ rhsRuleClass <- R6Class(
         }
       }
 
-      ## Replace sequence indexing with maximal indexing in cases
-      ## in which could have duplicate declarations of RHS because
-      ## one or more singleContexts are not used in indexing the RHS
-      ## but are used in for loop expression, e.g.,
-      ## `for(i in 1:4) for(t in 1:seasons[i]) y[i,t] <- alpha[t]`.
+      # Replace sequence indexing with maximal indexing in cases
+      # in which could have duplicate declarations of RHS because
+      # one or more singleContexts are not used in indexing the RHS
+      # but are used in for loop expression, e.g.,
+      # `for(i in 1:4) for(t in 1:seasons[i]) y[i,t] <- alpha[t]`.
       usedIndexVarsBool <- names(context$singleContexts) %in% all.vars(expr)
       if (any(usedIndexVarsBool) && !all(usedIndexVarsBool)) {
         usedIndexVars <- names(context$singleContexts)[usedIndexVarsBool]
@@ -55,7 +55,7 @@ rhsRuleClass <- R6Class(
           }
         )
         usedIndexVars <- usedIndexVars[depIndexVarExprs]
-        if (length(usedIndexVars)) { ## Only if index expr uses other indices.
+        if (length(usedIndexVars)) { # Only if index expr uses other indices.
           allReplacements <- lapply(usedIndexVars, as.name)
           names(allReplacements) <- paste0("t", seq_along(allReplacements))
           unrolledIndicesEnv <-
@@ -65,12 +65,12 @@ rhsRuleClass <- R6Class(
               context = context,
               constants = constants
             )
-          rgs <- lapply(usedIndexVars, function(x) { ## Use full extent of indexing across all iterations.
+          rgs <- lapply(usedIndexVars, function(x) { # Use full extent of indexing across all iterations.
             range(unrolledIndicesEnv[[x]])
           })
           newSingleContexts <- context$singleContexts
-          ## Assign full extent back into singleContext indexRangeExpr, removing
-          ## dependence on other indices.
+          # Assign full extent back into singleContext indexRangeExpr, removing
+          # dependence on other indices.
           newSingleContexts[usedIndexVars] <- lapply(
             seq_along(usedIndexVars),
             function(i) {
@@ -84,7 +84,7 @@ rhsRuleClass <- R6Class(
         }
       }
 
-      ## Transform constants into sequences.
+      # Transform constants into sequences.
       if (length(expr) > 1 && expr[[1]] == "[") {
         scalarConstants <- sapply(
           3:length(expr),

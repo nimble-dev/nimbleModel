@@ -1,8 +1,8 @@
-## A varRules object holds a set of rules (graphRules, topRules, etc.) that together
-## comprise all the rules of that type for a variable.
+# A varRules object holds a set of rules (graphRules, topRules, etc.) that together
+# comprise all the rules of that type for a variable.
 
-## varRules will generally be stored as elements of a list, with the element name
-## being the variable name, for lookup purposes.
+# varRules will generally be stored as elements of a list, with the element name
+# being the variable name, for lookup purposes.
 
 varRulesClass <- R6Class(
   classname = "varRulesClass",
@@ -12,8 +12,8 @@ varRulesClass <- R6Class(
     varName = character(),
     initialize = function(rules = list(), varName) {
       rules <<- rules
-      ## Probably won't be used but useful for clarity.
-      ## For a `graphRule`, this will be the input variable.
+      # Probably won't be used but useful for clarity.
+      # For a `graphRule`, this will be the input variable.
       varName <<- varName
     },
     apply = function(node) {
@@ -25,7 +25,7 @@ varRulesClass <- R6Class(
   )
 )
 
-## Take a flat list of rules and divide up into one `varRules` per variable.
+# Take a flat list of rules and divide up into one `varRules` per variable.
 newVarRules <- function(items, varNames = NULL, type = NULL) {
   if (!all(sapply(items, function(x) inherits(x, "nodeRuleClass") || is(x, "graphRuleClass")))) {
     stop("all elements of `items` must be `nodeRule`s or `graphRule`s.")
@@ -42,7 +42,7 @@ newVarRules <- function(items, varNames = NULL, type = NULL) {
   }
   uniqVarNames <- unique(varNames)
   if (inherits(items[[1]], "varRangeClass")) {
-    ## TODO: why would we ever have a varRule of varRanges?
+    # TODO: why would we ever have a varRule of varRanges?
     stop("input cannot be a `varRange`.")
     result <- lapply(uniqVarNames, function(nm) {
       items[varNames == nm & include]
@@ -56,16 +56,16 @@ newVarRules <- function(items, varNames = NULL, type = NULL) {
   return(result)
 }
 
-## Utility for determining which `varRules` is needed for a node and
-## applying it.
+# Utility for determining which `varRules` is needed for a node and
+# applying it.
 applyRules <- function(rules, node) {
   varName <- getVarName(node)
   if (varName %in% names(rules)) {
     if (!inherits(node, "VarRangeClass") && is.character(node) &&
       length(grep("[", node, fixed = TRUE))) {
-      ## Avoid repeatedly creating a new varRange for `node` in `graphRule$apply`.
-      ## Can't be done if no indexing.
-      ## CHECK: what if user has missing index such as x[,3]?
+      # Avoid repeatedly creating a new varRange for `node` in `graphRule$apply`.
+      # Can't be done if no indexing.
+      # CHECK: what if user has missing index such as x[,3]?
       node <- varRangeClass$new(node)
     }
     return(rules[[varName]]$apply(node))

@@ -1,7 +1,7 @@
 type2itype <- list(
-  ## Note that conversion to nodeRange orders indices within a set of indices (corresponding to an indexRange)
-  ## so the need for reordering based on slots is only because of slots being disjoint across sets.
-  ## E.g., a rangeToIndexSlot of `list(2, c(3,1))` becomes `list(c(1,3), 2)` while `list(4, c(3,1,2))` becomes `list(1:3, 4)`
+  # Note that conversion to nodeRange orders indices within a set of indices (corresponding to an indexRange)
+  # so the need for reordering based on slots is only because of slots being disjoint across sets.
+  # E.g., a rangeToIndexSlot of `list(2, c(3,1))` becomes `list(c(1,3), 2)` while `list(4, c(3,1,2))` becomes `list(1:3, 4)`
   "0" = 0,
   "1_seq" = 1,
   "1_mat" = 2,
@@ -21,11 +21,11 @@ type2itype <- list(
   "5_allseq" = 16,
   "5_generic" = 17,
   "1_matp_ord" = 18 # done, but not needed as conversion to nodeRange puts indices in order; also not clear why a user would specify indices out of order for single indexRange case
-  #########################################################################################
+  #############################################
 )
 
-## Stand-alone function for setting up inputs to instrClass constructor.
-## This could be embedded in the constructor.
+# Stand-alone function for setting up inputs to instrClass constructor.
+# This could be embedded in the constructor.
 range2instr <- function(range) {
   instr <- list()
   if (!length(range$indexingRange$indexRanges)) { # No indexing
@@ -58,10 +58,10 @@ range2instr <- function(range) {
   return(instr)
 }
 
-## Eventually think about reordering order of looping for efficiency (and take parallelization into account).
-## For the moment, we determine mat vs. seq here and then in declFunClass calculate we will determine whether to
-## vectorize based on whether possible based on the declaration.
-## Open question of when to determine if to use parallel calculate.
+# Eventually think about reordering order of looping for efficiency (and take parallelization into account).
+# For the moment, we determine mat vs. seq here and then in declFunClass calculate we will determine whether to
+# vectorize based on whether possible based on the declaration.
+# Open question of when to determine if to use parallel calculate.
 determineInstrType <- function(instr, use_vec = FALSE) {
   type <- NULL
   if (!instr$nDim) {
@@ -119,15 +119,15 @@ determineInstrType <- function(instr, use_vec = FALSE) {
   return(type2itype[[type]])
 }
 
-## TODO: document this since it may be user-facing.
+# TODO: document this since it may be user-facing.
 #' @export
 makeInstrList <- function(model, input, use_vec = FALSE) {
-  ## `model` simply must contain `modelDef`, so it can be a modelClass or modelBase_nClass object.
-  ## This works with:
-  ## (1) a char vector of "nodes"
-  ## (2) a list of (or single) varRanges
-  ## (3) an nList of (or single) instr_nClass objects (assumed to be in sort order)
-  ## (4) an R list of instr_nClass objects (not assumed to be in sort order)
+  # `model` simply must contain `modelDef`, so it can be a modelClass or modelBase_nClass object.
+  # This works with:
+  # (1) a char vector of "nodes"
+  # (2) a list of (or single) varRanges
+  # (3) an nList of (or single) instr_nClass objects (assumed to be in sort order)
+  # (4) an R list of instr_nClass objects (not assumed to be in sort order)
   if (is(input, "nList")) {
     if (!inherits(input[[1]], "instr_nClass")) {
       stop("nList input to `makeInstrList` should contain `instr_nClass` objects")
@@ -139,7 +139,7 @@ makeInstrList <- function(model, input, use_vec = FALSE) {
     input <- list(input)
   }
   if (is.list(input) && all(sapply(input, function(x) inherits(x, "instr_nClass")))) {
-    ## Create sort-ordered nList.
+    # Create sort-ordered nList.
     instrList <- nList(instr_nClass)$new()
     numInstrs <- length(input)
     instrList$setLength(numInstrs)
@@ -149,11 +149,11 @@ makeInstrList <- function(model, input, use_vec = FALSE) {
     }
     return(instrList)
   }
-  ## At this point we presumably are working with varRange(s).
+  # At this point we presumably are working with varRange(s).
   if (is(input, "varRangeClass")) input <- list(input)
-  ## First apply calcRule to get overlap between input and the rule.
-  ## Then make the calcRange to convert to loop indexing.
-  ## Note that `calcRule$apply` handles converting char to varRange and handling full variable extent.
+  # First apply calcRule to get overlap between input and the rule.
+  # Then make the calcRange to convert to loop indexing.
+  # Note that `calcRule$apply` handles converting char to varRange and handling full variable extent.
   ranges <- unlist(lapply(input, function(vr) {
     lapply(model$modelDef$calcRules[[nimbleModel:::getVarName(vr)]]$rules, function(rule) {
       rule$makeCalcRange(rule$apply(vr))

@@ -13,7 +13,7 @@ modelBase_nClass <- nClass(
       if (isTRUE(.GlobalEnv$.debugModelInit)) browser()
       super$initialize(...)
 
-      ## TODO: is there a better way to populate declFunNameToIndex in Cpublic?
+      # TODO: is there a better way to populate declFunNameToIndex in Cpublic?
       declFunNameToIndex <- self$declFunNameToIndex_
 
       declFunNames <- names(declFunNameToIndex)
@@ -32,14 +32,14 @@ modelBase_nClass <- nClass(
         }
       }
 
-      ## TODO: create a merge_and_set function that handles all three of the following.
+      # TODO: create a merge_and_set function that handles all three of the following.
       allSizes <- self$defaultSizes
       if (!missing(sizes)) {
         for (nm in names(sizes)) {
           allSizes[[nm]] <- sizes[[nm]]
         }
       }
-      ## TODO: should we handle 0-dim sizes elsewhere?
+      # TODO: should we handle 0-dim sizes elsewhere?
       allSizes <- allSizes[sapply(allSizes, length) > 0]
       if (length(allSizes)) resize_from_list(allSizes[sapply(allSizes, length) > 0])
 
@@ -55,9 +55,9 @@ modelBase_nClass <- nClass(
         allInits <- self$defaultInits
       } else if (length(inits)) set_from_list(inits)
 
-      ## TODO: do we want to handle data differently?
-      ## TODO: need to work through not setting as 'data' if values are NA;
-      ##   check back against how dataRules work in nimbleModel work.
+      # TODO: do we want to handle data differently?
+      # TODO: need to work through not setting as 'data' if values are NA;
+      #   check back against how dataRules work in nimbleModel work.
       allData <- self$defaultData
       if (!missing(inits)) {
         for (nm in names(inits)) {
@@ -67,7 +67,7 @@ modelBase_nClass <- nClass(
       if (length(allData)) set_from_list(allData)
 
       dataVarIndices <- names(modelDef$constants) %in% modelDef$varNames & !names(modelDef$constants) %in% names(allData) # don't overwrite anything in 'allData'
-      ## TODO: revise messaging below using new nimbleModel messaging system.
+      # TODO: revise messaging below using new nimbleModel messaging system.
       if (sum(names(modelDef$constants) %in% names(allData))) {
         messageIfVerbose("  [Note] Found the same variable(s) in both 'data' and 'constants'; using variable(s) from 'data'.\n")
       }
@@ -92,14 +92,14 @@ modelBase_nClass <- nClass(
       names(self$nondataRules) <- sapply(self$nondataRules, `[[`, "varName")
     },
 
-    ## Start from ranges based on dataRules and walk upwards,
-    ## excluding any parents of such ranges.
-    ## For now, this doesn't use any notion of "touched", so there is duplicative
-    ## walking up the tree for nodes with multiple data descendants, but given
-    ## graph processing is declaration-based, this doesn't seem like an efficiency
-    ## concern, particularly since `candidateRules` will progressively shrink.
+    # Start from ranges based on dataRules and walk upwards,
+    # excluding any parents of such ranges.
+    # For now, this doesn't use any notion of "touched", so there is duplicative
+    # walking up the tree for nodes with multiple data descendants, but given
+    # graph processing is declaration-based, this doesn't seem like an efficiency
+    # concern, particularly since `candidateRules` will progressively shrink.
     makePredictiveRules = function() {
-      ## predictive rules
+      # predictive rules
       candidateRules <- unlist(lapply(modelDef$calcRules, function(oneVarRules) {
         stoch <- sapply(oneVarRules$rules, function(rule) rule$declRule$decl$stoch)
         return(oneVarRules$rules[stoch])
@@ -113,7 +113,7 @@ modelBase_nClass <- nClass(
       }))
       self$predictiveRules <- excludeFromPredictiveRules(modelDef, dataRanges, candidateRules)
 
-      ## nonpredictive rules
+      # nonpredictive rules
       candidateRules <- unlist(lapply(modelDef$calcRules, function(oneVarRules) {
         stoch <- sapply(oneVarRules$rules, function(rule) rule$declRule$decl$stoch)
         return(oneVarRules$rules[stoch])
@@ -151,9 +151,9 @@ modelBase_nClass <- nClass(
       }
     },
 
-    ## TODO: these various methods were in nimble::modelBaseClass but they don't
-    ## need to be part of model class since the declaration info is embedded in the input nodeRanges arg.
-    ## Think more about this.
+    # TODO: these various methods were in nimble::modelBaseClass but they don't
+    # need to be part of model class since the declaration info is embedded in the input nodeRanges arg.
+    # Think more about this.
     getDistribution = function(nodeRanges) {
       if (!is.list(nodeRanges)) {
         nodeRanges <- list(nodeRanges)
@@ -258,7 +258,7 @@ modelBase_nClass <- nClass(
       return(result)
     },
 
-    ## Returns the expr corresponding to 'param' in the distribution of `nodeRange`.
+    # Returns the expr corresponding to 'param' in the distribution of `nodeRange`.
     getParamExpr = function(nodeRange, param) {
       if (!inherits(nodeRange, "nodeRangeClass")) {
         stop("getParamExpr: argument `nodeRange` must be a `nodeRange` object")
@@ -273,7 +273,7 @@ modelBase_nClass <- nClass(
         stop("getParamExpr: `", param, "` is not present in the parameterization")
       }
       if (length(expr) > 1) {
-        ## Substitute original index values into the expression.
+        # Substitute original index values into the expression.
         indexVarRange <- decl$declRule$originalIndexingRule$apply(nodeRange)
         indexValues <- indexVarRange$indexRangeExprs
         names(indexValues) <- decl$context$indexVarNames
@@ -284,7 +284,7 @@ modelBase_nClass <- nClass(
       }
     },
 
-    ## Returns the entire RHS valueExpr for `nodeRange`.
+    # Returns the entire RHS valueExpr for `nodeRange`.
     getValueExpr = function(nodeRange) {
       if (!inherits(nodeRange, "nodeRangeClass")) {
         stop("getValueExpr: argument must be a `nodeRange`")
@@ -292,12 +292,12 @@ modelBase_nClass <- nClass(
       decl <- nodeRange$decl
       expr <- decl$valueExpr
       if (length(expr) > 1) {
-        ## First get canonical parameterization for stoch cases.
+        # First get canonical parameterization for stoch cases.
         if (decl$stoch) {
           expr <- expr[!names(expr) %in% c("lower_", "upper_") &
             !grepl("^\\.", names(expr))]
         }
-        ## Substitute original index values into the expression.
+        # Substitute original index values into the expression.
         indexVarRange <- decl$declRule$originalIndexingRule$apply(nodeRange)
         indexValues <- indexVarRange$indexRangeExprs
         names(indexValues) <- decl$context$indexVarNames
@@ -313,8 +313,8 @@ modelBase_nClass <- nClass(
     getParents = function(nodes, self = TRUE, upstream = FALSE, immediateOnly = FALSE) {
       nimbleModel::getParents(modelDef, nodes, self, upstream, immediateOnly)
     },
-    ## TODO: not working because `nimbleModel::getNodes` needs the model not just modelDef.
-    ## Once we integrate modelClass with modelBase_nClass, we should be able to pass `self`.
+    # TODO: not working because `nimbleModel::getNodes` needs the model not just modelDef.
+    # Once we integrate modelClass with modelBase_nClass, we should be able to pass `self`.
     getNodes = function(nodes = NULL, stochOnly = FALSE, determOnly = FALSE,
                         includeData = TRUE, dataOnly = FALSE,
                         includePredictive = TRUE, predictiveOnly = FALSE,
@@ -370,7 +370,7 @@ modelBase_nClass <- nClass(
     }
   ),
   Cpublic = list(
-    ## TODO: using 'RcppObject' was resulting in a symbolTBD error - probably nCompiler issue 186.
+    # TODO: using 'RcppObject' was resulting in a symbolTBD error - probably nCompiler issue 186.
     declFunList = "numericScalar", # 'RcppObject',  # This won't actually be used in C++, but needs to be in Cpublic for accessibility.
     declFunNameToIndex = "RcppList", # Not sure what type this should be for use in C++.
     ping = nFunction(
@@ -399,7 +399,7 @@ modelBase_nClass <- nClass(
       returnType = "numericScalar",
       compileInfo = list(
         C_fun = function(instrList = "nList(instr_nClass)") {
-          ## NOTE: instrList input will be ordered.
+          # NOTE: instrList input will be ordered.
           cppLiteral('Rprintf("modelBase_nClass calculate_impl (should not see this)\\n");')
           return(0)
         },
@@ -415,7 +415,7 @@ modelBase_nClass <- nClass(
       returnType = "numericScalar",
       compileInfo = list(
         C_fun = function(instrList = "nList(instr_nClass)") {
-          ## NOTE: instrList input will be ordered.
+          # NOTE: instrList input will be ordered.
           cppLiteral('Rprintf("modelBase_nClass calculateDiff_impl (should not see this)\\n");')
           return(0)
         },
@@ -431,7 +431,7 @@ modelBase_nClass <- nClass(
       returnType = "numericScalar",
       compileInfo = list(
         C_fun = function(instrList = "nList(instr_nClass)") {
-          ## NOTE: instrList input will be ordered.
+          # NOTE: instrList input will be ordered.
           cppLiteral('Rprintf("modelBase_nClass getLogProb_impl (should not see this)\\n");')
           return(0)
         },
@@ -447,14 +447,14 @@ modelBase_nClass <- nClass(
       returnType = "void",
       compileInfo = list(
         C_fun = function(instrList = "nList(instr_nClass)") {
-          ## NOTE: instrList input will be ordered.
+          # NOTE: instrList input will be ordered.
           cppLiteral('Rprintf("modelBase_nClass simulate_impl (should not see this)\\n");')
         },
         virtual = TRUE
       )
     )
   ),
-  ## See comment above about needing to ensure a virtual destructor
+  # See comment above about needing to ensure a virtual destructor
   predefined = quote(system.file(file.path("include", "nimbleModel", "predef"), package = "nimbleModel") |> file.path("modelBase_nC")),
   compileInfo = list(
     interface = "full",

@@ -1,6 +1,6 @@
-## Class for representing information in a single declaration, replacing `BUGSdeclClass`.
-## Class methods process the code to generate information about the dependencies
-## set up by the declaration.
+# Class for representing information in a single declaration, replacing `BUGSdeclClass`.
+# Class methods process the code to generate information about the dependencies
+# set up by the declaration.
 
 modelDeclClass <- R6Class(
   classname = "modelDeclClass",
@@ -29,7 +29,7 @@ modelDeclClass <- R6Class(
     altParamExprs = NULL,
     dynamicIndexInfo = NULL,
 
-    ## Determines the parts of a declaration from the raw `code`.
+    # Determines the parts of a declaration from the raw `code`.
     initialize = function(code,
                           context,
                           sourceLineNumber,
@@ -45,7 +45,7 @@ modelDeclClass <- R6Class(
       valueExpr <<- code[[3]]
 
       if (code[[1]] == "~") {
-        ## Check for legitimate densities or for truncation.
+        # Check for legitimate densities or for truncation.
         if (!is.call(code[[3]]) ||
           (!any(code[[3]][[1]] == getAllDistributionsInfo("namesVector")) &&
             code[[3]][[1]] != "T" &&
@@ -62,9 +62,9 @@ modelDeclClass <- R6Class(
       indexExpr <<- NULL
 
       if (length(targetExpr) > 1) {
-        ## There is a tranformation and/or a subscript.
+        # There is a tranformation and/or a subscript.
         if (targetExpr[[1]] == "[") {
-          ## It is a subscript only.
+          # It is a subscript only.
           indexExpr <<- as.list(targetExpr[-c(1, 2)])
           targetVarExpr <- targetExpr[[2]]
           targetNodeExpr <<- targetExpr
@@ -73,11 +73,11 @@ modelDeclClass <- R6Class(
             stop("Non-constant indexing found in `", safeDeparse(indexExpr[[which(indexedBlocks)[1]]]), "` in `", safeDeparse(targetNodeExpr), "`. Block indices must be constant.")
           }
         } else {
-          ## There is a transformation, possibly with a subscript.
+          # There is a transformation, possibly with a subscript.
           transExpr <<- targetExpr[[1]]
           targetNodeExpr <<- targetExpr[[2]]
           if (length(targetNodeExpr) > 1) {
-            ## There are subscripts inside the transformation
+            # There are subscripts inside the transformation
             if (targetNodeExpr[[1]] != "[") {
               stop("invalid subscripting for `", safeDeparse(targetExpr), "`.")
             }
@@ -88,7 +88,7 @@ modelDeclClass <- R6Class(
           }
         }
       } else {
-        ## No tranformation or subscript present.
+        # No tranformation or subscript present.
         targetVarExpr <- targetExpr
         targetNodeExpr <<- targetVarExpr
       }
@@ -96,7 +96,7 @@ modelDeclClass <- R6Class(
       targetNodeName <<- safeDeparse(targetNodeExpr, warn = TRUE)
     },
 
-    ## We require multivariate parameters be defined as separate deterministic variables.
+    # We require multivariate parameters be defined as separate deterministic variables.
     checkMultivarExpr = function() {
       if (!stoch) {
         return(NULL)
@@ -113,7 +113,7 @@ modelDeclClass <- R6Class(
             return(NULL)
           }
           if (checkForExpr(valueExpr[[k]])) {
-            ## Draft gentler warning for possible future adoption: message("Warning about parameter '", names(decl$valueExpr)[k], "' of distribution '", dist, "': This multivariate parameter is provided as an expression. If this is a costly calculation, try making it a separate model declaration for it to improve efficiency.")
+            # Draft gentler warning for possible future adoption: message("Warning about parameter '", names(decl$valueExpr)[k], "' of distribution '", dist, "': This multivariate parameter is provided as an expression. If this is a costly calculation, try making it a separate model declaration for it to improve efficiency.")
             stop(
               "error with parameter `", names(valueExpr)[k], "` of distribution `",
               distributionName, "`: multivariate parameters cannot be expressions; please define the expression as a separate deterministic variable\n",
@@ -125,14 +125,14 @@ modelDeclClass <- R6Class(
       invisible(NULL)
     },
 
-    ## Create declRule and symbolic RHS pieces.
+    # Create declRule and symbolic RHS pieces.
     processDecl = function(nimFunNames, constants = list(), envir) {
       declRule <<- declRuleClass$new(self, 0, context, constants)
       makeSymbolicParentNodes(nimFunNames, constants, envir)
       invisible(NULL)
     },
 
-    ## Determine RHS pieces (expressed symbolically), needed to create graphRules.
+    # Determine RHS pieces (expressed symbolically), needed to create graphRules.
     makeSymbolicParentNodes = function(nimFunNames, constants = list(), envir) {
       constantsNamesList <- lapply(names(constants), as.name)
       symbolicParentNodes <<-
@@ -147,7 +147,7 @@ modelDeclClass <- R6Class(
       invisible(NULL)
     },
 
-    ## Make all up- and down-stream rules for the declaration.
+    # Make all up- and down-stream rules for the declaration.
     makeGraphRules = function(constants = list()) {
       downstreamRules <<- vector(
         "list",
@@ -179,7 +179,7 @@ modelDeclClass <- R6Class(
       invisible(NULL)
     },
 
-    ## Make an initial RHSrule for each RHS piece.
+    # Make an initial RHSrule for each RHS piece.
     makeRHSoriginalRules = function(constants = list()) {
       rhsOriginalRules <<- vector(
         "list",
@@ -199,7 +199,7 @@ modelDeclClass <- R6Class(
         if (length(RHSreplaced) > 1) { # It actually has argument(s).
           paramNamesAll <- names(RHSreplaced)
           paramNamesDotLogicalVector <- grepl("^\\.", paramNamesAll)
-          ## Remove all parameters whose name begins with '.' from distribution.
+          # Remove all parameters whose name begins with '.' from distribution.
           RHSreplacedWithoutDotParams <-
             RHSreplaced[!paramNamesDotLogicalVector]
           calculateCode[[3]] <<- RHSreplacedWithoutDotParams
@@ -210,7 +210,7 @@ modelDeclClass <- R6Class(
             } else {
               list()
             }
-          ## Remove the '.' from each name.
+          # Remove the '.' from each name.
           names(altParamExprs) <<-
             gsub("^\\.", "", names(altParamExprs))
         }
@@ -279,18 +279,18 @@ modelDeclClass <- R6Class(
       invisible(NULL)
     },
 
-    ## Replace dynamic indexing with maximal range (e.g., mu[k[i]] -> mu[1:2147483647],
-    ## needed for setting up graphRules, as we don't dynamically determine dependents.
+    # Replace dynamic indexing with maximal range (e.g., mu[k[i]] -> mu[1:2147483647],
+    # needed for setting up graphRules, as we don't dynamically determine dependents.
     replaceDynamicIndexingInParents = function(varInfo) {
       dynamicIndexInfo <<- list()
       symbolicParentNodes <<- lapply(symbolicParentNodes, stripIndexWrapping)
       for (iSPN in seq_along(symbolicParentNodes)) {
         symbolicParent <- symbolicParentNodes[[iSPN]]
         dynamicIndices <- detectDynamicIndices(symbolicParent)
-        ## We do not yet check bounds of inner indexes in nested indexing.
-        ## In nodeFunctions we would need nested if statements so inner index is checked first.
-        ## That being said, compiled execution will error out with appropriate out of bounds error
-        ## because C++ will put an out-of-bound value in for 'k' in k[d[0]] or k[d[1342134]].
+        # We do not yet check bounds of inner indexes in nested indexing.
+        # In nodeFunctions we would need nested if statements so inner index is checked first.
+        # That being said, compiled execution will error out with appropriate out of bounds error
+        # because C++ will put an out-of-bound value in for 'k' in k[d[0]] or k[d[1342134]].
         if (any(dynamicIndices)) {
           indexedVar <- safeDeparse(symbolicParent[[2]])
           for (iIndex in which(dynamicIndices)) {
@@ -303,7 +303,7 @@ modelDeclClass <- R6Class(
                 upper = upper
               )
             fullExtent <- substitute(A:B, list(A = lower, B = upper))
-            ## Indexing code not needed anymore.
+            # Indexing code not needed anymore.
             symbolicParentNodes[[iSPN]][[2 + iIndex]] <<- fullExtent
           }
         }
@@ -326,17 +326,17 @@ modelDeclClass <- R6Class(
             origIndex <- origLHS[[i]]
             if (is.vectorized(origIndex)) {
               if (any(context$indexVarExprs %in% all.vars(origIndex))) {
-                ## The vectorized index includes a loop-indexing
-                ## variable; we will create a replacement, for a
-                ## memberData, for each nodeFunction.
+                # The vectorized index includes a loop-indexing
+                # variable; we will create a replacement, for a
+                # memberData, for each nodeFunction.
                 if (origIndex[[1]] == ":") {
                   logProbExpr[[i]] <- origIndex[[2]] # generally the minimum
                 } else {
                   stop("unexpected input in `", safeDeparse(origIndex), "`.")
                 }
               } else {
-                ## No loop-indexing variables present in the vectorized index.
-                ## This index should be constant for all instances of this nodeFunction.
+                # No loop-indexing variables present in the vectorized index.
+                # This index should be constant for all instances of this nodeFunction.
                 logProbIndexValue <- as.numeric(min(eval(origIndex))) # eval() should not cause an error...
                 logProbExpr[[i]] <- logProbIndexValue
               }
@@ -359,14 +359,14 @@ checkForExpr <- function(expr) {
   if (!safeDeparse(expr[[1]], warn = TRUE) == "[") {
     return(TRUE)
   }
-  ## Recurse only on the first argument of the `[`.
+  # Recurse only on the first argument of the `[`.
   return(checkForExpr(expr[[2]]))
-  ## Previously we recursed more completely.  Now we stop because expressions
-  ## inside `[` are allowed.
-  ## if(!deparse(expr[[1]]) %in% c('[', ':')) return(TRUE)
-  ## for(i in 2:length(expr))
-  ##     if(checkForExpr(expr[[i]])) output <- TRUE
-  ## return(output)
+  # Previously we recursed more completely.  Now we stop because expressions
+  # inside `[` are allowed.
+  # if(!deparse(expr[[1]]) %in% c('[', ':')) return(TRUE)
+  # for(i in 2:length(expr))
+  #     if(checkForExpr(expr[[i]])) output <- TRUE
+  # return(output)
 }
 
 checkForIndexedIntervals <- function(indexExpr, context) {

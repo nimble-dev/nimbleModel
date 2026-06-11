@@ -1,16 +1,16 @@
-## The dataRuleClass represents the indexing of data nodes (or non-data nodes).
+# The dataRuleClass represents the indexing of data nodes (or non-data nodes).
 
-## Perhaps should be called `isDataRuleClass`.
+# Perhaps should be called `isDataRuleClass`.
 
-## TODO: this sets `rule` field as NULL if the rule
-## is "empty" (representing no indices).
-## May need to revisit this behavior.
+# TODO: this sets `rule` field as NULL if the rule
+# is "empty" (representing no indices).
+# May need to revisit this behavior.
 
-## `sequenceThreshold` determines cutoff below which we
-## create block rules in 1-d case rather than arbitrary rules.
-## For more than 1-d, default to arbitrary for simplicity
-## rather than dealing with an algorithm to try to create
-## minimal number of blocks.
+# `sequenceThreshold` determines cutoff below which we
+# create block rules in 1-d case rather than arbitrary rules.
+# For more than 1-d, default to arbitrary for simplicity
+# rather than dealing with an algorithm to try to create
+# minimal number of blocks.
 
 newDataRules <- function(x, varName, nondata = FALSE, sequenceThreshold = 0.1) {
   NAs <- is.na(x)
@@ -43,7 +43,7 @@ newDataRules <- function(x, varName, nondata = FALSE, sequenceThreshold = 0.1) {
         )
       }
     }
-    ## We'll use graphRules, though only have a single "side".
+    # We'll use graphRules, though only have a single "side".
     rules <- lapply(rulePieces, function(singleRulePieces) {
       graphRuleClass$new(singleRulePieces$expr, singleRulePieces$expr,
         context = modelContextClass$new(singleRulePieces$singleContexts),
@@ -63,7 +63,7 @@ dataRuleClass <- R6Class(
     nondata = NULL,
     initialize = function(rule, varName, nondata) {
       varName <<- varName
-      nondata <<- nondata ## inverse case, used for `includeData = FALSE`
+      nondata <<- nondata # inverse case, used for `includeData = FALSE`
       rule <<- rule
     },
     apply = function(varRange = NULL) {
@@ -88,7 +88,7 @@ makeRulePieces <- function(elements, varName, all, sequenceThreshold = 0.1) {
   expr <- quote(y[idx])
   expr[[2]] <- as.name(varName)
 
-  if (all) { ## Full 'rectangular' extent.
+  if (all) { # Full 'rectangular' extent.
     idxNames <- paste0("idx", seq_along(d))
     singleContexts <- lapply(seq_along(d), function(i) {
       singleContextClass$new(
@@ -100,8 +100,8 @@ makeRulePieces <- function(elements, varName, all, sequenceThreshold = 0.1) {
 
     constants <- list()
   } else {
-    ## TODO: could extend this to handle matrices where entire rows/columns
-    ## are homogeneous, creating block rules.
+    # TODO: could extend this to handle matrices where entire rows/columns
+    # are homogeneous, creating block rules.
     if (length(d) == 1 && mean(!elements) < sequenceThreshold) {
       splits <- which(!elements)
       starts <- c(1, splits + 1)

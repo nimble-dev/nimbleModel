@@ -1,4 +1,4 @@
-makeEnvName <- function(name) paste0(".env_", name) ## already in modelBUGS.R for old system
+makeEnvName <- function(name) paste0(".env_", name) # already in modelBUGS.R for old system
 makeNameName <- function(name) paste0(".name_", name)
 makeRowName <- function(name) paste0(".row_", name)
 
@@ -43,9 +43,9 @@ removeIndexing <- function(nodes) {
   return(gsub("\\[.*", "", nodes))
 }
 
-## this utility function is used in the setup code of conjugate sampler functions.
-## the 'd' dimension variables used to come from nodeInfo object,
-## but now we calculate it (from the targetNode name) using this function.
+# this utility function is used in the setup code of conjugate sampler functions.
+# the 'd' dimension variables used to come from nodeInfo object,
+# but now we calculate it (from the targetNode name) using this function.
 determineNodeIndexSizes <- function(node) {
   if (!is.indexed(node)) {
     return(numeric(0))
@@ -105,7 +105,7 @@ makeSizeAndDimList <- function(code, nodesToExtract, unrolledIndicesMatrix = NUL
 }
 
 
-## This should add model$ in front of any names that are not already part of a '$' expression
+# This should add model$ in front of any names that are not already part of a '$' expression
 addModelDollarSign <- function(expr, exceptionNames = character(0)) {
   if (is.numeric(expr)) {
     return(expr)
@@ -167,10 +167,10 @@ evalBracketArgs <- function(code, constantEnv) {
   if (hasBracket(code)) {
     for (i in 3:length(code)) {
       if (!is.vectorized(code[[i]])) {
-        ## no vectorization; just evaluate it
+        # no vectorization; just evaluate it
         code[[i]] <- as.numeric(eval(code[[i]], constantEnv))
       } else {
-        ## vectorized index. evaluate it, then set it to the resulting expression:  MIN:MAX
+        # vectorized index. evaluate it, then set it to the resulting expression:  MIN:MAX
         indicies <- as.numeric(eval(code[[i]], constantEnv))
         code[[i]] <- substitute(MIN:MAX, list(MIN = min(indicies), MAX = max(indicies)))
       }
@@ -180,13 +180,13 @@ evalBracketArgs <- function(code, constantEnv) {
 }
 
 evalBracketArgsKnownBracket <- function(code, constantEnv, isVectorized) {
-  ## Same as above but when hasBracket(code) is known to be true
+  # Same as above but when hasBracket(code) is known to be true
   for (i in 3:length(code)) {
     if (!isVectorized[i]) {
-      ## no vectorization; just evaluate it
+      # no vectorization; just evaluate it
       code[[i]] <- as.numeric(eval(code[[i]], constantEnv))
     } else {
-      ## vectorized index. evaluate it, then set it to the resulting expression:  MIN:MAX
+      # vectorized index. evaluate it, then set it to the resulting expression:  MIN:MAX
       indicies <- as.numeric(eval(code[[i]], constantEnv))
       code[[i]] <- substitute(MIN:MAX, list(MIN = min(indicies), MAX = max(indicies)))
     }
@@ -247,8 +247,8 @@ CppNameLabelMaker <- labelFunctionCreator("___TRUNC___")
 # @examples
 #  genName('theta[1]')
 Rname2CppName <- function(rName, colonsOK = TRUE, maxLength = 250) {
-  ## This will serve to replace and combine our former Rname2CppName and nameMashupFromExpr
-  ## which were largely redundant
+  # This will serve to replace and combine our former Rname2CppName and nameMashupFromExpr
+  # which were largely redundant
   if (!is.character(rName)) {
     rName <- safeDeparse(rName)
   }
@@ -300,8 +300,8 @@ Rname2CppName <- function(rName, colonsOK = TRUE, maxLength = 250) {
     function(x) {
       if (nchar(x) > maxLength &&
         !length(grep("___TRUNC___", x)) &&
-        !length(grep("_Vec$", x))) { ## when we add _Vec on we need it to stay on (issue #1216)
-        ## Note this could break if a user has long syntax that ends in _Vec, but deal if it arises.
+        !length(grep("_Vec$", x))) { # when we add _Vec on we need it to stay on (issue #1216)
+        # Note this could break if a user has long syntax that ends in _Vec, but deal if it arises.
         x <- paste0(substring(x, 1, maxLength), CppNameLabelMaker())
       }
       return(x)

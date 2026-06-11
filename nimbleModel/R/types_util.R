@@ -1,33 +1,33 @@
-## ## adds explicit indexing to variables (using symtab), then expands indexing present on any variables
-## nl_expandNodeNames <- function(nodeNames, symtab, env) {
-##     nodeNames <- nl_addIndicesToVariables(nodeNames, symtab)
-##     nodeNames <- unlist(lapply(nodeNames, function(node) if(is.indexed(node)) nl_expandNodeIndex(node, env) else node))
-##     if(is.null(nodeNames))   return(character(0))
-##     return(nodeNames)
-## }
+# # adds explicit indexing to variables (using symtab), then expands indexing present on any variables
+# nl_expandNodeNames <- function(nodeNames, symtab, env) {
+#     nodeNames <- nl_addIndicesToVariables(nodeNames, symtab)
+#     nodeNames <- unlist(lapply(nodeNames, function(node) if(is.indexed(node)) nl_expandNodeIndex(node, env) else node))
+#     if(is.null(nodeNames))   return(character(0))
+#     return(nodeNames)
+# }
 
 
-## ## Expands variables into their fully indexed form, e.g., 'y' is expanded to 'y[1:10]', using information in the symbolTable
-## nl_addIndicesToVariables <- function(nodeNames, symtab) {
-##     scipen <- options("scipen")[[1]]
-##     options(scipen = 1000000)
-##     on.exit(options(scipen = scipen))
-##     for(i in seq_along(nodeNames)) {
-##         nodeName <- nodeNames[i]
-##         varName <- nl_getVarNameFromNodeName(nodeName)
-##         if(!(varName %in% symtab$getSymbolNames()))   stop('variable not in symbol table')
-##         if(!is.indexed(nodeName) && (symtab$getSymbolField(varName, 'nDim') > 0)) {    ## nodeName has no indexing, and has dimension > 0
-##             maxs <- symtab$getSymbolField(varName, 'size')
-##             mins <- rep(1, length(maxs))
-##             indexStuff <- paste(mins, maxs, sep=':', collapse = ', ')
-##             nodeNames[i] <- paste0(varName, '[', indexStuff, ']')
-##         }
-##     }
-##     return(nodeNames)
-## }
+# # Expands variables into their fully indexed form, e.g., 'y' is expanded to 'y[1:10]', using information in the symbolTable
+# nl_addIndicesToVariables <- function(nodeNames, symtab) {
+#     scipen <- options("scipen")[[1]]
+#     options(scipen = 1000000)
+#     on.exit(options(scipen = scipen))
+#     for(i in seq_along(nodeNames)) {
+#         nodeName <- nodeNames[i]
+#         varName <- nl_getVarNameFromNodeName(nodeName)
+#         if(!(varName %in% symtab$getSymbolNames()))   stop('variable not in symbol table')
+#         if(!is.indexed(nodeName) && (symtab$getSymbolField(varName, 'nDim') > 0)) {    # nodeName has no indexing, and has dimension > 0
+#             maxs <- symtab$getSymbolField(varName, 'size')
+#             mins <- rep(1, length(maxs))
+#             indexStuff <- paste(mins, maxs, sep=':', collapse = ', ')
+#             nodeNames[i] <- paste0(varName, '[', indexStuff, ']')
+#         }
+#     }
+#     return(nodeNames)
+# }
 
 
-## This is the same as nl_ExpandNodeIndex, except it takes a nodeExpr instead of a node char string
+# This is the same as nl_ExpandNodeIndex, except it takes a nodeExpr instead of a node char string
 nl_expandNodeIndexExpr <- function(nodeExpr, env = parent.frame()) {
   scipen <- options("scipen")[[1]]
   options(scipen = 1000000)
@@ -51,12 +51,12 @@ nl_expandNodeIndexExpr <- function(nodeExpr, env = parent.frame()) {
   return(expandedNodes)
 }
 
-## same as nl_vectorizedExpandNodeIndex but takes nodeExprs instead of nodes
+# same as nl_vectorizedExpandNodeIndex but takes nodeExprs instead of nodes
 nl_vectorizedExpandNodeIndexExprs <- function(nodeExprs, env = parent.frame()) {
   return(unlist(lapply(nodeExprs, function(n) nl_expandNodeIndexExpr(n, env))))
 }
 
-## Expands the indexing of a single node name string, e.g., 'x[1:3]' is expanded to c('x[1]', 'x[2]', 'x[3]')
+# Expands the indexing of a single node name string, e.g., 'x[1:3]' is expanded to c('x[1]', 'x[2]', 'x[3]')
 nl_expandNodeIndex <- function(node, env = parent.frame()) {
   scipen <- options("scipen")[[1]]
   options(scipen = 1000000)
@@ -87,7 +87,7 @@ nl_vectorizedExpandNodeIndex <- function(nodes, env = parent.frame()) {
 }
 
 
-## checks that all nodeNames are present in model
+# checks that all nodeNames are present in model
 nl_checkNodeNamesInModel <- function(model, nodeNames, determOnly = FALSE, stochOnly = FALSE) {
   # this function not used in package, but if it were, would be good to have error messages indicate which nodes are the issue; see below for analogous situation for nl_checkVarNamesInModel
   if (!all(nodeNames %in% model$getNodeNames())) stop("all node names not in model")
@@ -95,7 +95,7 @@ nl_checkNodeNamesInModel <- function(model, nodeNames, determOnly = FALSE, stoch
   if (stochOnly) if (!all(nodeNames %in% model$getNodeNames(stochOnly = TRUE))) stop("all node names are not stochastic")
 }
 
-## checks that all varNames are present in model
+# checks that all varNames are present in model
 nl_checkVarNamesInModel <- function(model, varNames) {
   found <- varNames %in% model$getVarNames(includeLogProb = TRUE)
   if (!all(found)) {
@@ -113,7 +113,7 @@ nl_nodeVectorReadyNodes <- function(model, nodeNames, includeData = TRUE) {
 }
 
 
-## returns a list of variable names, and flat index ranges
+# returns a list of variable names, and flat index ranges
 nl_createVarsAndFlatIndexRanges <- function(nodeNames, symtab) {
   varAndIndexes <- lapply(nodeNames, function(nn) list(var = nl_getVarNameFromNodeName(nn), ind = if (is.indexed(nn)) unlist(as.list(parse(text = nn, keep.source = FALSE)[[1]][-c(1, 2)])) else numeric(0)))
   varAndFlatIndexes <- lapply(varAndIndexes, function(vai) list(var = vai$var, flatIndex = nl_determineFlatIndex(ind = vai$ind, maxs = symtab$getSymbolField(vai$var, "size"))))
@@ -126,7 +126,7 @@ nl_createVarsAndFlatIndexRanges <- function(nodeNames, symtab) {
 }
 
 
-## determines the (scalar) flatIndex, from numeric vectors of indicies, and max_indicies
+# determines the (scalar) flatIndex, from numeric vectors of indicies, and max_indicies
 nl_determineFlatIndex <- function(ind, maxs) {
   if (length(ind) != length(maxs)) stop("number of indices and dimensions are different")
   if (any(ind > maxs)) stop("some indices exceed dimensions")
@@ -146,9 +146,9 @@ nl_determineFlatIndex <- function(ind, maxs) {
 }
 
 
-## takes a vector of flat indices, e.g. c(1,2,3,6,7,100),
-## returns a list of pairs: (index_start, index_finish), e.g. [[1]] c(1,3)  [[2]] c(6,7)  [[3]] c(100,100)
-## If anyone has an implementation which beats O(n) linear time, then let's use it.
+# takes a vector of flat indices, e.g. c(1,2,3,6,7,100),
+# returns a list of pairs: (index_start, index_finish), e.g. [[1]] c(1,3)  [[2]] c(6,7)  [[3]] c(100,100)
+# If anyone has an implementation which beats O(n) linear time, then let's use it.
 nl_aggregateConsecutiveBlocks <- function(ind) {
   if (length(ind) == 0) {
     return(list())

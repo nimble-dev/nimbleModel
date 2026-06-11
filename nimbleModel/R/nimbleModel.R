@@ -1,7 +1,7 @@
-## It's unclear what this should return since in nimble one gets a model object
-## but with nCompiler, we need a modelClass to compile and then we can create an instance.
-## If we create an instance as the output here, one can't then compile that with an algorithm via `nCompile`.
-## Need to think more about the workflow for nimble 2.0.
+# It's unclear what this should return since in nimble one gets a model object
+# but with nCompiler, we need a modelClass to compile and then we can create an instance.
+# If we create an instance as the output here, one can't then compile that with an algorithm via `nCompile`.
+# Need to think more about the workflow for nimble 2.0.
 #' @export
 nimbleModel <- function(code,
                         constants = list(),
@@ -17,9 +17,9 @@ nimbleModel <- function(code,
                         name = NULL,
                         buildDerivs = getNimbleOption("buildModelDerivs"),
                         userEnv = parent.frame()) {
-  ## TODO: arg list taken from `nimble`. Revisit which options are needed.
-  ## For the moment this goes through (original) nimbleModel R6 class and then nimbleModel nClass. Clean that up once ideas are in place.
-  ## Presumably everything would be in Rpublic initialize for modelBaseClass, so this function will just call modelBase_nClass$new().
+  # TODO: arg list taken from `nimble`. Revisit which options are needed.
+  # For the moment this goes through (original) nimbleModel R6 class and then nimbleModel nClass. Clean that up once ideas are in place.
+  # Presumably everything would be in Rpublic initialize for modelBaseClass, so this function will just call modelBase_nClass$new().
 
   if (length(constants) && sum(names(constants) == "")) {
     stop("nimbleModel: 'constants' must be a named list")
@@ -53,7 +53,7 @@ nimbleModel <- function(code,
     stop("nimbleModel: elements of 'data' must be numeric")
   }
 
-  ## TODO: determine if we will need these.
+  # TODO: determine if we will need these.
   origInits <- inits
   origData <- data
 
@@ -62,7 +62,7 @@ nimbleModel <- function(code,
     dimensions = dimensions, inits = inits,
     data = data, userEnv = userEnv
   )
-  ## At this point, data will have been removed from constants.
+  # At this point, data will have been removed from constants.
   specificModelClass <- make_modelClass_from_nimbleModel(modelDef, data, inits, name)
   if (compile) specificModelClass <- nCompile(specificModelClass)
   if (returnClass) {
@@ -94,7 +94,7 @@ make_modelClass_from_nimbleModel <- function(modelDef, data, inits, name = NULL)
     assign(declFun_RvarName, make_declFun_nClass(declVarInfo, decl_methods, declFun_classname, declID))
     declInfoList[[i]] <- make_decl_info_for_model_nClass(declFun_membername, declFun_RvarName, declFun_classname, declVarInfo)
   }
-  ## We have a canonical ordering of decls, but it does arise from a couple of places that should match.
+  # We have a canonical ordering of decls, but it does arise from a couple of places that should match.
   # so we check here.
   ordered_decl_names <- lapply(declInfoList, function(x) x$membername) |> unlist()
   if (!identical(ordered_decl_names, names(modelDef$declFunNameToIndex))) {
@@ -107,8 +107,8 @@ make_modelClass_from_nimbleModel <- function(modelDef, data, inits, name = NULL)
   )
 }
 
-## The two "addModelDollarSign" functions are borrowed directly from nimble.
-## This should add model$ in front of any names that are not already part of a '$' expression
+# The two "addModelDollarSign" functions are borrowed directly from nimble.
+# This should add model$ in front of any names that are not already part of a '$' expression
 
 nm_addModelDollarSign <- function(expr, exceptionNames = character(0)) {
   if (is.numeric(expr)) {
@@ -180,7 +180,7 @@ make_declFun_nClass <- function(varInfo = list(),
   } else {
     initializersList <- character()
   }
-  ## TODO: I don't think this labelCreator (or the one for the model) exist (though they shouldn't be used...)
+  # TODO: I don't think this labelCreator (or the one for the model) exist (though they shouldn't be used...)
   if (missing(classname)) {
     classname <- declLabelCreator()
   }
@@ -262,7 +262,7 @@ makeModel_nClass <- function(modelVarInfo,
                              data = list(),
                              modelDef = NULL,
                              env = parent.frame()) {
-  ## varInfo will be a list (names not used) of name, nDim, sizes.
+  # varInfo will be a list (names not used) of name, nDim, sizes.
   CpublicModelVars <- modelVarInfo$vars |> lapply(\(x) paste0("numericArray(nDim=", x$nDim, ")"))
   names(CpublicModelVars) <- modelVarInfo$vars |>
     lapply(\(x) x$name) |>
@@ -419,7 +419,7 @@ makeModel_nClass <- function(modelVarInfo,
   eval(ans)
 }
 
-## Get varInfo from new nimbleModel
+# Get varInfo from new nimbleModel
 get_varInfo_from_nimbleModel <- function(mDef) {
   extract <- \(x) x |> lapply(\(x) list(name = x$varName, nDim = x$nDim))
   vars <- mDef$varInfo |> extract()

@@ -1,5 +1,5 @@
-## This rule handles simple offset translations, such as
-## `y[i] <- x[i+2]`.
+# This rule handles simple offset translations, such as
+# `y[i] <- x[i+2]`.
 indexRuleBlockClass <- R6Class(
   classname = "indexRuleBlockClass",
   inherit = indexRuleClass,
@@ -19,8 +19,8 @@ indexRuleBlockClass <- R6Class(
         )
     },
     apply = function(indexRange, collapse = TRUE) {
-      ## A bit awkward to use `switch` but otherwise hard to dispatch on input type,
-      ## given we need to cross the indexRule type with the input indexRange type.
+      # A bit awkward to use `switch` but otherwise hard to dispatch on input type,
+      # given we need to cross the indexRule type with the input indexRange type.
       switch(class(indexRange)[1],
         indexRangeScalarClass = indexRuleBlock_applyToScalar(
           indexRange$value,
@@ -47,7 +47,7 @@ indexRuleBlock_setup <- function(toIndexExprList,
                                  fromIndexExprList,
                                  context,
                                  constants = list()) {
-  ## Only valid for single index slot in 'from' and 'to'.
+  # Only valid for single index slot in 'from' and 'to'.
   if (length(toIndexExprList) != 1 || length(fromIndexExprList) != 1 ||
     length(context$singleContexts) != 1) {
     return(NULL)
@@ -71,8 +71,8 @@ indexRuleBlock_setup <- function(toIndexExprList,
 
   indexRangeExpr <- context$singleContexts[[1]]$indexRangeExpr
 
-  ## We rely on eval here, but we could instead pick out arguments of `:`
-  ## fromRange <- range(eval(indexRangeExpr, envir = constants))
+  # We rely on eval here, but we could instead pick out arguments of `:`
+  # fromRange <- range(eval(indexRangeExpr, envir = constants))
   if (length(indexRangeExpr) == 1 || indexRangeExpr[[1]] != ":") {
     return(NULL)
   }
@@ -121,16 +121,16 @@ indexRuleBlock_applyToMatrix <- function(fromValues,
       fromValues <= setupResults$fromMax
   toValues <- fromValues + setupResults$offset
 
-  ## CHECK: Presumably NAs needed to preserve input length when combining results later.
+  # CHECK: Presumably NAs needed to preserve input length when combining results later.
   toValues[!valid] <- NA
 
-  ## `applyGraphRule` will use `collapse = FALSE` because
-  ## one could have something like `y[i,j] <- x[k[i],j]` applied to an input
-  ## indexRangeMatrix with two columns. In that case the `i` rule can
-  ## produce variable number of outputs for each input index, and these
-  ## need to be crossed with the output of the `j` rule, and it's easiest to
-  ## do that if the output of the `j` rule is also a list.
-  ## CHECK: check this reasoning
+  # `applyGraphRule` will use `collapse = FALSE` because
+  # one could have something like `y[i,j] <- x[k[i],j]` applied to an input
+  # indexRangeMatrix with two columns. In that case the `i` rule can
+  # produce variable number of outputs for each input index, and these
+  # need to be crossed with the output of the `j` rule, and it's easiest to
+  # do that if the output of the `j` rule is also a list.
+  # CHECK: check this reasoning
   if (collapse) {
     return(indexRangeMatrixClass$new(toValues, sort = FALSE))
   } else {

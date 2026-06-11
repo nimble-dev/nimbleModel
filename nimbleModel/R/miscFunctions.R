@@ -1,4 +1,4 @@
-## This needs to be sourced after `nimbleFunction` is defined, so can't be done in `distributions_inputList.R`.
+# This needs to be sourced after `nimbleFunction` is defined, so can't be done in `distributions_inputList.R`.
 calc_dmnormAltParams <- nimble::nimbleFunction(
   name = "calc_dmnormAltParams",
   run = function(cholesky = double(2), prec_param = double(), return_prec = double()) {
@@ -7,9 +7,9 @@ calc_dmnormAltParams <- nimble::nimbleFunction(
     } else {
       I <- diag(dim(cholesky)[1])
       ans <- backsolve(cholesky, forwardsolve(t(cholesky), I))
-      ## Chris suggests:
-      ## tmp <- forwardsolve(L, I)
-      ## ans <- crossprod(tmp)
+      # Chris suggests:
+      # tmp <- forwardsolve(L, I)
+      # ans <- crossprod(tmp)
     }
     returnType(double(2))
     return(ans)
@@ -24,9 +24,9 @@ calc_dwishAltParams <- nimble::nimbleFunction(
     } else {
       I <- diag(dim(cholesky)[1])
       ans <- backsolve(cholesky, forwardsolve(t(cholesky), I))
-      ## Chris suggests:
-      ## tmp <- forwardsolve(L, I)
-      ## ans <- crossprod(tmp)
+      # Chris suggests:
+      # tmp <- forwardsolve(L, I)
+      # ans <- crossprod(tmp)
     }
     returnType(double(2))
     return(ans)

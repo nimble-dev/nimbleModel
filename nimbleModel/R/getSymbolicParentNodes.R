@@ -149,7 +149,7 @@ nimbleOrRfunctionNames <- c(
 )
 
 
-## Determine the RHS pieces, expressed symbolically.
+# Determine the RHS pieces, expressed symbolically.
 getSymbolicParentNodes <- function(code,
                                    constNames = list(),
                                    indexNames = list(),
@@ -177,37 +177,37 @@ getSymbolicParentNodesRecurse <- function(code,
                                           indexNames = list(),
                                           nimbleFunctionNames = list(),
                                           envir) {
-  ## This takes as input some code and returns the variables in it.
-  ## It expects one line of code, not a `{` expression.
-  ##
-  ## However, `indexNames` (from for-loop indices) and `constNames` are
-  ## not identified as separate variables.  E.g., `x[i]` is returned as
-  ## `x` and `i` or as `x[i]` if `i` is an indexName
-  ##
-  ## `indexNames` and `constNames` can be substituted at compile time,
-  ## such as a block index variable.
-  ##
-  ## Every function EXCEPT those in `nimbleFunctionNames` can be
-  ## evaluated at compile time.
-  ##
-  ## `constNames`, `indexNames` and `nimbleFunctionNames` should be lists
-  ## of names.
-  ##
-  ## details: each recursion returns a list with:
-  ## - `code`: a list of `symbolicParentExprs`
-  ## - `replaceable`: logical of whether it can be part of a partially
-  ##                evaluated expression.
-  ##                This includes numbers, constants, and indices.
-  ##                This also used to include functions that can be evaluated in R,
-  ##                but since we are no longer unrolling, we can no longer
-  ##                precompute the results for eval'ing R-only functions.
-  ##                Replacements aren't actually done but are used to
-  ##                decide handling.
-  ##                Something replaceable doesn't need to become a
-  ##                `symbolicParentNode`.
-  ##                Something replaceable in an index represents static
-  ##                indexing, not dynamic indexing
-  ## - `hasIndex`: is there an index inside numeric constant
+  # This takes as input some code and returns the variables in it.
+  # It expects one line of code, not a `{` expression.
+  #
+  # However, `indexNames` (from for-loop indices) and `constNames` are
+  # not identified as separate variables.  E.g., `x[i]` is returned as
+  # `x` and `i` or as `x[i]` if `i` is an indexName
+  #
+  # `indexNames` and `constNames` can be substituted at compile time,
+  # such as a block index variable.
+  #
+  # Every function EXCEPT those in `nimbleFunctionNames` can be
+  # evaluated at compile time.
+  #
+  # `constNames`, `indexNames` and `nimbleFunctionNames` should be lists
+  # of names.
+  #
+  # details: each recursion returns a list with:
+  # - `code`: a list of `symbolicParentExprs`
+  # - `replaceable`: logical of whether it can be part of a partially
+  #                evaluated expression.
+  #                This includes numbers, constants, and indices.
+  #                This also used to include functions that can be evaluated in R,
+  #                but since we are no longer unrolling, we can no longer
+  #                precompute the results for eval'ing R-only functions.
+  #                Replacements aren't actually done but are used to
+  #                decide handling.
+  #                Something replaceable doesn't need to become a
+  #                `symbolicParentNode`.
+  #                Something replaceable in an index represents static
+  #                indexing, not dynamic indexing
+  # - `hasIndex`: is there an index inside numeric constant
   if (is.numeric(code)) {
     return(list(
       code = NULL,
@@ -215,12 +215,12 @@ getSymbolicParentNodesRecurse <- function(code,
       hasIndex = FALSE
     ))
   }
-  ## a single name:
+  # a single name:
   if (length(code) == 1) {
     if (is.name(code)) {
-      ## Is this for a blank index? E.g., from first index of
-      ## x[, j].  At this point indices have been filled so
-      ## there shouldn't be blanks.
+      # Is this for a blank index? E.g., from first index of
+      # x[, j].  At this point indices have been filled so
+      # there shouldn't be blanks.
       if (code == "") {
         return(list(
           code = NULL,
@@ -228,7 +228,7 @@ getSymbolicParentNodesRecurse <- function(code,
           hasIndex = FALSE
         ))
       }
-      ## an index name
+      # an index name
       if (any(code == indexNames)) {
         return(list(
           code = NULL,
@@ -236,7 +236,7 @@ getSymbolicParentNodesRecurse <- function(code,
           hasIndex = TRUE
         ))
       }
-      ## a constant name
+      # a constant name
       if (any(code == constNames)) {
         return(list(
           code = NULL,
@@ -244,7 +244,7 @@ getSymbolicParentNodesRecurse <- function(code,
           hasIndex = FALSE
         ))
       }
-      ## just something regular: not constant or index
+      # just something regular: not constant or index
       return(list(
         code = list(code),
         replaceable = FALSE,
@@ -252,17 +252,17 @@ getSymbolicParentNodesRecurse <- function(code,
       ))
     }
   }
-  ## a call:
+  # a call:
   if (is.call(code)) {
     indexingBracket <- code[[1]] == "["
     if (indexingBracket) {
       if (is.call(code[[2]])) {
-        ## A case like foo(x)[i] (when will this occur in model code?).
+        # A case like foo(x)[i] (when will this occur in model code?).
         indexingBracket <- FALSE
       }
     }
     if (indexingBracket) {
-      ## Recurse on the index arguments.
+      # Recurse on the index arguments.
       contents <-
         lapply(
           code[-c(1, 2)],
@@ -276,7 +276,7 @@ getSymbolicParentNodesRecurse <- function(code,
             )
           }
         )
-      ## Unpack the codes returned from recursion.
+      # Unpack the codes returned from recursion.
       contentsCode <-
         unlist(
           lapply(
@@ -285,19 +285,19 @@ getSymbolicParentNodesRecurse <- function(code,
           ),
           recursive = FALSE
         )
-      ## Unpack whether each index has an index.
+      # Unpack whether each index has an index.
       contentsHasIndex <-
         unlist(lapply(
           contents,
           function(x) x$hasIndex
         ))
-      ## Unpack whether each index is replaceable.
+      # Unpack whether each index is replaceable.
       contentsReplaceable <-
         unlist(lapply(
           contents,
           function(x) x$replaceable
         ))
-      ## Recurse on the variable, e.g., `mu` in `mu[i]`.
+      # Recurse on the variable, e.g., `mu` in `mu[i]`.
       variable <-
         getSymbolicParentNodesRecurse(
           code[[2]],
@@ -307,7 +307,7 @@ getSymbolicParentNodesRecurse <- function(code,
           envir
         )
 
-      ## Error if it looks like mu[i][j] where i is a for-loop index
+      # Error if it looks like mu[i][j] where i is a for-loop index
       if (variable$hasIndex) {
         stop(
           "variable `",
@@ -317,10 +317,10 @@ getSymbolicParentNodesRecurse <- function(code,
       }
 
       if (variable$replaceable) {
-        ## A case like `x[ block[i] ]`, dealing with the
-        ## `block[i]`, so `block` is replaceable.
+        # A case like `x[ block[i] ]`, dealing with the
+        # `block[i]`, so `block` is replaceable.
         if (!all(contentsReplaceable)) {
-          ## dynamic index on a constant
+          # dynamic index on a constant
           stop(
             "dynamic indexing of constants is not allowed in `",
             safeDeparse(code), "`."
@@ -352,14 +352,14 @@ getSymbolicParentNodesRecurse <- function(code,
           ))
         }
       } else {
-        ## `x[i]` with `x` a variable and no dynamic indices.
+        # `x[i]` with `x` a variable and no dynamic indices.
         if (all(contentsReplaceable)) {
           return(list(
             code = c(contentsCode, list(code)),
             replaceable = FALSE,
             hasIndex = any(contentsHasIndex)
           ))
-        } else { ## Non-replaceable indices are dynamic indices.
+        } else { # Non-replaceable indices are dynamic indices.
           if (!getNimbleModelOption("allowDynamicIndexing")) {
             warning(
               "It appears you are trying to use dynamic indexing (i.e., the index of a variable is determined by something that is not a constant) in: ",
@@ -373,11 +373,11 @@ getSymbolicParentNodesRecurse <- function(code,
             }
             indexedVariable <- safeDeparse(code[[2]], warn = TRUE)
             dynamicIndexParent <- code # addUnknownIndexToVarNameInBracketExpr(code)
-            ## Instead of inserting NA, leave indexing
-            ## code but with indication it is a dynamic
-            ## index so we can detect that later. We need
-            ## the indexing code so we can add it to
-            ## declInfo$dynamicIndexInfo for range checking.
+            # Instead of inserting NA, leave indexing
+            # code but with indication it is a dynamic
+            # index so we can detect that later. We need
+            # the indexing code so we can add it to
+            # declInfo$dynamicIndexInfo for range checking.
             dynamicIndexParent[-c(1, 2)][!contentsReplaceable] <-
               lapply(
                 dynamicIndexParent[-c(1, 2)][!contentsReplaceable],
@@ -393,9 +393,9 @@ getSymbolicParentNodesRecurse <- function(code,
         }
       }
     } else {
-      ## a regular call like foo(x)
+      # a regular call like foo(x)
       if (length(code) > 1) {
-        if (code[[1]] == "$") { ## `a$x`: recurse on `a`.
+        if (code[[1]] == "$") { # `a$x`: recurse on `a`.
           contents <- lapply(
             code[2],
             function(x) {
@@ -408,7 +408,7 @@ getSymbolicParentNodesRecurse <- function(code,
               )
             }
           )
-        } else { ## foo(x): recurse on x
+        } else { # foo(x): recurse on x
           contents <- lapply(
             code[-1],
             function(x) {
@@ -422,7 +422,7 @@ getSymbolicParentNodesRecurse <- function(code,
             }
           )
         }
-        ## Unpack results of recursion.
+        # Unpack results of recursion.
         contentsCode <- unlist(
           lapply(
             contents,
@@ -430,14 +430,14 @@ getSymbolicParentNodesRecurse <- function(code,
           ),
           recursive = FALSE
         )
-        ## Unpack `hasIndex` entries.
+        # Unpack `hasIndex` entries.
         contentsHasIndex <- unlist(
           lapply(
             contents,
             function(x) x$hasIndex
           )
         )
-        ## Unpack replaceable entries.
+        # Unpack replaceable entries.
         contentsReplaceable <- unlist(
           lapply(
             contents,
@@ -445,16 +445,16 @@ getSymbolicParentNodesRecurse <- function(code,
           )
         )
         allContentsReplaceable <- all(contentsReplaceable)
-      } else { ## no arguments: foo()
+      } else { # no arguments: foo()
         contentsCode <- NULL
         contentsHasIndex <- FALSE
         allContentsReplaceable <- TRUE
       }
-      ## Check if the function can be called only in R, not NIMBLE.
+      # Check if the function can be called only in R, not NIMBLE.
       isRfunction <- !any(code[[1]] == nimbleFunctionNames)
       funName <- safeDeparse(code[[1]], warn = TRUE)
       isRonly <- isRfunction && (!checkNimbleOrRfunctionNames(funName, envir))
-      ## We can no longer handle R functions, even if all contents replaceable because we no longer unroll.
+      # We can no longer handle R functions, even if all contents replaceable because we no longer unroll.
       if (isRonly) {
         stop(
           "detected use of an R function `", funName,
@@ -475,7 +475,7 @@ checkNimbleOrRfunctionNames <- function(functionName, envir) {
   if (any(functionName == nimbleOrRfunctionNames)) {
     return(TRUE)
   }
-  ## This is scoped to only look in environment from which model is being created.
+  # This is scoped to only look in environment from which model is being created.
   if (exists(functionName, envir) && is.rcf(get(functionName, envir))) {
     return(TRUE)
   }
@@ -485,10 +485,10 @@ checkNimbleOrRfunctionNames <- function(functionName, envir) {
 detectNonscalarIndex <- function(expr) {
   if (isUsedInIndex(expr) || length(expr) == 1) {
     return(FALSE)
-  } ## The condition is needed because recursion
-  ## means that we might already have processed
-  ## the dynamic index.
-  if (length(expr) == 2) { ## This can occur if we have mu[k[j[i]]]
+  } # The condition is needed because recursion
+  # means that we might already have processed
+  # the dynamic index.
+  if (length(expr) == 2) { # This can occur if we have mu[k[j[i]]]
     expr <- stripIndexWrapping(expr)
     if (length(expr) <= 2) {
       stop("unexpected expression `", safeDeparse(expr), "`.")
@@ -509,10 +509,10 @@ isVectorIndex <- function(expr) {
   return(FALSE)
 }
 
-## Functionality used for handling dynamic indexing during model definition processing.
+# Functionality used for handling dynamic indexing during model definition processing.
 
 addIndexWrapping <- function(expr) {
-  if (length(expr) > 1 && expr[[1]] == ".USED_IN_INDEX") { ## nested random indexing
+  if (length(expr) > 1 && expr[[1]] == ".USED_IN_INDEX") { # nested random indexing
     return(expr)
   }
   return(substitute(.USED_IN_INDEX(EXPR), list(EXPR = expr)))

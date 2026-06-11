@@ -13,19 +13,19 @@ pasteIndices <- function(...) {
 }
 
 
-## Sequential label generation system:
-## labelFunctionMetaCreator returns a function that returns a function.
-## labelFunctionMetaCreator is only called once, immediately below, to create labelFunctionCreator
-## The outer layer allows allLabelFunctionCreators to be in the closure of every function returned
-## by labelFunctionCreator.  Each of those functions is registered as an element of allLableFunctionCreators.
-##
-## This scheme allows the function resetLabelFunctionCreators below to work simply,
-## resetting the count to 1 for all of the label generators.
-##
-## The motivation for resetLabelFunctionCreators is for testing: If we want to check
-## that two pathways to code generation (one existing, one experimental) create identical
-## code, it is helpful to have identical generated labels.  Resetting all label generators
-## supports this goal.
+# Sequential label generation system:
+# labelFunctionMetaCreator returns a function that returns a function.
+# labelFunctionMetaCreator is only called once, immediately below, to create labelFunctionCreator
+# The outer layer allows allLabelFunctionCreators to be in the closure of every function returned
+# by labelFunctionCreator.  Each of those functions is registered as an element of allLableFunctionCreators.
+#
+# This scheme allows the function resetLabelFunctionCreators below to work simply,
+# resetting the count to 1 for all of the label generators.
+#
+# The motivation for resetLabelFunctionCreators is for testing: If we want to check
+# that two pathways to code generation (one existing, one experimental) create identical
+# code, it is helpful to have identical generated labels.  Resetting all label generators
+# supports this goal.
 labelFunctionMetaCreator <- function() {
   allLabelFunctionCreators <- list()
 
@@ -58,8 +58,8 @@ resetLabelFunctionCreators <- function() {
 }
 
 Rname2CppName <- function(rName, colonsOK = TRUE, maxLength = 250) {
-  ## This will serve to replace and combine our former `Rname2CppName` and `nameMashupFromExpr`,
-  ## which were largely redundant
+  # This will serve to replace and combine our former `Rname2CppName` and `nameMashupFromExpr`,
+  # which were largely redundant
   if (!is.character(rName)) {
     rName <- safeDeparse(rName)
   }
@@ -111,9 +111,9 @@ Rname2CppName <- function(rName, colonsOK = TRUE, maxLength = 250) {
     function(x) {
       if (nchar(x) > maxLength &&
         !length(grep("___TRUNC___", x)) &&
-        !length(grep("_Vec$", x))) { ## When we add _Vec on we need it to stay on (issue #1216).
-        ## Note this could break if a user has long syntax that ends in _Vec,
-        ## but deal with that if it arises.
+        !length(grep("_Vec$", x))) { # When we add _Vec on we need it to stay on (issue #1216).
+        # Note this could break if a user has long syntax that ends in _Vec,
+        # but deal with that if it arises.
         x <- paste0(substring(x, 1, maxLength), CppNameLabelMaker())
       }
       return(x)
@@ -123,7 +123,7 @@ Rname2CppName <- function(rName, colonsOK = TRUE, maxLength = 250) {
 }
 
 
-## Simply adds width.cutoff = 500 as the default to deal with creation of long variable names from expressions.
+# Simply adds width.cutoff = 500 as the default to deal with creation of long variable names from expressions.
 deparse <- function(...) {
   if ("width.cutoff" %in% names(list(...))) {
     base::deparse(..., control = "digits17")
@@ -132,12 +132,12 @@ deparse <- function(...) {
   }
 }
 
-## This version of deparse avoids splitting into multiple lines, which generally would lead to
-## problems. We keep the original nimble:::deparse above as deparse is widely used and there
-## are cases where not modifying the nlines behavior may be best.
+# This version of deparse avoids splitting into multiple lines, which generally would lead to
+# problems. We keep the original nimble:::deparse above as deparse is widely used and there
+# are cases where not modifying the nlines behavior may be best.
 safeDeparse <- function(..., warn = FALSE) {
   out <- deparse(...)
-  if (TRUE) { ## TODO: nimbleModelOptions('useSafeDeparse')) {
+  if (TRUE) { # TODO: nimbleModelOptions('useSafeDeparse')) {
     dotArgs <- list(...)
     if ("nlines" %in% names(dotArgs)) {
       nlines <- dotArgs$nlines
@@ -160,7 +160,7 @@ messageIfVerbose <- function(...) {
 }
 
 
-## Temporarily here as need for initial testing of processing.
+# Temporarily here as need for initial testing of processing.
 is.rcf <- function(x, inputIsName = FALSE, where = -1) {
   if (inputIsName) {
     x <- get(x, pos = where)
@@ -183,7 +183,7 @@ nimbleUniqueID <- labelFunctionCreator("UID")
 nimbleModelID <- labelFunctionCreator("MID")
 
 
-## temporary, as we have some tests of use of `c()` in indexing
+# temporary, as we have some tests of use of `c()` in indexing
 nimC <- function(...) {
   c(...)
 }

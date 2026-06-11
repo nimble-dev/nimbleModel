@@ -1,4 +1,4 @@
-## Classes for representing constraints on the `from` indexing.
+# Classes for representing constraints on the `from` indexing.
 
 indexConstraintClass <- R6Class(
   classname = "indexRuleClass",
@@ -7,19 +7,19 @@ indexConstraintClass <- R6Class(
     slots = numeric()
   )
 )
-## e.g. y[i] <- x[2],  <- x[2:4], <- x[(c(2,3,5)]
+# e.g. y[i] <- x[2],  <- x[2:4], <- x[(c(2,3,5)]
 
-## also, y[i] -> x[2],  y[k[i]] -> x[2], y[k1[i],k2[i]] -> x[2]
+# also, y[i] -> x[2],  y[k[i]] -> x[2], y[k1[i],k2[i]] -> x[2]
 
-## TODO: do we need to check input None in any of these next ones?
+# TODO: do we need to check input None in any of these next ones?
 
-## `check` method will return single boolean when given scalar or sequence,
-## and vector of booleans when given a matrix. The vector is needed
-## in some cases when checking multiple constraints against an
-## indexRange or when an indexRange has columns additional to the column(s)
-## checked against the constraint.
+# `check` method will return single boolean when given scalar or sequence,
+# and vector of booleans when given a matrix. The vector is needed
+# in some cases when checking multiple constraints against an
+# indexRange or when an indexRange has columns additional to the column(s)
+# checked against the constraint.
 
-## A class representing a constraint such as `x[2]` in  `y[i] <- x[2]`.
+# A class representing a constraint such as `x[2]` in  `y[i] <- x[2]`.
 indexConstraintScalarClass <- R6Class(
   classname = "indexConstraintScalarClass",
   inherit = indexConstraintClass,
@@ -46,7 +46,7 @@ indexConstraintScalarClass <- R6Class(
 )
 
 
-## A class representing a constraint such as `x[2:4]` in  `y[i] <- sum(x[2:4])`.
+# A class representing a constraint such as `x[2:4]` in  `y[i] <- sum(x[2:4])`.
 indexConstraintSequenceClass <- R6Class(
   classname = "indexConstraintSequenceClass",
   inherit = indexConstraintClass,
@@ -75,8 +75,8 @@ indexConstraintSequenceClass <- R6Class(
   )
 )
 
-## A class representing a constraint such as `x[c(2,3,5)]` in  `y[i] <- sum(x[c(2,3,5)])`, or
-## result of evaluating `k[i]` for `y[k[i]] -> x[2]`.
+# A class representing a constraint such as `x[c(2,3,5)]` in  `y[i] <- sum(x[c(2,3,5)])`, or
+# result of evaluating `k[i]` for `y[k[i]] -> x[2]`.
 indexConstraintMatrix1dClass <- R6Class(
   classname = "indexConstraintMatrix1dClass",
   inherit = indexConstraintClass,
@@ -88,8 +88,8 @@ indexConstraintMatrix1dClass <- R6Class(
       slots <<- slot
     },
 
-    ## CHECK: this assumes a one-column matrix; can't think of cases where
-    ## a constraint could be specified.
+    # CHECK: this assumes a one-column matrix; can't think of cases where
+    # a constraint could be specified.
     check = function(indexRange) {
       switch(class(indexRange)[1],
         indexRangeScalarClass = indexRange$value %in% values,
@@ -122,7 +122,7 @@ indexConstraintMatrixClass <- R6Class(
       )
     },
 
-    ## Determine rows of input that satisfy constraint. (`%in%` doesn't work for matrix rows)
+    # Determine rows of input that satisfy constraint. (`%in%` doesn't work for matrix rows)
     checkFunction = function(indexRange) {
       mat1 <- cbind(indexRange$values, seq_len(nrow(indexRange$values)))
       mat2 <- cbind(values, rep(1, nrow(values)))
@@ -136,15 +136,15 @@ indexConstraintMatrixClass <- R6Class(
   )
 )
 
-## Create an `indexConstraint` for simple expressions, such as `x[2]`, `x[2:4]`.
+# Create an `indexConstraint` for simple expressions, such as `x[2]`, `x[2:4]`.
 newIndexConstraint_fromSimple <- function(expr, slot, constants) {
-  if (is.call(expr) && expr[[1]] == ":") { ## sequence case, e.g., `x[2:4]`
+  if (is.call(expr) && expr[[1]] == ":") { # sequence case, e.g., `x[2:4]`
     return(indexConstraintSequenceClass$new(
       eval(expr[[2]], envir = constants),
       eval(expr[[3]], envir = constants),
       slot
     ))
-  } else { ## various other cases such as `x[2]`, `x[k+1]`, `x[c(2,3,5)]`, `x[c(2,3,k)]`.
+  } else { # various other cases such as `x[2]`, `x[k+1]`, `x[c(2,3,5)]`, `x[c(2,3,k)]`.
     if (expr[[1]] == "nimC") {
       expr[[1]] <- quote(c)
     }
@@ -157,7 +157,7 @@ newIndexConstraint_fromSimple <- function(expr, slot, constants) {
   }
 }
 
-## Create an `indexConstraint` from eval'ing loop(s).
+# Create an `indexConstraint` from eval'ing loop(s).
 newIndexConstraint_fromUnrolling <- function(fromIndexExprs, slots, context, constants) {
   values <- makeIndicesMatrix(fromIndexExprs, context, constants)
   if (ncol(values) == 1) {
@@ -173,7 +173,7 @@ checkIndexConstraints <- function(varRange, indexConstraints) {
   length(result) <- length(varRange$indexRanges)
   if (length(indexConstraints)) {
     for (i in seq_along(varRange$indexRanges)) {
-      ## Don't check ranges already used in combination with another range for a single constraint.
+      # Don't check ranges already used in combination with another range for a single constraint.
       if (!length(result[[i]])) {
         rangeSlots <- varRange$rangeToIndexSlot[[i]]
         usedConstraints <- sapply(indexConstraints, function(x) {
@@ -182,12 +182,12 @@ checkIndexConstraints <- function(varRange, indexConstraints) {
         if (length(usedConstraints)) {
           for (constraint in indexConstraints[usedConstraints]) {
             if (!all(constraint$slots %in% rangeSlots)) {
-              ## Cross ranges involved in a single constraint and
-              ## assign result to all the input ranges.
+              # Cross ranges involved in a single constraint and
+              # assign result to all the input ranges.
 
-              ## This will not have to deal with complicated cases where
-              ## additional slots in a range are not constrained, as
-              ## this is handled in `applyGraphRule` as `complicatedCrossing`.
+              # This will not have to deal with complicated cases where
+              # additional slots in a range are not constrained, as
+              # this is handled in `applyGraphRule` as `complicatedCrossing`.
               neededRanges <- varRange$indexSlotToRange[constraint$slots]
               valid <- constraint$check(varRange$extractIndexRange(constraint$slots))
               for (j in neededRanges) {
@@ -202,7 +202,7 @@ checkIndexConstraints <- function(varRange, indexConstraints) {
               } else {
                 valid <- constraint$check(varRange$indexRanges[[i]])
               }
-              ## Combine results from multiple constraints applied to columns of a single range.
+              # Combine results from multiple constraints applied to columns of a single range.
               if (is.null(result[[i]])) {
                 result[[i]] <- valid
               } else {
@@ -211,9 +211,9 @@ checkIndexConstraints <- function(varRange, indexConstraints) {
             }
           }
           constraintSlots <- unlist(lapply(indexConstraints[usedConstraints], function(x) x$slots))
-          ## If range fully covers the slots of the constraints (and only those slots)
-          ## just need to record scalar boolean of validity as not used to
-          ## constrain result of an indexRule to the range.
+          # If range fully covers the slots of the constraints (and only those slots)
+          # just need to record scalar boolean of validity as not used to
+          # constrain result of an indexRule to the range.
           if (identical(sort(rangeSlots), sort(constraintSlots))) {
             result[[i]] <- any(result[[i]])
           }
@@ -224,10 +224,10 @@ checkIndexConstraints <- function(varRange, indexConstraints) {
   return(result)
 }
 
-## Unroll loop(s) to generate indexing information in arbitrary cases.
+# Unroll loop(s) to generate indexing information in arbitrary cases.
 
-## FUTURE: Code copied from `indexRuleArbitrary`. Might see what could be factored out
-## as a single function to avoid code duplication.
+# FUTURE: Code copied from `indexRuleArbitrary`. Might see what could be factored out
+# as a single function to avoid code duplication.
 makeIndicesMatrix <- function(fromIndexExprs, context, constants) {
   fromIndexNames <- lapply(
     names(fromIndexExprs),
@@ -266,9 +266,9 @@ makeIndicesMatrix <- function(fromIndexExprs, context, constants) {
     iRow2toIndices <- split(
       allIndices,
       1:unrolledSize
-    ) ## makes it a list
+    ) # makes it a list
   } else {
-    ## This will return a list in the right form.
+    # This will return a list in the right form.
     allIndicesList <- do.call(
       "mapply",
       c(
@@ -289,6 +289,6 @@ makeIndicesMatrix <- function(fromIndexExprs, context, constants) {
   result <- as.matrix(do.call(rbind, iRow2toIndices))
   dimnames(result) <- NULL
   return(result)
-  ## combineFun <- ifelse(length(iRow2toIndices[[1]]) == 1, c, rbind)
-  ## return(do.call(combineFun, iRow2toIndices))
+  # combineFun <- ifelse(length(iRow2toIndices[[1]]) == 1, c, rbind)
+  # return(do.call(combineFun, iRow2toIndices))
 }

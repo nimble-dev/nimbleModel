@@ -1,7 +1,7 @@
-## This rule handles constant indices in the output, such as
-## `y[2] <- ...` or `y[2:4]` <- ...` or `y[c(2,4)] <- ...`
+# This rule handles constant indices in the output, such as
+# `y[2] <- ...` or `y[2:4]` <- ...` or `y[c(2,4)] <- ...`
 
-## Note that constant indices in the input are handed by `indexConstraint`s.
+# Note that constant indices in the input are handed by `indexConstraint`s.
 
 indexRuleConstantClass <- R6Class(
   classname = "indexRuleConstantClass",
@@ -35,7 +35,7 @@ indexRuleConstant_setup <- function(toIndexExprList,
                                     fromIndexExprList,
                                     context,
                                     constants = list()) {
-  ## Only valid if no indexing, and a single `to` index slot.
+  # Only valid if no indexing, and a single `to` index slot.
   if (length(fromIndexExprList) || length(context$singleContexts) ||
     length(toIndexExprList) > 1) {
     return(NULL)

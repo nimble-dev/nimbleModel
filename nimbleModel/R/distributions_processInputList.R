@@ -1,11 +1,11 @@
 distributionsClass <- setRefClass(
   Class = "distributionsClass",
   fields = list(
-    distObjects   = "ANY", #' list',      ## a list of distClass objects, names of each element are the BUGS distribution name
-    namesVector   = "ANY", #' character',      ## a character vector of the (BUGS) names of all distributions
-    namesExprList = "ANY", #' list',   ## a list of the expressions of the (BUGS) names of all distributions
-    matchCallEnv  = "ANY", #' environment',   ## an environment containing distribution functions which run match.call()
-    translations  = "ANY" #' list'   ## a list of the (R) d-dist and r-dist function names. element names are BUGS distributions
+    distObjects   = "ANY", #' list',      # a list of distClass objects, names of each element are the BUGS distribution name
+    namesVector   = "ANY", #' character',      # a character vector of the (BUGS) names of all distributions
+    namesExprList = "ANY", #' list',   # a list of the expressions of the (BUGS) names of all distributions
+    matchCallEnv  = "ANY", #' environment',   # an environment containing distribution functions which run match.call()
+    translations  = "ANY" #' list'   # a list of the (R) d-dist and r-dist function names. element names are BUGS distributions
   ),
   methods = list(
     initialize = function(dil) {
@@ -28,10 +28,10 @@ distributionsClass <- setRefClass(
         for (i in seq_along(dupl)) {
           remove(nms[dupl[i]])
         }
-        ## distObjects[dupl] <<- NULL
-        ## namesVector <<- namesVector[-dupl]
-        ## namesExprList[dupl] <<- NULL
-        ## translations[dupl] <<- NULL
+        # distObjects[dupl] <<- NULL
+        # namesVector <<- namesVector[-dupl]
+        # namesExprList[dupl] <<- NULL
+        # translations[dupl] <<- NULL
         nmsDuplicated <- paste0(nms[dupl], collapse = ", ")
         messageIfVerbose("  [Note] Overwriting the following user-supplied distributions: ", nmsDuplicated, ".")
       }
@@ -73,23 +73,23 @@ setMethod(
 distClass <- setRefClass(
   Class = "distClass",
   fields = list(
-    BUGSdistName = "ANY", #' character',   ## the (BUGS) name of the distribution
+    BUGSdistName = "ANY", #' character',   # the (BUGS) name of the distribution
     BUGSdistExpr = "ANY", # the BUGS distribution expression, as provided in the original inputs list, with all possible parameter names
-    RdistExprList = "ANY", #' list',  ## a list of the R distribution expressions, along with their parameters and re-parametrizations
-    numAlts = "ANY", #' numeric',   ## the number of alternate reparametrizations provided
+    RdistExprList = "ANY", #' list',  # a list of the R distribution expressions, along with their parameters and re-parametrizations
+    numAlts = "ANY", #' numeric',   # the number of alternate reparametrizations provided
     alts = "ANY", #' list',
     exprs = "ANY", #' list',
-    reqdArgs = "ANY", #' character',   ## chracter vector of the required arguments in our R implementation of each distribution; we always reparametrize to this
-    densityName = "ANY", #' character',   ## the (R) name of the d-dist function, e.g. 'dnorm'
-    simulateName = "ANY", #' character',   ## the (R) name of the r-dist function, e.g. 'rnorm'
-    altParams = "ANY", #' list',    ## the (named) list of alternate parameters we'll have available, list elements are the expressions for each parameter
-    discrete = "ANY", #' logical',   ## logical, if the distribution is discrete
-    pqAvail = "ANY", #' logical', ## if the p (CDF) and q (inverse CDF/quantile) functions are available
-    mixedSizes = "ANY", ##   if TRUE, then parameters of this distribution could have varied sizes, and is exempted from this check in model$checkBasics()
-    range = "ANY", #' numeric',  ## lower and upper limits of distribution domain
-    types = "ANY", #' list',     ## named list (names are 'node', ALL reqdArgs, and ALL altParams), each element is a named list: list(type = 'double', nDim = 0) <- default values
-    paramIDs = "ANY" #' integer'   ## named vector of unique integer ID for each parameter
-    ### typesForVirtualNodeFunction = 'ANY'		#'list'  ## version of 'types' for making the virtualNodeFunction definiton.  same as above, except without 'value'
+    reqdArgs = "ANY", #' character',   # chracter vector of the required arguments in our R implementation of each distribution; we always reparametrize to this
+    densityName = "ANY", #' character',   # the (R) name of the d-dist function, e.g. 'dnorm'
+    simulateName = "ANY", #' character',   # the (R) name of the r-dist function, e.g. 'rnorm'
+    altParams = "ANY", #' list',    # the (named) list of alternate parameters we'll have available, list elements are the expressions for each parameter
+    discrete = "ANY", #' logical',   # logical, if the distribution is discrete
+    pqAvail = "ANY", #' logical', # if the p (CDF) and q (inverse CDF/quantile) functions are available
+    mixedSizes = "ANY", #   if TRUE, then parameters of this distribution could have varied sizes, and is exempted from this check in model$checkBasics()
+    range = "ANY", #' numeric',  # lower and upper limits of distribution domain
+    types = "ANY", #' list',     # named list (names are 'node', ALL reqdArgs, and ALL altParams), each element is a named list: list(type = 'double', nDim = 0) <- default values
+    paramIDs = "ANY" #' integer'   # named vector of unique integer ID for each parameter
+    ## typesForVirtualNodeFunction = 'ANY'		#'list'  # version of 'types' for making the virtualNodeFunction definiton.  same as above, except without 'value'
   ),
   methods = list(
     initialize = function(distInputList, BUGSdistName) {
@@ -194,7 +194,7 @@ distClass <- setRefClass(
         if (typeList$nDim > 0 && typeList$type != "double") {
           stop("non-scalar integer or logical found in distribution function for distribution `", BUGSdistName, "`.\nPlease use type 'double' for all non-scalars in distribution functions.")
         }
-        if (!(typeList$nDim %in% 0:1000)) stop("unknown `nDim` specified in distribution `", typeList$nDim, "`.") ## yes, specifying maximum dimension of 1000
+        if (!(typeList$nDim %in% 0:1000)) stop("unknown `nDim` specified in distribution `", typeList$nDim, "`.") # yes, specifying maximum dimension of 1000
         types[[typeName]] <<- typeList
       }
     },
@@ -230,11 +230,11 @@ distClass <- setRefClass(
   )
 )
 
-#####################################################################################################
-#####################################################################################################
-#####  process user-supplied distributions ##########################################################
-#####################################################################################################
-#####################################################################################################
+###################################################
+###################################################
+###  process user-supplied distributions #############################
+###################################################
+###################################################
 
 checkDistributionInput <- function(distributionInput) {
   allowedFields <- unique(unlist(sapply(distributionsInputList, names)))
@@ -270,7 +270,7 @@ checkDistributionInput <- function(distributionInput) {
 }
 
 
-## Check for log last in d, n as first in r, lower.tail, log.p in p,q
+# Check for log last in d, n as first in r, lower.tail, log.p in p,q
 checkDistributionFunctions <- function(distributionInput, userEnv) {
   if (is.list(distributionInput)) {
     if (exists("Rdist", distributionInput, inherits = FALSE)) {
@@ -335,18 +335,18 @@ checkDistributionFunctions <- function(distributionInput, userEnv) {
     }
     # build nf from text as unclear how to pairlist info in rargInfo with substitute
     nfCode <- paste0("nimbleFunction(run = function(", args, ") { stop('user-defined distribution `", densityName, "` provided without random generation function.')\nreturnType(", returnType, ")\n", returnCreation, "\nreturn(x)})")
-    ## Want to assign to same environmet as the 'd' function.
-    ## If user does use `assign` to put in GlobalEnv, we don't
-    ## do that here automatically as CRAN policy says packages should not modify the GlobalEnv.
-    ## Should be ok in terms of running the model inside a function, so long as
-    ## the simulate function is not called, which it shouldn't be as it is a dummy.
+    # Want to assign to same environmet as the 'd' function.
+    # If user does use `assign` to put in GlobalEnv, we don't
+    # do that here automatically as CRAN policy says packages should not modify the GlobalEnv.
+    # Should be ok in terms of running the model inside a function, so long as
+    # the simulate function is not called, which it shouldn't be as it is a dummy.
     assign(simulateName, eval(parse(text = nfCode)), userEnv)
   } else {
     drcf <- get(densityName, pos = userEnv)
     rrcf <- get(simulateName, pos = userEnv)
     dtype <- environment(drcf)$nfMethodRCobject$argInfo[["x"]]
     rtype <- environment(rrcf)$nfMethodRCobject$returnType
-    ## Deal with type() vs type(0) ambiguity.
+    # Deal with type() vs type(0) ambiguity.
     if (length(dtype) == 1) {
       dtype <- substitute(x(0), list(x = dtype[[1]]))
     }
@@ -693,11 +693,11 @@ deregisterDistributions <- function(distributionsNames) {
   invisible(NULL)
 }
 
-#####################################################################################################
-#####################################################################################################
-#####  API for accessing info about distributions ###################################################
-#####################################################################################################
-#####################################################################################################
+###################################################
+###################################################
+###  API for accessing info about distributions ##########################
+###################################################
+###################################################
 
 
 getDistributionList <- function(dists) {
@@ -798,13 +798,13 @@ getDistributionInfo <- function(dist) {
   if (!is.null(ans)) {
     return(ans)
   }
-  ##    if(dist %in% distributions$namesVector) return(distributions[[dist]])
+  #    if(dist %in% distributions$namesVector) return(distributions[[dist]])
   ans <- nimbleUserNamespace$distributions[[dist]]
   if (!is.null(ans)) {
     return(ans)
   }
-  ## if(exists('distributions', nimbleUserNamespace, inherits = FALSE) && dist %in% nimbleUserNamespace$distributions$namesVector)
-  ##    return(nimbleUserNamespace$distributions[[dist]])
+  # if(exists('distributions', nimbleUserNamespace, inherits = FALSE) && dist %in% nimbleUserNamespace$distributions$namesVector)
+  #    return(nimbleUserNamespace$distributions[[dist]])
   stop("`", dist, "` is not a distribution provided by NIMBLE or supplied by the user.")
 }
 
@@ -895,8 +895,8 @@ pqDefined <- function(dist) {
   return(getDistributionInfo(dist)$pqAvail)
 }
 
-## Not user-facing. only for use in `model$checkBasics`,
-## to avoid "same size check" for distribution parameters
+# Not user-facing. only for use in `model$checkBasics`,
+# to avoid "same size check" for distribution parameters
 isMixedSizes <- function(dist) {
   if (is.na(dist)) {
     return(NA)
@@ -1034,11 +1034,11 @@ getParamNames <- function(dist, includeValue = TRUE) {
   return(names)
 }
 
-#####################################################################################################
-#####################################################################################################
-#####  executable code, creates global system variable 'distributions' and 'distribution_aliases  ###
-#####################################################################################################
-#####################################################################################################
+###################################################
+###################################################
+###  executable code, creates global system variable 'distributions' and 'distribution_aliases  ##
+###################################################
+###################################################
 
 distributions <- distributionsClass(distributionsInputList)
 
@@ -1071,9 +1071,9 @@ distribution_qFuns <- gsub("^d", "q", pqDists)
 det_distributionFuns <- c(distribution_dFuns, distribution_pFuns, distribution_qFuns)
 distributionFuns <- c(distribution_dFuns, distribution_rFuns, distribution_pFuns, distribution_qFuns)
 
-## following sections are added for use in genCpp_operatorLists and other places.  Slightly different need is to have separate list of scalar distributions and to use Rdist names
+# following sections are added for use in genCpp_operatorLists and other places.  Slightly different need is to have separate list of scalar distributions and to use Rdist names
 
-## dCRP is causing warnings in 'make man' though doesn't seem to cause errors in build package, but filter out dCRP to avoid the warnings.
+# dCRP is causing warnings in 'make man' though doesn't seem to cause errors in build package, but filter out dCRP to avoid the warnings.
 nms <- getAllDistributionsInfo("namesVector")
 nms <- nms[nms != "dCRP"]
 

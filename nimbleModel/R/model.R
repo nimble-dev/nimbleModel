@@ -1,22 +1,22 @@
-## NOTE: This `modelClass` is no longer used; functionality absorbed into
-## `nimbleModel()` and into `modelBase_nClass`.
+# NOTE: This `modelClass` is no longer used; functionality absorbed into
+# `nimbleModel()` and into `modelBase_nClass`.
 
-## `getNodes` at end of this file is still used.
-## TODO: perhaps relocate and remove this file entirely.
+# `getNodes` at end of this file is still used.
+# TODO: perhaps relocate and remove this file entirely.
 
-## A class representing the model, including the model definition, containing
-## static information, data information, and methods for querying the model
-## structure.
+# A class representing the model, including the model definition, containing
+# static information, data information, and methods for querying the model
+# structure.
 
-## For the moment this overlaps with the custom model class we create
-## for each model using nCompiler. That model class takes some of the
-## fields and calls some of the methods set up here.
+# For the moment this overlaps with the custom model class we create
+# for each model using nCompiler. That model class takes some of the
+# fields and calls some of the methods set up here.
 
-## TODO: possibly work all of this into modelBase_nClass.
+# TODO: possibly work all of this into modelBase_nClass.
 
-## Will need to do some work to extend this to get full current behavior
-## where the model is created by `nimbleModel` and the custom model class
-## contains fields for the different variables.
+# Will need to do some work to extend this to get full current behavior
+# where the model is created by `nimbleModel` and the custom model class
+# contains fields for the different variables.
 
 modelClass <- R6Class(
   classname = "modelClass",
@@ -104,14 +104,14 @@ modelClass <- R6Class(
     },
 
 
-    ## Start from ranges based on dataRules and walk upwards,
-    ## excluding any parents of such ranges.
-    ## For now, this doesn't use any notion of "touched", so there is duplicative
-    ## walking up the tree for nodes with multiple data descendants, but given
-    ## graph processing is declaration-based, this doesn't seem like an efficiency
-    ## concern, particularly since `candidateRules` will progressively shrink.
+    # Start from ranges based on dataRules and walk upwards,
+    # excluding any parents of such ranges.
+    # For now, this doesn't use any notion of "touched", so there is duplicative
+    # walking up the tree for nodes with multiple data descendants, but given
+    # graph processing is declaration-based, this doesn't seem like an efficiency
+    # concern, particularly since `candidateRules` will progressively shrink.
     makePredictiveRules = function() {
-      ## predictive rules
+      # predictive rules
       candidateRules <- unlist(lapply(modelDef$calcRules, function(oneVarRules) {
         stoch <- sapply(oneVarRules$rules, function(rule) rule$declRule$decl$stoch)
         return(oneVarRules$rules[stoch])
@@ -125,7 +125,7 @@ modelClass <- R6Class(
       }))
       predictiveRules <<- excludeFromPredictiveRules(modelDef, dataRanges, candidateRules)
 
-      ## nonpredictive rules
+      # nonpredictive rules
       candidateRules <- unlist(lapply(modelDef$calcRules, function(oneVarRules) {
         stoch <- sapply(oneVarRules$rules, function(rule) rule$declRule$decl$stoch)
         return(oneVarRules$rules[stoch])
@@ -148,7 +148,7 @@ modelClass <- R6Class(
 
       nonpredictiveRules <<- candidateRules
     },
-    ## TODO: should this be a standalone function like getNodes, getDependencies?
+    # TODO: should this be a standalone function like getNodes, getDependencies?
     getVarNames = function(includeLogProb = FALSE, nodeRanges) {
       if (missing(nodeRanges)) {
         if (includeLogProb) {
@@ -267,7 +267,7 @@ modelClass <- R6Class(
       return(result)
     },
 
-    ## Returns the expr corresponding to 'param' in the distribution of `nodeRange`.
+    # Returns the expr corresponding to 'param' in the distribution of `nodeRange`.
     getParamExpr = function(nodeRange, param) {
       if (!inherits(nodeRange, "nodeRangeClass")) {
         stop("getParamExpr: argument `nodeRange` must be a `nodeRange` object")
@@ -282,7 +282,7 @@ modelClass <- R6Class(
         stop("getParamExpr: `", param, "` is not present in the parameterization")
       }
       if (length(expr) > 1) {
-        ## Substitute original index values into the expression.
+        # Substitute original index values into the expression.
         indexVarRange <- decl$declRule$originalIndexingRule$apply(nodeRange)
         indexValues <- indexVarRange$indexRangeExprs
         names(indexValues) <- decl$context$indexVarNames
@@ -293,7 +293,7 @@ modelClass <- R6Class(
       }
     },
 
-    ## Returns the entire RHS valueExpr for `nodeRange`.
+    # Returns the entire RHS valueExpr for `nodeRange`.
     getValueExpr = function(nodeRange) {
       if (!inherits(nodeRange, "nodeRangeClass")) {
         stop("getValueExpr: argument must be a `nodeRange`")
@@ -301,12 +301,12 @@ modelClass <- R6Class(
       decl <- nodeRange$decl
       expr <- decl$valueExpr
       if (length(expr) > 1) {
-        ## First get canonical parameterization for stoch cases.
+        # First get canonical parameterization for stoch cases.
         if (decl$stoch) {
           expr <- expr[!names(expr) %in% c("lower_", "upper_") &
             !grepl("^\\.", names(expr))]
         }
-        ## Substitute original index values into the expression.
+        # Substitute original index values into the expression.
         indexVarRange <- decl$declRule$originalIndexingRule$apply(nodeRange)
         indexValues <- indexVarRange$indexRangeExprs
         names(indexValues) <- decl$context$indexVarNames
@@ -320,15 +320,15 @@ modelClass <- R6Class(
 )
 
 
-## Determine nodes of interest, potentially of particular types.
-## Incorporates functionality formerly in `getNodeNames` and `expandNodeNames`
+# Determine nodes of interest, potentially of particular types.
+# Incorporates functionality formerly in `getNodeNames` and `expandNodeNames`
 getNodes <- function(model, nodes = NULL,
                      stochOnly = FALSE, determOnly = FALSE,
                      includeData = TRUE, dataOnly = FALSE,
                      includePredictive = TRUE, predictiveOnly = FALSE,
                      includeRHSonly = FALSE,
                      topOnly = FALSE, latentOnly = FALSE, endOnly = FALSE) {
-  ## `nodes` may contain one or more varRanges or varNames.
+  # `nodes` may contain one or more varRanges or varNames.
   if (topOnly + latentOnly + endOnly > 1) {
     stop("only one of `topOnly`, `latentOnly`, `endOnly` can be `TRUE`.")
   }
@@ -347,7 +347,7 @@ getNodes <- function(model, nodes = NULL,
     }
   }
 
-  ## Filter out; result is varRanges so do this before applying later rules, which produce nodeRanges.
+  # Filter out; result is varRanges so do this before applying later rules, which produce nodeRanges.
   if (dataOnly) {
     nodes <- flatten(lapply(nodes, function(node) applyRules(model$dataRules, node)))
   }
@@ -374,7 +374,7 @@ getNodes <- function(model, nodes = NULL,
   if (latentOnly) result <- lapply(nodes, function(node) applyRules(model$modelDef$latentRules, node))
   if (endOnly) result <- lapply(nodes, function(node) applyRules(model$modelDef$endRules, node))
 
-  result <- flatten(result) ## Flatten the result so don't have nested list.
+  result <- flatten(result) # Flatten the result so don't have nested list.
 
   if (length(result)) {
     if (stochOnly) {

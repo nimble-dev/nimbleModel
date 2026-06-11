@@ -1,6 +1,6 @@
-## This rule handles cases where all of the `to` elements are returned, because
-## they are not tied to the `from` elements.
-## E.g., `y[i] <- x[2]`, `y[i] <- sum(x[c(2,3,5)])`.
+# This rule handles cases where all of the `to` elements are returned, because
+# they are not tied to the `from` elements.
+# E.g., `y[i] <- x[2]`, `y[i] <- sum(x[c(2,3,5)])`.
 indexRuleAllClass <- R6Class(
   classname = "indexRuleAllClass",
   inherit = indexRuleClass,
@@ -23,7 +23,7 @@ indexRuleAllClass <- R6Class(
       return(setupResults$all)
     },
     getMax = function() {
-      ## Index is being dropped, so any index will be fine.
+      # Index is being dropped, so any index will be fine.
       return(1)
     }
   )
@@ -33,14 +33,14 @@ indexRuleAll_setup <- function(toIndexExprList,
                                fromIndexExprList,
                                context,
                                constants) {
-  ## Only valid if no `from` indexing using the `to` index.
+  # Only valid if no `from` indexing using the `to` index.
   if (length(fromIndexExprList) || !length(toIndexExprList) ||
     !length(context$singleContexts)) {
     return(NULL)
   }
 
-  ## Try to handle single index, simple increment case expeditiously.
-  ## The second condition excludes non-sequential indexing in for loop.
+  # Try to handle single index, simple increment case expeditiously.
+  # The second condition excludes non-sequential indexing in for loop.
   if (length(toIndexExprList) == 1 &&
     length(context$singleContexts[[1]]$indexRangeExpr) > 1 &&
     context$singleContexts[[1]]$indexRangeExpr[[1]] == ":") {
@@ -73,10 +73,10 @@ indexRuleAll_setup <- function(toIndexExprList,
     }
   }
 
-  ## Otherwise, do unrolling and handle like arbitrary case, but without 'from' information.
+  # Otherwise, do unrolling and handle like arbitrary case, but without 'from' information.
   toIndexNames <- lapply(names(toIndexExprList), as.name)
 
-  ## Run the for loops in an environment where all the results are created.
+  # Run the for loops in an environment where all the results are created.
   unrolledIndicesEnv <-
     expandContextAndReplacements(
       allReplacements = toIndexExprList,

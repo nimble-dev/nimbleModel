@@ -761,7 +761,7 @@ declFunBase_nClass <- nClass(
       }
   ),
   Cpublic = list(
-    ## model = 'modelBase_nClass',
+    # model = 'modelBase_nClass',
     ping = nFunction(
       name = "ping",
       function() {
@@ -826,8 +826,8 @@ declFunBase_nClass <- nClass(
       )
     )
   ),
-  ## We haven't dealt with ensuring a virtual destructor when any method is virtual
-  ## For now I did it manually by editing the .h and .cpp
+  # We haven't dealt with ensuring a virtual destructor when any method is virtual
+  # For now I did it manually by editing the .h and .cpp
   predefined = quote(system.file(file.path("include", "nimbleModel", "predef"), package = "nimbleModel") |>
     file.path("declFunBase_nC")),
   compileInfo = list(

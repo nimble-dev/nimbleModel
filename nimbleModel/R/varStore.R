@@ -1,21 +1,21 @@
-## TODO: do we plan to use this?
+# TODO: do we plan to use this?
 
-## Basic class for storing information about variables, such as sortID, isData, etc.
-## The idea is to expand functionality so this can store 'sparse' information
-## of various sorts values are repeated in various patterns (e.g., blocks or
-## sets of rows or columns or subblocks), but for now only the case of all values
-## being the same or full dense storage are handled.
+# Basic class for storing information about variables, such as sortID, isData, etc.
+# The idea is to expand functionality so this can store 'sparse' information
+# of various sorts values are repeated in various patterns (e.g., blocks or
+# sets of rows or columns or subblocks), but for now only the case of all values
+# being the same or full dense storage are handled.
 
-## Expected usage of the class is to ask for a subset of values. Currently if
-## all values in the object are equal then the result is a singleton.
+# Expected usage of the class is to ask for a subset of values. Currently if
+# all values in the object are equal then the result is a singleton.
 
-## https://stackoverflow.com/questions/37462850/r-r6-operator-overloading
+# https://stackoverflow.com/questions/37462850/r-r6-operator-overloading
 
-## For now we assume that when user assigns entire object, user wants in form of a
-## varStoreClass not the equivalent vector/matrix/array.
+# For now we assume that when user assigns entire object, user wants in form of a
+# varStoreClass not the equivalent vector/matrix/array.
 varStoreClass <- R6Class(
   classname = "varStoreClass",
-  ## R6 documentation seems to indicate a move toward using portable classes
+  # R6 documentation seems to indicate a move toward using portable classes
   portable = TRUE,
   public = list(
     type = NULL,
@@ -25,7 +25,7 @@ varStoreClass <- R6Class(
     initialize = function(value, dim) {
       self$type <- typeof(value)
       if (length(value) == 1) {
-        ## input can sparse, i.e., a single value and dimension
+        # input can sparse, i.e., a single value and dimension
         if (missing(dim)) self$dim <- 1 else self$dim <- dim
         self$allEqual <- TRUE
         self$value <- value
@@ -47,7 +47,7 @@ varStoreClass <- R6Class(
 )
 
 
-## helper functions
+# helper functions
 
 # FIXME: remove when we pull this in from current nimble
 dimOrLength <- function(obj, scalarize = FALSE) {
@@ -63,7 +63,7 @@ dimOrLength <- function(obj, scalarize = FALSE) {
 }
 
 getLength <- function(index) {
-  ## find the number of values represented by a single index
+  # find the number of values represented by a single index
   if (is.numeric(index)) {
     return(1)
   }
@@ -74,7 +74,7 @@ getLength <- function(index) {
 }
 
 getMaxIndex <- function(index) {
-  ## find the largest value represented by a single index
+  # find the largest value represented by a single index
   if (is.numeric(index)) {
     return(index)
   }
@@ -85,7 +85,7 @@ getMaxIndex <- function(index) {
 }
 
 insertSequence <- function(dimExtent) {
-  ## creates expressions 1:n where `n` is the size of a dimension
+  # creates expressions 1:n where `n` is the size of a dimension
   return(parse(text = paste0("1:", dimExtent)))
 }
 
@@ -103,9 +103,9 @@ nimAllEqual <- function(value) {
   if (length(value) == 1) {
     return(TRUE)
   }
-  ## First condition is quick check of a necessary condition.
+  # First condition is quick check of a necessary condition.
   if (value[1] == value[2]) {
-    ## need c() for matrix/array cases
+    # need c() for matrix/array cases
     return(length(unique(c(value))) == 1)
   } else {
     return(FALSE)
@@ -113,18 +113,18 @@ nimAllEqual <- function(value) {
 }
 
 
-## Note that it's tricky to deal with missing indices when these are elements of ...
-## can explicitly do missing(..1) but not sure how to do that programmatically
-## with missing elements, using list(...) fails. Therefore code here manipulates
-## the argument list as code.
+# Note that it's tricky to deal with missing indices when these are elements of ...
+# can explicitly do missing(..1) but not sure how to do that programmatically
+# with missing elements, using list(...) fails. Therefore code here manipulates
+# the argument list as code.
 
-## FIXME: 'drop' argument not implemented
+# FIXME: 'drop' argument not implemented
 `[.varStoreClass` <- function(self, ..., expand = FALSE) {
   if (self$allEqual) {
     args <- match.call(expand.dots = TRUE)[-1]
     indices <- as.list(args[names(args) == ""]) # unnamed arguments are indices from ...
     indices[indices == ""] <- sapply(self$dim, insertSequence)[indices == ""] # insert 1:n for missing indices
-    ## FIXME: deparse(match.call()) prints out as function call not as user-friendly [ operator
+    # FIXME: deparse(match.call()) prints out as function call not as user-friendly [ operator
     if (length(indices) > 1 && length(indices) != length(self$dim)) {
       stop("Error in ", safeDeparse(match.call()), ": incorrect number of dimensions")
     }
@@ -169,8 +169,8 @@ nimAllEqual <- function(value) {
       self$value <- expandValues(self$value, self$dim)
     }
     self$value <- `[<-`(self$value, ..., value)
-    ## We may not want to check if new version is allEqual given computational time
-    ## but for now we include it. First condition is quick necessary condition.
+    # We may not want to check if new version is allEqual given computational time
+    # but for now we include it. First condition is quick necessary condition.
     if ((length(value) == 1 || value[1] == value[2]) && nimAllEqual(self$value)) {
       self$allEqual <- TRUE
       self$value <- value[1]
