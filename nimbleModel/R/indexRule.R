@@ -4,10 +4,9 @@
 ## more index slots) for a single `indexSet`.
 
 indexRuleClass <- R6Class(
-    classname = 'indexRuleClass',
-    portable = FALSE,
-    public = list(
-    )
+  classname = "indexRuleClass",
+  portable = FALSE,
+  public = list()
 )
 
 ## `getOffset` looks for index value +/- offset.
@@ -22,36 +21,39 @@ indexRuleClass <- R6Class(
 getOffset <- function(indexExpr,
                       indexVarName,
                       constants = new.env(parent = getDefaultNamespace())) {
-    offset <- 0
+  offset <- 0
 
-    if(is.name(indexExpr)) {   # `i`
-        indexNameInExpr <- as.character(indexExpr)
-    } else {
-        if(!as.character(indexExpr[[1]]) %in% c('+','-'))
-            return(NULL)
-        indexSlot <- NULL
-        ## e.g., `3+i`, `foo(k) + i`
-        if(is.name(indexExpr[[3]]) && as.character(indexExpr[[1]]) == '+')
-            indexSlot <- 3
-        ## e.g., `i+3`, `i-3`, `i + foo(k)`
-        if(is.name(indexExpr[[2]])) 
-            indexSlot <- 2
-
-        if(is.null(indexSlot))
-            return(NULL)
-        indexNameInExpr <- as.character(indexExpr[[indexSlot]])
-        offsetExpr <- indexExpr
-        offsetExpr[[indexSlot]] <- 0
-        offset <- try(eval(offsetExpr, envir = constants), silent = TRUE)
-        ## Check whether can resolve offset (will fail when there is another index
-        ## in the expression).
-        if(inherits(offset, "try-error")) 
-            return(NULL)
-        
+  if (is.name(indexExpr)) { # `i`
+    indexNameInExpr <- as.character(indexExpr)
+  } else {
+    if (!as.character(indexExpr[[1]]) %in% c("+", "-")) {
+      return(NULL)
     }
-    if(indexNameInExpr != indexVarName)
-        return(NULL)
-    list(offset = offset)
+    indexSlot <- NULL
+    ## e.g., `3+i`, `foo(k) + i`
+    if (is.name(indexExpr[[3]]) && as.character(indexExpr[[1]]) == "+") {
+      indexSlot <- 3
+    }
+    ## e.g., `i+3`, `i-3`, `i + foo(k)`
+    if (is.name(indexExpr[[2]])) {
+      indexSlot <- 2
+    }
+
+    if (is.null(indexSlot)) {
+      return(NULL)
+    }
+    indexNameInExpr <- as.character(indexExpr[[indexSlot]])
+    offsetExpr <- indexExpr
+    offsetExpr[[indexSlot]] <- 0
+    offset <- try(eval(offsetExpr, envir = constants), silent = TRUE)
+    ## Check whether can resolve offset (will fail when there is another index
+    ## in the expression).
+    if (inherits(offset, "try-error")) {
+      return(NULL)
+    }
+  }
+  if (indexNameInExpr != indexVarName) {
+    return(NULL)
+  }
+  list(offset = offset)
 }
-
-

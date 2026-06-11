@@ -1,36 +1,36 @@
 .nimbleModelOptions <- as.environment(
-    list(
-        allowDynamicIndexing = TRUE,
-        prioritizeColonLikeBUGS = TRUE, ## if FALSE, 1:2 + 1 evaluates to 2:3, consistent with R.  If TRUE, it evalutes to 1:3, consistent with BUGS
-        ## TODO: if set to FALSE, will invoke seqNoDecrease, which won't be found
-        ## based on new rigorous scoping behavior because eval code in env't
-        ## whose parent is baseenv(). Would like parent to be nimble namespace
-        ## but this has .GlobalEnv as a parent.
-        processBackwardsModelIndexRanges = TRUE,
-        disallowMultivariateArgumentExpressions = TRUE,
-        verbose = TRUE
-    )
+  list(
+    allowDynamicIndexing = TRUE,
+    prioritizeColonLikeBUGS = TRUE, ## if FALSE, 1:2 + 1 evaluates to 2:3, consistent with R.  If TRUE, it evalutes to 1:3, consistent with BUGS
+    ## TODO: if set to FALSE, will invoke seqNoDecrease, which won't be found
+    ## based on new rigorous scoping behavior because eval code in env't
+    ## whose parent is baseenv(). Would like parent to be nimble namespace
+    ## but this has .GlobalEnv as a parent.
+    processBackwardsModelIndexRanges = TRUE,
+    disallowMultivariateArgumentExpressions = TRUE,
+    verbose = TRUE
+  )
 )
 
 # sets a single option
 setNimbleModelOption <- function(name, value) {
-    assign(name, value, envir = .nimbleModelOptions)
-    invisible(value)
+  assign(name, value, envir = .nimbleModelOptions)
+  invisible(value)
 }
 
 #' Get NIMBLE Option
 #'
 #' Allow the user to get the value of a global _option_
 #' that affects the way in which NIMBLE operates
-#' 
-#' @param x a character string holding an option name 
+#'
+#' @param x a character string holding an option name
 #' @author Christopher Paciorek
 #' @export
 #' @return The value of the option.
 #' @examples
-#' getNimbleModelOption('verifyConjugatePosteriors')
+#' getNimbleModelOption("verifyConjugatePosteriors")
 getNimbleModelOption <- function(x) {
-    get(x, envir = .nimbleModelOptions)
+  get(x, envir = .nimbleModelOptions)
 }
 
 #' NIMBLE Options Settings
@@ -38,7 +38,7 @@ getNimbleModelOption <- function(x) {
 #' Allow the user to set and examine a variety of global _options_
 #' that affect the way in which NIMBLE operates. Call \code{nimbleModelOptions()}
 #' with no arguments to see a list of available opions.
-#' 
+#'
 #' @param ... any options to be defined as one or more \code{name = value} pairs
 #' or as a single \code{list} of \code{name=value} pairs.
 #' @author Christopher Paciorek
@@ -61,36 +61,42 @@ getNimbleModelOption <- function(x) {
 #' str(nimbleModelOptions(), max.level = 1)
 #'
 #' # Save-and-restore options:
-#' old <- nimbleModelOptions()                    # Saves old options.
-#' nimbleModelOptions(showCompilerOutput = TRUE,
-#'               verboseErrors = TRUE)       # Sets temporary options.
+#' old <- nimbleModelOptions() # Saves old options.
+#' nimbleModelOptions(
+#'   showCompilerOutput = TRUE,
+#'   verboseErrors = TRUE
+#' ) # Sets temporary options.
 #' # ...do stuff...
-#' nimbleModelOptions(old)                        # Restores old options.
+#' nimbleModelOptions(old) # Restores old options.
 nimbleModelOptions <- function(...) {
-    invisibleReturn <- FALSE
-    args <- list(...)
-    if (!length(args)) {
-        # Get all nimble options.
-        return(as.list(.nimbleModelOptions))
+  invisibleReturn <- FALSE
+  args <- list(...)
+  if (!length(args)) {
+    # Get all nimble options.
+    return(as.list(.nimbleModelOptions))
+  }
+  if (length(args) == 1 && is.null(names(args)) && is.list(args[[1]])) {
+    # Unpack a single list of many args.
+    args <- args[[1]]
+  }
+  if (is.null(names(args))) {
+    # Get some nimble options.
+    args <- unlist(args)
+  } else {
+    # Set some nimble options.
+    for (i in seq_along(args)) {
+      setNimbleModelOption(names(args)[[i]], args[[i]])
     }
-    if (length(args) == 1 && is.null(names(args)) && is.list(args[[1]])) {
-        # Unpack a single list of many args.
-        args <- args[[1]]
-    }
-    if (is.null(names(args))) {
-        # Get some nimble options.
-        args <- unlist(args)
-    } else {
-        # Set some nimble options.
-        for(i in seq_along(args)) {
-            setNimbleModelOption(names(args)[[i]], args[[i]])
-        }
-        args <- names(args)
-        invisibleReturn <- TRUE
-    }
-    out <- as.list(.nimbleModelOptions)[args]
-    if(length(out) == 1) out <- out[[1]]
-    if(invisibleReturn) return(invisible(out)) else return(out)
+    args <- names(args)
+    invisibleReturn <- TRUE
+  }
+  out <- as.list(.nimbleModelOptions)[args]
+  if (length(out) == 1) out <- out[[1]]
+  if (invisibleReturn) {
+    return(invisible(out))
+  } else {
+    return(out)
+  }
 }
 
 #' Temporarily set some NIMBLE options.
@@ -102,18 +108,21 @@ nimbleModelOptions <- function(...) {
 #'
 #' @examples
 #' \dontrun{
-#' if (!(getNimbleModelOption('showCompilerOutput') == FALSE)) stop()
-#' nf <- nimbleFunction(run = function(){ return(0); returnType(double()) })
-#' cnf <- withNimbleModelOptions(list(showCompilerOutput = TRUE), {
-#'     if (!(getNimbleModelOption('showCompilerOutput') == TRUE)) stop()
-#'     compileNimble(nf)
+#' if (!(getNimbleModelOption("showCompilerOutput") == FALSE)) stop()
+#' nf <- nimbleFunction(run = function() {
+#'   return(0)
+#'   returnType(double())
 #' })
-#' if (!(getNimbleModelOption('showCompilerOutput') == FALSE)) stop()
+#' cnf <- withNimbleModelOptions(list(showCompilerOutput = TRUE), {
+#'   if (!(getNimbleModelOption("showCompilerOutput") == TRUE)) stop()
+#'   compileNimble(nf)
+#' })
+#' if (!(getNimbleModelOption("showCompilerOutput") == FALSE)) stop()
 #' }
 withNimbleModelOptions <- function(options, expr) {
-    old <- nimbleModelOptions()
-    cleanup <- substitute(do.call(nimbleModelOptions, old))
-    do.call(on.exit, list(cleanup, add = TRUE))
-    nimbleModelOptions(options)
-    return(expr)
+  old <- nimbleModelOptions()
+  cleanup <- substitute(do.call(nimbleModelOptions, old))
+  do.call(on.exit, list(cleanup, add = TRUE))
+  nimbleModelOptions(options)
+  return(expr)
 }
