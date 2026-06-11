@@ -307,11 +307,19 @@ modelBase_nClass <- nClass(
         return(expr)
       }
     },
-    getDependencies = function(nodes, self = TRUE, downstream = FALSE, immediateOnly = FALSE) {
-      nimbleModel::getDependencies(modelDef, nodes, self, downstream, immediateOnly)
+    getDependencies = function(nodes, self = TRUE, downstream = FALSE, immediateOnly = FALSE,
+                               nodesAsChars = getNimbleModelOption('nodesAsChars'),
+                               returnScalarComponents = FALSE
+                               ) {
+      nimbleModel::getDependencies(modelDef, nodes, self, downstream, immediateOnly,
+                                   nodesAsChars, returnScalarComponents)
     },
-    getParents = function(nodes, self = TRUE, upstream = FALSE, immediateOnly = FALSE) {
-      nimbleModel::getParents(modelDef, nodes, self, upstream, immediateOnly)
+    getParents = function(nodes, self = TRUE, upstream = FALSE, immediateOnly = FALSE,
+                          nodesAsChars = getNimbleModelOption('nodesAsChars'),
+                          returnScalarComponents = FALSE
+                          ) {
+      nimbleModel::getParents(modelDef, nodes, self, upstream, immediateOnly,
+                              nodesAsChars, returnScalarComponents)
     },
     # TODO: not working because `nimbleModel::getNodes` needs the model not just modelDef.
     # Once we integrate modelClass with modelBase_nClass, we should be able to pass `self`.
@@ -319,11 +327,13 @@ modelBase_nClass <- nClass(
                         includeData = TRUE, dataOnly = FALSE,
                         includePredictive = TRUE, predictiveOnly = FALSE,
                         includeRHSonly = FALSE,
-                        topOnly = FALSE, latentOnly = FALSE, endOnly = FALSE) {
+                        topOnly = FALSE, latentOnly = FALSE, endOnly = FALSE,
+                        nodesAsChars = getNimbleModelOption('nodesAsChars'),
+                        returnScalarComponents = FALSE) {
       nimbleModel::getNodes(
         self, nodes, stochOnly, determOnly, includeData, dataOnly,
         includePredictive, predictiveOnly, includeRHSonly,
-        topOnly, latentOnly, endOnly
+        topOnly, latentOnly, endOnly, nodesAsChars, returnScalarComponents
       )
     },
     calc_op = function(instr, fn, fn_cpp) {

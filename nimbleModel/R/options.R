@@ -8,11 +8,13 @@
     # but this has .GlobalEnv as a parent.
     processBackwardsModelIndexRanges = TRUE,
     disallowMultivariateArgumentExpressions = TRUE,
+    nodesAsChars = FALSE,
     verbose = TRUE
   )
 )
 
 # sets a single option
+#' @export
 setNimbleModelOption <- function(name, value) {
   assign(name, value, envir = .nimbleModelOptions)
   invisible(value)

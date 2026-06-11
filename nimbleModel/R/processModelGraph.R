@@ -242,7 +242,10 @@ setSortIDs <- function(calcRules) {
 # pass result through `getNodes`.
 traverseGraph <- function(streamRules, declRules,
                           nodes, down, self = TRUE,
-                          follow = FALSE, immediateOnly = FALSE) {
+                          follow = FALSE, immediateOnly = FALSE,
+                          nodesAsChars = getNimbleModelOption('nodesAsChars'),
+                          returnScalarComponents = FALSE
+                          ) {
   if (inherits(nodes, "varRangeClass")) nodes <- list(nodes) # We use `lapply` on 'nodes' later.
 
   results <- traverseGraphRecurse(streamRules, nodes, down, follow, immediateOnly)
@@ -321,7 +324,14 @@ traverseGraph <- function(streamRules, declRules,
   if (!length(results)) {
     return(NULL)
   }
-  return(removeDuplicateVarRanges(results))
+  results <- removeDuplicateVarRanges(results)
+  if (nodesAsChars) {
+    return(unlist(sapply(results, \(x) x$toVarChars(expandScalars = returnScalarComponents))))
+  } else {
+    if (returnScalarComponents)   # TODO: put into new messaging system
+      warning("one must request result as characters via `nodesAsChars` or `classicNimble` in order to use `returnScalarComponents`")
+  } 
+  return(results)                                                  
 }
 
 traverseGraphRecurse <- function(rules, nodes, down, follow = FALSE, immediateOnly = FALSE, firstPass = TRUE) {
