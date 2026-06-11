@@ -999,21 +999,29 @@ modelDefClass <- R6Class(
 
 getDependencies <- function(modelDef, nodes,
                             self = TRUE,
-                            downstream = FALSE, immediateOnly = FALSE) {
+                            downstream = FALSE, immediateOnly = FALSE,
+                            nodesAsChars = getNimbleModelOption('nodesAsChars'),
+                            returnScalarComponents = FALSE
+                            ) {
   traverseGraph(modelDef$downstreamRules, modelDef$declRules,
     nodes = nodes,
     down = TRUE, self = self,
-    follow = downstream, immediateOnly = immediateOnly
+    follow = downstream, immediateOnly = immediateOnly,
+    nodesAsChars = nodesAsChars, returnScalarComponents = returnScalarComponents
   )
 }
 
 getParents <- function(modelDef, nodes,
                        self = FALSE,
-                       upstream = FALSE, immediateOnly = FALSE) {
+                       upstream = FALSE, immediateOnly = FALSE,
+                       nodesAsChars = getNimbleModelOption('nodesAsChars'),
+                       returnScalarComponents = FALSE
+                       ) {
   traverseGraph(modelDef$upstreamRules, modelDef$declRules,
     nodes = nodes,
     down = FALSE, self = self,
-    follow = upstream, immediateOnly = immediateOnly
+    follow = upstream, immediateOnly = immediateOnly,
+    nodesAsChars = nodesAsChars, returnScalarComponents = returnScalarComponents
   )
 }
 

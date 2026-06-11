@@ -70,5 +70,9 @@ export(messageIfVerbose)
 export(calc_dmnormAltParams)
 export(calc_dwishAltParams)
 
+export(nimbleCode)
 export(nimbleModel)
 export(makeInstrList)
+
+export(setNimbleModelOption)
+export(getNimbleModelOption)

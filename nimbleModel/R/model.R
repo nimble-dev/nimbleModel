@@ -327,7 +327,10 @@ getNodes <- function(model, nodes = NULL,
                      includeData = TRUE, dataOnly = FALSE,
                      includePredictive = TRUE, predictiveOnly = FALSE,
                      includeRHSonly = FALSE,
-                     topOnly = FALSE, latentOnly = FALSE, endOnly = FALSE) {
+                     topOnly = FALSE, latentOnly = FALSE, endOnly = FALSE,
+                     nodesAsChars = getNimbleModelOption('nodesAsChars'),
+                     returnScalarComponents = FALSE
+                     ) {
   # `nodes` may contain one or more varRanges or varNames.
   if (topOnly + latentOnly + endOnly > 1) {
     stop("only one of `topOnly`, `latentOnly`, `endOnly` can be `TRUE`.")
@@ -393,6 +396,14 @@ getNodes <- function(model, nodes = NULL,
   if (!length(result)) {
     return(NULL)
   }
-
-  return(removeDuplicateVarRanges(result))
+  if (nodesAsChars) {
+    if (returnScalarComponents) {
+      result <- sapply(result, \(x) x$toVarRange()$toVarChars(expandScalars = TRUE))
+    } else result <- sapply(result, \(x) x$toNodeChars())
+    return(unlist(result))
+  } else {
+    if (returnScalarComponents)   # TODO: put into new messaging system
+      warning("one must request result as characters via `nodesAsChars` or `classicNimble` in order to use `returnScalarComponents`")
+  }
+  return(result)                                                  
 }
