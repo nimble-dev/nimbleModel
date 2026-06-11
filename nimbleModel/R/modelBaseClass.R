@@ -288,7 +288,7 @@ modelBase_nClass <- nClass(
                      includePredictive = TRUE, predictiveOnly = FALSE,
                      includeRHSonly = FALSE,
                      topOnly = FALSE, latentOnly = FALSE, endOnly = FALSE) {
-            nimbleModel::getNodes(modelDef, nodes, stochOnly, determOnly, includeData, dataOnly,
+            nimbleModel::getNodes(self, nodes, stochOnly, determOnly, includeData, dataOnly,
                      includePredictive, predictiveOnly, includeRHSonly,
                      topOnly, latentOnly, endOnly)
         },

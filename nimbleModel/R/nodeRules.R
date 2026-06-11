@@ -430,7 +430,7 @@ nodeRangeClass <- R6Class(
                 nm <- as.name("no_name")
             } else nm <- as.name(varName)
             if(!length(indexRangeExprs))
-                return(nm)
+                return(paste0('`', nm, '`'))
             exprs <- indexRangeExprs
             multiSlot <- sapply(exprs, `==`, '...')
             sv <- exprs[boolExternalIndexRanges & !multiSlot]
