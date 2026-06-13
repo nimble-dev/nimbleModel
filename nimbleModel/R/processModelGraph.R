@@ -329,7 +329,7 @@ traverseGraph <- function(streamRules, declRules,
     return(unlist(sapply(results, \(x) x$toVarChars(expandScalars = returnScalarComponents))))
   } else {
     if (returnScalarComponents)   # TODO: put into new messaging system
-      warning("one must request result as characters via `nodesAsChars` or `classicNimble` in order to use `returnScalarComponents`")
+      warning("one must request result as characters via `nodesAsChars` in order to use `returnScalarComponents`")
   } 
   return(results)                                                  
 }

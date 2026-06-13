@@ -323,18 +323,37 @@ modelBase_nClass <- nClass(
     },
     # TODO: not working because `nimbleModel::getNodes` needs the model not just modelDef.
     # Once we integrate modelClass with modelBase_nClass, we should be able to pass `self`.
-    getNodes = function(nodes = NULL, stochOnly = FALSE, determOnly = FALSE,
+    getNodes = function(nodes = NULL, determOnly = FALSE, stochOnly = FALSE,
                         includeData = TRUE, dataOnly = FALSE,
-                        includePredictive = TRUE, predictiveOnly = FALSE,
                         includeRHSonly = FALSE,
                         topOnly = FALSE, latentOnly = FALSE, endOnly = FALSE,
+                        includePredictive = TRUE, predictiveOnly = FALSE,
                         nodesAsChars = getNimbleModelOption('nodesAsChars'),
-                        returnScalarComponents = FALSE) {
+                        returnScalarComponents = FALSE,
+                        .sort = FALSE) {
       nimbleModel::getNodes(
-        self, nodes, stochOnly, determOnly, includeData, dataOnly,
-        includePredictive, predictiveOnly, includeRHSonly,
-        topOnly, latentOnly, endOnly, nodesAsChars, returnScalarComponents
+        self, nodes, determOnly, stochOnly, includeData, dataOnly,
+        includeRHSonly,
+        topOnly, latentOnly, endOnly,
+        includePredictive, predictiveOnly, 
+        nodesAsChars, returnScalarComponents, .sort
       )
+    },
+    getNodeNames = function(determOnly = FALSE, stochOnly = FALSE,
+                        includeData = TRUE, dataOnly = FALSE, includeRHSonly = FALSE,
+                        topOnly = FALSE, latentOnly = FALSE, endOnly = FALSE,
+                        includePredictive = TRUE, predictiveOnly = FALSE,
+                        returnType = "names",
+                        returnScalarComponents = FALSE) {
+      nimbleModel::getNodeNames(
+        self, determOnly, stochOnly, includeData, dataOnly,
+        includeRHSonly, topOnly, latentOnly, endOnly,
+        includePredictive, predictiveOnly, returnType, returnScalarComponents
+      )
+    },
+    expandNodeNames = function(nodes, returnScalarComponents = FALSE,
+                               returnType = "names", sort = FALSE, unique = TRUE) {
+      nimbleModel::expandNodeNames(self, nodes, returnScalarComponents, "names", sort, unique)
     },
     calc_op = function(instr, fn, fn_cpp) {
       if (missing(instr)) {
