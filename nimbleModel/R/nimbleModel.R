@@ -385,7 +385,7 @@ makeModel_nClass <- function(modelVarInfo,
   # We also place the list itself in the class so that we can look up for uncompiled execution
   # the objects that need to be created in initialize.
   # If we someday make type declarations and initializations more automatic, we can avoid this duplication.
-  ans <- substitute(
+  generator_code <- substitute(
     nClass(
       classname = CLASSNAME,
       inherit = modelBase_nClass,
@@ -416,7 +416,10 @@ makeModel_nClass <- function(modelVarInfo,
       BASECLASS = baseclass
     )
   )
-  eval(ans)
+  model_generator <- eval(generator_code)
+  model_generator$set("public", "NCgenerator", model_generator)
+  env$model_generator <- model_generator
+  model_generator
 }
 
 # Get varInfo from new nimbleModel
