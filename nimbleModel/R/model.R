@@ -344,7 +344,7 @@ getNodes <- function(model, nodes = NULL,
   if (is.null(nodes)) {
     nodes <- names(model$modelDef$declRules)
     if (includeRHSonly && !stochOnly && !determOnly) {
-      nodes <- c(nodes, names(model$modelDef$rhsOnlyRules))
+      nodes <- unique(c(nodes, names(model$modelDef$rhsOnlyRules)))
     }
   } else {
     if (inherits(nodes, "varRangeClass")) {
