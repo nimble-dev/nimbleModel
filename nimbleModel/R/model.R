@@ -336,6 +336,12 @@ getNodes <- function(model, nodes = NULL,
   # so we can't sort nodeRanges.
   if (.sort && !nodesAsChars)
     warning("`.sort=TRUE` is provided only for back compatibility and requires the use of character representations of nodes")
+  # Similarly for scalar components.
+  if (returnScalarComponents && !nodesAsChars) {
+    warning("`returnScalarComponents=TRUE` requires the use of character representations of nodes")
+    nodesAsChars = TRUE
+  }
+    
   # `nodes` may contain one or more varRanges or varNames.
   if (topOnly + latentOnly + endOnly > 1) {
     stop("only one of `topOnly`, `latentOnly`, `endOnly` can be `TRUE`.")
@@ -425,9 +431,6 @@ getNodes <- function(model, nodes = NULL,
         result <- lapply(result, \(x) x$toVarRange()$toVarChars(expandScalars = TRUE))
       } else result <- lapply(result, \(x) x$toNodeChars())
       result <- unlist(result)
-    } else {
-      if (returnScalarComponents)   # TODO: put into new messaging system
-        warning("one must request result as characters via `nodesAsChars` in order to use `returnScalarComponents`")
     }
   }   
   if (!length(result)) {
