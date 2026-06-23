@@ -164,7 +164,7 @@ excludeFromPredictiveRules <- function(modelDef, currentRanges, candidateRules) 
     } else {
       candidateRules[[varName]] <- NULL
     }
-    parents <- getParents(modelDef, range)
+    parents <- getParents(modelDef, range, nodesAsChars = FALSE)
     candidateRules <- excludeFromPredictiveRules(modelDef, parents, candidateRules)
   }
   return(candidateRules)
