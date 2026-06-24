@@ -1,10 +1,8 @@
 # Various functions used in creating various kinds of rules and determining graph structure.
 
-
 # Split up original RHS rules from declarations to get `rhsOnlyRules` using `exclude()`,
 # to extract parts of rhs that don't appear in LHS.
 
-# CHECK: Not clear we need to generate RHSonlyRules
 # There may be some non-uniqueness if we don't combine the results of
 # running `exclude` on a rhsRule applied to another rhsRule.
 makeRHSonlyRules <- function(rhsOriginalRules, declRules, constants = list()) {
