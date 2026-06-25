@@ -230,17 +230,17 @@ test_that("getNodes with data or predictive works", {
     result <- getNodes(m, includePredictive = FALSE)
     resultNames <- sapply(result, nimbleModel:::getVarName)
     expect_length(result, 8)
-    expect_equal(result[[which(resultNames == 'z')][1]]$indexRanges,
+    expect_equal(result[[which(resultNames == 'z')[1]]]$indexRanges,
                  list(newIndexRange(quote(1:5))))
-    expect_equal(result[[which(resultNames == 'z')][2]]$indexRanges,
+    expect_equal(result[[which(resultNames == 'z')[2]]]$indexRanges,
                  list(newIndexRange(quote(9:10))))
-    expect_equal(result[[which(resultNames == 'mu_z')][1]]$indexRanges,
+    expect_equal(result[[which(resultNames == 'mu_z')[1]]]$indexRanges,
                  list(newIndexRange(quote(1:5))))
-    expect_equal(result[[which(resultNames == 'mu_z')][2]]$indexRanges,
+    expect_equal(result[[which(resultNames == 'mu_z')[2]]]$indexRanges,
                  list(newIndexRange(quote(9:10))))
-    expect_equal(result[[which(resultNames == 'y')][2]]$indexRanges,
+    expect_equal(result[[which(resultNames == 'y')]]$indexRanges,
                  list(newIndexRange(quote(1:10))))
-    expect_equal(result[[which(resultNames == 'mu_y')][2]]$indexRanges,
+    expect_equal(result[[which(resultNames == 'mu_y')]]$indexRanges,
                  list(newIndexRange(quote(1:10))))
     expect_length(result[[which(resultNames == 'theta_y')]]$indexRanges, 0)
     expect_length(result[[which(resultNames == 'theta_z')]]$indexRanges, 0)

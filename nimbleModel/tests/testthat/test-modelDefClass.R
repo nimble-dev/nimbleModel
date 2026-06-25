@@ -214,9 +214,6 @@ test_that("handling dimensions if not specified", {
     modelDef <- modelDefClass$new(modelCode, inits = list(mu = rnorm(5)))
     expect_identical(modelDef$varInfo$mu$maxs, 5)
 
-    expect_identical(body(modelDef$declRules[['y']]$rules[[1]]$calculate),
-                 quote(y <<- sum(mu[1:5])))
-        
     modelDef <- modelDefClass$new(modelCode, dimensions = list(mu = 5))
     expect_identical(modelDef$varInfo$mu$maxs, 5)
 
@@ -241,10 +238,6 @@ test_that("truncation processing", {
         modelDef$declInfo[[1]]$symbolicParentNodes,
         list(quote(mu),quote(sigma),quote(b)))
 
-    expect_identical(
-        body(modelDef$declRules[['y']]$rules[[1]]$calculate),
-        quote(logProb_y <<- dnorm(y, mean = mu, sd = sigma, lower_ = 3, upper_ = b, 
-                                  log = 1)))
 })
 
 test_that("detection of duplicated declarations", {

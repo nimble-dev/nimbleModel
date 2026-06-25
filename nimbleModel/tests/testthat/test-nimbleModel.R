@@ -148,9 +148,6 @@ test_that("basic testing of models, compiled and uncompiled", {
     m <- mclass$new(inits = list(tau = 7))
     expect_identical(m$tau, 7)
 
-    # Always end compiled tests with removing and garbage collecting
-    # to ensure gc() happens while the DLL is still in place.
-    rm(cm, m); gc()
 })
 
 
@@ -648,6 +645,122 @@ test_that("five index slots", {
 
 })
 
+test_that("calculate with index offset and switched indices", {
+  code <- nimbleCode({
+    for(i in 1:3)
+      for(j in 2:4)
+        y[j+1,i] ~ dnorm(x[j], 1)
+  })
+
+  set.seed(1)
+  mclass <- nimbleModel(code, data = list(y = matrix(rnorm(15),5)), inits = list(x = rnorm(4)),
+                        returnClass = TRUE)
+  m <- mclass$new()
+  cmclass <- nCompile(mclass)
+  cm <- cmclass$new()
+  truth <- dnorm(m$y[3:5,1:3], m$x[2:4], 1, log = TRUE)
+  expect_equal(m$calculate(), sum(truth))
+  expect_equal(cm$calculate(), sum(truth))
+  expect_equal(m$logProb_y[3:5,], truth)
+  expect_equal(cm$logProb_y[3:5,], truth)
+  expect_equal(m$getLogProb('y[5,2]'), dnorm(m$y[5,2], m$x[4],1,log=TRUE))
+  expect_equal(cm$getLogProb('y[5,2]'), dnorm(cm$y[5,2], cm$x[4],1,log=TRUE))
+  
+})
+
+test_that("calculate works correctly for singleton in vector", {
+  code <- nimbleCode({
+    y[2] ~ dnorm(0,1)
+  })
+  set.seed(1)
+  mclass <- nimbleModel(code, data = list(y = rnorm(2)), returnClass = TRUE)
+  m <- mclass$new()
+  cmclass <- nCompile(mclass)
+  cm <- cmclass$new()
+  truth <- dnorm(m$y[2], 0, 1, log = TRUE)
+  expect_equal(m$calculate(), truth)
+  expect_equal(m$calculate('y'), truth)
+  expect_equal(m$calculate('y[2]'), truth)
+  expect_equal(m$logProb_y[2], truth)
+  expect_equal(cm$calculate(), truth)
+  expect_equal(cm$calculate('y'), truth)
+  expect_equal(cm$calculate('y[2]'), truth)
+  expect_equal(cm$logProb_y[2], truth)
+})
+
+test_that("calculate/simulate work correctly for deterministic node", {
+  code <- nimbleCode({
+    y <- 3 + x
+  })
+  set.seed(1)
+  mclass <- nimbleModel(code, inits = list(x = 1.5), returnClass = TRUE)
+  m <- mclass$new()
+  cmclass <- nCompile(mclass)
+  cm <- cmclass$new()
+
+  m$calculate('y')  
+  expect_identical(m$y, 4.5)
+  m$y <- 0
+  m$simulate('y')
+  expect_identical(m$y, 4.5)
+
+  cm$calculate('y')  
+  expect_identical(cm$y, 4.5)
+  cm$y <- 0
+  cm$simulate('y')
+  expect_identical(cm$y, 4.5)
+})
+
+
+
+  test_that("calculate works correctly for time series/SSM recursion", {
+
+  code <- nimbleCode({
+    for(i in 1:5)
+      y[i] ~ dnorm(y[i+1], 1)
+    # y[6] <- 0
+  })
+  mclass <- nimbleModel(code, returnClass = TRUE)
+  m <- mclass$new()
+  cmclass <- nCompile(mclass)
+  cm <- cmclass$new()
+  # BUG
+  m$calculate()
+  cm$calculate()
+
+  # actual SSM with intervening nodes
+  
+  code <- nimbleCode({
+    for(i in 1:5)
+      test[i] <- test[i+1] + 1.5
+    test[6] <- 0
+  })
+  mclass <- nimbleModel(code, returnClass = TRUE)
+  m <- mclass$new()
+  cmclass <- nCompile(mclass)
+  cm <- cmclass$new()
+  # BUG
+  m$calculate()
+  cm$calculate()
+  # TODO: first calcRange is for `test` with no indices, i.e. test[6]
+
+  # NEED TO CLEAN UP
+    ## var name needs to be 'test2' to match hard-coded variable in the declRule
+    code <- quote({
+        for(j in 1:3) {
+            for(i in 1:5)
+                test2[j, i] <- test2[j, i+1] + j*1.5
+            test2[j, 6] <- 0
+        }
+    })
+    modelDef <- modelDefClass$new(code)
+    calcRange <- modelDef$calcRules[['test2']]$rules[[4]]$makeCalcRange(
+                                        varRangeClass$new(list(
+                                        newIndexRange(c(3,1)), newIndexRange(quote(3:4)))))
+    ## 'test2' is hard coded into declRule class as matrix(0,3,5)
+    expect_identical(calcRange$calculate(), c(3,1.5,9,4.5))    
+})
+ 
 
 test_that("basic creation of list of instr_nClass objects", {
 
