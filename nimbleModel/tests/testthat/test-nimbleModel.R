@@ -761,6 +761,21 @@ test_that("calculate/simulate work correctly for deterministic node", {
     expect_identical(calcRange$calculate(), c(3,1.5,9,4.5))    
 })
  
+  code <- nimbleCode({
+    for(i in 1:5)
+      test[i+1] <- 3
+  })
+  mclass <- nimbleModel(code, returnClass = TRUE)
+  m <- mclass$new()
+
+code <- nimbleCode({
+    for(i in 1:5)
+        for(j in 1:3)
+      test[i+1,j+1] <- 3
+  })
+  mclass <- nimbleModel(code, returnClass = TRUE)
+  m <- mclass$new()
+
 
 test_that("basic creation of list of instr_nClass objects", {
 

@@ -567,12 +567,12 @@ make_decl_methods_from_declInfo <- function(declInfo) {
           make_decl_method_nFxn("sim_one", NULL),
         calc_one = (function(idx) {
           DETERMCALC
-          return(invisible(0))
+          return(0)
         }) |>
           make_decl_method_nFxn("calc_one"),
         calcDiff_one = (function(idx) {
           calc_one(idx)
-          return(invisible(0))
+          return(0)
         }) |>
           make_decl_method_nFxn("calcDiff_one"),
         getLogProb_one = (function(idx) {
@@ -594,14 +594,14 @@ make_decl_methods_from_declInfo <- function(declInfo) {
           make_decl_method_nFxn("sim_one", NULL),
         calc_one = (function(idx) {
           STOCHCALC
-          return(invisible(LOGPROB))
+          return(LOGPROB)
         }) |>
           make_decl_method_nFxn("calc_one"),
         calcDiff_one = (function(idx) {
           STOCHCALC_DIFF
           LocalAns_ <- LocalNewLogProb_ - LOGPROB
           LOGPROB <- LocalNewLogProb_
-          return(invisible(LocalAns_))
+          return(LocalAns_)
         }) |>
           make_decl_method_nFxn("calcDiff_one"),
         getLogProb_one = (function(idx) {
