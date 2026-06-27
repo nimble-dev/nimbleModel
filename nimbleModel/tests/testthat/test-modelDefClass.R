@@ -48,11 +48,11 @@ test_that("processModelCode works", {
     expect_identical(
         modelDef$declInfo[[2]]$declRule$varName, "a")
     expect_identical(
-        modelDef$declInfo[[2]]$declRule$stoch, TRUE)
+        modelDef$declInfo[[2]]$stoch, TRUE)
     expect_identical(
         modelDef$declInfo[[6]]$declRule$varName, "theta")
     expect_identical(
-        modelDef$declInfo[[6]]$declRule$stoch, FALSE)
+        modelDef$declInfo[[6]]$stoch, FALSE)
     
 })
 

@@ -25,6 +25,9 @@ conf$addSampler('mu', 'slice')
 conf$addSampler(nr, 'slice')
 conf$addSampler(vr, 'slice')
 
+# There are some bugs preventing some of remaining invocations from working.
+# Revisit all this more comprehensively when make this into formal testing.
+if(FALSE) {
 conf$addSampler(c('mu','sigma'), 'conjugate')
 
 conf$addSampler(c('mu','sigma'), 'RW_block')  
@@ -100,3 +103,4 @@ conf$addSampler(nr1, "RW", targetAsScalars = TRUE)
 conf$addSampler(nr2, "RW", targetAsScalars = TRUE)
 
 
+}

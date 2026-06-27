@@ -411,7 +411,7 @@ test_that("`is` queries of nodes works", {
     expect_identical(m$getDimension(nodes[[2]]), NA)
     expect_identical(m$getDimension(nodes[[8]]), NA)
     expect_identical(m$getVarNames(includeLogProb = TRUE)[10:14],
-                     c('logProb_y','logProb_theta','logProb_pr','logProb <- nu'))
+                     c('logProb_y','logProb_theta','logProb_pr','logProb_nu'))
 
 
     code <- quote({
