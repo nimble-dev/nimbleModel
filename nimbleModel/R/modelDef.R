@@ -740,24 +740,26 @@ modelDefClass <- R6Class(
         anyStoch <- varInfo[[lhsVar]]$anyStoch
         if (anyStoch) lhsLogProbVar <- makeLogProbName(lhsVar)
         if (varInfo[[lhsVar]]$nDim > 0) {
-          newMinMax <- decl$declRule$fullRange$getMinMax()
-          # Force overwrite of placeholder max based on LHS info.
-          varInfo[[lhsVar]]$maxs[varInfo[[lhsVar]]$maxs == .Machine$integer.max] <<- 0
-          if(FALSE) { # This is not sophisticated enough - see issue #26.
-            # Check for overlap in all dimensions, indicating duplicate declaration.
-            if (sum(varInfo[[lhsVar]]$maxs)) { # On repeated declaration for a variable.
-              overlap <- !(varInfo[[lhsVar]]$maxs < newMinMax[, 1] |
-                             varInfo[[lhsVar]]$mins > newMinMax[, 2])
-              if (all(overlap)) {
-                stop("Indexing for declarations for variable `", lhsVar, "` overlaps.")
+          if (!is.null(decl$declRule$fullRange)) {  # NULL can occur with backwards indexing.
+              newMinMax <- decl$declRule$fullRange$getMinMax()
+              # Force overwrite of placeholder max based on LHS info.
+              varInfo[[lhsVar]]$maxs[varInfo[[lhsVar]]$maxs == .Machine$integer.max] <<- 0
+              if(FALSE) { # This is not sophisticated enough - see issue #26.
+                # Check for overlap in all dimensions, indicating duplicate declaration.
+                if (sum(varInfo[[lhsVar]]$maxs)) { # On repeated declaration for a variable.
+                  overlap <- !(varInfo[[lhsVar]]$maxs < newMinMax[, 1] |
+                                 varInfo[[lhsVar]]$mins > newMinMax[, 2])
+                  if (all(overlap)) {
+                    stop("Indexing for declarations for variable `", lhsVar, "` overlaps.")
+                  }
+                }
               }
-            }
-          }
-          varInfo[[lhsVar]]$mins <<- pmin(varInfo[[lhsVar]]$mins, newMinMax[, 1])
-          varInfo[[lhsVar]]$maxs <<- pmax(varInfo[[lhsVar]]$maxs, newMinMax[, 2])
-          if (anyStoch) {
-            logProbVarInfo[[lhsLogProbVar]]$mins <<- pmin(logProbVarInfo[[lhsLogProbVar]]$mins, newMinMax[, 1])
-            logProbVarInfo[[lhsLogProbVar]]$maxs <<- pmax(logProbVarInfo[[lhsLogProbVar]]$maxs, newMinMax[, 2])
+              varInfo[[lhsVar]]$mins <<- pmin(varInfo[[lhsVar]]$mins, newMinMax[, 1])
+              varInfo[[lhsVar]]$maxs <<- pmax(varInfo[[lhsVar]]$maxs, newMinMax[, 2])
+              if (anyStoch) {
+                logProbVarInfo[[lhsLogProbVar]]$mins <<- pmin(logProbVarInfo[[lhsLogProbVar]]$mins, newMinMax[, 1])
+                logProbVarInfo[[lhsLogProbVar]]$maxs <<- pmax(logProbVarInfo[[lhsLogProbVar]]$maxs, newMinMax[, 2])
+              }
           }
         }
       }
