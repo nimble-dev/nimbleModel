@@ -64,10 +64,12 @@ indexConstraintSequenceClass <- R6Class(
         indexRangeScalarClass = indexRange$value >= start && indexRange$value <= end,
         indexRangeSequenceClass =
           indexRange$start <= end && indexRange$end >= start,
-        indexRangeMatrixClass =
-          (end == .Machine$integer.max && any(indexRange$values >= start)) ||
-            (end != .Machine$integer.max && any(indexRange$values >= start & indexRange$values <= end))
+        indexRangeMatrixClass = checkFunction(indexRange)
       )
+    },
+    checkFunction = function(indexRange) {
+      if(end == .Machine$integer.max) return(indexRange$values[,1] >= start)
+      return(indexRange$values[,1] >= start & indexRange$values[,1] <= end)
     },
     getMax = function() {
       return(end)
