@@ -601,7 +601,7 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
   if (length(nonIdenticalIndexSlots) == 1) {
     # Handle simple cases where need only fracture one index
     LHS <- LHSrange$indexRanges[[LHSrange$indexSlotToRange[nonIdenticalIndexSlots]]]
-    frac <- fracturingRange$indexRanges[[LHSrange$indexSlotToRange[nonIdenticalIndexSlots]]]
+    frac <- fracturingRange$indexRanges[[fracturingRange$indexSlotToRange[nonIdenticalIndexSlots]]]
 
     focalContext <- sapply(names(singleContexts), function(nm) {
       nm %in% all.vars(expr[[2 + nonIdenticalIndexSlots]])

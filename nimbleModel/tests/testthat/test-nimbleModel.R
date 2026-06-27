@@ -731,51 +731,57 @@ test_that("calculate/simulate work correctly for deterministic node", {
   # actual SSM with intervening nodes
   
   code <- nimbleCode({
-    for(i in 1:5)
-      test[i] <- test[i+1] + 1.5
-    test[6] <- 0
+    for(i in 3:7)
+      test[i+1] <- test[i+2] + 1.5
+    test[9] <- 0
   })
   mclass <- nimbleModel(code, returnClass = TRUE)
   m <- mclass$new()
-  cmclass <- nCompile(mclass)
-  cm <- cmclass$new()
-  # BUG
   m$calculate()
-  cm$calculate()
-  # TODO: first calcRange is for `test` with no indices, i.e. test[6]
+  # BUG - need to calculate in reverse order.
 
-  # NEED TO CLEAN UP
-    ## var name needs to be 'test2' to match hard-coded variable in the declRule
-    code <- quote({
-        for(j in 1:3) {
-            for(i in 1:5)
-                test2[j, i] <- test2[j, i+1] + j*1.5
-            test2[j, 6] <- 0
-        }
-    })
-    modelDef <- modelDefClass$new(code)
-    calcRange <- modelDef$calcRules[['test2']]$rules[[4]]$makeCalcRange(
-                                        varRangeClass$new(list(
-                                        newIndexRange(c(3,1)), newIndexRange(quote(3:4)))))
-    ## 'test2' is hard coded into declRule class as matrix(0,3,5)
-    expect_identical(calcRange$calculate(), c(3,1.5,9,4.5))    
-})
- 
+  ## This interleaves the sortID values across different calcRules/ranges.
   code <- nimbleCode({
-    for(i in 1:5)
-      test[i+1] <- 3
+    for(i in 1:10)
+        y[i] ~ dnorm(z[i], 1)
+    for(i in 2:10)
+        z[i] <- y[i-1]
   })
   mclass <- nimbleModel(code, returnClass = TRUE)
   m <- mclass$new()
 
-code <- nimbleCode({
-    for(i in 1:5)
-        for(j in 1:3)
-      test[i+1,j+1] <- 3
+  code <- nimbleCode({
+    for(i in 1:10)
+        y[i] ~ dnorm(z[i], 1)
+    for(i in 2:10)
+        z[i] <- y[i-1]
   })
   mclass <- nimbleModel(code, returnClass = TRUE)
   m <- mclass$new()
 
+
+  code <- nimbleCode({
+    for(i in 5:20)
+      test[i+1] <- test[i] + 1.5
+     })
+  mclass <- nimbleModel(code, returnClass = TRUE)
+  m <- mclass$new()
+  
+    code <- nimbleCode({
+       for(i in 1:4)
+           for(j in 1:5)
+               test[i,j] <- test[i+1,j] + test[i,j+1] + 1.5
+       for(j in 1:5)
+           test[5,j] <- 0
+       for(i in 1:5)
+           test[i,6] <- 0
+   })
+  mclass <- nimbleModel(code, returnClass = TRUE)
+
+  })
+
+ 
+ 
 
 test_that("basic creation of list of instr_nClass objects", {
 

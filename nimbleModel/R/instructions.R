@@ -162,7 +162,12 @@ makeInstrList <- function(model, input, use_vec = FALSE) {
   instrList <- nList(instr_nClass)$new()
   numRanges <- length(ranges)
   instrList$setLength(numRanges)
-  ord <- order(unlist(lapply(ranges, function(x) x$sortID)))
+  ## TODO: we don't need to repeatedly apply `min` as vector of sortIDs
+  ## in time-series type cases is not actually used.
+  ## Potentially push the `min()` calc into the calcRule, which is ok because
+  ## sortID values for other calcRules should either be less than the min
+  ## or greater than the max.
+  ord <- order(unlist(lapply(ranges, function(x) min(x$sortID, na.rm = TRUE))))
   for (i in 1:numRanges) {
     instrList[[i]] <- instr_nClass$new(ranges[[ord[i]]])
   }
