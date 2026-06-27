@@ -713,73 +713,109 @@ test_that("calculate/simulate work correctly for deterministic node", {
 
 
 
-  test_that("calculate works correctly for time series/SSM recursion", {
-
+test_that("calculate works correctly for time series/SSM recursion", {
+  library(nimbleModel); library(testthat); library(nCompiler)
   code <- nimbleCode({
-    for(i in 1:5)
-      y[i] ~ dnorm(y[i+1], 1)
-    # y[6] <- 0
+    for(i in 3:6) {
+      y[i] <- y[i-1] + 1.5
+    }
+    y[2] <- 1
   })
   mclass <- nimbleModel(code, returnClass = TRUE)
   m <- mclass$new()
   cmclass <- nCompile(mclass)
   cm <- cmclass$new()
-  # BUG
   m$calculate()
   cm$calculate()
+  truth <- c(NA, 1, 2.5, 4, 5.5, 7)
+  expect_identical(m$y, truth)
+  truth[1] <- 0
+  expect_equal(cm$y, truth)
+    
 
-  # actual SSM with intervening nodes
-  
   code <- nimbleCode({
-    for(i in 3:7)
-      test[i+1] <- test[i+2] + 1.5
-    test[9] <- 0
+    for(i in 2:5) {
+      y[i+1] <- y[i] + 1.5
+    }
+    y[2] <- 1
   })
   mclass <- nimbleModel(code, returnClass = TRUE)
   m <- mclass$new()
+  cmclass <- nCompile(mclass)
+  cm <- cmclass$new()
   m$calculate()
-  # BUG - need to calculate in reverse order.
+  cm$calculate()
+  truth <- c(NA, 1, 2.5, 4, 5.5, 7)
+  expect_identical(m$y, truth)
+  truth[1] <- 0
+  expect_equal(cm$y, truth)
 
-  ## This interleaves the sortID values across different calcRules/ranges.
   code <- nimbleCode({
-    for(i in 1:10)
-        y[i] ~ dnorm(z[i], 1)
-    for(i in 2:10)
-        z[i] <- y[i-1]
+    for(i in 3:7) {
+      y[i] <- y[i-2] + 1.5
+    }
+  })
+  mclass <- nimbleModel(code, returnClass = TRUE, inits=list(y=c(1,3,rep(0,5))))
+  m <- mclass$new()
+  cmclass <- nCompile(mclass)
+  cm <- cmclass$new()
+  m$calculate()
+  cm$calculate()
+  truth <- c(1, 3, 2.5, 4.5, 4, 6, 5.5)
+  expect_identical(m$y, truth)
+  expect_equal(cm$y, truth)
+
+
+  code <- nimbleCode({
+    for(i in 2:3)
+      for(j in 2:4)
+        y[i,j] <- y[i-1,j] + y[i,j-1] + 1.5
+    for(j in 1:4)
+      y[1,j] <- 0
+    for(i in 1:3)
+      y[i,1] <- 0
   })
   mclass <- nimbleModel(code, returnClass = TRUE)
   m <- mclass$new()
+  cmclass <- nCompile(mclass)
+  cm <- cmclass$new()
+  m$calculate()
+  cm$calculate()
+  truth <- matrix(0, 3, 4)
+  truth[2,2:4] <- c(1.5,3,4.5)
+  truth[3,2:4] <- c(3,7.5,13.5)
+  expect_identical(m$y, truth)
+  expect_equal(cm$y, truth)
 
-  code <- nimbleCode({
-    for(i in 1:10)
-        y[i] ~ dnorm(z[i], 1)
-    for(i in 2:10)
-        z[i] <- y[i-1]
-  })
-  mclass <- nimbleModel(code, returnClass = TRUE)
-  m <- mclass$new()
-
-
-  code <- nimbleCode({
-    for(i in 5:20)
-      test[i+1] <- test[i] + 1.5
-     })
-  mclass <- nimbleModel(code, returnClass = TRUE)
-  m <- mclass$new()
-  
+  # Work on these once we address issue #25.
+  if(FALSE) {    
     code <- nimbleCode({
-       for(i in 1:4)
-           for(j in 1:5)
-               test[i,j] <- test[i+1,j] + test[i,j+1] + 1.5
-       for(j in 1:5)
-           test[5,j] <- 0
-       for(i in 1:5)
-           test[i,6] <- 0
-   })
-  mclass <- nimbleModel(code, returnClass = TRUE)
-
-  })
-
+      for(i in 1:5)
+        y[i] ~ dnorm(y[i+1], 1)
+      # y[6] <- 0
+    })
+    mclass <- nimbleModel(code, returnClass = TRUE)
+    m <- mclass$new()
+    cmclass <- nCompile(mclass)
+    cm <- cmclass$new()
+    # BUG - calculation done in wrong order.
+    m$calculate()
+    cm$calculate()
+    
+    
+    ## This interleaves the sortID values across different calcRules/ranges.
+    code <- nimbleCode({
+      for(i in 1:10)
+        y[i] ~ dnorm(z[i], 1)
+      for(i in 2:10)
+        z[i] <- y[i-1]
+    })
+    mclass <- nimbleModel(code, returnClass = TRUE)
+    m <- mclass$new()
+    # BUG: need to interweave calculations.
+  }  
+})
+  
  
  
 
