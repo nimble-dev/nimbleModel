@@ -848,7 +848,6 @@ test_that("graph processing for model with overlapping RHS works", {
                 w[i, 1:3, j] <- mu[k1[i], 1:3, k2[j]]
         mu[2, 3, 1:4] <- mu0[2, 3, 1:4]
     })
-    
     modelDef <- modelDefClass$new(code, constants = list(k1 = c(2,4), k2 = c(4,6)))
 
     var <- 'mu'

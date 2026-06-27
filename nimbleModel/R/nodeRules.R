@@ -402,23 +402,28 @@ nodeRangeClass <- R6Class(
         if (sum(scalars)) {
           internalRange$indexRanges <- c(internalRange$indexRanges, externalRange$indexRanges[scalars])
           externalRange$indexRanges <- externalRange$indexRanges[!scalars]
-          indexSlotToSet[indexSlotToSet != 0][unlist(externalRange$rangeToIndexSlot[scalars])] <- -1
           externalRange$indexSlotToRange <- externalRange$indexSlotToRange[!externalRange$indexSlotToRange %in% which(scalars)]
-          for (idx in which(scalars)) {
-            externalRange$indexSlotToRange[externalRange$indexSlotToRange > idx] <-
-              externalRange$indexSlotToRange[externalRange$indexSlotToRange > idx] - 1
-          }
+          for (i in seq_along(externalRange$indexSlotToRange))
+            externalRange$indexSlotToRange[i] <- externalRange$indexSlotToRange[i] -
+              sum(externalRange$indexSlotToRange[i] > which(scalars))
+          # for (idx in which(scalars)) {
+          #   externalRange$indexSlotToRange[externalRange$indexSlotToRange > idx] <-
+          #    externalRange$indexSlotToRange[externalRange$indexSlotToRange > idx] - 1
+          # }
+          indexSlotToSet[indexSlotToSet != 0][unlist(externalRange$rangeToIndexSlot[scalars])] <- -1
         }
       } else {
         scalars <- logical(0)
       }
 
       # CHECK: could consider converting 1-row indexRangeMatrix to set of scalars.
-
+      numNewInternalRanges <- sum(scalars)
       numExternalIndexRanges <<- length(externalRange$indexRanges)
+      numInternalIndexRanges <<- length(internalRange$indexRanges)
+      
       boolExternalIndexRanges <<- c(
         rep(TRUE, numExternalIndexRanges),
-        rep(FALSE, length(internalRange$indexRanges))
+        rep(FALSE, numInternalIndexRanges)
       )
       decl <<- decl # pointer to governing declaration
 
@@ -431,13 +436,11 @@ nodeRangeClass <- R6Class(
       # from rangeToIndexSlot.
 
       indexSlotToRange <<- rep(0L, length(indexSlotToSet))
-
       indexSlotToRange[indexSlotToSet > 0] <<- externalRange$indexSlotToRange
-      indexSlotToRange[indexSlotToSet == 0] <<- internalRange$indexSlotToRange +
-        numExternalIndexRanges # Original internal indexRanges.
-      indexSlotToRange[indexSlotToSet < 0] <<- seq_len(sum(scalars)) + numExternalIndexRanges +
-        sum(indexSlotToSet == 0) # New internal indexRanges are at the end.
-
+      indexSlotToRange[indexSlotToSet == 0] <<- internalRange$indexSlotToRange + numExternalIndexRanges 
+      indexSlotToRange[indexSlotToSet < 0] <<- seq_len(numNewInternalRanges) + numExternalIndexRanges +
+                                                         numInternalIndexRanges - numNewInternalRanges
+      
       if (length(indexSlotToRange)) {
         rangeToIndexSlot <<- lapply(
           seq_len(max(indexSlotToRange)),
