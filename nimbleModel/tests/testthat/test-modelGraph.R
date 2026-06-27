@@ -859,7 +859,7 @@ test_that("graph processing for model with overlapping RHS works", {
               'indexRuleBlockClass')
     expect_is(modelDef$rhsOnlyRules[[var]]$rules[[1]]$externalRule$indexRules[[2]],
               'indexRuleArbitraryClass')
-    expect_identical(modelDef$rhsOnlyRules[[var]]$rules[[1]]$indexSlotToSet, c(2,2,1))
+    expect_identical(modelDef$rhsOnlyRules[[var]]$rules[[1]]$indexSlotToSet, c(2L,2L,1L))
     
     expect_equal(modelDef$rhsOnlyRules[[var]]$rules[[2]]$fullRange$indexRanges,
                      list(newIndexRange(matrix(c(4,2,4,4,6,6), ncol = 2)), newIndexRange(quote(1:3))))
@@ -867,7 +867,7 @@ test_that("graph processing for model with overlapping RHS works", {
               'indexRuleBlockClass')
     expect_is(modelDef$rhsOnlyRules[[var]]$rules[[2]]$externalRule$indexRules[[2]],
               'indexRuleArbitraryClass')
-    expect_identical(modelDef$rhsOnlyRules[[var]]$rules[[2]]$indexSlotToSet, c(2,1,2))
+    expect_identical(modelDef$rhsOnlyRules[[var]]$rules[[2]]$indexSlotToSet, c(2L,1L,2L))
 
     ## With an additional exclusion
     code <- quote({
