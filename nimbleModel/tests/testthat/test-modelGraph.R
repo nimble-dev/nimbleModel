@@ -1230,9 +1230,9 @@ test_that("basic check of graph interface", {
     expect_identical(sapply(result, function(node) node$varName),
                      c('theta'))
 
-    expect_true(model$modelDef$declRules[['y']]$rules[[1]]$stoch)
-    expect_false(model$modelDef$declRules[['theta']]$rules[[1]]$stoch)
-    expect_true(model$modelDef$declRules[['mu0']]$rules[[1]]$stoch)
+    expect_true(model$modelDef$declRules[['y']]$rules[[1]]$decl$stoch)
+    expect_false(model$modelDef$declRules[['theta']]$rules[[1]]$decl$stoch)
+    expect_true(model$modelDef$declRules[['mu0']]$rules[[1]]$decl$stoch)
 
     ## checking downstream/upstream with latent stoch node 
     code <- quote({
@@ -1552,9 +1552,12 @@ test_that("mixed-length block dependences", {
         for(i in 1:3)
             y[i, n1[i]:n2[i]] ~ dmulti(p[n1[i]:n2[i]], 10)
     })
-    modelDef <- modelDefClass$new(code, constants = list(n1 = c(3,1,2), n2 = c(6,3,2)))
-    result <- getDependencies(modelDef, 'p[2]')
+    # Issue #31
+    expect_error({
+    modelDef <- modelDefClass$new(code, constants = list(n1 = c(3,1,2), n2 = c(6,3,2)));
+    result <- getDependencies(modelDef, 'p[2]');
     expect_equal(result[[1]]$indexRanges, list(newIndexRange(matrix(c(2,2,2,3,1,2,3,2), ncol = 2))))
+    })
 })
 
 
@@ -2469,7 +2472,6 @@ test_that("for loops with arbitrary sets", {
         mu ~ dnorm(0, 1)
     })
     model <- nimbleModel(code, constants = list(n=c(2,3,5)))
-    modelDef <- model$modelDef
     
     yNodes <- getNodes(model, 'y')
     expect_equal(yNodes[[1]]$indexRanges[[1]],
@@ -2481,7 +2483,7 @@ test_that("for loops with arbitrary sets", {
                 y[i,j] ~ dnorm(mu, 1)
         mu ~ dnorm(0, 1)
     })
-    modelDef <- modelDefClass$new(code)
+    model <- nimbleModel(code)
 
     yNodes <- getNodes(model, 'y')
     expect_equal(yNodes[[1]]$indexRanges[[1]],
@@ -2492,13 +2494,11 @@ test_that("for loops with arbitrary sets", {
     code <- quote({
         y[c(2,3,5)] ~ dmnorm(mu[1:3],sigma[1:3,1:3])
     })
-    modelDef <- modelDefClass$new(code)
+    model <- nimbleModel(code)
     
     yNodes <- getNodes(model, 'y')
     expect_equal(yNodes[[1]]$indexRanges[[1]],
                  newIndexRange(c(2,3,5)))
-
-    
 })
 
 test_that("SSM with additional pieces handled", {
@@ -2577,23 +2577,23 @@ test_that("flexible use of indexing in models", {
         for(t in seasons[[i]])
             y[i,t] ~ dnorm(mu,1)
     })
-    md <- modelDefClass$new(code,constants = list(seasons=list(3,c(4,6))))
-    nr <- getDependencies(md, 'mu')[[1]]
-    expect_identical(nr$toNodeChars, c("y[1, 3]", "y[2, 4]", "y[2, 6]"))
+    model <- nimbleModel(code,constants = list(seasons=list(3,c(4,6))))
+    vr <- model$getDependencies('mu')[[1]]
+    expect_identical(vr$toVarChars(), c("y[1, 3]", "y[2, 4]", "y[2, 6]"))
 
     code = quote({
         for(i in seasons)
             y[i] ~ dnorm(mu,1)
     })
-    md <- modelDefClass$new(code, constants = list(seasons = c(3,5)))
-    nr <- getDependencies(md, 'mu')[[1]]
-    expect_identical(nr$toNodeChars, c("y[3]", "y[5]"))
+    model <- nimbleModel(code, constants = list(seasons = c(3,5)))
+    vr <- model$getDependencies('mu')[[1]]
+    expect_identical(vr$toVarChars(), c("y[3]", "y[5]"))
     
     code = quote({
         y[1:3] ~ dmnorm(z[seas],pr[1:3,1:3])
     })
     nimbleModel:::nimbleModelOptions(verbose = FALSE)
-    expect_error(md <- modelDefClass$new(code, constants = list(seas=c(1,2,4))),
+    expect_error(model <- nimbleModel(code, constants = list(seas=c(1,2,4))),
                  "unable to process")
     nimbleModel:::nimbleModelOptions(verbose = TRUE)
 })
