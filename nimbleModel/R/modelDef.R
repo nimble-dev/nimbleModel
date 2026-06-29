@@ -787,6 +787,23 @@ modelDefClass <- R6Class(
         }
       }
 
+      # Find non-scalar constants on RHS.
+      # TODO: we probably want to tag these as constant/hidden and don't allow overwriting them,
+      # and possibly prevent `getVarNames()` from reporting them.
+      constantVars <- unique(unlist(sapply(declInfo, \(x) all.vars(x$code))))
+      constantVars <- constantVars[constantVars %in% names(constants)]
+      constantVars <- constantVars[!constantVars %in% names(varInfo)]
+      for (constantVar in constantVars) {
+        dims <- dimOrLength(constants[[constantVar]])
+        nDim <- length(dims)
+        varInfo[[constantVar]] <<- varInfoClass$new(
+          varName = constantVar,
+          mins = rep(1, nDim),
+          maxs = dims,
+          nDim = nDim,
+          anyStoch = FALSE
+        )
+      }
 
       # Now use `dimensionsList`, to check / update varInfo.
       for (i in seq_along(dimensionsList)) {

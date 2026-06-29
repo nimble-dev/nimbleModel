@@ -52,16 +52,19 @@ nimbleModel <- function(code,
   }))) {
     stop("nimbleModel: elements of 'data' must be numeric")
   }
-
+    
   # TODO: determine if we will need these.
   origInits <- inits
   origData <- data
 
   modelDef <- modelDefClass$new(code,
-    constants = constants,
-    dimensions = dimensions, inits = inits,
-    data = data, userEnv = userEnv
-  )
+                                constants = constants,
+                                dimensions = dimensions, inits = inits,
+                                data = data, userEnv = userEnv
+                                )
+  # TODO: we would need to modify this if constant vars are not put into varInfo.
+  inits <- c(inits, constants[names(constants) %in% modelDef$varNames])
+  
   # At this point, data will have been removed from constants.
   specificModelClass <- make_modelClass_from_nimbleModel(modelDef, data, inits, name)
   if (compile) specificModelClass <- nCompile(specificModelClass)

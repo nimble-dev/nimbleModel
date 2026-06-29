@@ -1347,20 +1347,20 @@ test_that("same dependent on RHS", {
 
 
 test_that("basic hierarchical models", {
-  code <- quote({
-    for(i in 1:10) {
-      y[i] ~ dnorm(mu[i], sd = tau)
-      mu[i] ~ dnorm(mu0, sd = sigma)
-    }
-    tau ~ dunif(0, bnd) 
-    sigma ~ dunif(0, 1)
-    for(i in 1:3)
-      z[i] ~ dnorm(y[k[i]], 1)
-    
-  })
-  k <- c(2,4,7)
-  model <- nimbleModel(code, constants = list(k = k))
-  # TODO: also check when `k` is provided in inits.
+    code <- quote({
+        for(i in 1:10) {
+            y[i] ~ dnorm(mu[i], sd = tau)
+            mu[i] ~ dnorm(mu0, sd = sigma)
+        }
+        tau ~ dunif(0, bnd) 
+        sigma ~ dunif(0, 1)
+        for(i in 1:3)
+            z[k[i]] ~ dnorm(y[k[i]], 1)
+        
+    })
+    k <- c(2,4,7)
+    model <- nimbleModel(code, constants = list(k = k))
+    # TODO: also check when `k` is provided in inits.
   
     result <- getNodes(model)
     expect_identical(sapply(result, function(node) node$varName),
