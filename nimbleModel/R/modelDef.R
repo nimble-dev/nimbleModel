@@ -796,7 +796,7 @@ modelDefClass <- R6Class(
           stop("inconsistent dimensions for variable `", dimVarName, "`.")
         }
         if (any(dimensionsList[[dimVarName]] < varInfo[[dimVarName]]$maxs &
-          varInfo[[dimVarName]]$maxs < Inf)) { # .Machine$integer.max))
+          varInfo[[dimVarName]]$maxs < .Machine$integer.max)) { # Had changed to `< Inf` but that causes problems with dyn idx case.
           stop("dimensions specified are smaller than model specification for variable `", dimVarName, "`.")
         }
         varInfo[[dimVarName]]$maxs <<- dimensionsList[[dimVarName]]
@@ -815,7 +815,7 @@ modelDefClass <- R6Class(
         stop(
           "indexing error found for model variable(s): `",
           paste0(names(varInfo)[problemVars], collapse = "`, `"),
-          "`. Please check that variables used for indexing are properly defined in the relevant for loop(s)."
+          "`. Please check that variables used for indexing are properly defined in the relevant for loop(s). Also note that backwards indexing (e.g., `for(i in 5:1)`) is generally not supported."
         )
       }
 
