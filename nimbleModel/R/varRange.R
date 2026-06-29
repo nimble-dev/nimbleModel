@@ -63,6 +63,8 @@ varRangeClass <- R6Class(
           indexRanges <<- lapply(indexRangeExprs, newIndexRange)
 
           # Truncate indexRangeExprs for matrices for nicer printing.
+          # TODO: check back on this -- isn't the nice printing all handled elsewhere?
+          # having indexRangeExprs not be a list complicates $toExpr()
           if (length(indexRanges) == 1 && inherits(indexRanges[[1]], "indexRangeMatrixClass")) {
             indexRangeExprs <<- indexRanges[[1]]$toExpr()
           } else if (any(unlist(lapply(indexRanges, function(x) inherits(x, "indexRangeMatrixClass"))))) {
@@ -206,7 +208,7 @@ varRangeClass <- R6Class(
           do.call("call",
             c(
               list("[", nm),
-              indexRangeExprs[indexSlotToRange]
+              if(is.list(indexRangeExprs)) indexRangeExprs[indexSlotToRange] else indexRangeExprs
             ),
             quote = TRUE
           )

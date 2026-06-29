@@ -19,7 +19,7 @@ test_that('varRangeClass', {
     expect_identical(sapply(xVar1$indexRanges, function(x) class(x)[1]),
                      'indexRangeScalarClass')
     expect_identical(xVar2$rangeToIndexSlot, list(1L))
-    expect_identical(xVar2$indexSlotToRange, 1L)
+    expect_identical(xVar2$indexSlotToRange, 1)
     expect_identical(xVar2$toExpr(), expr)
     
     expr <- quote(x[2:4])
@@ -29,7 +29,7 @@ test_that('varRangeClass', {
     expect_identical(sapply(xVar1$indexRanges, function(x) class(x)[1]),
                      'indexRangeSequenceClass')
     expect_identical(xVar2$rangeToIndexSlot, list(1L))
-    expect_identical(xVar2$indexSlotToRange, 1L)
+    expect_identical(xVar2$indexSlotToRange, 1)
     expect_identical(xVar2$toExpr(), expr)
     
     expr <- quote(x[c(2,3,5)])
@@ -39,7 +39,7 @@ test_that('varRangeClass', {
     expect_identical(sapply(xVar1$indexRanges, function(x) class(x)[1]),
                      'indexRangeMatrixClass')
     expect_identical(xVar2$rangeToIndexSlot, list(1L))
-    expect_identical(xVar2$indexSlotToRange, 1L)
+    expect_identical(xVar2$indexSlotToRange, 1)
     expect_identical(xVar2$toExpr(), expr)
 
     expr <- quote(x[c(2,3,5,7,9)])
@@ -77,7 +77,7 @@ test_that('varRangeClass', {
     expect_identical(sapply(xVar$indexRanges, function(x) class(x)[1]),
                      'indexRangeMatrixClass')
     expect_identical(xVar$rangeToIndexSlot, list(1:2))
-    expect_identical(xVar$indexSlotToRange, rep(1L,2))
+    expect_identical(xVar$indexSlotToRange, rep(1,2))
     expr <- quote(x[1,1])
     expr[[3]] <- expr[[4]] <- quote(...)
     expect_identical(xVar$toExpr(), expr)
