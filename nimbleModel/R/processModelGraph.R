@@ -1,10 +1,8 @@
 # Various functions used in creating various kinds of rules and determining graph structure.
 
-
 # Split up original RHS rules from declarations to get `rhsOnlyRules` using `exclude()`,
 # to extract parts of rhs that don't appear in LHS.
 
-# CHECK: Not clear we need to generate RHSonlyRules
 # There may be some non-uniqueness if we don't combine the results of
 # running `exclude` on a rhsRule applied to another rhsRule.
 makeRHSonlyRules <- function(rhsOriginalRules, declRules, constants = list()) {
@@ -242,7 +240,10 @@ setSortIDs <- function(calcRules) {
 # pass result through `getNodes`.
 traverseGraph <- function(streamRules, declRules,
                           nodes, down, self = TRUE,
-                          follow = FALSE, immediateOnly = FALSE) {
+                          follow = FALSE, immediateOnly = FALSE,
+                          nodesAsChars = getNimbleModelOption('nodesAsChars'),
+                          returnScalarComponents = FALSE
+                          ) {
   if (inherits(nodes, "varRangeClass")) nodes <- list(nodes) # We use `lapply` on 'nodes' later.
 
   results <- traverseGraphRecurse(streamRules, nodes, down, follow, immediateOnly)
@@ -321,7 +322,14 @@ traverseGraph <- function(streamRules, declRules,
   if (!length(results)) {
     return(NULL)
   }
-  return(removeDuplicateVarRanges(results))
+  results <- removeDuplicateVarRanges(results)
+  if (nodesAsChars) {
+    return(unlist(sapply(results, \(x) x$toVarChars(expandScalars = returnScalarComponents))))
+  } else {
+    if (returnScalarComponents)   # TODO: put into new messaging system
+      warning("one must request result as characters via `nodesAsChars` in order to use `returnScalarComponents`")
+  } 
+  return(results)                                                  
 }
 
 traverseGraphRecurse <- function(rules, nodes, down, follow = FALSE, immediateOnly = FALSE, firstPass = TRUE) {

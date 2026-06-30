@@ -347,8 +347,7 @@ calcRuleClass <- R6Class(
   )
 )
 
-# calcRanges manage the calculation for one or more nodes, handling the indexing, and
-# calling out to the declFun `calculate` function.
+# calcRanges manage the calculation information for one or more nodes, handling the indexing
 calcRangeClass <- R6Class(
   classname = "calcRangeClass",
   portable = FALSE,
@@ -362,7 +361,6 @@ calcRangeClass <- R6Class(
     initialize = function(varName, indexingRange, declID, sortID, multiSortIDindex) {
       varName <<- varName
       indexingRange <<- indexingRange
-      calcFun <<- calcFun # note that calcFun itself is not vectorized
       sortID <<- sortID
       declID <<- declID
       multiSortIDindex <<- multiSortIDindex

@@ -708,7 +708,7 @@ test_that("calcRule fracturing works", {
     context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 4:8){}))))
     expected <- nodeRuleClass$new(LHS, 1, context_tmp)
     expect_equal(result[[2]]$externalRule$indexRules[[1]]$setupResults,
-                     expected$externalRule$indexRules[[1]]$setupResults)
+                 expected$externalRule$indexRules[[1]]$setupResults)
 
     ## two external indices, one fractured, two constant internal rules
     LHS <- quote(mu[1:3,j,i,2:3])

@@ -5,7 +5,8 @@
 
 # Constant vectors are treated as sequences because we need indexing for them
 # when determining RHSonly.
-# TODO: clarify above statement to be more specific.
+# E.g., if we have `z[i,1:2] <- y[i,1:2]; w <- y[2,2]` treating `1:2` as constant
+# causes `exclude` to lose track of `y[2,1]`
 
 rhsRuleClass <- R6Class(
   classname = "rhsRuleClass",

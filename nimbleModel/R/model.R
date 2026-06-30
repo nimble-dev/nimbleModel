@@ -323,11 +323,25 @@ modelClass <- R6Class(
 # Determine nodes of interest, potentially of particular types.
 # Incorporates functionality formerly in `getNodeNames` and `expandNodeNames`
 getNodes <- function(model, nodes = NULL,
-                     stochOnly = FALSE, determOnly = FALSE,
+                     determOnly = FALSE, stochOnly = FALSE,
                      includeData = TRUE, dataOnly = FALSE,
-                     includePredictive = TRUE, predictiveOnly = FALSE,
                      includeRHSonly = FALSE,
-                     topOnly = FALSE, latentOnly = FALSE, endOnly = FALSE) {
+                     topOnly = FALSE, latentOnly = FALSE, endOnly = FALSE,
+                     includePredictive = TRUE, predictiveOnly = FALSE,
+                     nodesAsChars = getNimbleModelOption('nodesAsChars'),
+                     returnScalarComponents = FALSE,
+                     .sort = FALSE
+                     ) {
+  # A single nodeRange can have elements that don't share a sortID when converted to calcRange representation,
+  # so we can't sort nodeRanges.
+  if (.sort && !nodesAsChars)
+    warning("`.sort=TRUE` is provided only for back compatibility and requires the use of character representations of nodes")
+  # Similarly for scalar components.
+  if (returnScalarComponents && !nodesAsChars) {
+    warning("`returnScalarComponents=TRUE` requires the use of character representations of nodes")
+    nodesAsChars = TRUE
+  }
+    
   # `nodes` may contain one or more varRanges or varNames.
   if (topOnly + latentOnly + endOnly > 1) {
     stop("only one of `topOnly`, `latentOnly`, `endOnly` can be `TRUE`.")
@@ -336,13 +350,13 @@ getNodes <- function(model, nodes = NULL,
   if (is.null(nodes)) {
     nodes <- names(model$modelDef$declRules)
     if (includeRHSonly && !stochOnly && !determOnly) {
-      nodes <- c(nodes, names(model$modelDef$rhsOnlyRules))
+      nodes <- unique(c(nodes, names(model$modelDef$rhsOnlyRules)))
     }
   } else {
     if (inherits(nodes, "varRangeClass")) {
       nodes <- list(nodes)
     }
-    if (!all(is.character(nodes) || sapply(nodes, function(node) inherits(node, "varRangeClass")))) {
+    if (!all(sapply(nodes, function(node) is.character(node) || inherits(node, "varRangeClass")))) {
       stop("`nodes` must be variable names or `varRange`s.")
     }
   }
@@ -387,12 +401,71 @@ getNodes <- function(model, nodes = NULL,
 
   if (includeRHSonly && !stochOnly && !determOnly) { # RHSonly are considered neither determ not stoch.
     rhsResult <- lapply(nodes, function(node) applyRules(model$modelDef$rhsOnlyRules, node))
-    result <- c(result, flatten(rhsResult))
+    if (!.sort) 
+      result <- c(result, flatten(rhsResult))  # TODO: flatten() seems to be deprecated; can we use unlist?
   }
 
+  if (.sort) {
+    # Ordering is only relevant at calcRange stage and a single nodeRange can contain
+    # elements with various sortIDs, so we convert to nodeChars first and then get their
+    # sortID by creating a temporary calcRange for each.
+    nodeChars <- unlist(sapply(result, \(x) x$toNodeChars()))
+    
+    calcRanges <- unlist(lapply(nodeChars, function(node) {
+      lapply(model$modelDef$calcRules[[getVarName(node)]]$rules, function(rule) {
+        rule$makeCalcRange(rule$apply(node))
+      })
+    }))
+    if (length(nodeChars) != length(calcRanges))
+      stop("unexpected mismatch between node character representation and calcRanges in `getNodes` sorting")
+    ord <- order(sapply(calcRanges, \(x) x$sortID))
+    result <- nodeChars[ord]
+    if (includeRHSonly)
+      result <- c(sapply(flatten(rhsResult), \(x) x$toNodeChars()), result)
+    if (returnScalarComponents)
+      result <- lapply(result, \(x) varRangeClass$new(x)$toVarChars(expandScalars = TRUE))
+    result <- unlist(result)
+  } else {
+    if (nodesAsChars) {
+      if (returnScalarComponents) {
+        result <- lapply(result, \(x) x$toVarRange()$toVarChars(expandScalars = TRUE))
+      } else result <- lapply(result, \(x) x$toNodeChars())
+      result <- unlist(result)
+    }
+  }   
   if (!length(result)) {
     return(NULL)
   }
+  return(result)
+}
 
-  return(removeDuplicateVarRanges(result))
+# Provided for backward compatibility.
+#' @export
+getNodeNames <- function(model, determOnly = FALSE, stochOnly = FALSE,
+                         includeData = TRUE, dataOnly = FALSE, includeRHSonly = FALSE,
+                         topOnly = FALSE, latentOnly = FALSE, endOnly = FALSE,
+                         includePredictive = TRUE, predictiveOnly = FALSE,
+                         returnType = "names",
+                         returnScalarComponents = FALSE) {
+  if (returnType != "names")
+    stop("In nimble2, one can only request 'names' as the `returnType`")
+  return(getNodes(model, nodes = NULL, determOnly, stochOnly, includeData, dataOnly,
+                  includeRHSonly, topOnly, latentOnly, endOnly,
+                  includePredictive, predictiveOnly,
+                  nodesAsChars = TRUE,
+                  returnScalarComponents, .sort = TRUE))
+}
+
+# Provided for backward compatibility. 
+# Need a test case where unique=FALSE retains duplicates.
+# This should not do any exclusions of nodes based on types.
+#' @export
+expandNodeNames <- function(model, nodes, returnScalarComponents = FALSE,
+                            returnType = "names", sort = FALSE, unique = TRUE) {
+  if (returnType != "names")
+    stop("In nimble2, one can only request 'names' as the `returnType`")
+  result <- getNodes(model, nodes, includeRHSonly = TRUE, nodesAsChars = TRUE,
+                     returnScalarComponents = returnScalarComponents, .sort = sort)
+  if (unique) result <- unique(result)
+  return(result)
 }
