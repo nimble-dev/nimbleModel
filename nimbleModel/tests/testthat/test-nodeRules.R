@@ -390,7 +390,7 @@ test_that("calcRanges are generated correctly", {
 
     ## Multiple indices
     # Issue #30
-    expect_failure({
+    expect_error({
     modelDecl <- modelDeclClass$new(quote(y[7:9, i+1] ~ dmnorm(z[1:3],pr[1:3,1:3])), context_i, 1)
     modelDecl$processDecl(NULL, list(), .GlobalEnv) 
     declRule_i <- declRuleClass$new(modelDecl, 1, context_i)
