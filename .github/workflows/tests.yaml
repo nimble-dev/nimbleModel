@@ -38,6 +38,7 @@ jobs:
 
       - name: Install dependencies
         run: |
+             install.packages('remotes')
              install.packages('R6')
              remotes::install_github("https://github.com/nimble-dev/nCompiler", subdir="nCompiler")
         shell: Rscript {0}
