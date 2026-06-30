@@ -1,8 +1,6 @@
 # Test code needed for new nimbleModel system.
 
 library(nCompiler)
-library(nimbleModel)
-library(testthat)
 
 test_that("basic testing of models, compiled and uncompiled", {
     code <- quote({
@@ -643,6 +641,39 @@ test_that("five index slots", {
     cm$simulate(vr)
     expect_equal(c(cm$y[inds]), result)
 
+})
+
+test_that("non-sequential indexing cases", {
+  code <- nimbleCode({
+    for(i in c(2,3,5))
+      y[i] ~ dnorm(0,1)
+  })
+  set.seed(1)
+  mclass <- nimbleModel(code, data = list(y=rnorm(5)), returnClass = TRUE)
+  m <- mclass$new()
+  cmclass <- nCompile(mclass)
+  cm <- cmclass$new()
+  truth <- sum(dnorm(m$y[c(2,3,5)], log = TRUE))
+  expect_equal(m$calculate(), truth)
+  expect_equal(cm$calculate(), truth)
+
+  nr <- m$getNodes()[[1]]
+  expect_true(inherits(nr$indexRanges[[1]], "indexRangeMatrixClass"))
+  expect_identical(nr$numExternalIndexRanges, 1L)
+  expect_identical(nr$toChar(), "`y[idx1]`, for idx1 in c(2, 3, 5)")
+
+  code <- nimbleCode({
+    y[c(2,3,5)] ~ dmnorm(mu[1:3], pr[1:3,1:3])
+  })
+  m <- nimbleModel(code, data = list(y = rnorm(5)))
+
+  # TODO: add testing of calculate() once issue 30 is resolved
+
+  nr <- m$getNodes()[[2]]
+  expect_true(inherits(nr$indexRanges[[1]], "indexRangeMatrixClass"))
+  expect_identical(nr$numExternalIndexRanges, 0L)
+  expect_identical(nr$toChar(), "y[c(2, 3, 5)]")
+  
 })
 
 test_that("calculate with index offset and switched indices", {
