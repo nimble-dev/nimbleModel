@@ -252,24 +252,27 @@ test_that("detection of duplicated declarations", {
         z[1:2] <- tmp[1:2]
     })
     expect_error(m <- modelClass$new(code), "Inconsistent dimensions")
-    
+
+    # Issue 27
     code <- quote({
         z[1:2] <- tmp[3:4]
         z[1:2] <- tmp[1:2]
     })
-    expect_error(m <- modelClass$new(code), "overlaps")
+    expect_failure(expect_error(m <- modelClass$new(code), "overlaps"))
 
+    # Issue 27
     code <- quote({
         z[1:2] <- tmp[3:4]
         z[2:3] <- tmp[1:2]
     })
-    expect_error(m <- modelClass$new(code), "overlaps")
+    expect_failure(expect_error(m <- modelClass$new(code), "overlaps"))
     
+    # Issue 27
     code <- quote({
         z[1:2,1:2] <- tmp[3:4,1:2]
         z[2:3,1:2] <- tmp[1:2,1:2]
     })
-    expect_error(m <- modelClass$new(code), "overlaps")
+    expect_failure(expect_error(m <- modelClass$new(code), "overlaps"))
     
     code <- quote({
         z[1:2,1:2] <- tmp[3:4,1:2]

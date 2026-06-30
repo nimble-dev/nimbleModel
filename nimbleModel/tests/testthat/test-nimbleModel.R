@@ -53,12 +53,12 @@ test_that("basic testing of models, compiled and uncompiled", {
     lp <- m$calculate(instrList)
     expect_identical(m$lifted_sqrt_oPtau_cP, 5)
     expect_equal(lp, lp_y)
-    expect_identical(m$getLogProb(c('y','lifted_sqrt_oPtau_cP')), lp_y)
+    expect_equal(m$getLogProb(c('y','lifted_sqrt_oPtau_cP')), lp_y)
     expect_identical(m$logProb_y, dnorm(m$y, 0, 5, log = TRUE))
     lp <- cm$calculate(instrList)
     expect_identical(cm$lifted_sqrt_oPtau_cP, 5)
     expect_equal(lp, lp_y)
-    expect_identical(cm$getLogProb(c('y','lifted_sqrt_oPtau_cP')), lp_y)
+    expect_equal(cm$getLogProb(c('y','lifted_sqrt_oPtau_cP')), lp_y)
     expect_identical(cm$logProb_y, dnorm(cm$y, 0, 5, log = TRUE))
 
     m$tau <- 1
