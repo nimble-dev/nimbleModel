@@ -14,7 +14,7 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - {os: windows-latest, r: 'release'}
+          # - {os: windows-latest, r: 'release'}  # problems installing nCompiler
           - {os: macOS-latest,   r: 'release'}
           - {os: ubuntu-24.04,   r: 'release', rspm: "https://packagemanager.rstudio.com/cran/__linux__/jammy/latest", image: "rocker/r2u:latest"}
           - {os: ubuntu-24.04,   r: 'devel',   rspm: "https://packagemanager.rstudio.com/cran/__linux__/jammy/latest", image: "rocker/r2u:latest"}
@@ -36,9 +36,18 @@ jobs:
 
       - uses: r-lib/actions/setup-pandoc@v2
 
+      - name: Install system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          while read -r cmd
+          do
+            eval sudo $cmd
+          done < <(Rscript -e 'writeLines(remotes::system_requirements("ubuntu", "24.04", "./nimbleModel"))')
+          # sudo apt-get install libcurl4-openssl-dev  # needed for R pkg curl -> covr
+
       - name: Install dependencies
         run: |
-             install.packages('remotes')
+             install.packages(c('testthat', 'remotes'))
              install.packages('R6')
              install.packages('nimble') # For now, we use `nimble` for stuff in `miscFunctions.R`.
              remotes::install_github("https://github.com/nimble-dev/nCompiler", subdir="nCompiler")
