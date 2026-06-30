@@ -40,6 +40,7 @@ jobs:
         run: |
              install.packages('remotes')
              install.packages('R6')
+             install.packages('nimble') # For now, we use `nimble` for stuff in `miscFunctions.R`.
              remotes::install_github("https://github.com/nimble-dev/nCompiler", subdir="nCompiler")
         shell: Rscript {0}
 
