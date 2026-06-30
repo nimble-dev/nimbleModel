@@ -55,12 +55,11 @@ test_that("avoid using indexing values from global", {
         for(i in 1:5)
             y[i] ~ dnorm(mu, 1)
     })
-    
-    modelDef <- modelDefClass$new(code)
+    model <- nimbleModel(code)
 
     p <- 3
-    expect_error(getNodes(modelDef, 'y[1:p]'), "must involve two positive")
-    expect_error(getDependencies(modelDef, 'y[1:p]'), "must involve two positive")
+    expect_error(getNodes(model, 'y[1:p]'), "must involve two positive")
+    expect_error(getDependencies(model$modelDef, 'y[1:p]'), "must involve two positive")
     
 })
    

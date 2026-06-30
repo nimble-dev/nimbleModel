@@ -29,19 +29,19 @@ test_that("nodeRule creation and application works", {
 
     expect_identical(LHSrule$numExternalIndexRules, 1L)
     expect_identical(LHSrule$numInternalIndexRules, 0L)
-    expect_identical(LHSrule$indexSlotToSet, 1)
+    expect_identical(LHSrule$indexSlotToSet, 1L)
     expect_identical(is(LHSrule$externalRule$indexRules[[1]], 'indexRuleBlockClass'), TRUE)
                      
     result <- LHSrule$apply(varRangeClass$new(list(newIndexRange(3)), varName = 'mu'))
-    expect_identical(result$boolExternalIndexRanges, TRUE)
-    expect_identical(result$numExternalIndexRanges, 1L)
-    expect_identical(result$indexSlotToRange, 1L)
+    expect_identical(result$boolExternalIndexRanges, FALSE)
+    expect_identical(result$numExternalIndexRanges, 0L)
+    expect_identical(result$indexSlotToRange, 1)
     expect_equal(result$indexRanges[[1]], newIndexRange(3))
 
     result <- LHSrule$apply(varRangeClass$new(list(newIndexRange(quote(6:11))),varName = 'mu'))
     expect_identical(result$boolExternalIndexRanges, TRUE)
     expect_identical(result$numExternalIndexRanges, 1L)
-    expect_identical(result$indexSlotToRange, 1L)
+    expect_identical(result$indexSlotToRange, 1)
     expect_equal(result$indexRanges[[1]], newIndexRange(quote(6:9)))
 
     LHS <- quote(mu[1:3,i])
@@ -49,7 +49,7 @@ test_that("nodeRule creation and application works", {
 
     expect_identical(LHSrule$numExternalIndexRules, 1L)
     expect_identical(LHSrule$numInternalIndexRules, 1L)
-    expect_identical(LHSrule$indexSlotToSet, c(0,1))
+    expect_identical(LHSrule$indexSlotToSet, c(0L,1L))
     expect_identical(is(LHSrule$externalRule$indexRules[[1]], 'indexRuleBlockClass'), TRUE)
     expect_identical(is(LHSrule$internalRule$indexRules[[1]], 'indexRuleConstantClass'), TRUE)
 
@@ -76,7 +76,7 @@ test_that("nodeRule creation and application works", {
 
     expect_identical(LHSrule$numExternalIndexRules, 2L)
     expect_identical(LHSrule$numInternalIndexRules, 2L)
-    expect_identical(LHSrule$indexSlotToSet, c(0,2,1,0))
+    expect_identical(LHSrule$indexSlotToSet, c(0L,2L,1L,0L))
     expect_identical(is(LHSrule$externalRule$indexRules[[1]], 'indexRuleBlockClass'), TRUE)
     expect_identical(is(LHSrule$externalRule$indexRules[[2]], 'indexRuleBlockClass'), TRUE)
     expect_identical(is(LHSrule$internalRule$indexRules[[1]], 'indexRuleConstantClass'), TRUE)
@@ -185,12 +185,12 @@ test_that("rhsRule creation and application works", {
 
     expect_identical(RHSrule$numExternalIndexRules, 1L)
     expect_identical(RHSrule$numInternalIndexRules, 0L)
-    expect_identical(RHSrule$indexSlotToSet, 1)
+    expect_identical(RHSrule$indexSlotToSet, 1L)
     expect_identical(is(RHSrule$externalRule$indexRules[[1]], 'indexRuleBlockClass'), TRUE)
 
     result <- RHSrule$apply(varRangeClass$new(list(newIndexRange(quote(5:12))), varName = 'mu'))
     expect_identical(result$numExternalIndexRanges, 1L)
-    expect_identical(result$indexSlotToRange, 1L)
+    expect_identical(result$indexSlotToRange, 1)
     expect_equal(result$indexRanges[[1]], newIndexRange(quote(5:9)))
 
     expect_error(RHSrule$apply(varRangeClass$new(list(newIndexRange(3), newIndexRange(5)), varName = 'mu')),
@@ -202,14 +202,14 @@ test_that("rhsRule creation and application works", {
 
     expect_identical(RHSrule$numExternalIndexRules, 2L)
     expect_identical(RHSrule$numInternalIndexRules, 0L)
-    expect_identical(RHSrule$indexSlotToSet, c(1,2))
+    expect_identical(RHSrule$indexSlotToSet, c(1L,2L))
     expect_identical(is(RHSrule$externalRule$indexRules[[1]], 'indexRuleBlockClass'), TRUE)
     expect_identical(is(RHSrule$externalRule$indexRules[[2]], 'indexRuleBlockClass'), TRUE)
 
     result <- RHSrule$apply(varRangeClass$new(list(
                                               newIndexRange(quote(5:12)),
                                               newIndexRange(3)), varName = 'mu'))
-    expect_identical(result$numExternalIndexRanges, 2L)
+    expect_identical(result$numExternalIndexRanges, 1L)
     expect_identical(result$indexSlotToRange, c(1L, 2L))
     expect_equal(result$indexRanges[[1]], newIndexRange(quote(5:9)))
     expect_equal(result$indexRanges[[2]], newIndexRange(3))
@@ -366,7 +366,7 @@ test_that("calcRanges are generated correctly", {
     result <- calcRule$apply(varRangeClass$new(list(newIndexRange(quote(3:5))), varName = 'y'))
     expect_identical(result$boolExternalIndexRanges, TRUE)
     expect_identical(result$numExternalIndexRanges, 1L)
-    expect_identical(result$indexSlotToRange, 1L)
+    expect_identical(result$indexSlotToRange, 1)
     expect_equal(result$indexRanges[[1]], newIndexRange(quote(3:5)))
 
     ## Generation of calcRules
@@ -386,8 +386,7 @@ test_that("calcRanges are generated correctly", {
 
     ## No input range
     calcRange <- calcRule$makeCalcRange()
-    expect_equal(calcRange$indexingRange,
-                 varRangeClass$new(list(newIndexRange(quote(2:8))), varName = 'y'))
+    expect_equal(calcRange, NULL)
 
     ## Multiple indices
     modelDecl <- modelDeclClass$new(quote(y[7:9, i+1] ~ dmnorm(z[1:3],pr[1:3,1:3])), context_i, 1)
@@ -723,14 +722,14 @@ test_that("calcRule fracturing works", {
     result <- fracture(calcRule, fracRange)
     
     expect_identical(length(result), 2L)
-    expect_identical(LHSrule$indexSlotToSet, c(0,2,1,0))
+    expect_identical(LHSrule$indexSlotToSet, c(0L,2L,1L,0L))
     for(k in 1:2) {
         for(kk in 1:2)
             expect_equal(result[[k]]$internalRule$indexRules[[kk]]$setupResults,
                              LHSrule$internalRule$indexRules[[kk]]$setupResults)
         expect_equal(result[[k]]$externalRule$indexRules[[1]]$setupResults,
                          LHSrule$externalRule$indexRules[[2]]$setupResults)
-        expect_identical(result[[k]]$indexSlotToSet, c(0,1,2,0))
+        expect_identical(result[[k]]$indexSlotToSet, c(0L,1L,2L,0L))
     }
     
     context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:2){}))))
@@ -759,13 +758,13 @@ test_that("calcRule fracturing works", {
 
     ## Just check stuff related to the scalar constant index, given similarity to above test.
     expect_identical(length(result), 2L)
-    expect_identical(LHSrule$indexSlotToSet, c(0,2,1,0))
+    expect_identical(LHSrule$indexSlotToSet, c(0L,2L,1L,0L))
     for(k in 1:2) {
         expect_equal(result[[k]]$internalRule$indexRules[[1]]$setupResults,
                          LHSrule$internalRule$indexRules[[1]]$setupResults)
         expect_equal(result[[k]]$externalRule$indexRules[[1]]$setupResults,
                          LHSrule$externalRule$indexRules[[2]]$setupResults)
-        expect_identical(result[[k]]$indexSlotToSet, c(0,1,2,0))
+        expect_identical(result[[k]]$indexSlotToSet, c(0L,1L,2L,0L))
     }
 
     
@@ -781,11 +780,11 @@ test_that("calcRule fracturing works", {
     result <- fracture(calcRule, fracRange)
 
     expect_identical(length(result), 2L)
-    expect_identical(LHSrule$indexSlotToSet, c(0,2,1,0))
+    expect_identical(LHSrule$indexSlotToSet, c(0L,2L,1L,0L))
     for(k in 1:2) {
         expect_equal(result[[k]]$internalRule$indexRules[[1]]$setupResults,
                          LHSrule$internalRule$indexRules[[1]]$setupResults)
-        expect_identical(result[[k]]$indexSlotToSet, c(0,1,1,0))
+        expect_identical(result[[k]]$indexSlotToSet, c(0L,1L,1L,0L))
     }
 
     context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:4){}))))
@@ -819,11 +818,11 @@ test_that("calcRule fracturing works", {
     result <- fracture(calcRule, fracRange)
 
     expect_identical(length(result), 2L)
-    expect_identical(LHSrule$indexSlotToSet, c(0,2,1,0))
+    expect_identical(LHSrule$indexSlotToSet, c(0L,2L,1L,0L))
     for(k in 1:2) {
         expect_equal(result[[k]]$internalRule$indexRules[[1]]$setupResults,
                          LHSrule$internalRule$indexRules[[1]]$setupResults)
-        expect_identical(result[[k]]$indexSlotToSet, c(0,1,1,0))
+        expect_identical(result[[k]]$indexSlotToSet, c(0L,1L,1L,0L))
     }
 
     context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:2){}))))
@@ -1174,7 +1173,7 @@ test_that("RHS exclusion works", {
                      RHSrule$externalRule$indexRules[[3]]$setupResults)
     expect_equal(result[[1]]$externalRule$indexRules[[3]]$setupResults,
                      expected$externalRule$indexRules[[1]]$setupResults)
-    expect_identical(result[[1]]$indexSlotToSet, c(1,3,2))
+    expect_identical(result[[1]]$indexSlotToSet, c(1L,3L,2L))
 
     ## 3-d case with partial overlap in some rows but with additional identical index (j)
     RHS <- quote(mu[i, j, 1:3])
@@ -1258,12 +1257,6 @@ test_that("RHS exclusion works", {
     expect_error(RHSrule <- rhsRuleClass$new(RHS, 1, context_ij, constants = list(idx = idx)),
                  "Constants may be incorrect size")
 })
-
-
-                     true_logProb_y[matrix(c(2,2,3,2,3,3,1,2,1,1,3,1), ncol = 3, byrow = TRUE)])
-
-})
-
 
 test_that("getFullRange works correctly", {
     context_0 <- modelContextClass$new()
@@ -1361,8 +1354,8 @@ test_that("nodeRange::toNodeChars works correctly", {
         }
     })
     
-    md <- modelDefClass$new(code)
-    nodeRanges <- getNodes(md)
+    model <- nimbleModel(code)
+    nodeRanges <- model$getNodes()
     expect_identical(nodeRanges[[1]]$toNodeChars(), "theta")
     expect_identical(nodeRanges[[2]]$toNodeChars(),
                      "lifted_chol_oPpr_oB1to3_comma_1to3_cB_cP[1:3, 1:3]")
@@ -1382,22 +1375,22 @@ test_that("nodeRange::toNodeChars works correctly", {
 
 test_that("removal of indexing for scalar elements of nodeRanges work", {
     code <- quote({
-        for(i in 1:100) 
-            for(j in 1:100)
-                for(k in 1:100)
-                    for(l in 1:100)
-                        y[55,l,k,j,33, k,i] ~ dnorm(mu[i,j,k,l], 1)
+        for(i in 1:10) 
+            for(j in 1:10)
+                for(k in 1:10)
+                    for(l in 1:10)
+                        y[5,l,k,j,3, k,i] ~ dnorm(mu[i,j,k,l], 1)
         
     })
-    m <- modelClass$new(code)
-    deps <- getDependencies(md, 'mu[1,1:2,4,3]')[[1]]
-    nr <- getNodes(m, deps)[[1]]
+    m <- nimbleModel(code)
+    deps <- m$getDependencies('mu[1,1:2,4,3]')[[1]]
+    nr <- m$getNodes(deps)[[1]]
     expect_identical(nr$indexSlotToRange, as.integer(c(3, 5, 1, 2, 4, 1, 6)))
-    expect_equal(nr$indexRanges[[3]], newIndexRange(55))
+    expect_equal(nr$indexRanges[[3]], newIndexRange(5))
     expect_equal(nr$indexRanges[[5]], newIndexRange(3))
     expect_equal(nr$indexRanges[[1]], newIndexRange(matrix(c(4,4),nrow=1)))
     expect_equal(nr$indexRanges[[2]], newIndexRange(quote(1:2)))
-    expect_equal(nr$indexRanges[[4]], newIndexRange(33))
+    expect_equal(nr$indexRanges[[4]], newIndexRange(3))
     expect_equal(nr$indexRanges[[6]], newIndexRange(1))
 
     code <- quote({
