@@ -90,6 +90,10 @@ newIndexRange <- function(expr) {
 
 ### `indexRange` base class and subclasses ###
 
+# The getItem and getNext functionality was originally set up thinking
+# we would use it for iterating when using declaration functions.
+# The functionality is unused but is left in case it becomes useful.
+
 indexRangeClass <- R6Class(
   classname = "indexRangeClass",
   portable = FALSE,

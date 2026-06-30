@@ -128,14 +128,14 @@ makeInstrList <- function(model, input, use_vec = FALSE) {
   # (2) a list of (or single) varRanges
   # (3) an nList of (or single) instr_nClass objects (assumed to be in sort order)
   # (4) an R list of instr_nClass objects (not assumed to be in sort order)
-  if (is(input, "nList")) {
+  if (inherits(input, "nList")) {
     if (!inherits(input[[1]], "instr_nClass")) {
       stop("nList input to `makeInstrList` should contain `instr_nClass` objects")
     } else {
       return(input)
     }
   } # Idempotent case.
-  if (is(input, "instr_nClass")) {
+  if (inherits(input, "instr_nClass")) {
     input <- list(input)
   }
   if (is.list(input) && all(sapply(input, function(x) inherits(x, "instr_nClass")))) {
@@ -150,7 +150,7 @@ makeInstrList <- function(model, input, use_vec = FALSE) {
     return(instrList)
   }
   # At this point we presumably are working with varRange(s).
-  if (is(input, "varRangeClass")) input <- list(input)
+  if (inherits(input, "varRangeClass")) input <- list(input)
   # First apply calcRule to get overlap between input and the rule.
   # Then make the calcRange to convert to loop indexing.
   # Note that `calcRule$apply` handles converting char to varRange and handling full variable extent.

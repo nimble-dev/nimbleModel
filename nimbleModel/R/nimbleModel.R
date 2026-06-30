@@ -117,7 +117,7 @@ nm_addModelDollarSign <- function(expr, exceptionNames = character(0)) {
   if (is.numeric(expr)) {
     return(expr)
   }
-  if (is(expr, "srcref")) {
+  if (inherits(expr, "srcref")) {
     return(expr)
   }
   if (is.name(expr)) {

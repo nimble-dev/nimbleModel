@@ -617,7 +617,7 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
     # expression, contexts, and constants from the LHS rule.
 
     # If matrix involved, we need to create resulting rules as indexRuleArbitraryClass.
-    if (inherits(LHS, "indexRangeMatrixClass") || is(frac, "indexRangeMatrixClass")) {
+    if (inherits(LHS, "indexRangeMatrixClass") || inherits(frac, "indexRangeMatrixClass")) {
       # `as.numeric` prevents some indexRanges from having ints when generally have doubles.
       valsLHS <- switch(class(LHS)[1],
         indexRangeMatrixClass = LHS$values,
@@ -943,7 +943,7 @@ exclude <- function(focalRule, excludingRule, constants = list()) {
       nm %in% all.vars(expr[[2 + nonIdenticalIndices]])
     })
 
-    if (inherits(RHS, "indexRangeMatrixClass") || is(int, "indexRangeMatrixClass")) {
+    if (inherits(RHS, "indexRangeMatrixClass") || inherits(int, "indexRangeMatrixClass")) {
       # Handle any matrix cases by expanding elements.
       valsRHS <- switch(class(RHS)[1],
         indexRangeMatrixClass = RHS$values,
