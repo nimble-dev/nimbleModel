@@ -481,6 +481,9 @@ make_stoch_sim_line <- function(LHSrep, RHSrep) {
 }
 
 make_stoch_calc_line <- function(LHSrep, RHSrep, logProbExprRep, diff = FALSE) {
+  BUGSdistName <- nCompiler:::safeDeparse(RHSrep[[1]])
+  distInfo <- getDistributionInfo(BUGSdistName)
+  RHSrep[[1]] <- as.name(distInfo$densityName)
   lenRHS <- length(RHSrep)
   if (length(RHSrep) > 1) {
     RHSrep[3:(lenRHS + 1)] <- RHSrep[2:lenRHS]
