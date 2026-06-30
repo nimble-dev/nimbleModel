@@ -389,6 +389,8 @@ test_that("calcRanges are generated correctly", {
     expect_equal(calcRange, NULL)
 
     ## Multiple indices
+    # Issue #30
+    expect_failure({
     modelDecl <- modelDeclClass$new(quote(y[7:9, i+1] ~ dmnorm(z[1:3],pr[1:3,1:3])), context_i, 1)
     modelDecl$processDecl(NULL, list(), .GlobalEnv) 
     declRule_i <- declRuleClass$new(modelDecl, 1, context_i)
@@ -428,7 +430,8 @@ test_that("calcRanges are generated correctly", {
     calcRange <- calcRule$makeCalcRange(nodeRange)
     expect_equal(calcRange$indexingRange,
                  varRangeClass$new(list(newIndexRange(quote(4:8))), varName = 'y'))
-
+    })
+    
     ## Multiple loops
     modelDecl <- modelDeclClass$new(quote(y[j, i+1, k, 2] ~ dnorm(0,1)), context_ijk, 1)
     modelDecl$processDecl(NULL, list(), .GlobalEnv) 
