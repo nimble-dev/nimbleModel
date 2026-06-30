@@ -43,13 +43,14 @@ jobs:
           do
             eval sudo $cmd
           done < <(Rscript -e 'writeLines(remotes::system_requirements("ubuntu", "24.04", "./nimbleModel"))')
-          # sudo apt-get install libcurl4-openssl-dev  # needed for R pkg curl -> covr
+          sudo apt-get install libglpk-dev  # needed for igraph
 
       - name: Install dependencies
         run: |
              install.packages(c('testthat', 'remotes'))
              install.packages('R6')
              install.packages('nimble') # For now, we use `nimble` for stuff in `miscFunctions.R`.
+             install.packages('inline') # For now, seemingly need for nCompiler.
              remotes::install_github("https://github.com/nimble-dev/nCompiler", subdir="nCompiler")
         shell: Rscript {0}
 
