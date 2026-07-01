@@ -183,7 +183,7 @@ modelClass <- R6Class(
       if (is.null(nodeRange$decl)) {
         return(NA)
       } # RHSonly
-      return(nimble:::getDimension(nodeRange$decl$distributionName, params, valueOnly, includeParams))
+      return(nimble::getDimension(nodeRange$decl$distributionName, params, valueOnly, includeParams))
     },
     isStoch = function(nodeRanges) {
       if (!is.list(nodeRanges)) {
@@ -218,7 +218,7 @@ modelClass <- R6Class(
       }
       RHSonly <- sapply(nodeRanges, function(x) is.null(x$decl))
       result <- rep(NA, length(RHSonly))
-      result[!RHSonly] <- sapply(nodeRanges[!RHSonly], function(x) nimbleModel:::isDiscrete(x$decl$distributionName))
+      result[!RHSonly] <- sapply(nodeRanges[!RHSonly], function(x) nimbleModel::isDiscrete(x$decl$distributionName))
       return(result)
     },
     isMultivariate = function(nodeRanges) {

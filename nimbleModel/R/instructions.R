@@ -155,7 +155,7 @@ makeInstrList <- function(model, input, use_vec = FALSE) {
   # Then make the calcRange to convert to loop indexing.
   # Note that `calcRule$apply` handles converting char to varRange and handling full variable extent.
   ranges <- unlist(lapply(input, function(vr) {
-    lapply(model$modelDef$calcRules[[nimbleModel:::getVarName(vr)]]$rules, function(rule) {
+    lapply(model$modelDef$calcRules[[getVarName(vr)]]$rules, function(rule) {
       rule$makeCalcRange(rule$apply(vr))
     })
   }))

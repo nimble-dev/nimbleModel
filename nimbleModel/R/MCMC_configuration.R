@@ -93,7 +93,7 @@ mcmcConfClass <- R6Class(
       for (i in seq_along(control)) controlDefaultsArg[[names(control)[i]]] <- control[[i]]
 
       if (useConjugacy) {
-        conjugacyResult <- nimbleModel:::conjugacyRelationshipsObject$checkConjugacy(model, nodeRange)
+        conjugacyResult <- conjugacyRelationshipsObject$checkConjugacy(model, nodeRange)
         if (length(conjugacyResult)) {
           addConjugateSampler(
             conjugacyResult = conjugacyResult,
