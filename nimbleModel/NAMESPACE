@@ -55,12 +55,14 @@ export(getSymbolicParentNodesRecurse)
 export(newIndexRange)
 export(newDataRules)
 
-
 export(makeIndexRules)
 export(makeSeparableIndexSets)
 
 export(exclude)
 export(fracture)
+
+export(isDiscrete)
+export(getDimension)
 
 export(`[.varStoreClass`)
 export(`[<-.varStoreClass`)
