@@ -1087,3 +1087,12 @@ test_that("dimension of dynamically-indexed variables", {
     m <- nimbleModel(code, inits = list(k=c(1,2,2)))
     expect_identical(m$modelDef$varInfo[['v']]$maxs, 2)
 })
+
+test_that("overlapping node definitions", {
+    code <- nimbleCode({
+        for(i in 1:5)
+            y[i] ~ dnorm(0,1)
+        y[2] ~ dnorm(0,1)
+    })
+    expect_error(nimbleModel(code), "found multiple node definitions")
+})

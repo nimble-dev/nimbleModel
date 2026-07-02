@@ -744,16 +744,6 @@ modelDefClass <- R6Class(
               newMinMax <- decl$declRule$fullRange$getMinMax()
               # Force overwrite of placeholder max based on LHS info.
               varInfo[[lhsVar]]$maxs[varInfo[[lhsVar]]$maxs == .Machine$integer.max] <<- 0
-              if(FALSE) { # This is not sophisticated enough - see issue #26.
-                # Check for overlap in all dimensions, indicating duplicate declaration.
-                if (sum(varInfo[[lhsVar]]$maxs)) { # On repeated declaration for a variable.
-                  overlap <- !(varInfo[[lhsVar]]$maxs < newMinMax[, 1] |
-                                 varInfo[[lhsVar]]$mins > newMinMax[, 2])
-                  if (all(overlap)) {
-                    stop("Indexing for declarations for variable `", lhsVar, "` overlaps.")
-                  }
-                }
-              }
               varInfo[[lhsVar]]$mins <<- pmin(varInfo[[lhsVar]]$mins, newMinMax[, 1])
               varInfo[[lhsVar]]$maxs <<- pmax(varInfo[[lhsVar]]$maxs, newMinMax[, 2])
               if (anyStoch) {
@@ -984,6 +974,17 @@ modelDefClass <- R6Class(
       calcRules <<- newVarRules(allCalcRules)
       declRules <<- newVarRules(declRules)
 
+      for (var in names(declRules)) {
+        numRules <- length(declRules[[var]]$rules)
+        if (numRules > 1)
+          for (i in 2:numRules) 
+            for (j in 1:(i-1)) 
+              if (!is.null(declRules[[var]]$rules[[i]]$apply(declRules[[var]]$rules[[j]]$apply())))
+                stop("found multiple node definitions in declaring `",
+                     safeDeparse(declRules$y$rules[[i]]$expr), "` and `",
+                     safeDeparse(declRules$y$rules[[j]]$expr))
+      }
+      
       invisible(NULL)
     },
     makeVarNames = function() {
