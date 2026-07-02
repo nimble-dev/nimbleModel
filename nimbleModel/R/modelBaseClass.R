@@ -59,9 +59,9 @@ modelBase_nClass <- nClass(
       # TODO: need to work through not setting as 'data' if values are NA;
       #   check back against how dataRules work in nimbleModel work.
       allData <- self$defaultData
-      if (!missing(inits)) {
-        for (nm in names(inits)) {
-          allData[[nm]] <- inits[[nm]]
+      if (!missing(data)) {
+        for (nm in names(data)) {
+          allData[[nm]] <- data[[nm]]
         }
       }
       if (length(allData)) set_from_list(allData)
@@ -382,11 +382,12 @@ modelBase_nClass <- nClass(
       logProb <- calc_op(instr, "getLogProb", "getLogProb_impl")
       return(logProb)
     },
-    simulate = function(instr) {
+    simulate = function(instr, includeData = FALSE) {
       if (missing(instr)) {
         instr <- getVarNames()
       }
-      instrList <- makeInstrList(self, instr)
+      instrList <- makeInstrList(self, instr, includeData = includeData)
+      if(is.null(instrList)) return(invisible(NULL))
       if (isCompiled()) {
         if (!instrList$isCompiled()) instrList <- makeCompiledInstrList(instrList)
         self$simulate_impl(instrList)
