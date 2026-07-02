@@ -192,7 +192,7 @@ test_that("makeVarInfo works", {
     expect_identical(vi$z$mins, 1)
     expect_identical(vi$z$maxs, 12)
     expect_identical(vi$sigma$mins, 1)
-    expect_identical(vi$sigma$maxs, as.numeric(.Machine$integer.max))
+    expect_identical(vi$sigma$maxs, 10) # Based on LHS declaration.
     expect_identical(vi$pr$mins, rep(1, 2))
     expect_identical(vi$pr$maxs, rep(3, 2))
 

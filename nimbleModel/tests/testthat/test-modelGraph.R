@@ -1005,7 +1005,7 @@ test_that("graph processing for dynamic indexing", {
     expect_true(is(modelDef$downstreamRules$mu$rules[[1]]$indexConstraints[[1]],
                    'indexConstraintSequenceClass'))
     expect_identical(modelDef$downstreamRules$mu$rules[[1]]$indexConstraints[[1]]$end,
-                     as.numeric(.Machine$integer.max))
+                     10)  # Based on LHS declaration.
 
     expect_true(modelDef$varInfo$mu$anyDynamicallyIndexed)
     expect_false(modelDef$varInfo$y$anyDynamicallyIndexed)
