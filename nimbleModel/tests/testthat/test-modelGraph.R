@@ -1153,7 +1153,8 @@ test_that("nested indexing", {
         for(i in 1:10) 
             mu[i] ~ dnorm(0, 1)
     })
-    expect_message(modelDef <- modelDefClass$new(code), "Detected use of non-constant")
+    expect_message(modelDef <- modelDefClass$new(code, dimensions = list(block=5)),
+                                                 "Detected use of non-constant")
     result <- getDependencies(modelDef, 'mu[6]', self = FALSE)
     expect_equal(result[[1]], varRangeClass$new(list(newIndexRange(quote(1:3))), varName = 'y',
                                                 fromStochRule = TRUE))
