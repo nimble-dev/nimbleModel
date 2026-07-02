@@ -763,12 +763,16 @@ modelDefClass <- R6Class(
           }
         }
       }
+      LHSvars <- names(varInfo)
       for (iDI in seq_along(declInfo)) { # Do RHS after all LHS so that check for overlap only concerns LHS
         decl <- declInfo[[iDI]]
         for (iRHR in seq_along(decl$rhsOriginalRules)) {
           rhsRule <- decl$rhsOriginalRules[[iRHR]]
           rhsVar <- rhsRule$varName
-          if (!(rhsVar %in% names(varInfo))) {
+          # Corner case would be having the dynamically indexed RHS var also defined elsewhere on RHS.
+          # We do not address that so will fail below if dimensions are not specified.
+          bothLHSandRHS <- rhsVar %in% LHSvars  
+          if (!bothLHSandRHS) {
             tmp <- stripIndexWrapping(decl$symbolicParentNodes[[iRHR]])
             nDim <- if (length(tmp) == 1) 0 else length(tmp) - 2
             varInfo[[rhsVar]] <<- varInfoClass$new(
@@ -781,15 +785,18 @@ modelDefClass <- R6Class(
           }
           if (varInfo[[rhsVar]]$nDim) {
             newMinMax <- rhsRule$fullRange$getMinMax()
+            intmax <- newMinMax[,2] == .Machine$integer.max
+            if (bothLHSandRHS && any(intmax)) # Use dim from LHS.
+              newMinMax[intmax,2] <- 0
             varInfo[[rhsVar]]$mins <<- pmin(varInfo[[rhsVar]]$mins, newMinMax[, 1])
             varInfo[[rhsVar]]$maxs <<- pmax(varInfo[[rhsVar]]$maxs, newMinMax[, 2])
           }
+          
         }
       }
 
       # Find non-scalar constants on RHS.
-      # TODO: we probably want to tag these as constant/hidden and don't allow overwriting them,
-      # and possibly prevent `getVarNames()` from reporting them.
+      # These should only be indexing variables as others will have RHS rules.  
       constantVars <- unique(unlist(sapply(declInfo, \(x) all.vars(x$code))))
       constantVars <- constantVars[constantVars %in% names(constants)]
       constantVars <- constantVars[!constantVars %in% names(varInfo)]
@@ -844,6 +851,15 @@ modelDefClass <- R6Class(
         stop(
           "index value of zero or less found for model variable(s): `",
           paste0(names(varInfo)[problemVars], collapse = "`, `"), "`."
+        )
+      }
+
+      missingMaxs <- sapply(varInfo, function(x) any(x$maxs == .Machine$integer.max))
+      if (any(missingMaxs) ) {
+        problemVars <- which(missingMaxs)
+        stop(
+          "no maximum dimension available for model variable(s): `",
+          paste0(names(varInfo)[problemVars], collapse = "`, `"), "`. If you have dynamic indexing of that variable, you need to specify the dimension for the variable via `dimensions`."
         )
       }
 

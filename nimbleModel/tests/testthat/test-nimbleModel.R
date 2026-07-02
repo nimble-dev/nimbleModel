@@ -1028,7 +1028,62 @@ test_that("basic creation of list of instr_nClass objects", {
     expect_identical(cinstr$dims, 1L)
     expect_identical(cinstr$lens, 4L)
     expect_identical(cinstr$values[[1]], 2L)
-    
 
 })
 
+# Note that whether `k` is considered as a RHSonly node might change; see Issue 28.
+test_that("use of constants for variables", {
+    code <- nimbleCode({
+        w ~ dnorm(0, sd = sigma)
+        y[1:3] ~ dmnorm(mu[1:3], pr[1:3,1:3])
+        for(i in 1:3)
+            x[i] ~ dnorm(v[k[i]], 1)
+    })
+    m <- nimbleModel(code, constants = list(sigma = 10, mu = rep(0,3), pr = diag(3), k = c(1,2,2)))
+    nodes <- sapply(m$getNodes(), \(x) x$varName)
+    nodesAll <- sapply(m$getNodes(includeRHSonly = TRUE), \(x) x$varName)
+    vars <- m$getVarNames()
+
+    expect_false(any(c("mu","pr","k","sigma") %in% nodes))
+
+    expect_true(all(c("mu","pr") %in% nodesAll))
+    expect_false(any(c("k","sigma") %in% nodesAll))
+
+    expect_true(all(c("mu","pr","k") %in% vars))
+    expect_false("sigma" %in% vars)
+
+    # Constant nodes/vars can still be changed for now.
+    expect_identical(m$k[3], 2)
+    m$k[3] <- 4
+    expect_failure(expect_identical(m$k[3], 2))
+
+    expect_identical(m$mu[1], 0)
+    expect_identical(m$pr[1,1], 1)
+    m$mu[1] <- 1
+    m$pr[1,1] <- 2
+    expect_failure(expect_identical(m$mu[1], 0))
+    expect_failure(expect_identical(m$pr[1,1], 1))
+
+})
+
+test_that("dimension of dynamically-indexed variables", {
+    library(nimbleModel); library(testthat)
+    code <- nimbleCode({
+        for(i in 1:3)
+            w[i] ~ dnorm(v[k[i]],1)
+    })
+    expect_error(m <- nimbleModel(code, inits = list(k=c(1,2,2))), "need to specify the dimension")
+    # Set max for v using dimensions.
+    m <- nimbleModel(code, inits = list(k=c(1,2,2)), dimensions = list(v = 5))
+    expect_identical(m$modelDef$varInfo[['v']]$maxs, 5)
+
+    # Max for v will be based on declaration for v.
+    code <- nimbleCode({
+        for(i in 1:3)
+            w[i] ~ dnorm(v[k[i]],1)
+        for(i in 1:2)
+            v[i] ~ dnorm(0,1)
+    })
+    m <- nimbleModel(code, inits = list(k=c(1,2,2)))
+    expect_identical(m$modelDef$varInfo[['v']]$maxs, 2)
+})
