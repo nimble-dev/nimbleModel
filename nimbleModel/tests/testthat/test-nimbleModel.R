@@ -803,7 +803,7 @@ test_that("calculate works correctly for time series/SSM recursion", {
         y[i,j] <- y[i-1,j] + y[i,j-1] + 1.5
     for(j in 1:4)
       y[1,j] <- 0
-    for(i in 1:3)
+    for(i in 2:3)
       y[i,1] <- 0
   })
   mclass <- nimbleModel(code, returnClass = TRUE)
