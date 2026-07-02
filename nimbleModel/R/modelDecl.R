@@ -341,6 +341,13 @@ modelDeclClass <- R6Class(
                 logProbExpr[[i]] <- logProbIndexValue
               }
             }
+            if (is.c(origIndex)) {    # Handles new cases like `y[c(2,3,5)] ~ dmnorm(...)`.
+              if (origIndex[[1]] == "nimC") {
+                logProbExpr[[i]] <- origIndex[[2]]
+              } else {
+                stop("unexpected input in `", safeDeparse(origIndex), "`.")
+              }
+            }
           }
         }
       } else {

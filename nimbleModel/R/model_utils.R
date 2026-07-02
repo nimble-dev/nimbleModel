@@ -29,6 +29,14 @@ is.vectorized <- function(node) {
   }
 }
 
+is.c <- function(node) {
+  if (is.character(node)) {
+    return(grepl("^nimC", node))
+  } else {
+    return("nimC" %in% all.names(node))
+  }
+}
+
 getCalcADFunName <- function() {
   return("calculateWithArgs")
 }

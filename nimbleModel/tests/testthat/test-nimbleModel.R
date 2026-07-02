@@ -665,14 +665,46 @@ test_that("non-sequential indexing cases", {
   code <- nimbleCode({
     y[c(2,3,5)] ~ dmnorm(mu[1:3], pr[1:3,1:3])
   })
-  m <- nimbleModel(code, data = list(y = rnorm(5)))
-
-  # TODO: add testing of calculate() once issue 30 is resolved
+  set.seed(1)
+  y <- rnorm(5)
+  mclass <- nimbleModel(code, data = list(y = y),
+                   inits = list(mu = rep(0,3), pr = diag(3)),
+                   returnClass = TRUE)
+  m <- mclass$new()
+  if(FALSE){
+      cmclass <- nCompile(mclass)
+      cm <- cmclass$new()
+  }
+  truth <- nCompiler:::dmnorm_chol(m$y[c(2,3,5)], rep(0,3), diag(3), log = TRUE)
+  expect_equal(m$calculate(), truth)
+  m$simulate('y')
+  expect_identical(y[c(1,4)], m$y[c(1,4)])
+  expect_false(any(y[c(2,3,5)] == m$y[c(2,3,5)]))
+  if(FALSE) expect_equal(cm$calculate('y'), truth)
+  if(FALSE) {
+    cm$simulate(y)
+    expect_false(any(y[c(2,3,5)] == cm$y[c(2,3,5)]))
+  }
 
   nr <- m$getNodes()[[2]]
   expect_true(inherits(nr$indexRanges[[1]], "indexRangeMatrixClass"))
   expect_identical(nr$numExternalIndexRanges, 0L)
   expect_identical(nr$toChar(), "y[c(2, 3, 5)]")
+
+  if(FALSE) {  # No operator def for nimC: This was part of the call:  y[i = nimC(2, 3, 5)]
+    code <- nimbleCode({
+      y[c(2,3,5)] <- x[1:3] + 1
+    })
+    mclass <- nimbleModel(code, inits = list(x = 1:3), 
+                          returnClass = TRUE)
+    m <- mclass$new()
+    cmclass <- nCompile(mclass)
+    cm <- cmclass$new()
+    m$calculate()
+    cm$calculate()
+    expect_identical(m$y, c(NA,2,3,NA,4))
+    expect_identical(cm$y, c(NA,2,3,NA,4))
+  }
   
 })
 
