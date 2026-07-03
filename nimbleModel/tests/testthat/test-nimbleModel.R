@@ -1184,6 +1184,126 @@ test_that("simulation without data nodes", {
     set.seed(1)
     cm$simulate('y')
     expect_identical(y, cm$y)
-    
+})
 
+test_that("column-major node/variable ordering when converted to chars", {
+    library(nimbleModel); library(testthat)
+    
+    code <- nimbleCode({
+        for(i in 1:2)
+            for(j in 1:3)
+                y[i,j] ~ dnorm(0,1)
+    })
+    
+    m <- nimbleModel(code)
+    grid <- expand.grid(1:2,1:3)
+    truth <- paste0('y[', apply(grid, 1, \(x) paste0(x[1], ", ", x[2])), ']')
+    expect_identical(m$getNodes(nodesAsChars=TRUE), truth)
+    expect_identical(m$getNodeNames(), truth)
+    expect_identical(m$expandNodeNames('y'), truth)
+    expect_identical(m$getDependencies('y', self=TRUE)[[1]]$toVarChars(expandScalars=TRUE), truth)
+    
+    code <- nimbleCode({
+        for(i in 1:2)
+            for(j in 1:3)
+                y[j,i] ~ dnorm(0,1)
+    })
+    
+    m <- nimbleModel(code)
+    grid <- expand.grid(1:3,1:2)
+    truth <- paste0('y[', apply(grid, 1, \(x) paste0(x[1], ", ", x[2])), ']')
+    expect_identical(m$getNodes(nodesAsChars=TRUE), truth)
+    expect_identical(m$getNodeNames(), truth)
+    expect_identical(m$expandNodeNames('y'), truth)
+    expect_identical(m$getDependencies('y', self=TRUE)[[1]]$toVarChars(expandScalars=TRUE), truth)
+   
+    code <- nimbleCode({
+        for(i in 1:2)
+            for(j in 1:3)
+                y[i,k[j]] ~ dnorm(0,1)
+    })
+    
+    m <- nimbleModel(code, constants = list(k=c(3,4,1)))
+    grid <- expand.grid(1:2,c(1,3,4))
+    truth <- paste0('y[', apply(grid, 1, \(x) paste0(x[1], ", ", x[2])), ']')
+    
+    expect_identical(m$getNodes(nodesAsChars=TRUE), truth)
+    expect_identical(m$getDependencies('y', self=TRUE)[[1]]$toVarChars(expandScalars=TRUE), truth)
+    
+    code <- nimbleCode({
+        for(i in 1:2)
+            for(j in 1:3)
+                y[k[i],l[j]] ~ dnorm(0,1)
+    })
+    
+    m <- nimbleModel(code, constants = list(k=c(3,1), l = c(3,4,1)))
+    grid <- expand.grid(c(1,3),c(1,3,4))
+    truth <- paste0('y[', apply(grid, 1, \(x) paste0(x[1], ", ", x[2])), ']')
+    
+    expect_identical(m$getNodes(nodesAsChars=TRUE), truth)
+    expect_identical(m$getDependencies('y', self=TRUE)[[1]]$toVarChars(expandScalars=TRUE), truth)
+ 
+    code <- nimbleCode({
+        for(i in 1:2)
+            for(j in 1:3)
+                y[k[j],i,k[j]+1] ~ dnorm(0,1)
+    })
+    
+    m <- nimbleModel(code, constants = list(k=c(3,4,1)))
+    truth <- c("y[1, 1, 2]","y[3, 1, 4]","y[4, 1, 5]","y[1, 2, 2]","y[3, 2, 4]","y[4, 2, 5]")
+    
+    expect_identical(m$getNodes(nodesAsChars=TRUE), truth)
+    expect_identical(m$getDependencies('y', self=TRUE)[[1]]$toVarChars(expandScalars=TRUE), truth)
+                     
+    code <- nimbleCode({
+        for(i in 1:2)
+            for(j in 1:3)
+                y[1:4,i,j] ~ dmnorm(z[1:4],pr[1:4,1:4])
+    })
+    
+    m <- nimbleModel(code)
+    grid <- expand.grid(1:2,1:3)
+    truth <- paste0('y[1:4, ', apply(grid, 1, \(x) paste0(x[1], ", ", x[2])), ']')
+
+    expect_identical(m$getNodes('y',nodesAsChars=TRUE), truth)
+
+    grid <- expand.grid(1:4,1:2,1:3)
+    truth <- paste0('y[', apply(grid, 1, \(x) paste0(x[1], ", ", x[2], ", ", x[3])), ']')
+    expect_identical(m$getNodes('y',nodesAsChars=TRUE, returnScalarComponents=TRUE), truth)
+    expect_identical(m$getDependencies('y', self=TRUE)[[1]]$toVarChars(expandScalars=TRUE), truth)
+
+    code <- nimbleCode({
+        for(i in 1:2)
+            for(j in 1:3)
+                y[i,1:4,j] ~ dmnorm(z[1:4],pr[1:4,1:4])
+    })
+    
+    m <- nimbleModel(code)
+    grid <- expand.grid(1:2,1:3)
+    truth <- paste0('y[', apply(grid, 1, \(x) paste0(x[1], ", 1:4, ", x[2])), ']')
+
+    expect_identical(m$getNodes('y',nodesAsChars=TRUE), truth)
+
+    grid <- expand.grid(1:2,1:4,1:3)
+    truth <- paste0('y[', apply(grid, 1, \(x) paste0(x[1], ", ", x[2], ", ", x[3])), ']')
+    expect_identical(m$getNodes('y',nodesAsChars=TRUE, returnScalarComponents=TRUE), truth)
+    expect_identical(m$getDependencies('y', self=TRUE)[[1]]$toVarChars(expandScalars=TRUE), truth)
+
+    code <- nimbleCode({
+        for(i in 1:2)
+            for(j in 1:3)
+                y[i,j,1:4] ~ dmnorm(z[1:4],pr[1:4,1:4])
+    })
+    
+    m <- nimbleModel(code)
+    grid <- expand.grid(1:2,1:3)
+    truth <- paste0('y[', apply(grid, 1, \(x) paste0(x[1], ", ", x[2], ", 1:4")), ']')
+
+    expect_identical(m$getNodes('y',nodesAsChars=TRUE), truth)
+
+    grid <- expand.grid(1:2,1:3,1:4)
+    truth <- paste0('y[', apply(grid, 1, \(x) paste0(x[1], ", ", x[2], ", ", x[3])), ']')
+    expect_identical(m$getNodes('y',nodesAsChars=TRUE, returnScalarComponents=TRUE), truth)
+    expect_identical(m$getDependencies('y', self=TRUE)[[1]]$toVarChars(expandScalars=TRUE), truth)
+    
 })
