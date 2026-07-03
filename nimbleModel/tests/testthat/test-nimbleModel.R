@@ -1221,28 +1221,26 @@ test_that("isData", {
 
     nodes <- m$getNodes(c('y','w','mu','tmp'), includeRHSonly = TRUE)
     truth <- list(c(TRUE,FALSE,TRUE),
-                  'y[4]' = TRUE,
-                  'w[2]' = TRUE,
-                  'w[4]' = FALSE,
-                  'mu' = FALSE,
+                  TRUE,
+                  TRUE,
+                  FALSE,
+                  FALSE,
                   c(FALSE,FALSE,FALSE))
-    names(truth)[[1]] <- c('y[1]','y[2]','y[3]')
-    names(truth)[[6]] <- c('tmp[1]','tmp[2]','tmp[3]')
+    names(truth[[1]]) <- c('y[1]','y[2]','y[3]')
+    names(truth[[2]]) <- 'y[4]'
+    names(truth[[3]]) <- 'w[2]'
+    names(truth[[4]]) <- 'w[4]'
+    names(truth[[5]]) <- 'mu'
+    names(truth[[6]]) <- c('tmp[1]','tmp[2]','tmp[3]')
     expect_identical(m$isData(nodes), truth)
     
     nodes <- m$getDependencies('mu')  # varRanges
-    truth <- list(c(TRUE,FALSE,TRUE),
-                  'y[4]' = TRUE,
-                  'w[2]' = TRUE,
-                  'w[4]' = FALSE
-                  ))
-    names(truth)[[1]] <- c('y[1]','y[2]','y[3]')
+    truth <- truth[1:4]
     expect_identical(m$isData(nodes), truth)
 
     truth <- c(TRUE,TRUE,FALSE)
     names(truth) <- c('z[1, 1:3]','z[2, 1:3]','z[3, 1:3]')
     expect_identical(m$isData('z'), truth)
-    m$isData('z')
 
     code = nimbleCode({
         for(i in 1:3)
@@ -1251,6 +1249,8 @@ test_that("isData", {
         w[4] ~ dnorm(mu,1)
     })
     m <- nimbleModel(code)
-    expect_identical(m$isData(m$getNodes()), list(FALSE,FALSE))
+    expect_identical(m$isData(m$getNodes(), reduceToScalar = TRUE), list(FALSE,FALSE,FALSE))
+    m <- nimbleModel(code, data = list(y=rnorm(3)))
+    expect_identical(m$isData(m$getNodes(), reduceToScalar = TRUE), list(TRUE,FALSE,FALSE))
     
 })
