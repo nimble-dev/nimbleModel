@@ -73,14 +73,13 @@ test_that("basic testing of models, compiled and uncompiled", {
     expect_equal(cm$calculate(), lp)
     expect_equal(cm$getLogProb(), lp)
 
-    ## NOTE: `simulate` currently simulates data nodes by default.
     set.seed(1)
     m$simulate()
     expect_identical(m$lifted_sqrt_oPtau_cP, sqrt(m$tau))
     expect_equal(m$mu, -0.326233360706)
     m$mu <- 100
     m$tau <- 1
-    m$simulate(m$getDependencies('tau', self = FALSE))
+    m$simulate(m$getDependencies('tau', self = FALSE), includeData = TRUE)
     expect_true(all(m$y > 95))
     
     set.seed(1)
@@ -89,7 +88,7 @@ test_that("basic testing of models, compiled and uncompiled", {
     expect_equal(cm$mu, -0.326233360706)
     cm$mu <- 100
     cm$tau <- 1
-    cm$simulate(cm$getDependencies('tau', self = FALSE))
+    cm$simulate(cm$getDependencies('tau', self = FALSE), includeData = TRUE)
     expect_true(all(cm$y > 95))
 
     # Check a sequence
@@ -126,9 +125,9 @@ test_that("basic testing of models, compiled and uncompiled", {
 
     # Check simulate
     set.seed(1)
-    cm$simulate('y[3:4]')
+    cm$simulate('y[3:4]', includeData = TRUE)
     set.seed(1)
-    m$simulate('y[3:4]')
+    m$simulate('y[3:4]', includeData = TRUE)
     expect_equal(cm$y, m$y)
 
     # Check getLogProb
@@ -180,8 +179,8 @@ test_that("one index", {
         for(i in 3:10)
             y[i] ~ dnorm(0,1)
     })
-    data <- list(y = rnorm(10))
-    mclass <- nimbleModel(code, data = data, returnClass = TRUE)
+    inits <- list(y = rnorm(10))
+    mclass <- nimbleModel(code, inits = inits, returnClass = TRUE)
     m <- mclass$new()
     cmclass <- nCompile(mclass)
     cm <- cmclass$new()
@@ -239,8 +238,8 @@ test_that("two index slots", {
             for(j in 1:3)
                 y[i,j] ~ dnorm(0,1)
     })
-    data <- list(y = matrix(rnorm(12),4))
-    mclass <- nimbleModel(code, data = data, returnClass = TRUE)
+    inits <- list(y = matrix(rnorm(12),4))
+    mclass <- nimbleModel(code, inits = inits, returnClass = TRUE)
     m <- mclass$new()
     cmclass <- nCompile(mclass)
     cm <- cmclass$new()
@@ -351,8 +350,8 @@ test_that("three index slots (plus different index variable ordering)", {
                 for(k in 1:3)
                    y[k,j,i] ~ dnorm(0,1)  # This changes order of use of indices to [idx[3],idx[2],idx[1]].
     })    
-    data <- list(y = array(rnorm(60),c(3,4,5)))
-    mclass <- nimbleModel(code, data = data, returnClass = TRUE)
+    inits <- list(y = array(rnorm(60),c(3,4,5)))
+    mclass <- nimbleModel(code, inits = inits, returnClass = TRUE)
     m <- mclass$new()
     cmclass <- nCompile(mclass)
     cm <- cmclass$new()
@@ -513,8 +512,8 @@ test_that("four index slots", {
                     for(l in 1:2)
                         y[i,j,k,l] ~ dnorm(0,1) 
     })
-    data <- list(y = array(rnorm(120),c(5,4,3,2)))
-    mclass <- nimbleModel(code, data = data, returnClass = TRUE)
+    inits <- list(y = array(rnorm(120),c(5,4,3,2)))
+    mclass <- nimbleModel(code, inits = inits, returnClass = TRUE)
     m <- mclass$new()
     cmclass <- nCompile(mclass)
     cm <- cmclass$new()
@@ -591,8 +590,8 @@ test_that("five index slots", {
                         for(m in 1:4)
                             y[i,j,k,l,m] ~ dnorm(0,1) 
     })
-    data <- list(y = array(rnorm(480),c(5,4,3,2,4)))
-    mclass <- nimbleModel(code, data = data, returnClass = TRUE)
+    inits <- list(y = array(rnorm(480),c(5,4,3,2,4)))
+    mclass <- nimbleModel(code, inits = inits, returnClass = TRUE)
     m <- mclass$new()
     cmclass <- nCompile(mclass)
     cm <- cmclass$new()
@@ -649,7 +648,7 @@ test_that("non-sequential indexing cases", {
       y[i] ~ dnorm(0,1)
   })
   set.seed(1)
-  mclass <- nimbleModel(code, data = list(y=rnorm(5)), returnClass = TRUE)
+  mclass <- nimbleModel(code, inits = list(y=rnorm(5)), returnClass = TRUE)
   m <- mclass$new()
   cmclass <- nCompile(mclass)
   cm <- cmclass$new()
@@ -671,20 +670,16 @@ test_that("non-sequential indexing cases", {
                    inits = list(mu = rep(0,3), pr = diag(3)),
                    returnClass = TRUE)
   m <- mclass$new()
-  if(FALSE){
-      cmclass <- nCompile(mclass)
-      cm <- cmclass$new()
-  }
+  cmclass <- nCompile(mclass)
+  cm <- cmclass$new()
   truth <- nCompiler:::dmnorm_chol(m$y[c(2,3,5)], rep(0,3), diag(3), log = TRUE)
   expect_equal(m$calculate(), truth)
   m$simulate('y')
   expect_identical(y[c(1,4)], m$y[c(1,4)])
   expect_false(any(y[c(2,3,5)] == m$y[c(2,3,5)]))
-  if(FALSE) expect_equal(cm$calculate('y'), truth)
-  if(FALSE) {
-    cm$simulate(y)
-    expect_false(any(y[c(2,3,5)] == cm$y[c(2,3,5)]))
-  }
+  expect_equal(cm$calculate('y'), truth)
+  cm$simulate(y)
+  expect_false(any(y[c(2,3,5)] == cm$y[c(2,3,5)]))
 
   nr <- m$getNodes()[[2]]
   expect_true(inherits(nr$indexRanges[[1]], "indexRangeMatrixClass"))

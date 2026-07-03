@@ -47,7 +47,7 @@ jobs:
              install.packages('R6')
              install.packages('nimble') # For now, we use `nimble` for stuff in `miscFunctions.R`.
              install.packages('inline') # For now, seemingly need for nCompiler.
-             remotes::install_github("https://github.com/nimble-dev/nCompiler", subdir="nCompiler")
+             remotes::install_github("https://github.com/nimble-dev/nCompiler", subdir="nCompiler", ref="nimble-dists")
         shell: Rscript {0}
 
       - name: Install nimbleModel (Windows)
