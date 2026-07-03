@@ -266,7 +266,7 @@ modelBase_nClass <- nClass(
         nodeRanges <- list(nodeRanges)
       if (is.list(nodeRanges)) {
         returnList <- TRUE
-        nodeRanges <- unlist(lapply(nodeRanges, \(x)
+        nodeRanges <- flatten(lapply(nodeRanges, \(x)
                                     if(inherits(x, 'varRangeClass')) getNodes(x, includeRHSonly = TRUE) else x))
       }
       if (is.character(nodeRanges)) 
