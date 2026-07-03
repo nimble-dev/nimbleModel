@@ -676,11 +676,11 @@ test_that("non-sequential indexing cases", {
   # cm <- cmclass$new()
   truth <- nCompiler:::dmnorm_chol(m$y[c(2,3,5)], rep(0,3), diag(3), log = TRUE)
   expect_equal(m$calculate(), truth)
-  m$simulate('y')
+  m$simulate('y', includeData = TRUE)
   expect_identical(y[c(1,4)], m$y[c(1,4)])
   expect_false(any(y[c(2,3,5)] == m$y[c(2,3,5)]))
   # expect_equal(cm$calculate('y'), truth)
-  # cm$simulate(y)
+  # cm$simulate(y, includeData = TRUE)
   # expect_false(any(y[c(2,3,5)] == cm$y[c(2,3,5)]))
 
   nr <- m$getNodes()[[2]]
