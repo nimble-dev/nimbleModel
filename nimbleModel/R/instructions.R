@@ -121,7 +121,7 @@ determineInstrType <- function(instr, use_vec = FALSE) {
 
 # TODO: document this since it may be user-facing.
 #' @export
-makeInstrList <- function(model, input, includeData = FALSE, use_vec = FALSE) {
+makeInstrList <- function(model, input, includeData = TRUE, use_vec = FALSE) {
   # `model` simply must contain `modelDef`, so it can be a modelClass or modelBase_nClass object.
   # This works with:
   # (1) a char vector of "nodes"
