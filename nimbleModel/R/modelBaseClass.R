@@ -288,7 +288,7 @@ modelBase_nClass <- nClass(
         result <- rep(FALSE, length(allElements[[i]]))
         names(result) <- allElements[[i]]
         result[allElements[[i]] %in% dataElements[[i]]] <- TRUE
-        if (reduceToScalar) {
+        if (returnList && reduceToScalar) {
           numData <- sum(result)
           if (numData == length(result)) result <- TRUE
           if (numData == 0) result <- FALSE
