@@ -771,52 +771,147 @@ test_that("calculate/simulate work correctly for deterministic node", {
   expect_identical(cm$y, 4.5)
 })
 
+test_that("sequential dependence cases that produce calcRules with multiple sortIDs", {
+    code <- nimbleCode({
+        for(i in 2:10)
+            mu[i] ~ dnorm(mu[i-1], sd = sigma)
+        sigma ~ dunif(0,1)
+        m[1] ~ dnorm(0,1)
+        for(i in 1:10)
+            y[i] ~ dnorm(mu[i], sd = tau)
+        tau ~ dunif(0,1)
+    })
+    m <- nimbleModel(code, data = list(y = rnorm(10)
+
+
+                                        # mu[i,j] <- mu[i-1,j]
+                                      # list of instructions case (1) with past dep and (2) with future dep
+
+})
 
 
 test_that("calculate works correctly for time series/SSM recursion", {
   library(nimbleModel); library(testthat); library(nCompiler)
   code <- nimbleCode({
-    for(i in 3:6) {
-      y[i] <- y[i-1] + 1.5
+    for(i in 3:8) {
+      y[i] <- y[i-1] + mu
     }
     y[2] <- 1
+    mu <- 1.5
   })
   mclass <- nimbleModel(code, returnClass = TRUE)
   m <- mclass$new()
+
+  instrList <- makeInstrList(m, c("y","mu"))
+  sortIDs <- lapply(instrList, \(x) x$sortID)
+  expect_true(all(diff(sapply(sortIDs, \(x) min(x,na.rm=TRUE))) >= 0), "incorrect order")
+  expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))),
+              "something other than sequential dependence on the past")
+
+  # Check proper handling when providing list of instructions.
+  instrList <- makeInstrList(m, lapply(c(5,3,1,2,4), \(i) instrList[[i]])) 
+  sortIDs <- lapply(instrList, \(x) x$sortID)
+  expect_true(all(diff(sapply(sortIDs, \(x) min(x,na.rm=TRUE))) >= 0))
+  expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))))
+  
   cmclass <- nCompile(mclass)
   cm <- cmclass$new()
+  m$y <- cm$y <- rep(-99,8)
   m$calculate()
   cm$calculate()
-  truth <- c(NA, 1, 2.5, 4, 5.5, 7)
+  truth <- c(-99, 1, 2.5, 4, 5.5, 7, 8.5, 10)
   expect_identical(m$y, truth)
-  truth[1] <- 0
   expect_equal(cm$y, truth)
+
+  m$y <- cm$y <- rep(0,8)
+  m$calculate('y[1:5]')
+  cm$calculate('y[1:5]')
+  truth <- c(-99, 1, 2.5, 4, 5.5, -99,-99,-99)
+  expect_identical(m$y, truth)
+  expect_equal(cm$y, truth)
+  
     
-
   code <- nimbleCode({
-    for(i in 2:5) {
-      y[i+1] <- y[i] + 1.5
+    for(i in 2:7) {
+      y[i+1] <- y[i] + mu
     }
     y[2] <- 1
+    mu <- 1.5
   })
   mclass <- nimbleModel(code, returnClass = TRUE)
   m <- mclass$new()
+
+  instrList <- makeInstrList(m, c("y","mu"))
+  sortIDs <- lapply(instrList, \(x) x$sortID)
+  expect_true(all(diff(sapply(sortIDs, \(x) min(x,na.rm=TRUE))) >= 0), "incorrect order")
+  expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))),
+              "something other than sequential dependence on the past")
+
+  # Check proper handling when providing list of instructions.
+  instrList <- makeInstrList(m, lapply(c(5,3,1,2,4), \(i) instrList[[i]])) 
+  sortIDs <- lapply(instrList, \(x) x$sortID)
+  expect_true(all(diff(sapply(sortIDs, \(x) min(x,na.rm=TRUE))) >= 0))
+  expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))))
+
   cmclass <- nCompile(mclass)
   cm <- cmclass$new()
+  m$y <- cm$y <- rep(-99,8)
   m$calculate()
   cm$calculate()
-  truth <- c(NA, 1, 2.5, 4, 5.5, 7)
+  truth <- c(-99, 1, 2.5, 4, 5.5, 7, 8.5, 10)
   expect_identical(m$y, truth)
-  truth[1] <- 0
   expect_equal(cm$y, truth)
 
+  # Dependence on the future. This involves creating new scalar calcRanges.
+  code <- nimbleCode({
+      for(i in 1:7)
+          y[i] <- y[i+1] + mu
+      mu <- 1.5
+      y[8] <- 0
+  })
+  mclass <- nimbleModel(code, returnClass = TRUE)
+  m <- mclass$new()
+  
+  instrList <- makeInstrList(m, c("y","mu"))
+  sortIDs <- lapply(instrList, \(x) x$sortID)
+  expect_true(all(diff(sapply(sortIDs, \(x) min(x,na.rm=TRUE))) >= 0), "incorrect order")
+  expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))),
+              "something other than sequential dependence on the past")
+
+  # Check proper handling when providing list of instructions.
+  instrList <- makeInstrList(m, lapply(c(5,3,1,2,4), \(i) instrList[[i]])) 
+  sortIDs <- lapply(instrList, \(x) x$sortID)
+  expect_true(all(diff(sapply(sortIDs, \(x) min(x,na.rm=TRUE))) >= 0))
+  expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))))
+
+  cmclass <- nCompile(mclass)
+  cm <- cmclass$new()
+  m$y <- cm$y <- rep(-99, 8)
+  m$calculate()
+  cm$calculate()
+  truth <- rev(seq(0,10.5,by=1.5))
+  expect_identical(m$y, truth)
+  expect_equal(cm$y, truth)
+
+  m$y <- cm$y <- rep(-99, 8)
+  m$calculate('y[5:8]')
+  cm$calculate('y[5:8]')
+  truth[1:4] <- -99
+  expect_identical(m$y, truth)
+  expect_equal(cm$y, truth)
+ 
+
+  # This case will be "unrolled" via fracturing when creating calcRules.
   code <- nimbleCode({
     for(i in 3:7) {
-      y[i] <- y[i-2] + 1.5
+      y[i] <- y[i-2] + mu
     }
+    mu <- 1.5
+    y[1] <- 1
+    y[2] <- 3
   })
-  mclass <- nimbleModel(code, returnClass = TRUE, inits=list(y=c(1,3,rep(0,5))))
-  m <- mclass$new()
+  mclass <- nimbleModel(code, returnClass = TRUE)
+  m <- mclass$new()  
   cmclass <- nCompile(mclass)
   cm <- cmclass$new()
   m$calculate()
@@ -824,7 +919,6 @@ test_that("calculate works correctly for time series/SSM recursion", {
   truth <- c(1, 3, 2.5, 4.5, 4, 6, 5.5)
   expect_identical(m$y, truth)
   expect_equal(cm$y, truth)
-
 
   code <- nimbleCode({
     for(i in 2:3)
@@ -847,40 +941,63 @@ test_that("calculate works correctly for time series/SSM recursion", {
   expect_identical(m$y, truth)
   expect_equal(cm$y, truth)
 
-  # Work on these once we address issue #25.
-  if(FALSE) {    
-    code <- nimbleCode({
-      for(i in 1:5)
-        y[i] ~ dnorm(y[i+1], 1)
-      # y[6] <- 0
-    })
-    mclass <- nimbleModel(code, returnClass = TRUE)
-    m <- mclass$new()
-    cmclass <- nCompile(mclass)
-    cm <- cmclass$new()
-    # BUG - calculation done in wrong order.
-    m$calculate()
-    cm$calculate()
     
-    
-    ## This interleaves the sortID values across different calcRules/ranges.
-    code <- nimbleCode({
-      for(i in 1:10)
-        y[i] ~ dnorm(z[i], 1)
-      for(i in 2:10)
-        z[i] <- y[i-1]
-    })
-    mclass <- nimbleModel(code, returnClass = TRUE)
-    m <- mclass$new()
-    # BUG: need to interweave calculations.
-  }  
-})
+  ## This interleaves the sortID values across different calcRules/ranges.
+  code <- nimbleCode({
+      for(i in 1:6)
+          y[i] <- z[i] + 1
+      for(i in 2:6)
+          z[i] <- y[i-1] + .5
+      z[1] <- 0
+  })
+  set.seed(1)
+  mclass <- nimbleModel(code, returnClass = TRUE)
+  m <- mclass$new()
+
+  instrList <- makeInstrList(m, c("y","mu"))
+  sortIDs <- lapply(instrList, \(x) x$sortID)
+  expect_true(all(diff(sapply(sortIDs, \(x) min(x,na.rm=TRUE))) >= 0), "incorrect order")
+  expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))),
+              "something other than sequential dependence on the past")
+
+  # Check proper handling when providing list of instructions.
+  instrList <- makeInstrList(m, lapply(c(5,3,1,2,4), \(i) instrList[[i]])) 
+  sortIDs <- lapply(instrList, \(x) x$sortID)
+  expect_true(all(diff(sapply(sortIDs, \(x) min(x,na.rm=TRUE))) >= 0))
+  expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))))
+
+  cmclass <- nCompile(mclass)
+  cm <- cmclass$new()
+  truth_y <- c(1,2.5,4,5.5,7,8.5)
+  truth_z <- c(0,1.5,3,4.5,6,7.5) 
+  m$calculate()
+  cm$calculate()
+  expect_identical(m$y, truth_y)
+  expect_equal(cm$y, truth_y)
+  expect_identical(m$z, truth_z)
+  expect_equal(cm$z, truth_z)
+
+  # HERE; check multiSortID index and instructions order
+  code <- nimbleCode({
+      for(i in 3:8) {
+          for(j in 1:2)
+              y[j,1:3,i] <- y[j,1:3,i-1] + mu[1:2]
+    }
+    y[1,1,1] <- 0
+    y[1,2,1] <- 0
+    y[1,3,1] <- 0
+    y[2,1,1] <- 0
+    y[2,2,1] <- 0
+    y[2,3,1] <- 0
+    mu <- c(1,2)
+  })
+  mclass <- nimbleModel(code, returnClass = TRUE)
+  m <- mclass$new()
   
- 
- 
+  ## Need a mv AR case y[i,1:3]~dmnorm(y[i-1,1:3]; does this completely fracture or have multiSort ID?
+})
 
 test_that("basic creation of list of instr_nClass objects", {
-
     code <- quote({
         mu ~ dnorm(0, 1)
         for(i in 1:5) 
@@ -1187,3 +1304,9 @@ test_that("simulation without data nodes", {
     
 
 })
+
+
+
+
+
+    

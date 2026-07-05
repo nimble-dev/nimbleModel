@@ -197,9 +197,32 @@ calcRuleClass <- R6Class(
       if (is.null(indexingRange)) {
         return(NULL)
       }
-      result <- calcRangeClass$new(varName, indexingRange, as.numeric(declRule$ID), sortID, multiSortIDindex)
+      if(length(sortID) > 1)
+        newSortID <- sortID[inputRange$indexRanges[[multiSortIDindex]]$getValuesAsMatrix()] else newSortID = sortID
+      result <- calcRangeClass$new(varName, indexingRange, as.numeric(declRule$ID), newSortID, multiSortIDindex, self)
       return(result)
     },
+    makeCalcRangeScalars = function(calcRange) {
+      # should take a calcRange
+      if (!inherits(calcRange, 'calcRangeClass'))
+        stop("input to `makeCalcRangeScalars` must be a `calcRange`")
+      if (!is.null(calcRange$varName) && !is.null(varName) && calcRange$varName != varName) {
+        stop("`calcRange` variable name does not match the `calcRule` variable name.")
+      }
+
+      # Need original indexing because nodeFunctions will use that indexing
+      # (e.g. `y[i+1]` needs value of `i`).
+      if(length(calcRange$multiSortIDindex) != 1)
+        stop("attempting to split calcRange that have multiple indexing")
+      indices <- c(calcRange$indexingRange$indexRanges[[calcRange$multiSortIDindex]]$getValuesAsMatrix())
+      sortIDs <- calcRange$sortID[!is.na(calcRange$sortID)]
+      if(length(indices) != length(sortIDs))
+        stop("mismatch between indexing values and node-based sortIDs")
+      results <- lapply(seq_along(indices), \(i)
+                        calcRangeClass$new(varName, varRangeClass$new(list(indexRangeMatrixClass$new(matrix(indices[i]), sort=FALSE))),
+                                as.numeric(declRule$ID), sortIDs[i], multiSortIDindex, self))
+      return(results)
+    },    
     isOfType = function(type) {
       switch(type,
         end = return(end),
@@ -253,15 +276,16 @@ calcRuleClass <- R6Class(
 
     # Used recursively to determine if a rule has stochastic dependents.
     # Terminates if no children or if stochastic dependent found.
-    setStochDep = function(calcRules) {
+    setStochDep = function(calcRules, alreadySeen = character(0)) {
       if (!is.na(stochDep)) {
         return(stochDep)
       }
       if (!length(children)) {
         return(unset("stochDep"))
       }
+      toCheck <- children[!children %in% alreadySeen]  # Avoid infinite recursion in cylic cases.
       # First check if any children are stochastic.
-      stoch <- sapply(children, function(idx) {
+      stoch <- sapply(toCheck, function(idx) {
         calcRules[[idx]]$declRule$decl$stoch
       })
       if (any(stoch)) {
@@ -271,7 +295,7 @@ calcRuleClass <- R6Class(
         while (idx <= length(stoch)) {
           # Walk down the tree as needed, avoiding infinitely looping over calcRule itself.
           # Can stop when find first stochastic dependent.
-          if (children[idx] != ID && calcRules[[children[idx]]]$setStochDep(calcRules)) {
+          if (toCheck[idx] != ID && calcRules[[toCheck[idx]]]$setStochDep(calcRules, c(alreadySeen, toCheck))) {
             return(set("stochDep"))
           }
           idx <- idx + 1
@@ -282,15 +306,16 @@ calcRuleClass <- R6Class(
 
     # Used recursively to determine if a rule has stochastic parents.
     # Terminates if no parents or if stochastic parent found.
-    setStochParent = function(calcRules) {
+    setStochParent = function(calcRules, alreadySeen = character(0)) {
       if (!is.na(stochParent)) {
         return(stochParent)
       }
       if (!length(parents)) {
         return(unset("stochParent"))
       }
+      toCheck <- parents[!parents %in% alreadySeen]  # Avoid infinite recursion in cylic cases.
       # First check if any parents are stochastic.
-      stoch <- sapply(parents, function(idx) {
+      stoch <- sapply(toCheck, function(idx) {
         calcRules[[idx]]$declRule$decl$stoch
       })
       if (any(stoch)) {
@@ -300,7 +325,7 @@ calcRuleClass <- R6Class(
         while (idx <= length(stoch)) {
           # Walk up the tree as needed, avoiding infinitely looping over calcRule itself.
           # Can stop when find first stochastic parent.
-          if (parents[idx] != ID && calcRules[[parents[idx]]]$setStochParent(calcRules)) {
+          if (toCheck[idx] != ID && calcRules[[toCheck[idx]]]$setStochParent(calcRules, c(alreadySeen, toCheck))) {
             return(set("stochParent"))
           }
           idx <- idx + 1
@@ -355,15 +380,16 @@ calcRangeClass <- R6Class(
     varName = NULL,
     indexingRange = NULL,
     sortID = NULL,
-    calcFun = NULL,
     multiSortIDindex = NULL,
     declID = NULL,
-    initialize = function(varName, indexingRange, declID, sortID, multiSortIDindex) {
+    calcRule = NULL,
+    initialize = function(varName, indexingRange, declID, sortID, multiSortIDindex, calcRule) {
       varName <<- varName
       indexingRange <<- indexingRange
       sortID <<- sortID
       declID <<- declID
       multiSortIDindex <<- multiSortIDindex
+      calcRule <<- calcRule
     }
   )
 )
