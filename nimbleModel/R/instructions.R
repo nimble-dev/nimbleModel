@@ -120,6 +120,8 @@ determineInstrType <- function(instr, use_vec = FALSE) {
 }
 
 # TODO: document this since it may be user-facing.
+# We may want to work more on the interface/what inputs are allowed.
+# This only omits data nodes if given chars or varRanges.
 #' @export
 makeInstrList <- function(model, input, includeData = TRUE, use_vec = FALSE) {
   # This works with:
@@ -127,16 +129,20 @@ makeInstrList <- function(model, input, includeData = TRUE, use_vec = FALSE) {
   # (2) a list of (or single) varRanges
   # (3) an nList of (or single) instr_nClass objects (assumed to be in sort order)
   # (4) an R list of instr_nClass objects (not assumed to be in sort order)
+
+  # A single instruction.
+  if (inherits(input, "instr_nClass")) {
+    return(list(input))
+  }
+  # An nList of instructions.
   if (inherits(input, "nList")) {
     if (!inherits(input[[1]], "instr_nClass")) {
       stop("nList input to `makeInstrList` should contain `instr_nClass` objects")
     } else {
       return(input)
     }
-  } # Idempotent case.
-  if (inherits(input, "instr_nClass")) {
-    input <- list(input)
   }
+  # An R list of instructions.
   if (is.list(input) && all(sapply(input, function(x) inherits(x, "instr_nClass")))) {
     # Create sort-ordered nList.
     instrList <- nList(instr_nClass)$new()
@@ -160,6 +166,7 @@ makeInstrList <- function(model, input, includeData = TRUE, use_vec = FALSE) {
     return(instrList)
   }
 
+  # Finally handle character vectors or varRanges.
   if (inherits(input, "varRangeClass")) input <- list(input)
 
   if (!includeData) {
@@ -175,23 +182,19 @@ makeInstrList <- function(model, input, includeData = TRUE, use_vec = FALSE) {
       rule$makeCalcRange(rule$apply(vr))
     })
   }))
-  instrList <- nList(instr_nClass)$new()
   sortIDs <- lapply(ranges, \(x) x$sortID)
   sortIDranges <- sapply(sortIDs, \(x) range(x, na.rm = TRUE))
   multiSortID <- which(sortIDranges[1,] != sortIDranges[2,])
 
   newInstrs <- list()
   rangesToRemove <- numeric(0)
-  # Creating instr_nList takes 40 ms per instantiation.
-  # When we have made scalar calcRanges because of multi sortID cases that would make this slow to do directly.
-  # Instead create a template instr_nClass object.
   for(i in multiSortID) 
     if(!all(diff(sortIDs[[i]]) == 1, na.rm = TRUE)) {
       newRanges <- ranges[[i]]$calcRule$makeCalcRangeScalars(ranges[[i]])  # Somewhat slow; 5s per 10k items.
-      templateInstr <- range2instr(newRanges[[1]])
       # Attempt to avoid repeated identical processing in `range2instr`.
-      # However, this is not the bottleneck, simply passing the `newRanges` elements into `instr_nClass$new()`
-      # would not be much slower.
+      # However, that is not the bottleneck; simply passing the `newRanges` elements into `instr_nClass$new()`
+      # would not be much slower. For now, leave the approach of using the template.
+      templateInstr <- range2instr(newRanges[[1]])
       newInstrs <- c(newInstrs, lapply(seq_along(newRanges), 
                                      function(idx) {
                                        templateInstr$sortID <- newRanges[[idx]]$sortID
@@ -203,16 +206,17 @@ makeInstrList <- function(model, input, includeData = TRUE, use_vec = FALSE) {
       if(any(sortIDranges[2,-i] > sortIDranges[1,i] & sortIDranges[1,-i] < sortIDranges[2,i]))
         stop("the multiple sortID values in the ", i, "th calcRange overlap with sortID values in other calcRanges")                
     }
-  # This is slow - 40 ms per new instr_nClass, regardless of whether pass in a calcRange
-  # or an R list containing instruction info.
   if(length(rangesToRemove))
     ranges <- ranges[-rangesToRemove]
+  # This is slow - 40 ms per new instr_nClass, regardless of whether pass in a calcRange
+  # or an R list containing instruction info.
   Rlist <- c(lapply(ranges, \(x) instr_nClass$new(x)),
              lapply(newInstrs, \(x) instr_nClass$new(instr = x)))
 
   numRanges <- length(Rlist)
   sortIDranges <- sapply(Rlist, \(x) min(x$sortID, na.rm = TRUE))
   ord <- order(sortIDranges)
+  instrList <- nList(instr_nClass)$new()
   instrList$setLength(numRanges)
   # We need a loop to populate an nList; can't use `input[ord]`.
   for (i in seq_len(numRanges)) {

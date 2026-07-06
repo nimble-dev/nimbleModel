@@ -791,7 +791,7 @@ test_that("sequential dependence cases that produce calcRules with multiple sort
 
 
 test_that("calculate works correctly for time series/SSM recursion", {
-  library(nimbleModel); library(testthat); library(nCompiler)
+
   code <- nimbleCode({
     for(i in 3:8) {
       y[i] <- y[i-1] + mu
@@ -823,7 +823,7 @@ test_that("calculate works correctly for time series/SSM recursion", {
   expect_identical(m$y, truth)
   expect_equal(cm$y, truth)
 
-  m$y <- cm$y <- rep(0,8)
+  m$y <- cm$y <- rep(-99,8)
   m$calculate('y[1:5]')
   cm$calculate('y[1:5]')
   truth <- c(-99, 1, 2.5, 4, 5.5, -99,-99,-99)
@@ -977,24 +977,23 @@ test_that("calculate works correctly for time series/SSM recursion", {
   expect_identical(m$z, truth_z)
   expect_equal(cm$z, truth_z)
 
-  # HERE; check multiSortID index and instructions order
+  # This is completely fractured/unrolled so there are no vector sortIDs
   code <- nimbleCode({
-      for(i in 3:8) {
+      for(i in 3:7) {
           for(j in 1:2)
-              y[j,1:3,i] <- y[j,1:3,i-1] + mu[1:2]
+              y[j,1:3,i] <- y[j,1:3,i-1] + mu[1:3]
     }
-    y[1,1,1] <- 0
-    y[1,2,1] <- 0
-    y[1,3,1] <- 0
-    y[2,1,1] <- 0
-    y[2,2,1] <- 0
-    y[2,3,1] <- 0
-    mu <- c(1,2)
+    y[1,1,2] <- 0
+    y[1,2,2] <- 0
+    y[1,3,2] <- 0
+    y[2,1,2] <- 0
+    y[2,2,2] <- 0
+    y[2,3,2] <- 0
+    mu[1:3] <- c(1,2,3)
   })
-  mclass <- nimbleModel(code, returnClass = TRUE)
+  mclass <- nimbleModel(code, returnClass = TRUE, inits = list(y = array(-99,c(2,3,7))))
   m <- mclass$new()
-  
-  ## Need a mv AR case y[i,1:3]~dmnorm(y[i-1,1:3]; does this completely fracture or have multiSort ID?
+  expect_identical(unique(sapply(m$modelDef$calcRules$y$rules, \(rule) length(rule$sortID))),1L)
 })
 
 test_that("basic creation of list of instr_nClass objects", {
