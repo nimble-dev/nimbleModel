@@ -771,25 +771,6 @@ test_that("calculate/simulate work correctly for deterministic node", {
   expect_identical(cm$y, 4.5)
 })
 
-test_that("sequential dependence cases that produce calcRules with multiple sortIDs", {
-    code <- nimbleCode({
-        for(i in 2:10)
-            mu[i] ~ dnorm(mu[i-1], sd = sigma)
-        sigma ~ dunif(0,1)
-        m[1] ~ dnorm(0,1)
-        for(i in 1:10)
-            y[i] ~ dnorm(mu[i], sd = tau)
-        tau ~ dunif(0,1)
-    })
-    m <- nimbleModel(code, data = list(y = rnorm(10)
-
-
-                                        # mu[i,j] <- mu[i-1,j]
-                                      # list of instructions case (1) with past dep and (2) with future dep
-
-})
-
-
 test_that("calculate works correctly for time series/SSM recursion", {
 
   code <- nimbleCode({
