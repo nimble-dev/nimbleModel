@@ -242,8 +242,15 @@ traverseGraph <- function(streamRules, declRules,
                           nodes, down, self = TRUE,
                           follow = FALSE, immediateOnly = FALSE,
                           nodesAsChars = getNimbleModelOption('nodesAsChars'),
-                          returnScalarComponents = FALSE
+                          returnScalarComponents = FALSE, .sort = FALSE,
+                          modelDef = NULL
                           ) {
+
+  # A single varRange can have elements that don't share a sortID when converted to calcRange representation,
+  # so we can't sort varRanges.
+  if (.sort && !nodesAsChars)
+    warning("`.sort=TRUE` is provided only for back compatibility and requires the use of character representations of nodes")
+
   if (inherits(nodes, "varRangeClass")) nodes <- list(nodes) # We use `lapply` on 'nodes' later.
 
   results <- traverseGraphRecurse(streamRules, nodes, down, follow, immediateOnly)
@@ -323,12 +330,50 @@ traverseGraph <- function(streamRules, declRules,
     return(NULL)
   }
   results <- removeDuplicateVarRanges(results)
-  if (nodesAsChars) {
-    return(unlist(sapply(results, \(x) x$toVarChars(expandScalars = returnScalarComponents))))
+
+  if (.sort) {
+    # Ordering is only relevant at calcRange stage and a single nodeRange can contain
+    # elements with various sortIDs, so we convert to nodeChars first and then get their
+    # sortID by creating a temporary calcRange for each.
+    varChars <- unlist(sapply(results, \(x) x$toVarChars()))
+ 
+    rangeInfo <- flatten(lapply(varChars, function(varChar) {
+      lapply(modelDef$calcRules[[getVarName(varChar)]]$rules, function(rule) {
+        nodeRange <- rule$apply(varChar)
+        if(is.null(nodeRange)) return(NULL)
+        calcRange <- rule$makeCalcRange(nodeRange)
+        return(list(varChar = nodeRange$toVarChars(), calcRange = calcRange))
+      })
+    }))
+
+    varChars <- sapply(rangeInfo, \(x) x$varChar)
+    calcRanges <- lapply(rangeInfo, \(x) x$calcRange)
+
+    # TODO: this omits RHSonly cases. Should not be necessary when we fix traverseGraph to always omit those.
+    # varChars <- varChars[sapply(calcRanges, \(x) length(x) > 0)]
+
+    # We can have overlapping sortIDs in cases with sequential dependence amongst variables.
+    # Here we avoid the unrolling that we do in `makeInstructionList`, as that is slow, but warn user.
+    sortIDs <- lapply(calcRanges, \(x) x$sortID)
+    sortIDranges <- sapply(sortIDs, \(x) range(x, na.rm = TRUE))
+    ord <- order(sortIDranges[1,])
+    sortIDranges <- sortIDranges[,ord]
+    multiSortID <- which(sortIDranges[1,] != sortIDranges[2,])
+    for(i in multiSortID)
+      if(any(sortIDranges[2,-i] > sortIDranges[1,i] & sortIDranges[1,-i] < sortIDranges[2,i]))
+        messageIfVerbose("elements of the ", i, "th varRange overlap with other varRanges in terms of their sort order, so the resulting varRanges cannot be fully sorted")
+
+    results <- varChars[ord]
+    if (returnScalarComponents)
+      results <- unlist(lapply(results, \(x) varRangeClass$new(x)$toVarChars(expandScalars = TRUE)))
   } else {
-    if (returnScalarComponents)   # TODO: put into new messaging system
-      warning("one must request result as characters via `nodesAsChars` in order to use `returnScalarComponents`")
-  } 
+    if (nodesAsChars) {
+      return(unlist(lapply(results, \(x) x$toVarChars(expandScalars = returnScalarComponents))))
+    } else {
+      if (returnScalarComponents)   # TODO: put into new messaging system
+        warning("one must request result as characters via `nodesAsChars` in order to use `returnScalarComponents`")
+    }
+  }
   return(results)                                                  
 }
 

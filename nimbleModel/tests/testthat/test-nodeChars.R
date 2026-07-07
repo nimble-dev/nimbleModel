@@ -49,9 +49,6 @@ test_that("use of nodes as characters", {
 })
 
 test_that("old model API calls", {
-  library(nimbleModel)
-  library(testthat)
-  
   code <- nimbleCode({
     for(i in 1:2)
       for(j in 1:3)
@@ -181,4 +178,78 @@ test_that("old model API calls", {
   expect_identical(chars, c("y[1, 1]","y[1, 2]","y[2, 1]","y[2, 2]","y[3, 1]","y[3, 2]", "y[4, 1]", "y[4, 2]"))
   chars <- m$expandNodeNames('y',returnScalarComponents=TRUE,sort=TRUE) 
   expect_identical(chars, c("y[4, 1]","y[4, 2]","y[3, 1]","y[3, 2]", "y[2, 1]","y[2, 2]","y[1, 1]","y[1, 2]"))
+
+  # Check on getDependencies/getParents.
+  code <- nimbleCode({
+    for(i in 1:5)
+      y[i] ~ dnorm(mu, tau)
+    tau ~ dunif(0,1)
+  })
+  m <- nimbleModel(code)
+  expect_identical(m$getDependencies(c('y','tau'), .sort = TRUE, nodesAsChars = TRUE),
+                   c("tau", "lifted_d1_over_sqrt_oPtau_cP", "y[1:5]"))
+  expect_identical(m$getParents('y', .sort = TRUE, nodesAsChars = TRUE),
+                   c("tau", "lifted_d1_over_sqrt_oPtau_cP", "y[1:5]"))
+  expect_identical(m$getParents('y', .sort = TRUE, nodesAsChars = TRUE, returnScalarComponents = TRUE),
+                   c("tau", "lifted_d1_over_sqrt_oPtau_cP", paste0("y[", 1:5, "]")))
 })
+
+test_that("Use of .sort in cases with multiple and/or overlapping sortID values" {
+  library(nimbleModel); library(testthat)
+
+  code <- nimbleCode({
+    for(i in 2:6)
+      y[i]~dnorm(y[i-1], tau)
+    tau ~ dunif(0,1)
+    y[1] ~ dnorm(0,1)
+  })
+  m <- nimbleModel(code)
+  # BUG: this is giving incorrect warning based on multiple sortID
+  expect_identical(m$getNodes(.sort=TRUE,nodesAsChars=TRUE),
+                   c("tau","lifted_d1_over_sqrt_oPtau_cP",paste0("y[", 1:6, "]")))
+  expect_identical(m$getParents('y', .sort=TRUE, nodesAsChars = TRUE),
+                   c('tau','y[1]','lifted_d1_over_sqrt_oPtau_cP','y[2]','y[6]'))
+  
+  code <- nimbleCode({
+    for(i in 2:6)
+      y[i]~dnorm(rho*y[i-1], tau)  # lifted node introduced
+    tau ~ dunif(0,1)
+    y[1] ~ dnorm(0,1)
+  })
+  m <- nimbleModel(code)
+  # BUG: this is giving incorrect warning based on multiple sortID
+  # also incorrect results
+  # m$getNodes(.sort=TRUE,nodesAsChars=TRUE)
+  expect_warning(parents <- m$getParents('y', .sort=TRUE, nodesAsChars = TRUE),
+                 "overlap with other varRanges")
+  # check on parents
+
+  code <- nimbleCode({
+    for(i in 1:5)
+      y[i]~dnorm(rho*y[i+1], tau)
+    tau ~ dunif(0,1)
+    rho ~ dunif(0,1)
+    y[6] ~ dnorm(0,1)
+  })
+  m <- nimbleModel(code)
+  # BUG: this is giving incorrect warning based on multiple sortID
+  # also incorrect results
+  #   m$getNodes(.sort=TRUE,nodesAsChars=TRUE)
+  m$getParents('y', .sort=TRUE, nodesAsChars = TRUE)
+
+  code <- nimbleCode({
+    for(i in 1:5)
+      y[i]~dnorm(mu[i], tau)
+    for(i in 2:5)
+      mu[i] ~ dnorm(mu[i-1],tau)
+    tau ~ dunif(0,1)
+  })
+  m <- nimbleModel(code)
+
+  m$getNodes(.sort=TRUE,nodesAsChars=TRUE)
+  m$getDependencies('tau', .sort=TRUE,nodesAsChars=TRUE)
+  m$getParents('y', .sort=TRUE, nodesAsChars = TRUE)
+  
+})
+
+
