@@ -194,9 +194,7 @@ test_that("old model API calls", {
                    c("tau", "lifted_d1_over_sqrt_oPtau_cP", paste0("y[", 1:5, "]")))
 })
 
-test_that("Use of .sort in cases with multiple and/or overlapping sortID values" {
-  library(nimbleModel); library(testthat)
-
+test_that("Use of .sort in cases with multiple and/or overlapping sortID values", {
   code <- nimbleCode({
     for(i in 2:6)
       y[i] ~ dnorm(y[i-1], tau)
