@@ -335,35 +335,23 @@ traverseGraph <- function(streamRules, declRules,
     # Ordering is only relevant at calcRange stage and a single nodeRange can contain
     # elements with various sortIDs, so we convert to nodeChars first and then get their
     # sortID by creating a temporary calcRange for each.
-    varChars <- unlist(sapply(results, \(x) x$toVarChars()))
- 
-    rangeInfo <- flatten(lapply(varChars, function(varChar) {
-      lapply(modelDef$calcRules[[getVarName(varChar)]]$rules, function(rule) {
-        nodeRange <- rule$apply(varChar)
-        if(is.null(nodeRange)) return(NULL)
-        calcRange <- rule$makeCalcRange(nodeRange)
-        return(list(varChar = nodeRange$toVarChars(), calcRange = calcRange))
+    nodeChars <- unlist(lapply(results, \(vr)
+                               lapply(modelDef$calcRules[[getVarName(vr)]]$rules,
+                                      \(rule) {
+                                        tmp <- rule$apply(vr)
+                                        if(!is.null(tmp)) return(tmp$toNodeChars()) else return(NULL)
+                                      }
+                                      )))
+    calcRanges <- flatten(lapply(nodeChars, function(node) {
+      lapply(modelDef$calcRules[[getVarName(node)]]$rules, function(rule) {
+        rule$makeCalcRange(rule$apply(node))
       })
     }))
-
-    varChars <- sapply(rangeInfo, \(x) x$varChar)
-    calcRanges <- lapply(rangeInfo, \(x) x$calcRange)
-
-    # TODO: this omits RHSonly cases. Should not be necessary when we fix traverseGraph to always omit those.
-    # varChars <- varChars[sapply(calcRanges, \(x) length(x) > 0)]
-
-    # We can have overlapping sortIDs in cases with sequential dependence amongst variables.
-    # Here we avoid the unrolling that we do in `makeInstructionList`, as that is slow, but warn user.
-    sortIDs <- lapply(calcRanges, \(x) x$sortID)
-    sortIDranges <- sapply(sortIDs, \(x) range(x, na.rm = TRUE))
-    ord <- order(sortIDranges[1,])
-    sortIDranges <- sortIDranges[,ord]
-    multiSortID <- which(sortIDranges[1,] != sortIDranges[2,])
-    for(i in multiSortID)
-      if(any(sortIDranges[2,-i] > sortIDranges[1,i] & sortIDranges[1,-i] < sortIDranges[2,i]))
-        messageIfVerbose("elements of the ", i, "th varRange overlap with other varRanges in terms of their sort order, so the resulting varRanges cannot be fully sorted")
-
-    results <- varChars[ord]
+    if (length(nodeChars) != length(calcRanges))
+      stop("unexpected mismatch between node character representation and calcRanges in `getNodes` sorting")
+    ord <- order(sapply(calcRanges, \(x) x$sortID))
+    results <- nodeChars[ord]
+    names(results) <- NULL
     if (returnScalarComponents)
       results <- unlist(lapply(results, \(x) varRangeClass$new(x)$toVarChars(expandScalars = TRUE)))
   } else {

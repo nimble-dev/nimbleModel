@@ -199,16 +199,18 @@ test_that("Use of .sort in cases with multiple and/or overlapping sortID values"
 
   code <- nimbleCode({
     for(i in 2:6)
-      y[i]~dnorm(y[i-1], tau)
+      y[i] ~ dnorm(y[i-1], tau)
     tau ~ dunif(0,1)
     y[1] ~ dnorm(0,1)
   })
   m <- nimbleModel(code)
-  # BUG: this is giving incorrect warning based on multiple sortID
   expect_identical(m$getNodes(.sort=TRUE,nodesAsChars=TRUE),
                    c("tau","lifted_d1_over_sqrt_oPtau_cP",paste0("y[", 1:6, "]")))
   expect_identical(m$getParents('y', .sort=TRUE, nodesAsChars = TRUE),
-                   c('tau','y[1]','lifted_d1_over_sqrt_oPtau_cP','y[2]','y[6]'))
+                   c('tau','y[1]','lifted_d1_over_sqrt_oPtau_cP',paste0('y[', 2:6, ']')))
+  expect_identical(m$getParents('y[4]', .sort=TRUE, nodesAsChars = TRUE),
+                   c('tau','lifted_d1_over_sqrt_oPtau_cP',paste0('y[', 3:4, ']')))
+  
   
   code <- nimbleCode({
     for(i in 2:6)
@@ -217,38 +219,44 @@ test_that("Use of .sort in cases with multiple and/or overlapping sortID values"
     y[1] ~ dnorm(0,1)
   })
   m <- nimbleModel(code)
-  # BUG: this is giving incorrect warning based on multiple sortID
-  # also incorrect results
-  # m$getNodes(.sort=TRUE,nodesAsChars=TRUE)
-  expect_warning(parents <- m$getParents('y', .sort=TRUE, nodesAsChars = TRUE),
-                 "overlap with other varRanges")
-  # check on parents
+  truth <- c("y[1]", "tau", "lifted_rho_times_y_oBi_minus_1_cB_L2[2]","lifted_d1_over_sqrt_oPtau_cP", "y[2]", "lifted_rho_times_y_oBi_minus_1_cB_L2[3]", "y[3]", "lifted_rho_times_y_oBi_minus_1_cB_L2[4]","y[4]" ,"lifted_rho_times_y_oBi_minus_1_cB_L2[5]","y[5]" , "lifted_rho_times_y_oBi_minus_1_cB_L2[6]","y[6]")
+  expect_identical(m$getNodes(.sort=TRUE,nodesAsChars=TRUE), truth)
+  expect_identical(m$getParents('y', .sort=TRUE, nodesAsChars = TRUE), truth)
+  expect_identical(m$getParents('y[4]', .sort=TRUE, nodesAsChars = TRUE), c('tau','lifted_d1_over_sqrt_oPtau_cP','y[3]','lifted_rho_times_y_oBi_minus_1_cB_L2[4]', 'y[4]'))
+  
 
   code <- nimbleCode({
     for(i in 1:5)
-      y[i]~dnorm(rho*y[i+1], tau)
+      y[i]~dnorm(y[i+1], tau)
     tau ~ dunif(0,1)
-    rho ~ dunif(0,1)
     y[6] ~ dnorm(0,1)
   })
   m <- nimbleModel(code)
-  # BUG: this is giving incorrect warning based on multiple sortID
-  # also incorrect results
-  #   m$getNodes(.sort=TRUE,nodesAsChars=TRUE)
-  m$getParents('y', .sort=TRUE, nodesAsChars = TRUE)
+  expect_identical(m$getNodes(.sort=TRUE,nodesAsChars=TRUE), c('tau','lifted_d1_over_sqrt_oPtau_cP',paste0('y[',6:1,']'))
+  expect_identical(m$getParents('y', .sort=TRUE, nodesAsChars = TRUE), c('tau','y[6]','lifted_d1_over_sqrt_oPtau_cP',paste0('y[',5:1,']'))truth)
+  expect_identical(m$getParents('y[4]', .sort=TRUE, nodesAsChars = TRUE),
+                   c('tau','lifted_d1_over_sqrt_oPtau_cP','y[5]','y[4]'))
+
 
   code <- nimbleCode({
-    for(i in 1:5)
-      y[i]~dnorm(mu[i], tau)
-    for(i in 2:5)
-      mu[i] ~ dnorm(mu[i-1],tau)
-    tau ~ dunif(0,1)
+    for(i in 1:6)
+      y[i] <- z[i] + 1
+    for(i in 2:6)
+      z[i] <- y[i-1] + .5
+    z[1] <- 0
+  })
+  # m <- nimbleModel(code)  # BUG that is fixed in sortID-vec
+  # TODO: work on this when BUG fix is incorporated into this branch.
+
+  # check with mv case to see how written out
+  code <- nimbleCode({
+    for(i in 2:6)
+      y[1:2,i]~dmnorm(y[1:2,i-1], pr[1:2,1:2])
   })
   m <- nimbleModel(code)
-
-  m$getNodes(.sort=TRUE,nodesAsChars=TRUE)
-  m$getDependencies('tau', .sort=TRUE,nodesAsChars=TRUE)
-  m$getParents('y', .sort=TRUE, nodesAsChars = TRUE)
+  truth <- c("lifted_chol_oPpr_oB1to2_comma_1to2_cB_cP[1:2, 1:2]", paste0("y[1:2, ", 2:6, "]"))
+  expect_identical(m$getNodes(.sort=TRUE,nodesAsChars=TRUE), truth)
+  expect_identical(m$getParents('y', .sort=TRUE, nodesAsChars = TRUE), truth)
   
 })
 
