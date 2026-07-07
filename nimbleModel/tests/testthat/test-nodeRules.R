@@ -496,7 +496,34 @@ test_that("calcRanges are generated correctly", {
                                                            )))
     expect_equal(calcRange$indexingRange,
                  varRangeClass$new(list(newIndexRange(matrix(c(1,2,2,2,1,1,2,3), ncol = 2))),
-                                   varName = 'y'))                                        
+                                   varName = 'y'))
+
+    # multi sortID case
+    code <- nimbleCode({
+      for(i in 3:7)
+        y[i+1] ~ dnorm(y[i],1)
+    })
+    m <- nimbleModel(code)
+    nr <- m$modelDef$calcRules$y$rules[['4']]$apply('y[6]')
+    expect_identical(m$modelDef$calcRules$y$rules[['4']]$makeCalcRange(nr)$sortID, 3)
+    nr <- m$modelDef$calcRules$y$rules[['4']]$apply('y[6:7]')
+    expect_identical(m$modelDef$calcRules$y$rules[['4']]$makeCalcRange(nr)$sortID, c(3,4))
+    nr <- m$modelDef$calcRules$y$rules[['4']]$apply('y[c(5,7)]')
+    expect_identical(m$modelDef$calcRules$y$rules[['4']]$makeCalcRange(nr)$sortID, c(2,4))
+
+    code <- nimbleCode({
+      for(i in 3:7)
+        for(j in 1:1)
+        y[j,i+1] ~ dnorm(y[j,i],1)
+    })
+    m <- nimbleModel(code)
+    nr <- m$modelDef$calcRules$y$rules[['4']]$apply('y[1,6]')
+    expect_identical(m$modelDef$calcRules$y$rules[['4']]$makeCalcRange(nr)$sortID, 3)
+    nr <- m$modelDef$calcRules$y$rules[['4']]$apply('y[1,6:7]')
+    expect_identical(m$modelDef$calcRules$y$rules[['4']]$makeCalcRange(nr)$sortID, c(3,4))
+    nr <- m$modelDef$calcRules$y$rules[['4']]$apply('y[1,c(5,7)]')
+    expect_identical(m$modelDef$calcRules$y$rules[['4']]$makeCalcRange(nr)$sortID, c(2,4))
+
 })
 
 
