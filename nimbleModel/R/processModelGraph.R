@@ -331,6 +331,16 @@ traverseGraph <- function(streamRules, declRules,
   }
   results <- removeDuplicateVarRanges(results)
 
+  # Remove RHSonly by passing through declRules.
+  results <- flatten(lapply(results, \(vr)
+                            lapply(modelDef$declRules[[getVarName(vr)]]$rules, \(rule) {
+                              nodeRange <- rule$apply(vr)
+                              if(is.null(nodeRange)) return(NULL) else return(nodeRange$toVarRange(fromStochRule = vr$fromStochRule))
+                              })))
+  if (!length(results)) {
+    return(NULL)
+  }  
+
   if (.sort) {
     # Ordering is only relevant at calcRange stage and a single nodeRange can contain
     # elements with various sortIDs, so we convert to nodeChars first and then get their
