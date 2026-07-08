@@ -198,7 +198,7 @@ calcRuleClass <- R6Class(
         return(NULL)
       }
       if(length(sortID) > 1)
-        newSortID <- sortID[inputRange$indexRanges[[multiSortIDindex]]$getValuesAsMatrix()] else newSortID = sortID
+        newSortID <- sortID[inputRange$indexRanges[[inputRange$indexSlotToRange[multiSortIDindex]]]$getValuesAsMatrix()] else newSortID = sortID
       result <- calcRangeClass$new(varName, indexingRange, as.numeric(declRule$ID), newSortID, multiSortIDindex, self)
       return(result)
     },
@@ -214,7 +214,7 @@ calcRuleClass <- R6Class(
       # (e.g. `y[i+1]` needs value of `i`).
       if(length(calcRange$multiSortIDindex) != 1)
         stop("attempting to split calcRange that have multiple indexing")
-      indices <- c(calcRange$indexingRange$indexRanges[[calcRange$multiSortIDindex]]$getValuesAsMatrix())
+      indices <- c(calcRange$indexingRange$indexRanges[[calcRange$indexSlotToRange[calcRange$multiSortIDindex]]]$getValuesAsMatrix())
       sortIDs <- calcRange$sortID[!is.na(calcRange$sortID)]
       if(length(indices) != length(sortIDs))
         stop("mismatch between indexing values and node-based sortIDs")
