@@ -188,8 +188,8 @@ test_that("old model API calls", {
   m <- nimbleModel(code)
   truth <- c("tau", "lifted_d1_over_sqrt_oPtau_cP", paste0("y[", 1:5, "]"))
   expect_identical(m$getDependencies(c('y','tau'), .sort = TRUE, nodesAsChars = TRUE), truth)
-  expect_identical(m$getParents('y', .sort = TRUE, nodesAsChars = TRUE), truth)
-  expect_identical(m$getParents('y', .sort = TRUE, nodesAsChars = TRUE, returnScalarComponents = TRUE),
+  expect_identical(m$getParents('y', .sort = TRUE, nodesAsChars = TRUE, self = TRUE), truth)
+  expect_identical(m$getParents('y', .sort = TRUE, nodesAsChars = TRUE, self = TRUE, returnScalarComponents = TRUE),
                    truth)
 })
 
@@ -203,9 +203,9 @@ test_that("Use of .sort in cases with multiple and/or overlapping sortID values"
   m <- nimbleModel(code)
   expect_identical(m$getNodes(.sort=TRUE,nodesAsChars=TRUE),
                    c("tau","lifted_d1_over_sqrt_oPtau_cP",paste0("y[", 1:6, "]")))
-  expect_identical(m$getParents('y', .sort=TRUE, nodesAsChars = TRUE),
+  expect_identical(m$getParents('y', .sort=TRUE, nodesAsChars = TRUE, self = TRUE),
                    c('tau','y[1]','lifted_d1_over_sqrt_oPtau_cP',paste0('y[', 2:6, ']')))
-  expect_identical(m$getParents('y[4]', .sort=TRUE, nodesAsChars = TRUE),
+  expect_identical(m$getParents('y[4]', .sort=TRUE, nodesAsChars = TRUE, self = TRUE),
                    c('tau','lifted_d1_over_sqrt_oPtau_cP',paste0('y[', 3:4, ']')))
   
   
@@ -218,8 +218,8 @@ test_that("Use of .sort in cases with multiple and/or overlapping sortID values"
   m <- nimbleModel(code)
   truth <- c("y[1]", "tau", "lifted_rho_times_y_oBi_minus_1_cB_L2[2]","lifted_d1_over_sqrt_oPtau_cP", "y[2]", "lifted_rho_times_y_oBi_minus_1_cB_L2[3]", "y[3]", "lifted_rho_times_y_oBi_minus_1_cB_L2[4]","y[4]" ,"lifted_rho_times_y_oBi_minus_1_cB_L2[5]","y[5]" , "lifted_rho_times_y_oBi_minus_1_cB_L2[6]","y[6]")
   expect_identical(m$getNodes(.sort=TRUE,nodesAsChars=TRUE), truth)
-  expect_identical(m$getParents('y', .sort=TRUE, nodesAsChars = TRUE), truth)
-  expect_identical(m$getParents('y[4]', .sort=TRUE, nodesAsChars = TRUE), c('tau','lifted_d1_over_sqrt_oPtau_cP','y[3]','lifted_rho_times_y_oBi_minus_1_cB_L2[4]', 'y[4]'))
+  expect_identical(m$getParents('y', .sort=TRUE, nodesAsChars = TRUE, self = TRUE), truth)
+  expect_identical(m$getParents('y[4]', .sort=TRUE, nodesAsChars = TRUE, self = TRUE), c('tau','lifted_d1_over_sqrt_oPtau_cP','y[3]','lifted_rho_times_y_oBi_minus_1_cB_L2[4]', 'y[4]'))
   
 
   code <- nimbleCode({
@@ -230,8 +230,8 @@ test_that("Use of .sort in cases with multiple and/or overlapping sortID values"
   })
   m <- nimbleModel(code)
   expect_identical(m$getNodes(.sort=TRUE,nodesAsChars=TRUE), c('tau','lifted_d1_over_sqrt_oPtau_cP',paste0('y[',6:1,']')))
-  expect_identical(m$getParents('y', .sort=TRUE, nodesAsChars = TRUE), c('tau','y[6]','lifted_d1_over_sqrt_oPtau_cP',paste0('y[',5:1,']')))
-  expect_identical(m$getParents('y[4]', .sort=TRUE, nodesAsChars = TRUE),
+  expect_identical(m$getParents('y', .sort=TRUE, nodesAsChars = TRUE, self = TRUE), c('tau','y[6]','lifted_d1_over_sqrt_oPtau_cP',paste0('y[',5:1,']')))
+  expect_identical(m$getParents('y[4]', .sort=TRUE, nodesAsChars = TRUE, self = TRUE),
                    c('tau','lifted_d1_over_sqrt_oPtau_cP','y[5]','y[4]'))
 
 
@@ -245,7 +245,7 @@ test_that("Use of .sort in cases with multiple and/or overlapping sortID values"
   tmp2 <- paste0("lifted_rho_times_y_oBi_minus_1_cB_L2[", 2:6, "]")
   truth <- c(tmp1,tmp2)[c(1,7,2,8,3,9,4,10,5,11,6)]
   expect_identical(m$getNodes(.sort=TRUE,nodesAsChars=TRUE), truth)
-  expect_identical(m$getParents('y', .sort=TRUE, nodesAsChars = TRUE), truth)
+  expect_identical(m$getParents('y', .sort=TRUE, nodesAsChars = TRUE, self = TRUE), truth)
 
   code <- nimbleCode({
     for(i in 2:6)
@@ -254,7 +254,7 @@ test_that("Use of .sort in cases with multiple and/or overlapping sortID values"
   m <- nimbleModel(code)
   truth <- c("lifted_chol_oPpr_oB1to2_comma_1to2_cB_cP[1:2, 1:2]", paste0("y[1:2, ", 2:6, "]"))
   expect_identical(m$getNodes(.sort=TRUE,nodesAsChars=TRUE), truth)
-  expect_identical(m$getParents('y', .sort=TRUE, nodesAsChars = TRUE), truth)
+  expect_identical(m$getParents('y', .sort=TRUE, nodesAsChars = TRUE, self = TRUE), truth)
   truth <- c(
     paste0("lifted_chol_oPpr_oB1to2_comma_1to2_cB_cP[1, ", 1:2, "]"),
     paste0("lifted_chol_oPpr_oB1to2_comma_1to2_cB_cP[2, ", 1:2, "]"),
@@ -264,7 +264,7 @@ test_that("Use of .sort in cases with multiple and/or overlapping sortID values"
     paste0("y[", 1:2, ", 5]"),
     paste0("y[", 1:2, ", 6]"))
   expect_identical(m$getNodes(.sort=TRUE,nodesAsChars=TRUE, returnScalarComponents = TRUE), truth)
-  expect_identical(m$getParents('y', .sort=TRUE, nodesAsChars = TRUE, returnScalarComponents = TRUE), truth)
+  expect_identical(m$getParents('y', .sort=TRUE, nodesAsChars = TRUE, self = TRUE, returnScalarComponents = TRUE), truth)
   
 })
 
