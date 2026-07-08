@@ -975,6 +975,60 @@ test_that("calculate works correctly for time series/SSM recursion", {
   mclass <- nimbleModel(code, returnClass = TRUE, inits = list(y = array(-99,c(2,3,7))))
   m <- mclass$new()
   expect_identical(unique(sapply(m$modelDef$calcRules$y$rules, \(rule) length(rule$sortID))),1L)
+
+  # Check tricky indexing cases with multiple sortID values.
+  code <- nimbleCode({
+    for(i in 3:8)  
+        for(j in 1:2)
+            y[j,i+1] ~ dnorm(y[j,i+2],1)
+  })
+  m <- nimbleModel(code)
+  expect_identical(m$modelDef$calcRules$y$rules[[2]]$sortID, c(rep(NA, 4), 5,4,3,2))
+  expect_identical(m$modelDef$calcRules$y$rules[[2]]$multiSortIDindex, 2L)
+
+  # Indexing gets swapped around and reordered.
+  ranges <- m$modelDef$calcRules[['y']]$rules[[2]]$makeCalcRange(m$modelDef$calcRules[['y']]$rules[[2]]$apply('y[2,5:7]'))
+  expect_identical(ranges$sortID, c(5,4,3))
+  expect_identical(ranges$multiSortIDindex, 1L)
+  expect_identical(ranges$indexingRange$toVarChars(), c("y[4:6, 2]"))
+  scalars <- ranges$makeScalars()
+  expect_identical(length(scalars), 3L)
+  expect_identical(sapply(scalars, \(x) x$sortID), c(5,4,3))
+  expect_identical(sapply(scalars, \(x) x$indexingRange$toVarChars()), c("[4]", "[5]", "[6]"))
+  
+  ranges <- m$modelDef$calcRules[['y']]$rules[[2]]$makeCalcRange(m$modelDef$calcRules[['y']]$rules[[2]]$apply('y[2,c(7,5)]'))
+  expect_identical(ranges$sortID, c(5,3))
+  expect_identical(ranges$multiSortIDindex, 1L)
+  expect_identical(ranges$indexingRange$toVarChars(), c("y[4, 2]", "y[6, 2]"))
+  scalars <- ranges$makeScalars()                 
+  expect_identical(length(scalars), 2L)
+  expect_identical(sapply(scalars, \(x) x$sortID), c(5,3))
+  expect_identical(sapply(scalars, \(x) x$indexingRange$toVarChars()), c("[4]", "[6]"))
+
+  code <- nimbleCode({
+    for(i in 2:6)  
+      y[i] ~ dnorm(rho*y[i-1],1)
+  })
+  m <- nimbleModel(code)
+  expect_identical(m$modelDef$calcRules$y$rules[[1]]$sortID, c(NA, 2,4,6,8))
+  expect_identical(m$modelDef$calcRules$lifted_rho_times_y_oBi_minus_1_cB_L2$rules[[1]]$sortID, c(NA,NA,3,5,7,9))
+
+  ranges <- m$modelDef$calcRules[['y']]$rules[[1]]$makeCalcRange(m$modelDef$calcRules[['y']]$rules[[1]]$apply('y[3:5]'))
+  expect_identical(ranges$sortID, c(4,6,8))
+  expect_identical(ranges$indexingRange$toVarChars(), "y[3:5]")
+  scalars <- ranges$makeScalars()
+  expect_identical(length(scalars), 3L)
+  expect_identical(sapply(scalars, \(x) x$sortID), c(4,6,8))
+  expect_identical(sapply(scalars, \(x) x$indexingRange$toVarChars()), c("[3]", "[4]", "[5]"))
+  
+  ranges <- m$modelDef$calcRules[['lifted_rho_times_y_oBi_minus_1_cB_L2']]$rules[[1]]$makeCalcRange(m$modelDef$calcRules[['lifted_rho_times_y_oBi_minus_1_cB_L2']]$rules[[1]]$apply('lifted_rho_times_y_oBi_minus_1_cB_L2[3:5]'))
+  expect_identical(ranges$sortID, c(3,5,7))
+  expect_identical(ranges$indexingRange$toVarChars(), "lifted_rho_times_y_oBi_minus_1_cB_L2[3:5]")
+  scalars <- ranges$makeScalars()
+  expect_identical(length(scalars), 3L)
+  expect_identical(sapply(scalars, \(x) x$sortID), c(3,5,7))
+  expect_identical(sapply(scalars, \(x) x$indexingRange$toVarChars()), c("[3]", "[4]", "[5]"))
+  
 })
 
 test_that("basic creation of list of instr_nClass objects", {

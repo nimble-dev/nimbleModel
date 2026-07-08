@@ -388,8 +388,7 @@ calcRangeClass <- R6Class(
                         calcRangeClass$new(varName, varRangeClass$new(list(indexRangeMatrixClass$new(matrix(indices[i]), sort=FALSE))),
                                 declID, sortID[i], NULL))
       return(results)
-    },    
-
+    }
   )
 )
 
