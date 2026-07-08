@@ -186,12 +186,11 @@ test_that("old model API calls", {
     tau ~ dunif(0,1)
   })
   m <- nimbleModel(code)
-  expect_identical(m$getDependencies(c('y','tau'), .sort = TRUE, nodesAsChars = TRUE),
-                   c("tau", "lifted_d1_over_sqrt_oPtau_cP", "y[1:5]"))
-  expect_identical(m$getParents('y', .sort = TRUE, nodesAsChars = TRUE),
-                   c("tau", "lifted_d1_over_sqrt_oPtau_cP", "y[1:5]"))
+  truth <- c("tau", "lifted_d1_over_sqrt_oPtau_cP", paste0("y[", 1:5, "]"))
+  expect_identical(m$getDependencies(c('y','tau'), .sort = TRUE, nodesAsChars = TRUE), truth)
+  expect_identical(m$getParents('y', .sort = TRUE, nodesAsChars = TRUE), truth)
   expect_identical(m$getParents('y', .sort = TRUE, nodesAsChars = TRUE, returnScalarComponents = TRUE),
-                   c("tau", "lifted_d1_over_sqrt_oPtau_cP", paste0("y[", 1:5, "]")))
+                   truth)
 })
 
 test_that("Use of .sort in cases with multiple and/or overlapping sortID values", {
@@ -230,21 +229,21 @@ test_that("Use of .sort in cases with multiple and/or overlapping sortID values"
     y[6] ~ dnorm(0,1)
   })
   m <- nimbleModel(code)
-  expect_identical(m$getNodes(.sort=TRUE,nodesAsChars=TRUE), c('tau','lifted_d1_over_sqrt_oPtau_cP',paste0('y[',6:1,']'))
-  expect_identical(m$getParents('y', .sort=TRUE, nodesAsChars = TRUE), c('tau','y[6]','lifted_d1_over_sqrt_oPtau_cP',paste0('y[',5:1,']'))truth)
+  expect_identical(m$getNodes(.sort=TRUE,nodesAsChars=TRUE), c('tau','lifted_d1_over_sqrt_oPtau_cP',paste0('y[',6:1,']')))
+  expect_identical(m$getParents('y', .sort=TRUE, nodesAsChars = TRUE), c('tau','y[6]','lifted_d1_over_sqrt_oPtau_cP',paste0('y[',5:1,']')))
   expect_identical(m$getParents('y[4]', .sort=TRUE, nodesAsChars = TRUE),
                    c('tau','lifted_d1_over_sqrt_oPtau_cP','y[5]','y[4]'))
 
 
   code <- nimbleCode({
-    for(i in 1:6)
-      y[i] <- z[i] + 1
     for(i in 2:6)
-      z[i] <- y[i-1] + .5
-    z[1] <- 0
+      y[i] ~ dnorm(rho * y[i-1], 1)
+    y[1] ~ dnorm(0,1)
   })
-  # m <- nimbleModel(code)  # BUG that is fixed in sortID-vec
-  # TODO: work on this when BUG fix is incorporated into this branch.
+#  truth <- c()
+#  expect_identical(m$getNodes(.sort=TRUE,nodesAsChars=TRUE), truth)
+#  expect_identical(m$getParents('y', .sort=TRUE, nodesAsChars = TRUE), truth)
+
 
   # check with mv case to see how written out
   code <- nimbleCode({
@@ -255,6 +254,16 @@ test_that("Use of .sort in cases with multiple and/or overlapping sortID values"
   truth <- c("lifted_chol_oPpr_oB1to2_comma_1to2_cB_cP[1:2, 1:2]", paste0("y[1:2, ", 2:6, "]"))
   expect_identical(m$getNodes(.sort=TRUE,nodesAsChars=TRUE), truth)
   expect_identical(m$getParents('y', .sort=TRUE, nodesAsChars = TRUE), truth)
+  truth <- c(
+    paste0("lifted_chol_oPpr_oB1to2_comma_1to2_cB_cP[1, ", 1:2, "]"),
+    paste0("lifted_chol_oPpr_oB1to2_comma_1to2_cB_cP[2, ", 1:2, "]"),
+    paste0("y[", 1:2, ", 2]"),
+    paste0("y[", 1:2, ", 3]"),
+    paste0("y[", 1:2, ", 4]"),
+    paste0("y[", 1:2, ", 5]"),
+    paste0("y[", 1:2, ", 6]"))
+  expect_identical(m$getNodes(.sort=TRUE,nodesAsChars=TRUE, returnScalarComponents = TRUE), truth)
+  expect_identical(m$getParents('y', .sort=TRUE, nodesAsChars = TRUE, returnScalarComponents = TRUE), truth)
   
 })
 
