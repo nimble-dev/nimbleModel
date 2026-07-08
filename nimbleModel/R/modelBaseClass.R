@@ -365,7 +365,7 @@ modelBase_nClass <- nClass(
       nimbleModel::getDependencies(modelDef, nodes, self, downstream, immediateOnly,
                                    nodesAsChars, returnScalarComponents, .sort)
     },
-    getParents = function(nodes, self = TRUE, upstream = FALSE, immediateOnly = FALSE,
+    getParents = function(nodes, self = FALSE, upstream = FALSE, immediateOnly = FALSE,
                           nodesAsChars = getNimbleModelOption('nodesAsChars'),
                           returnScalarComponents = FALSE, .sort = FALSE
                           ) {
