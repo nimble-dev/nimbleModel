@@ -214,7 +214,8 @@ calcRuleClass <- R6Class(
       # (e.g. `y[i+1]` needs value of `i`).
       if(length(calcRange$multiSortIDindex) != 1)
         stop("attempting to split calcRange that have multiple indexing")
-      indices <- c(calcRange$indexingRange$indexRanges[[calcRange$indexSlotToRange[calcRange$multiSortIDindex]]]$getValuesAsMatrix())
+      if(  
+      indices <- c(calcRange$indexingRange$indexRanges[[calcRange$indexingRanges$indexSlotToRange[calcRange$multiSortIDindex]]]$getValuesAsMatrix())
       sortIDs <- calcRange$sortID[!is.na(calcRange$sortID)]
       if(length(indices) != length(sortIDs))
         stop("mismatch between indexing values and node-based sortIDs")
