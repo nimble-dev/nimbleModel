@@ -240,12 +240,13 @@ test_that("Use of .sort in cases with multiple and/or overlapping sortID values"
       y[i] ~ dnorm(rho * y[i-1], 1)
     y[1] ~ dnorm(0,1)
   })
-#  truth <- c()
-#  expect_identical(m$getNodes(.sort=TRUE,nodesAsChars=TRUE), truth)
-#  expect_identical(m$getParents('y', .sort=TRUE, nodesAsChars = TRUE), truth)
+  m <- nimbleModel(code)
+  tmp1 <- paste0("y[", 1:6, "]")
+  tmp2 <- paste0("lifted_rho_times_y_oBi_minus_1_cB_L2[", 2:6, "]")
+  truth <- c(tmp1,tmp2)[c(1,7,2,8,3,9,4,10,5,11,6)]
+  expect_identical(m$getNodes(.sort=TRUE,nodesAsChars=TRUE), truth)
+  expect_identical(m$getParents('y', .sort=TRUE, nodesAsChars = TRUE), truth)
 
-
-  # check with mv case to see how written out
   code <- nimbleCode({
     for(i in 2:6)
       y[1:2,i]~dmnorm(y[1:2,i-1], pr[1:2,1:2])
