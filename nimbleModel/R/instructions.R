@@ -190,7 +190,7 @@ makeInstrList <- function(model, input, includeData = TRUE, use_vec = FALSE) {
   rangesToRemove <- numeric(0)
   for(i in multiSortID) 
     if(!all(diff(sortIDs[[i]]) == 1, na.rm = TRUE)) {
-      newRanges <- ranges[[i]]$calcRule$makeCalcRangeScalars(ranges[[i]])  # Somewhat slow; 5s per 10k items.
+      newRanges <- ranges[[i]]$makeScalars()  # Somewhat slow; 5s per 10k items.
       # Attempt to avoid repeated identical processing in `range2instr`.
       # However, that is not the bottleneck; simply passing the `newRanges` elements into `instr_nClass$new()`
       # would not be much slower. For now, leave the approach of using the template.

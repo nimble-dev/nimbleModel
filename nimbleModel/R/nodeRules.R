@@ -197,33 +197,19 @@ calcRuleClass <- R6Class(
       if (is.null(indexingRange)) {
         return(NULL)
       }
+      
+      # Multiple sortID case from sequential dependence.
       if(length(sortID) > 1)
         newSortID <- sortID[inputRange$indexRanges[[inputRange$indexSlotToRange[multiSortIDindex]]]$getValuesAsMatrix()] else newSortID = sortID
-      result <- calcRangeClass$new(varName, indexingRange, as.numeric(declRule$ID), newSortID, multiSortIDindex, self)
+      # Indexing ordering in loops may differ from that in ranges, so map the index corresponding to the multiple sortID values
+      # to the loop index.
+      if(is.null(multiSortIDindex)) {
+        newMultiSortIDindex <- NULL
+      } else newMultiSortIDindex <- declRule$originalIndexingRule$graphRule$indexSets$fromIndexSlotToSet[multiSortIDindex]
+      
+      result <- calcRangeClass$new(varName, indexingRange, as.numeric(declRule$ID), newSortID, newMultiSortIDindex)
       return(result)
     },
-    makeCalcRangeScalars = function(calcRange) {
-      # should take a calcRange
-      if (!inherits(calcRange, 'calcRangeClass'))
-        stop("input to `makeCalcRangeScalars` must be a `calcRange`")
-      if (!is.null(calcRange$varName) && !is.null(varName) && calcRange$varName != varName) {
-        stop("`calcRange` variable name does not match the `calcRule` variable name.")
-      }
-
-      # Need original indexing because nodeFunctions will use that indexing
-      # (e.g. `y[i+1]` needs value of `i`).
-      if(length(calcRange$multiSortIDindex) != 1)
-        stop("attempting to split calcRange that have multiple indexing")
-      if(  
-      indices <- c(calcRange$indexingRange$indexRanges[[calcRange$indexingRanges$indexSlotToRange[calcRange$multiSortIDindex]]]$getValuesAsMatrix())
-      sortIDs <- calcRange$sortID[!is.na(calcRange$sortID)]
-      if(length(indices) != length(sortIDs))
-        stop("mismatch between indexing values and node-based sortIDs")
-      results <- lapply(seq_along(indices), \(i)
-                        calcRangeClass$new(varName, varRangeClass$new(list(indexRangeMatrixClass$new(matrix(indices[i]), sort=FALSE))),
-                                as.numeric(declRule$ID), sortIDs[i], multiSortIDindex, self))
-      return(results)
-    },    
     isOfType = function(type) {
       switch(type,
         end = return(end),
@@ -383,15 +369,27 @@ calcRangeClass <- R6Class(
     sortID = NULL,
     multiSortIDindex = NULL,
     declID = NULL,
-    calcRule = NULL,
-    initialize = function(varName, indexingRange, declID, sortID, multiSortIDindex, calcRule) {
+    initialize = function(varName, indexingRange, declID, sortID, multiSortIDindex) {
       varName <<- varName
       indexingRange <<- indexingRange
       sortID <<- sortID
       declID <<- declID
       multiSortIDindex <<- multiSortIDindex
-      calcRule <<- calcRule
-    }
+    },
+    makeScalars = function() {
+      # Need original indexing because nodeFunctions will use that indexing
+      # (e.g. `y[i+1]` needs value of `i`).
+      if(length(multiSortIDindex) != 1)
+        stop("attempting to split calcRange that has multiple indexing")
+      indices <- c(indexingRange$indexRanges[[indexingRange$indexSlotToRange[multiSortIDindex]]]$getValuesAsMatrix())
+      if(length(indices) != length(sortID))
+        stop("mismatch between indexing values and node-based sortIDs")
+      results <- lapply(seq_along(indices), \(i)
+                        calcRangeClass$new(varName, varRangeClass$new(list(indexRangeMatrixClass$new(matrix(indices[i]), sort=FALSE))),
+                                declID, sortID[i], NULL))
+      return(results)
+    },    
+
   )
 )
 
