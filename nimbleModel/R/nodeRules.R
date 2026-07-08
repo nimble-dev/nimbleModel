@@ -197,7 +197,17 @@ calcRuleClass <- R6Class(
       if (is.null(indexingRange)) {
         return(NULL)
       }
-      result <- calcRangeClass$new(varName, indexingRange, as.numeric(declRule$ID), sortID, multiSortIDindex)
+      
+      # Multiple sortID case from sequential dependence.
+      if(length(sortID) > 1)
+        newSortID <- sortID[inputRange$indexRanges[[inputRange$indexSlotToRange[multiSortIDindex]]]$getValuesAsMatrix()] else newSortID = sortID
+      # Indexing ordering in loops may differ from that in ranges, so map the index corresponding to the multiple sortID values
+      # to the loop index.
+      if(is.null(multiSortIDindex)) {
+        newMultiSortIDindex <- NULL
+      } else newMultiSortIDindex <- declRule$originalIndexingRule$graphRule$indexSets$fromIndexSlotToSet[multiSortIDindex]
+      
+      result <- calcRangeClass$new(varName, indexingRange, as.numeric(declRule$ID), newSortID, newMultiSortIDindex)
       return(result)
     },
     isOfType = function(type) {
@@ -253,15 +263,16 @@ calcRuleClass <- R6Class(
 
     # Used recursively to determine if a rule has stochastic dependents.
     # Terminates if no children or if stochastic dependent found.
-    setStochDep = function(calcRules) {
+    setStochDep = function(calcRules, alreadySeen = character(0)) {
       if (!is.na(stochDep)) {
         return(stochDep)
       }
       if (!length(children)) {
         return(unset("stochDep"))
       }
+      toCheck <- children[!children %in% alreadySeen]  # Avoid infinite recursion in cylic cases.
       # First check if any children are stochastic.
-      stoch <- sapply(children, function(idx) {
+      stoch <- sapply(toCheck, function(idx) {
         calcRules[[idx]]$declRule$decl$stoch
       })
       if (any(stoch)) {
@@ -271,7 +282,7 @@ calcRuleClass <- R6Class(
         while (idx <= length(stoch)) {
           # Walk down the tree as needed, avoiding infinitely looping over calcRule itself.
           # Can stop when find first stochastic dependent.
-          if (children[idx] != ID && calcRules[[children[idx]]]$setStochDep(calcRules)) {
+          if (toCheck[idx] != ID && calcRules[[toCheck[idx]]]$setStochDep(calcRules, c(alreadySeen, toCheck))) {
             return(set("stochDep"))
           }
           idx <- idx + 1
@@ -282,15 +293,16 @@ calcRuleClass <- R6Class(
 
     # Used recursively to determine if a rule has stochastic parents.
     # Terminates if no parents or if stochastic parent found.
-    setStochParent = function(calcRules) {
+    setStochParent = function(calcRules, alreadySeen = character(0)) {
       if (!is.na(stochParent)) {
         return(stochParent)
       }
       if (!length(parents)) {
         return(unset("stochParent"))
       }
+      toCheck <- parents[!parents %in% alreadySeen]  # Avoid infinite recursion in cylic cases.
       # First check if any parents are stochastic.
-      stoch <- sapply(parents, function(idx) {
+      stoch <- sapply(toCheck, function(idx) {
         calcRules[[idx]]$declRule$decl$stoch
       })
       if (any(stoch)) {
@@ -300,7 +312,7 @@ calcRuleClass <- R6Class(
         while (idx <= length(stoch)) {
           # Walk up the tree as needed, avoiding infinitely looping over calcRule itself.
           # Can stop when find first stochastic parent.
-          if (parents[idx] != ID && calcRules[[parents[idx]]]$setStochParent(calcRules)) {
+          if (toCheck[idx] != ID && calcRules[[toCheck[idx]]]$setStochParent(calcRules, c(alreadySeen, toCheck))) {
             return(set("stochParent"))
           }
           idx <- idx + 1
@@ -355,7 +367,6 @@ calcRangeClass <- R6Class(
     varName = NULL,
     indexingRange = NULL,
     sortID = NULL,
-    calcFun = NULL,
     multiSortIDindex = NULL,
     declID = NULL,
     initialize = function(varName, indexingRange, declID, sortID, multiSortIDindex) {
@@ -364,6 +375,19 @@ calcRangeClass <- R6Class(
       sortID <<- sortID
       declID <<- declID
       multiSortIDindex <<- multiSortIDindex
+    },
+    makeScalars = function() {
+      # Need original indexing because nodeFunctions will use that indexing
+      # (e.g. `y[i+1]` needs value of `i`).
+      if(length(multiSortIDindex) != 1)
+        stop("attempting to split calcRange that has multiple indexing")
+      indices <- c(indexingRange$indexRanges[[indexingRange$indexSlotToRange[multiSortIDindex]]]$getValuesAsMatrix())
+      if(length(indices) != length(sortID))
+        stop("mismatch between indexing values and node-based sortIDs")
+      results <- lapply(seq_along(indices), \(i)
+                        calcRangeClass$new(varName, varRangeClass$new(list(indexRangeMatrixClass$new(matrix(indices[i]), sort=FALSE))),
+                                declID, sortID[i], NULL))
+      return(results)
     }
   )
 )
