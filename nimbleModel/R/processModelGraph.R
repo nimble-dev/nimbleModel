@@ -242,8 +242,15 @@ traverseGraph <- function(streamRules, declRules,
                           nodes, down, self = TRUE,
                           follow = FALSE, immediateOnly = FALSE,
                           nodesAsChars = getNimbleModelOption('nodesAsChars'),
-                          returnScalarComponents = FALSE
+                          returnScalarComponents = FALSE, .sort = FALSE,
+                          modelDef = NULL
                           ) {
+
+  # A single varRange can have elements that don't share a sortID when converted to calcRange representation,
+  # so we can't sort varRanges.
+  if (.sort && !nodesAsChars)
+    warning("`.sort=TRUE` is provided only for back compatibility and requires the use of character representations of nodes")
+
   if (inherits(nodes, "varRangeClass")) nodes <- list(nodes) # We use `lapply` on 'nodes' later.
 
   results <- traverseGraphRecurse(streamRules, nodes, down, follow, immediateOnly)
@@ -323,12 +330,48 @@ traverseGraph <- function(streamRules, declRules,
     return(NULL)
   }
   results <- removeDuplicateVarRanges(results)
-  if (nodesAsChars) {
-    return(unlist(sapply(results, \(x) x$toVarChars(expandScalars = returnScalarComponents))))
+
+  # Remove RHSonly by passing through declRules.
+  results <- flatten(lapply(results, \(vr)
+                            lapply(modelDef$declRules[[getVarName(vr)]]$rules, \(rule) {
+                              nodeRange <- rule$apply(vr)
+                              if(is.null(nodeRange)) return(NULL) else return(nodeRange$toVarRange(fromStochRule = vr$fromStochRule))
+                              })))
+  if (!length(results)) {
+    return(NULL)
+  }  
+
+  if (.sort) {
+    # Ordering is only relevant at calcRange stage and a single nodeRange can contain
+    # elements with various sortIDs, so we convert to nodeChars first and then get their
+    # sortID by creating a temporary calcRange for each.
+    nodeChars <- unlist(lapply(results, \(vr)
+                               lapply(modelDef$calcRules[[getVarName(vr)]]$rules,
+                                      \(rule) {
+                                        tmp <- rule$apply(vr)
+                                        if(!is.null(tmp)) return(tmp$toNodeChars()) else return(NULL)
+                                      }
+                                      )))
+    calcRanges <- flatten(lapply(nodeChars, function(node) {
+      lapply(modelDef$calcRules[[getVarName(node)]]$rules, function(rule) {
+        rule$makeCalcRange(rule$apply(node))
+      })
+    }))
+    if (length(nodeChars) != length(calcRanges))
+      stop("unexpected mismatch between node character representation and calcRanges in `getNodes` sorting")
+    ord <- order(sapply(calcRanges, \(x) x$sortID))
+    results <- nodeChars[ord]
+    names(results) <- NULL
+    if (returnScalarComponents)
+      results <- unlist(lapply(results, \(x) varRangeClass$new(x)$toVarChars(expandScalars = TRUE)))
   } else {
-    if (returnScalarComponents)   # TODO: put into new messaging system
-      warning("one must request result as characters via `nodesAsChars` in order to use `returnScalarComponents`")
-  } 
+    if (nodesAsChars) {
+      return(unlist(lapply(results, \(x) x$toVarChars(expandScalars = returnScalarComponents))))
+    } else {
+      if (returnScalarComponents)   # TODO: put into new messaging system
+        warning("one must request result as characters via `nodesAsChars` in order to use `returnScalarComponents`")
+    }
+  }
   return(results)                                                  
 }
 

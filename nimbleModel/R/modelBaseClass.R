@@ -360,17 +360,17 @@ modelBase_nClass <- nClass(
     },
     getDependencies = function(nodes, self = TRUE, downstream = FALSE, immediateOnly = FALSE,
                                nodesAsChars = getNimbleModelOption('nodesAsChars'),
-                               returnScalarComponents = FALSE
+                               returnScalarComponents = FALSE, .sort = FALSE
                                ) {
       nimbleModel::getDependencies(modelDef, nodes, self, downstream, immediateOnly,
-                                   nodesAsChars, returnScalarComponents)
+                                   nodesAsChars, returnScalarComponents, .sort)
     },
-    getParents = function(nodes, self = TRUE, upstream = FALSE, immediateOnly = FALSE,
+    getParents = function(nodes, self = FALSE, upstream = FALSE, immediateOnly = FALSE,
                           nodesAsChars = getNimbleModelOption('nodesAsChars'),
-                          returnScalarComponents = FALSE
+                          returnScalarComponents = FALSE, .sort = FALSE
                           ) {
       nimbleModel::getParents(modelDef, nodes, self, upstream, immediateOnly,
-                              nodesAsChars, returnScalarComponents)
+                              nodesAsChars, returnScalarComponents, .sort)
     },
     # TODO: not working because `nimbleModel::getNodes` needs the model not just modelDef.
     # Once we integrate modelClass with modelBase_nClass, we should be able to pass `self`.

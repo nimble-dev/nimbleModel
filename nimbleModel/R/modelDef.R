@@ -1039,28 +1039,30 @@ getDependencies <- function(modelDef, nodes,
                             self = TRUE,
                             downstream = FALSE, immediateOnly = FALSE,
                             nodesAsChars = getNimbleModelOption('nodesAsChars'),
-                            returnScalarComponents = FALSE
+                            returnScalarComponents = FALSE, .sort = FALSE
                             ) {
   traverseGraph(modelDef$downstreamRules, modelDef$declRules,
     nodes = nodes,
     down = TRUE, self = self,
     follow = downstream, immediateOnly = immediateOnly,
-    nodesAsChars = nodesAsChars, returnScalarComponents = returnScalarComponents
-  )
+    nodesAsChars = nodesAsChars, returnScalarComponents = returnScalarComponents,
+    .sort = .sort, modelDef = modelDef
+    )
 }
 
 getParents <- function(modelDef, nodes,
                        self = FALSE,
                        upstream = FALSE, immediateOnly = FALSE,
                        nodesAsChars = getNimbleModelOption('nodesAsChars'),
-                       returnScalarComponents = FALSE
+                       returnScalarComponents = FALSE, .sort = FALSE
                        ) {
   traverseGraph(modelDef$upstreamRules, modelDef$declRules,
     nodes = nodes,
     down = FALSE, self = self,
     follow = upstream, immediateOnly = immediateOnly,
-    nodesAsChars = nodesAsChars, returnScalarComponents = returnScalarComponents
-  )
+    nodesAsChars = nodesAsChars, returnScalarComponents = returnScalarComponents,
+    .sort = .sort, modelDef = modelDef
+    )
 }
 
 

@@ -478,8 +478,8 @@ nodeRangeClass <- R6Class(
         varName = varName
       )
     },
-    toVarRange = function() {
-      varRangeClass$new(indexRanges, rangeToIndexSlot = rangeToIndexSlot, varName = varName, fromStochRule = decl$stoch)
+    toVarRange = function(fromStochRule = decl$stoch) {
+      varRangeClass$new(indexRanges, rangeToIndexSlot = rangeToIndexSlot, varName = varName, fromStochRule = fromStochRule)
     },
 
     toChar = function() {

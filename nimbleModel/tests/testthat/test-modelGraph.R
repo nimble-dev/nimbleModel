@@ -1257,7 +1257,7 @@ test_that("basic check of graph interface", {
 
     result <- getParents(modelDef, 'y', upstream = TRUE)
     expect_identical(sapply(result, function(node) node$varName),
-                     c('theta','mu0','sigma'))
+                     c('theta','mu0'))
 
 })
 
@@ -1290,6 +1290,8 @@ test_that("getDependencies deals with repeated parents", {
         y ~ dnorm(mu, sd = tau)
         z ~ dnorm(mu, 1)
         w <- z + 3
+        tau ~ dunif(0,1)
+        mu ~ dunif(0,1)
     })
     modelDef <- modelDefClass$new(code)
     
@@ -1338,6 +1340,7 @@ test_that("getParents traversal with mix of stoch/determ edges", {
 test_that("same dependent on RHS", {
     code <- quote({
         y ~ dnorm(mu, sd = mu)
+        mu ~ dunif(0,1)
     })
     modelDef <- modelDefClass$new(code)
 
@@ -1357,7 +1360,6 @@ test_that("basic hierarchical models", {
         sigma ~ dunif(0, 1)
         for(i in 1:3)
             z[k[i]] ~ dnorm(y[k[i]], 1)
-        
     })
     k <- c(2,4,7)
     model <- nimbleModel(code, constants = list(k = k))
@@ -1432,18 +1434,18 @@ test_that("basic hierarchical models", {
 
     result <- getParents(model$modelDef, 'y', upstream = TRUE)
     expect_identical(sapply(result, function(node) node$varName),
-                     c('mu','tau','mu0','sigma','bnd'))
+                     c('mu','tau','sigma'))
 
     result <- getParents(model$modelDef, 'y[1:5]', upstream = TRUE)
     expect_identical(sapply(result, function(node) node$varName),
-                     c('mu','tau','mu0','sigma','bnd'))
+                     c('mu','tau','sigma'))
     expect_equal(result[[1]]$indexRanges, 
                list(newIndexRange(quote(1:5))))
 
     result <- getParents(model$modelDef, varRangeClass$new(list(newIndexRange(quote(1:5))), varName = 'y'),
                          upstream = TRUE)
     expect_identical(sapply(result, function(node) node$varName),
-                     c('mu','tau','mu0','sigma','bnd'))
+                     c('mu','tau','sigma'))
     expect_equal(result[[1]]$indexRanges, 
                list(newIndexRange(quote(1:5))))
 
@@ -1488,14 +1490,11 @@ test_that("basic hierarchical models", {
                      c('w','mu','y'))
 
     result <- getParents(model$modelDef, 'pr[2,2]')
-    expect_identical(sapply(result, function(node) node$varName),
-                     'S')
-    expect_equal(result[[1]]$indexRanges, 
-               list(newIndexRange(quote(1:10)), newIndexRange(quote(1:10))))
+    expect_identical(result, NULL)
 
     result <- getParents(model$modelDef, 'mu[3]')
     expect_identical(sapply(result, function(node) node$varName),
-                     c('mu0','pr','mu00','z'))
+                     c('mu0','pr','mu00'))
     expect_equal(result[[2]]$indexRanges, 
                list(newIndexRange(quote(1:10)), newIndexRange(quote(1:10))))
     
@@ -1536,15 +1535,15 @@ test_that("basic hierarchical models", {
 
     result <- getParents(model$modelDef, 'y[1,1:3]')
     expect_identical(sapply(result, function(node) node$varName),
-                     c('mn','pr','X','beta'))
+                     c('mn','pr','beta'))
 
     result <- getParents(model$modelDef, 'y[1,2]')
     expect_identical(sapply(result, function(node) node$varName),
-                     c('mn','pr','X','beta'))
+                     c('mn','pr','beta'))
     
     result <- getParents(model$modelDef, c('y[1,2]','y[2,3]'))
     expect_identical(sapply(result, function(node) node$varName),
-                     c('mn','pr','X','beta'))
+                     c('mn','pr','beta'))
     
 })
 
@@ -1638,12 +1637,19 @@ test_that("state-space model", {
     expect_equal(result[[1]],
                  varRangeClass$new(list(newIndexRange(2)), varName = 'y'))
 
+    code <- quote({
+        for(i in 2:4)
+            y[i]~dnorm(y[i-1],1)
+        y[1] ~ dnorm(0,1)
+    })
+    model <- nimbleModel(code)
+    modelDef <- model$modelDef
+    
     result <- getParents(modelDef, 'y[3]', upstream = TRUE)
     expect_length(result, 2)
     expect_equal(result[[2]],
                  varRangeClass$new(list(newIndexRange(1)), varName = 'y'))
 
-    
     code <- quote({
         for(i in 1:5)
             y[i] ~ dnorm(z[i], sd = tau)
@@ -1776,10 +1782,10 @@ test_that("complicated input varRange", {
                      vr$indexRanges[c(2,1)])
     
     result <- getDependencies(modelDef, vr)
-    expect_length(result, 2)
+    expect_length(result, 1)
     expect_identical(sapply(result, function(node) node$varName),
-                     c('theta','y'))
-    expect_equal(result[[2]],
+                     c('y'))
+    expect_equal(result[[1]],
                  varRangeClass$new(list(newIndexRange(matrix(c(3,5,5,1), nrow = 2)),
                                         newIndexRange(quote(2:3))),
                             rangeToIndexSlot = list(c(1,3), 2),
@@ -2558,12 +2564,12 @@ test_that("missing indexing", {
     modelCode <- quote({
         y <- sum(mu[])
     })
+    m <- nimbleModel(modelCode, dimensions = list(mu = 5))
+    modelDef <- m$modelDef
 
-    modelDef <- modelDefClass$new(modelCode, dimensions = list(mu = 5))
-
-    expect_equal(getParents(modelDef, 'y')[[1]],
+    expect_equal(getNodes(m, includeRHSonly = TRUE)[[2]]$toVarRange(),
                  varRangeClass$new(list(newIndexRange(quote(1:5))),
-                                        varName = 'mu', fromStochRule = FALSE))
+                                        varName = 'mu'))
 
     expect_equal(getDependencies(modelDef, 'mu[2]')[[1]],
                  varRangeClass$new(list(), varName = 'y', fromStochRule = FALSE))
