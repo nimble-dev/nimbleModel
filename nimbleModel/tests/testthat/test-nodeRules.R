@@ -1358,17 +1358,17 @@ test_that("nodeRange::print works correctly", {
     LHSrule <- nodeRuleClass$new(LHS, 1, context_i)
     
     expect_identical(LHSrule$apply()$toChar(),
-                     "`mu[1:3, idx1]`, for idx1 in 2:8")
+                     "`mu[1:3, idx1]`, for `idx1` in 2:8")
 
     LHS <- quote(mu[1:3,j,i])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_ij)
     expect_identical(LHSrule$apply()$toChar(),
-                     "`mu[1:3, idx1, idx2]`, for idx1 in 3:5, idx2 in 2:8")
+                     "`mu[1:3, idx1, idx2]`, for `idx1` in 3:5, `idx2` in 2:8")
 
     LHS <- quote(mu[1:3,j,i-1])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_ij)
     expect_identical(LHSrule$apply()$toChar(),
-                     "`mu[1:3, idx1, idx2]`, for idx1 in 3:5, idx2 in 1:7")
+                     "`mu[1:3, idx1, idx2]`, for `idx1` in 3:5, `idx2` in 1:7")
   
 })
 

@@ -659,7 +659,7 @@ test_that("non-sequential indexing cases", {
   nr <- m$getNodes()[[1]]
   expect_true(inherits(nr$indexRanges[[1]], "indexRangeMatrixClass"))
   expect_identical(nr$numExternalIndexRanges, 1L)
-  expect_identical(nr$toChar(), "`y[idx1]`, for idx1 in c(2, 3, 5)")
+  expect_identical(nr$toChar(), "`y[idx1]`, for `idx1` in c(2, 3, 5)")
 
   code <- nimbleCode({
     y[c(2,3,5)] ~ dmnorm(mu[1:3], pr[1:3,1:3])
@@ -686,22 +686,23 @@ test_that("non-sequential indexing cases", {
   nr <- m$getNodes()[[2]]
   expect_true(inherits(nr$indexRanges[[1]], "indexRangeMatrixClass"))
   expect_identical(nr$numExternalIndexRanges, 0L)
-  expect_identical(nr$toChar(), "y[c(2, 3, 5)]")
+  expect_identical(nr$toChar(), "`y[c(2, 3, 5)]`")
 
-  if(FALSE) {  # No operator def for nimC: This was part of the call:  y[i = nimC(2, 3, 5)]
-    code <- nimbleCode({
+  # Cannot compile. No operator def for nimC: This was part of the call:  y[i = nimC(2, 3, 5)]
+  code <- nimbleCode({
       y[c(2,3,5)] <- x[1:3] + 1
-    })
-    mclass <- nimbleModel(code, inits = list(x = 1:3), 
-                          returnClass = TRUE)
-    m <- mclass$new()
-    cmclass <- nCompile(mclass)
-    cm <- cmclass$new()
-    m$calculate()
-    cm$calculate()
-    expect_identical(m$y, c(NA,2,3,NA,4))
-    expect_identical(cm$y, c(NA,2,3,NA,4))
-  }
+  })
+  mclass <- nimbleModel(code, inits = list(x = 1:3), 
+                        returnClass = TRUE)
+  m <- mclass$new()
+  m$calculate()
+  expect_identical(m$y, c(NA,2,3,NA,4))
+  expect_failure({
+      cmclass <- nCompile(mclass)
+      cm <- cmclass$new()
+      cm$calculate()
+      expect_identical(cm$y, c(NA,2,3,NA,4))
+  })
   
 })
 
