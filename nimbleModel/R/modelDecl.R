@@ -34,7 +34,8 @@ modelDeclClass <- R6Class(
                           context,
                           sourceLineNumber,
                           truncated = FALSE,
-                          boundExprs = NULL) {
+                          boundExprs = NULL,
+                          warnNonConstantBlocks = FALSE) {
       context <<- context
       sourceLineNumber <<- sourceLineNumber
       code <<- code
@@ -69,8 +70,8 @@ modelDeclClass <- R6Class(
           targetVarExpr <- targetExpr[[2]]
           targetNodeExpr <<- targetExpr
           indexedBlocks <- sapply(indexExpr, checkForIndexedIntervals, context)
-          if (any(indexedBlocks)) {
-            stop("Non-constant indexing found in `", safeDeparse(indexExpr[[which(indexedBlocks)[1]]]), "` in `", safeDeparse(targetNodeExpr), "`. Block indices must be constant.")
+          if (any(indexedBlocks) && warnNonConstantBlocks) {
+            messageIfVerbose("Non-constant indexing found in `", safeDeparse(indexExpr[[which(indexedBlocks)[1]]]), "` in `", safeDeparse(targetNodeExpr), "`. Graph queries will incorrectly show elements of multivariate nodes as individual nodes but other functionality should operate correctly.")
           }
         } else {
           # There is a transformation, possibly with a subscript.
