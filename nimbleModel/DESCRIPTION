@@ -17,6 +17,7 @@ Collate:
     aaa.R
     all_utils.R
     context.R
+    copier.R
     dataRules.R
     distributions_inputList.R
     distributions_processInputList.R

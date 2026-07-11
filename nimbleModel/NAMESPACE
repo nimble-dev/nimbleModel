@@ -4,6 +4,8 @@ import(nCompiler)
 ## Some exports are for testing convenience and may not need to be exported.
 
 ## Classes: R6 classes are exported as regular objects
+export(copier_nClass)
+export(multiCopier_nClass)
 export(indexRangeClass)
 export(indexRangeEmptyClass)
 export(indexRangeScalarClass)
@@ -53,7 +55,6 @@ export(getSymbolicParentNodesRecurse)
 export(newIndexRange)
 export(newDataRules)
 
-
 export(makeIndexRules)
 export(makeSeparableIndexSets)
 
@@ -72,3 +73,4 @@ export(calc_dwishAltParams)
 
 export(nimbleModel)
 export(makeInstrList)
+export(makeMultiCopier)

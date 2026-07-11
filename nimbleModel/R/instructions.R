@@ -200,7 +200,7 @@ instr_nClass <- nClass(
     nDim = "integerScalar",
     dims = "integerVector",
     slots = "integerVector",
-    values = "nList(integerVector)",
+    values = "nList(integerVector())",
     type = "integerScalar",
     sortID = "integerVector",
     declID = "integerScalar",
@@ -216,7 +216,7 @@ instr_nClass <- nClass(
     interface = "full",
     createFromR = TRUE,
     exportName = "instr_nClass_new",
-    needed_units = list("nList(integerVector)"),
+    needed_units = list("nList(integerVector())"),
     packageNames = c(uncompiled = "instr_nClass_R", compiled = "instr_nClass")
   )
 )
