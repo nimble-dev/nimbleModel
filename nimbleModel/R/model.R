@@ -381,9 +381,13 @@ getNodes <- function(model, nodes = NULL,
   }
 
   if (!topOnly && !latentOnly && !endOnly) {
-    result <- lapply(nodes, function(node) applyRules(model$modelDef$declRules, node))
-  }
-
+    result <- lapply(nodes, function(node) {
+      if(inherits(node, 'nodeRangeClass')) {
+        return(node)
+      } else return(applyRules(model$modelDef$declRules, node))
+    })
+  }    
+    
   if (topOnly) result <- lapply(nodes, function(node) applyRules(model$modelDef$topRules, node))
   if (latentOnly) result <- lapply(nodes, function(node) applyRules(model$modelDef$latentRules, node))
   if (endOnly) result <- lapply(nodes, function(node) applyRules(model$modelDef$endRules, node))
@@ -402,7 +406,7 @@ getNodes <- function(model, nodes = NULL,
   if (includeRHSonly && !stochOnly && !determOnly) { # RHSonly are considered neither determ not stoch.
     rhsResult <- lapply(nodes, function(node) applyRules(model$modelDef$rhsOnlyRules, node))
     if (!.sort) 
-      result <- c(result, flatten(rhsResult))  # TODO: flatten() seems to be deprecated; can we use unlist?
+      result <- c(result, flatten(rhsResult))  
   }
 
   if (.sort) {
@@ -468,4 +472,21 @@ expandNodeNames <- function(model, nodes, returnScalarComponents = FALSE,
                      returnScalarComponents = returnScalarComponents, .sort = sort)
   if (unique) result <- unique(result)
   return(result)
+}
+
+# Provided for backward compatibility.
+#' @export
+getNodeNames <- function(model, determOnly = FALSE, stochOnly = FALSE,
+                         includeData = TRUE, dataOnly = FALSE, includeRHSonly = FALSE,
+                         topOnly = FALSE, latentOnly = FALSE, endOnly = FALSE,
+                         includePredictive = TRUE, predictiveOnly = FALSE,
+                         returnType = "names",
+                         returnScalarComponents = FALSE) {
+  if (returnType != "names")
+    stop("In nimble2, one can only request 'names' as the `returnType`")
+  return(getNodes(model, nodes = NULL, determOnly, stochOnly, includeData, dataOnly,
+                  includeRHSonly, topOnly, latentOnly, endOnly,
+                  includePredictive, predictiveOnly,
+                  nodesAsChars = TRUE,
+                  returnScalarComponents, .sort = TRUE))
 }
