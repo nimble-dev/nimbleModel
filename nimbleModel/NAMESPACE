@@ -74,3 +74,6 @@ export(calc_dwishAltParams)
 export(nimbleModel)
 export(makeInstrList)
 export(makeMultiCopier)
+
+export(values)
+export("values<-")

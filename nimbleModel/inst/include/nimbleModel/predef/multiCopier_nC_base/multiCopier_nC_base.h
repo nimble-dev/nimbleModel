@@ -7,6 +7,7 @@ public:
   RuntimeFlatViewGroup<double> flatViewGroup;
     template<typename T, typename M>
     void init(std::shared_ptr<T> multiCopier, std::shared_ptr<M> model) {
+      flatViewGroup.clear();
       const auto& copiers = multiCopier->contents();
       for(const auto& copier : copiers) {
         auto acc = model->access(copier->varName); // acc will be std::unique_ptr<ETaccessorBase>
