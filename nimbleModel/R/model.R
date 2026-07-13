@@ -381,7 +381,7 @@ getNodes <- function(model, nodes = NULL,
   }
 
   if (!topOnly && !latentOnly && !endOnly) {
-    result <- lapply(nodes, \(node) return(applyRules(model$modelDef$declRules, node))
+    result <- lapply(nodes, function(node) applyRules(model$modelDef$declRules, node))
   }    
     
   if (topOnly) result <- lapply(nodes, function(node) applyRules(model$modelDef$topRules, node))
