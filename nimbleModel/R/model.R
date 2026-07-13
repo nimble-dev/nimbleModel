@@ -382,8 +382,8 @@ getNodes <- function(model, nodes = NULL,
 
   if (!topOnly && !latentOnly && !endOnly) {
     result <- lapply(nodes, function(node) applyRules(model$modelDef$declRules, node))
-  }
-
+  }    
+    
   if (topOnly) result <- lapply(nodes, function(node) applyRules(model$modelDef$topRules, node))
   if (latentOnly) result <- lapply(nodes, function(node) applyRules(model$modelDef$latentRules, node))
   if (endOnly) result <- lapply(nodes, function(node) applyRules(model$modelDef$endRules, node))
@@ -402,7 +402,7 @@ getNodes <- function(model, nodes = NULL,
   if (includeRHSonly && !stochOnly && !determOnly) { # RHSonly are considered neither determ not stoch.
     rhsResult <- lapply(nodes, function(node) applyRules(model$modelDef$rhsOnlyRules, node))
     if (!.sort) 
-      result <- c(result, flatten(rhsResult))  # TODO: flatten() seems to be deprecated; can we use unlist?
+      result <- c(result, flatten(rhsResult))  
   }
 
   if (.sort) {
@@ -469,3 +469,4 @@ expandNodeNames <- function(model, nodes, returnScalarComponents = FALSE,
   if (unique) result <- unique(result)
   return(result)
 }
+

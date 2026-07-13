@@ -55,9 +55,8 @@ test_that("old model API calls", {
         y[i,j] ~ dnorm(mu + x,1)
     mu ~dnorm(0,1)
   })
-
-  
   m <- nimbleModel(code, data = list(y=matrix(rnorm(6),2)))
+  
   chars <- m$getNodes(nodesAsChars = TRUE)
   expect_identical(chars, c("lifted_mu_plus_x", "y[1, 1]","y[1, 2]","y[1, 3]", "y[2, 1]", "y[2, 2]", "y[2, 3]", "mu"))
   chars <- m$getNodes(includeRHSonly = TRUE, nodesAsChars = TRUE)
@@ -76,7 +75,9 @@ test_that("old model API calls", {
   expect_identical(chars, c("mu", "y[1, 1]","y[1, 2]","y[1, 3]", "y[2, 1]", "y[2, 2]", "y[2, 3]", "x"))
   chars <- m$expandNodeNames(c('mu','y','x'), sort = TRUE)
   expect_identical(chars, c("x", "mu", "y[1, 1]","y[1, 2]","y[1, 3]", "y[2, 1]", "y[2, 2]", "y[2, 3]"))
-
+  chars <- m$topologicallySortNodes(c('mu','y','x'))
+  expect_identical(chars, c("x", "mu", "y[1, 1]","y[1, 2]","y[1, 3]", "y[2, 1]", "y[2, 2]", "y[2, 3]"))
+  
   chars <- m$expandNodeNames(c('y','y[2,1]'))
   expect_identical(chars, c("y[1, 1]","y[1, 2]","y[1, 3]", "y[2, 1]", "y[2, 2]", "y[2, 3]"))
   chars <- m$expandNodeNames(c('y','y[2,1]'), unique = FALSE)
@@ -220,7 +221,8 @@ test_that("Use of .sort in cases with multiple and/or overlapping sortID values"
   expect_identical(m$getNodes(.sort=TRUE,nodesAsChars=TRUE), truth)
   expect_identical(m$getParents('y', .sort=TRUE, nodesAsChars = TRUE, self = TRUE), truth)
   expect_identical(m$getParents('y[4]', .sort=TRUE, nodesAsChars = TRUE, self = TRUE), c('tau','lifted_d1_over_sqrt_oPtau_cP','y[3]','lifted_rho_times_y_oBi_minus_1_cB_L2[4]', 'y[4]'))
-  
+  nrs <- m$getNodes()
+  expect_identical(m$topologicallySortNodes(nrs), truth)
 
   code <- nimbleCode({
     for(i in 1:5)
