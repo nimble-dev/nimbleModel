@@ -406,6 +406,9 @@ modelBase_nClass <- nClass(
                                returnType = "names", sort = FALSE, unique = TRUE) {
       nimbleModel::expandNodeNames(self, nodes, returnScalarComponents, "names", sort, unique)
     },
+    topologicallySortNodes = function(nodes) {
+      nimbleModel::expandNodeNames(self, nodes, sort = TRUE, unique = TRUE)
+    },
     calc_op = function(instr, fn, fn_cpp) {
       if (missing(instr)) {
         instr <- getVarNames()
