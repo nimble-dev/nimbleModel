@@ -381,11 +381,7 @@ getNodes <- function(model, nodes = NULL,
   }
 
   if (!topOnly && !latentOnly && !endOnly) {
-    result <- lapply(nodes, function(node) {
-      if(inherits(node, 'nodeRangeClass')) {
-        return(node)
-      } else return(applyRules(model$modelDef$declRules, node))
-    })
+    result <- lapply(nodes, \(node) return(applyRules(model$modelDef$declRules, node))
   }    
     
   if (topOnly) result <- lapply(nodes, function(node) applyRules(model$modelDef$topRules, node))
