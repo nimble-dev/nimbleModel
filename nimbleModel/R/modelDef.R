@@ -192,7 +192,8 @@ modelDefClass <- R6Class(
           declInfo[[iAns]] <<- modelDeclClass$new(
             code[[i]],
             contexts[[contextID]],
-            lineNumber
+            lineNumber,
+            warnNonConstantBlocks = TRUE
           )
         }
         if (code[[i]][[1]] == "for") {

@@ -497,7 +497,7 @@ nodeRangeClass <- R6Class(
 
       indexVars <- paste0("idx", seq_len(sum(boolExternalIndexRanges & !multiSlot)))
       exprs[boolExternalIndexRanges & !multiSlot] <- lapply(indexVars, as.name)
-      forText <- paste(indexVars, "in", sv)
+      forText <- paste0("`", indexVars, "`", " in ", sv)
       result <- safeDeparse(do.call("call",
         c(
           list("[", nm),
@@ -512,7 +512,7 @@ nodeRangeClass <- R6Class(
           forText <- "`"
         }
         result <- paste0("`", result, forText)
-      }
+      } else result <- paste0("`", result, "`")
       return(result)
     },
 

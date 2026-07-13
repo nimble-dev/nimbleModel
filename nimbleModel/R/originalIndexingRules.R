@@ -38,11 +38,19 @@ originalIndexingRuleClass <- R6Class(
 
     # Produces a varRange, though it's not really a range for a variable
     # but rather a range for the indices.
+    # (2023-06-10, commit 30ede6)
     # Do not remove duplicates because in generation of `calcRange`s there
     # can be cases where we need duplicated values in order to have correct
     # number of logProbs.
+    # (2026-07-09) actually we need to remove duplicates for y[i,n1[i]:n2[i]] case
+    # as that has one 'node' per scalar element.
+    # It appears that the 2023-06-10 thinking was incorrect as it seems to have
+    # been based on wanting `calculate()` to return as many elements as were
+    # computed in any given deterministic calculation, e.g., y[1:2] <- foo()
+    # returning 2 elements, but we actually don't return deterministic results anyway.
+    # See test in line 1302 of test-nodeRules.R in commit 30ede6.
     apply = function(fromVarRange) {
-      graphRule$apply(fromVarRange, removeDuplicates = FALSE)
+      graphRule$apply(fromVarRange, removeDuplicates = TRUE)
     }
   )
 )
