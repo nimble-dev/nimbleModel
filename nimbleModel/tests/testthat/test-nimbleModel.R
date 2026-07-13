@@ -697,7 +697,7 @@ test_that("non-sequential indexing cases", {
   m <- mclass$new()
   m$calculate()
   expect_identical(m$y, c(NA,2,3,NA,4))
-  expect_failure({
+  expect_error({
       cmclass <- nCompile(mclass)
       cm <- cmclass$new()
       cm$calculate()
