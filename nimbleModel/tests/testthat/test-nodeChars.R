@@ -221,7 +221,8 @@ test_that("Use of .sort in cases with multiple and/or overlapping sortID values"
   expect_identical(m$getNodes(.sort=TRUE,nodesAsChars=TRUE), truth)
   expect_identical(m$getParents('y', .sort=TRUE, nodesAsChars = TRUE, self = TRUE), truth)
   expect_identical(m$getParents('y[4]', .sort=TRUE, nodesAsChars = TRUE, self = TRUE), c('tau','lifted_d1_over_sqrt_oPtau_cP','y[3]','lifted_rho_times_y_oBi_minus_1_cB_L2[4]', 'y[4]'))
-  
+  nrs <- m$getNodes()
+  expect_identical(m$topologicallySortNodes(nrs), truth)
 
   code <- nimbleCode({
     for(i in 1:5)
