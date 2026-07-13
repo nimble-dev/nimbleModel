@@ -474,19 +474,3 @@ expandNodeNames <- function(model, nodes, returnScalarComponents = FALSE,
   return(result)
 }
 
-# Provided for backward compatibility.
-#' @export
-getNodeNames <- function(model, determOnly = FALSE, stochOnly = FALSE,
-                         includeData = TRUE, dataOnly = FALSE, includeRHSonly = FALSE,
-                         topOnly = FALSE, latentOnly = FALSE, endOnly = FALSE,
-                         includePredictive = TRUE, predictiveOnly = FALSE,
-                         returnType = "names",
-                         returnScalarComponents = FALSE) {
-  if (returnType != "names")
-    stop("In nimble2, one can only request 'names' as the `returnType`")
-  return(getNodes(model, nodes = NULL, determOnly, stochOnly, includeData, dataOnly,
-                  includeRHSonly, topOnly, latentOnly, endOnly,
-                  includePredictive, predictiveOnly,
-                  nodesAsChars = TRUE,
-                  returnScalarComponents, .sort = TRUE))
-}
