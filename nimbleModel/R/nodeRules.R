@@ -376,7 +376,12 @@ calcRangeClass <- R6Class(
       declID <<- declID
       multiSortIDindex <<- multiSortIDindex
     },
-    makeScalars = function() {
+    makeScalarInstrInfoLists = function() {
+      # This is used to split the calcRange when there are multiple sortID values.
+      # To avoid overhead (0.5 ms per call) in making many calcRangeClass objects,
+      # we simply produce a list of lists where each list item is in the form also
+      # produced by `range2instr()` (i.e., basically an instr_nClass object in R list form).
+      
       # Need original indexing because nodeFunctions will use that indexing
       # (e.g. `y[i+1]` needs value of `i`).
       if(length(multiSortIDindex) != 1)
@@ -384,9 +389,11 @@ calcRangeClass <- R6Class(
       indices <- c(indexingRange$indexRanges[[indexingRange$indexSlotToRange[multiSortIDindex]]]$getValuesAsMatrix())
       if(length(indices) != length(sortID))
         stop("mismatch between indexing values and node-based sortIDs")
+      
       results <- lapply(seq_along(indices), \(i)
-                        calcRangeClass$new(varName, varRangeClass$new(list(indexRangeMatrixClass$new(matrix(indices[i]), sort=FALSE))),
-                                declID, sortID[i], NULL))
+                        list(dims = 1, index_types = 2, lens = 1, nDim = 1, slots = 1, sortID = sortID[i],
+                             declID = declID, type = 2, values = list(indices[i])))
+      class(results) <- "Rlist_Rinstr"  # For ease of determining the type of the object in `makeInstrList`.
       return(results)
     }
   )

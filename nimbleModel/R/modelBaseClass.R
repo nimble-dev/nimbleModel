@@ -415,7 +415,8 @@ modelBase_nClass <- nClass(
       }
       instrList <- makeInstrList(self, instr)
       if (isCompiled()) {
-        if (!instrList$isCompiled()) instrList <- makeCompiledInstrList(instrList)
+        if (inherits(instrList, "Rlist_Rinstr") || !instrList$isCompiled())
+          instrList <- makeCompiledInstrList(instrList)
         return(self[[fn_cpp]](instrList))
       }
       logProb <- 0
@@ -443,7 +444,8 @@ modelBase_nClass <- nClass(
       instrList <- makeInstrList(self, instr, includeData = includeData)
       if(is.null(instrList)) return(invisible(NULL))
       if (isCompiled()) {
-        if (!instrList$isCompiled()) instrList <- makeCompiledInstrList(instrList)
+        if (inherits(instrList, "Rlist_Rinstr") || !instrList$isCompiled())
+          instrList <- makeCompiledInstrList(instrList)
         self$simulate_impl(instrList)
       } else {
         for (i in 1:length(instrList)) {
