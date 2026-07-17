@@ -211,7 +211,7 @@ makeInstrList <- function(model, input, includeData = TRUE, use_vec = FALSE) {
   # Again, returning a list of R lists that mimic instr_nClass objects is much faster
   # than instantiating instr_nClass objects.
   Rlist <- c(newInstrs, lapply(ranges, \(x) range2instr(x)))
-  sortIDs <- sapply(Rlist, \(x) x$sortID)
+  sortIDs <- sapply(Rlist, \(x) min(x$sortID, na.rm = TRUE))  # `min` still needed for case of ascending sortIDs (e.g., dependence on the past), which are not split.
   Rlist <- Rlist[order(sortIDs)]
   class(Rlist) <- "Rlist_Rinstr"  # For checking idempotency.
   return(Rlist)
@@ -221,10 +221,11 @@ makeInstrList <- function(model, input, includeData = TRUE, use_vec = FALSE) {
 instr_nClass <- nClass(
   classname = "instr_nClass",
   Rpublic = list(
-    initialize = function(calcRange, ...) {
+    initialize = function(calcRange, instr, ...) {
       super$initialize(...)
-      if(!missing(calcRange)) {
-        instr <- range2instr(calcRange) 
+      if(!missing(calcRange) || !missing(instr)) {
+        if(!missing(calcRange))
+          instr <- range2instr(calcRange) 
         self$lens <- instr$lens %||% integer()
         self$index_types <- instr$index_types %||% integer()
         self$nDim <- instr$nDim %||% 0L
