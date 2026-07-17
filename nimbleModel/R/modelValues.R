@@ -1,7 +1,7 @@
 # Initial rough drafting of modelValues
 library(nCompiler)
 
-modelValuesBase_nClass = nClass(
+modelValuesBase_nClass <- nClass(
   classname = "modelValuesBase_nClass",
   Rpublic = list(
     initialize = function(...) {
@@ -9,8 +9,8 @@ modelValuesBase_nClass = nClass(
     }
   ),
   Cpublic = list(
-    sizes = 'RcppList',
-    current_nRow_ = 'integerScalar',
+    sizes = "RcppList",
+    current_nRow_ = "integerScalar",
     modelValuesBase_nClass = nFunction(
       function() {
         super$initialize()
@@ -33,7 +33,8 @@ modelValuesBase_nClass = nClass(
     )
   ),
   predefined = quote(system.file(file.path("include", "nimbleModel", "predef"),
-                                 package = "nimbleModel") |> file.path("modelValuesBase_nClass")),
+    package = "nimbleModel"
+  ) |> file.path("modelValuesBase_nClass")),
   compileInfo = list(
     interface = "full",
     createFromR = FALSE,
@@ -44,13 +45,13 @@ modelValuesBase_nClass = nClass(
 
 modelValues_resize <- function(self, m, sizes) {
   # check preservation issues in resizing
-  for(v in names(sizes)) {
+  for (v in names(sizes)) {
     this_sizes <- sizes[[v]]
     length(self[[v]]) <<- m
-    if(length(this_sizes)==1) {
-      for(i in 1:m) self[[v]][[i]] <- numeric(length = this_sizes)
+    if (length(this_sizes) == 1) {
+      for (i in 1:m) self[[v]][[i]] <- numeric(length = this_sizes)
     } else {
-      for(i in 1:m) self[[v]][[i]] <- array(0, dim = this_sizes)
+      for (i in 1:m) self[[v]][[i]] <- array(0, dim = this_sizes)
     }
   }
 }
@@ -60,35 +61,34 @@ make_modelValues_nClass <- function(varInfo,
   e <- environment()
   CpublicVars <- varInfo$vars |>
     lapply(\(x) {
-            nDim <- x$nDim
-            nLname <- paste0("nL", nDim, "D")
-            if(!exists(nLname, envir = e)) {
-              e[[nLname]] <- eval(substitute(nList(numericArray(nDim = NDIM)), list(NDIM=nDim)))
-            }
-            paste0(nLname)
-          }
-        )
+      nDim <- x$nDim
+      nLname <- paste0("nL", nDim, "D")
+      if (!exists(nLname, envir = e)) {
+        e[[nLname]] <- eval(substitute(nList(numericArray(nDim = NDIM)), list(NDIM = nDim)))
+      }
+      paste0(nLname)
+    })
   names(CpublicVars) <- varInfo$vars |>
     lapply(\(x) x$name) |>
     unlist()
   ctor_lines <- varInfo$vars |>
     lapply(\(x) {
-            nDim <- x$nDim
-            nLname <- paste0("nL", nDim, "D")
-            substitute(V <<- NL$new(),
-              list(V = as.name(x$name), NL = as.name(nLname)))
-    }
-  )
+      nDim <- x$nDim
+      nLname <- paste0("nL", nDim, "D")
+      substitute(
+        V <<- NL$new(),
+        list(V = as.name(x$name), NL = as.name(nLname))
+      )
+    })
   resize_lines <- varInfo$vars |>
     lapply(\(x) {
-            nDim <- x$nDim
-            nLname <- paste0("nL", nDim, "D")
-            Cline <- gsub("NDIM", nDim, "resize_one<NDIM>(V, m, as<SEXP>(this->sizes[NAME]))")
-            Cline <- gsub("NAME", paste0("\"", x$name, "\""), Cline)
-            Cline <- gsub("V", x$name, Cline)
-           substitute(nCpp(CLINE), list(CLINE = Cline))
-    }
-  )
+      nDim <- x$nDim
+      nLname <- paste0("nL", nDim, "D")
+      Cline <- gsub("NDIM", nDim, "resize_one<NDIM>(V, m, as<SEXP>(this->sizes[NAME]))")
+      Cline <- gsub("NAME", paste0("\"", x$name, "\""), Cline)
+      Cline <- gsub("V", x$name, Cline)
+      substitute(nCpp(CLINE), list(CLINE = Cline))
+    })
   # function() {
   #       mu <<- nL1D$new()
   #       cov <<- nL2D$new()
@@ -126,7 +126,10 @@ make_modelValues_nClass <- function(varInfo,
         argTypes = list(m = "integerScalar")
       ),
       getLength = nFunction(
-        function() {return(current_nRow_); returnType('integerScalar')}
+        function() {
+          return(current_nRow_)
+          returnType("integerScalar")
+        }
       )
     ),
     CpublicVars
@@ -144,7 +147,7 @@ make_modelValues_nClass <- function(varInfo,
       Rpublic = list(
         initialize = function(...) {
           super$initialize(...)
-          if(!isCompiled()) {
+          if (!isCompiled()) {
             CLASSNAME()
           }
         }

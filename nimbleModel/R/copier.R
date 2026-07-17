@@ -29,11 +29,11 @@ multiCopier_nClass <- nCompiler::nClass(
     copiers = "nList(copier_nClass())",
     init = nFunction(
       name = "init",
-      function( model ) {
+      function(model) {
         cat("need uncompiled multiCopier init() implementation.")
       },
       compileInfo = list(
-        C_fun = function(model = "nimbleModel:::modelBase_nClass()"){ 
+        C_fun = function(model = "nimbleModel:::modelBase_nClass()") {
           cppLiteral("multiCopier_nC_base::init(this->copiers, model)")
         }
       )
@@ -45,7 +45,7 @@ multiCopier_nClass <- nCompiler::nClass(
       },
       returnType = "numericVector",
       compileInfo = list(
-        C_fun = function(){ 
+        C_fun = function() {
           cppLiteral("return flatViewGroup.copyIntoVector()")
         }
       )
@@ -60,7 +60,7 @@ multiCopier_nClass <- nCompiler::nClass(
         cat("need uncompiled multiCopier setValues() implementation.")
       },
       compileInfo = list(
-        C_fun = function(v = "numericVector"){ 
+        C_fun = function(v = "numericVector") {
           cppLiteral("flatViewGroup.copyFromVector(v)")
         }
       )
@@ -92,16 +92,17 @@ multiCopier_getOrSetValues_LAT <- function(...) {
 makeMultiCopier <- function(model, nodes, ...) {
   # This will be called from a nimble2 keyword processor
   # The ... is to absorb further arguments that at the time of this writing are not fleshed out.
-  if(is.character(nodes)){
+  if (is.character(nodes)) {
     nodes <- nodes |> lapply(\(x) nimbleModel:::varRangeClass$new(x))
   }
   multiCopier <- multiCopier_nClass$new()
   getRange <- function(indexRange) {
-    if(!inherits(indexRange, "indexRangeSequenceClass"))
+    if (!inherits(indexRange, "indexRangeSequenceClass")) {
       stop("In a copy operation, only contiguous index blocks are supported")
+    }
     c(indexRange$start, indexRange$end)
   }
-  for(i in seq_along(nodes)) {
+  for (i in seq_along(nodes)) {
     thisNode <- nodes[[i]]
     multiCopier$copiers[[i]] <- copier_nClass$new()
     multiCopier$copiers[[i]]$varName <- thisNode$varName
@@ -112,37 +113,41 @@ makeMultiCopier <- function(model, nodes, ...) {
 
 #' @export
 values <- function(model, nodes) {
-  if(is.character(nodes))
+  if (is.character(nodes)) {
     nodes <- lapply(nodes, \(x) varRangeClass$new(x))
+  }
   # To-do: other checking and error-trapping on inputs
-  vals <- lapply(nodes,
-                 \(x) {
-                   eval(x$toExpr(), envir = model) |> as.numeric()
-                 })
+  vals <- lapply(
+    nodes,
+    \(x) {
+      eval(x$toExpr(), envir = model) |> as.numeric()
+    }
+  )
   do.call("c", vals)
 }
 
 #' @export
 `values<-` <- function(model, nodes, value) {
-  if(is.character(nodes))
+  if (is.character(nodes)) {
     nodes <- lapply(nodes, \(x) varRangeClass$new(x))
+  }
   iV_start <- 1
   replExprTemplate <- quote(model_stuff <- value[iV_start:iV_end])
-  for(i in seq_along(nodes)) {
+  for (i in seq_along(nodes)) {
     thisNode <- nodes[[i]]
     expr <- thisNode$toExpr()
-    if(is.name(expr))
+    if (is.name(expr)) {
       thisLength <- length(model[[expr]])
-    else {
+    } else {
       mm <- thisNode$getMinMax()
-      sizes <- mm[,2] - mm[,1] + 1
+      sizes <- mm[, 2] - mm[, 1] + 1
       ## This section about NAs in the sizes
       ## anticipates how we would handle blank index slots
       ## by putting NAs in the getMinMax() result.
       ## But that is not in place while this is being drafted
       NAsizes <- which(is.na(sizes))
-      if(length(NAsizes)) {
-        thisDims <- dimOrLength(model[[ thisNode$varName ]])
+      if (length(NAsizes)) {
+        thisDims <- dimOrLength(model[[thisNode$varName]])
         sizes[NAsizes] <- thisDims[NAsizes]
       }
       #

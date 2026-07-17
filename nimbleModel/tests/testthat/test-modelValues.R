@@ -1,11 +1,11 @@
-#library(nCompiler)
-#library(nimbleModel)
+# library(nCompiler)
+# library(nimbleModel)
 
 test_that("basic modelValues class works", {
   varInfo <- list(
     vars = list(
       mu = list(name = "mu", nDim = 1),
-      cov =list(name = "cov", nDim = 2)
+      cov = list(name = "cov", nDim = 2)
     )
   )
   mvClass <- nimbleModel:::make_modelValues_nClass(varInfo)

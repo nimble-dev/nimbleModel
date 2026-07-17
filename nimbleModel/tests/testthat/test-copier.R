@@ -5,31 +5,32 @@ library(nCompiler)
 message("multiCopier needs to handle single and blank indices.")
 
 test_that("multiCopier basics works", {
-
   code <- quote({
     tau ~ dunif(0, 100)
     mu ~ dnorm(0, 1)
     for (i in 1:5) {
       y[i] ~ dnorm(mu, var = tau)
     }
-    for(i in 1:5) {
-      for(j in 1:5) {
+    for (i in 1:5) {
+      for (j in 1:5) {
         z[i, j] ~ dnorm(mu, var = tau)
       }
     }
   })
 
-  inits <- list(tau = 25, mu = 0,
-                z = matrix(rnorm(25), nrow = 5))
+  inits <- list(
+    tau = 25, mu = 0,
+    z = matrix(rnorm(25), nrow = 5)
+  )
   data <- list(y = rnorm(5))
 
   mclass <- nimbleModel(code, inits = inits, data = data, returnClass = TRUE)
-#  m <- mclass$new()
+  #  m <- mclass$new()
 
   nf <- nClass(
     Cpublic = list(
-      m = 'nimbleModel:::modelBase_nClass()',
-      multCopy = 'nimbleModel:::multiCopier_nClass()',
+      m = "nimbleModel:::modelBase_nClass()",
+      multCopy = "nimbleModel:::multiCopier_nClass()",
       init = nFunction(
         function() {
           multCopy$init(m)
