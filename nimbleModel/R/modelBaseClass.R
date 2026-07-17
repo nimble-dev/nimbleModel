@@ -410,12 +410,13 @@ modelBase_nClass <- nClass(
       nimbleModel::expandNodeNames(self, nodes, sort = TRUE, unique = TRUE)
     },
     calc_op = function(instr, fn, fn_cpp) {
+        if(exists('paciorek')) browser()
       if (missing(instr)) {
         instr <- getVarNames()
       }
       instrList <- makeInstrList(self, instr)
       if (isCompiled()) {
-        if (!instrList$isCompiled()) instrList <- makeCompiledInstrList(instrList)
+        if (is.list(instrList) || !instrList$isCompiled()) instrList <- makeCompiledInstrList(instrList)
         return(self[[fn_cpp]](instrList))
       }
       logProb <- 0
