@@ -38,6 +38,7 @@ Collate:
     modelDecl.R
     modelDef.R
     model.R
+    modelValues.R
     model_utils.R
     nodeRules.R
     options.R       

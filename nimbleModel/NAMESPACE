@@ -77,3 +77,6 @@ export(makeMultiCopier)
 
 export(values)
 export("values<-")
+
+S3method("[", modelValues)
+S3method("[<-", modelValues)
