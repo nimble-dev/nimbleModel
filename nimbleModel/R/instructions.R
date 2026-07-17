@@ -129,7 +129,8 @@ makeInstrList <- function(model, input, includeData = TRUE, use_vec = FALSE) {
   # (2) a list of (or single) varRanges
   # (3) an nList of (or single) instr_nClass objects (assumed to be in sort order)
   # (4) an R list of instr_nClass objects (not assumed to be in sort order)
-
+  # (5) an R list of instr_nClass-like R lists (produced by makeScalarInstrInfoLists when splitting a calcRange with multiple sortID values.
+    
   # TODO: do we really need to handle case #4? 
   
   # A single instruction.
@@ -167,6 +168,10 @@ makeInstrList <- function(model, input, includeData = TRUE, use_vec = FALSE) {
     }
     return(instrList)
   }
+
+  # An R list of instr_nClass-like R lists
+  if(inherits(input, "Rlist_Rinstr"))
+    return(input)
 
   # Finally handle character vectors or varRanges.
   if (inherits(input, "varRangeClass")) input <- list(input)
@@ -207,7 +212,9 @@ makeInstrList <- function(model, input, includeData = TRUE, use_vec = FALSE) {
   # than instantiating instr_nClass objects.
   Rlist <- c(newInstrs, lapply(ranges, \(x) range2instr(x)))
   sortIDs <- sapply(Rlist, \(x) x$sortID)
-  return(Rlist[order(sortIDs)])
+  Rlist <- Rlist[order(sortIDs)]
+  class(Rlist) <- "Rlist_Rinstr"  # For checking idempotency.
+  return(Rlist)
 }
 
 

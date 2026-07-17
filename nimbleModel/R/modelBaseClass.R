@@ -410,7 +410,6 @@ modelBase_nClass <- nClass(
       nimbleModel::expandNodeNames(self, nodes, sort = TRUE, unique = TRUE)
     },
     calc_op = function(instr, fn, fn_cpp) {
-        if(exists('paciorek')) browser()
       if (missing(instr)) {
         instr <- getVarNames()
       }
