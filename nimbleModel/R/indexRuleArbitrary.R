@@ -18,17 +18,21 @@ indexRuleArbitraryClass <- R6Class(
           constants
         )
     },
-    apply = function(indexRange, collapse = TRUE) {
+    apply = function(indexRange, collapse = TRUE, returnIndices = FALSE) {
       if (!inherits(indexRange, "indexRangeClass")) {
         stop("an index rule must be applied to an `indexRange`.")
       }
-      indexRuleArbitrary_applyMatrix(indexRange$getValuesAsMatrix(), setupResults, collapse = collapse)
+      indexRuleArbitrary_applyMatrix(indexRange$getValuesAsMatrix(), setupResults,
+                                     collapse = collapse, returnIndices = returnIndices)
     },
     getMax = function() {
       sapply(
         setupResults$fromInfo,
         function(fromInfo) fromInfo$offset + fromInfo$size
       )
+    },
+    getNumElements = function() {
+      return(setupResults$unrolledSize)
     }
   )
 )
@@ -270,7 +274,8 @@ make2IndicesFunctions <- function(info) {
 
 indexRuleArbitrary_applyMatrix <- function(indexRangeMatrixValues,
                                            setupResults,
-                                           collapse = TRUE) {
+                                           collapse = TRUE,
+                                           returnIndices = FALSE) {
   # fromFlat is the flat index of each row of "from" indices.
   fromFlat <- setupResults$from2indicesFunctions$rawIndex2flatIndex_multi(indexRangeMatrixValues)
   # Deal with invalid from indices - need information retained for later collapsing with other columns.
@@ -282,7 +287,9 @@ indexRuleArbitrary_applyMatrix <- function(indexRangeMatrixValues,
 
   # iRowsList has the declaration iRows for each fromFlat.
   iRowsList <- setupResults$from_flat2iRow[fromFlat]
-
+  
+  if(returnIndices) return(unlist(iRowsList))
+  
   # CHECK: unique???
   # `toIndicesList` has the matrix of "to" indices for each fromFlat
   # need NAs in places where input matches no output to be able to

@@ -39,6 +39,9 @@ indexRuleBlockClass <- R6Class(
     },
     getMax = function() {
       return(setupResults$fromMax)
+    },
+    getNumElements = function() {
+      return(setupResults$fromMax - setupResults$fromMin + 1)
     }
   )
 )
