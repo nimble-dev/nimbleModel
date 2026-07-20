@@ -624,10 +624,15 @@ nodeRangeClass <- R6Class(
         varName = varName
       )
     },
+
+    toIDs = function() {
+      browser()
+      decl$declRule$getIDs(decl$declRule$originalIndexingRule$apply(self))
+    },
+    
     toVarRange = function(fromStochRule = decl$stoch) {
       varRangeClass$new(indexRanges, rangeToIndexSlot = rangeToIndexSlot, varName = varName, fromStochRule = fromStochRule)
     },
-
     toChar = function() {
       if (is.null(varName)) {
         nm <- as.name("no_name")
