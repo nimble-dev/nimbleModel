@@ -147,6 +147,8 @@ declRuleClass <- R6Class(
         stop("originalIndexingRules are not in canonical order")      
     },
     getIDs = function(indexingRange) {  # Could be named originalIndexingToIDs or some such.
+      if(!length(indexingRange$indexRanges))  # scalar case
+        return(1)
       indexingRules <- originalIndexingRule$graphRule$indexRules
       numLoops <- length(originalIndexingRule$graphRule$indexSets$toIndexSlotToSet)
       if(!inherits(indexingRange, 'varRangeClass'))
@@ -195,6 +197,11 @@ declRuleClass <- R6Class(
     },
     getOriginalIndexing = function(nodeIDs) {  # Could be named IDsToOriginalIndexing or some such.
       indexingRules <- originalIndexingRule$graphRule$indexRules
+      if(!length(indexingRules)) {   # scalar case
+        if(nodeIDs == 1) {
+          return(varRangeClass$new(list(), varName = originalIndexingRule$varName))
+        } else return(NULL)
+      }
       numLoops <- length(originalIndexingRule$graphRule$indexSets$toIndexSlotToSet)
       if(length(indexingRules) == numLoops) {  # Loop indexing is separable.
         # Can we shortcircuit if nodeIDs is all possible ones?
@@ -556,6 +563,7 @@ nodeRangeClass <- R6Class(
     boolExternalIndexRanges = NULL,
     numExternalIndexRanges = NULL,
     nodeChars = NULL,
+    nodeIDs = NULL,
     initialize = function(varName,
                           externalRange,
                           internalRange,
@@ -625,9 +633,13 @@ nodeRangeClass <- R6Class(
       )
     },
 
-    toIDs = function() {
-      browser()
-      decl$declRule$getIDs(decl$declRule$originalIndexingRule$apply(self))
+    toIDs = function(cache = TRUE) {
+      result <- decl$declRule$getIDs(decl$declRule$originalIndexingRule$apply(self))
+      if(cache) {
+        nodeIDs <<- result
+        invisible(NULL)
+      }
+      return(result)
     },
     
     toVarRange = function(fromStochRule = decl$stoch) {
