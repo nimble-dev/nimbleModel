@@ -9,7 +9,9 @@ originalIndexingRuleClass <- R6Class(
   portable = FALSE,
   public = list(
     graphRule = NULL,
-    graphRuleRev = NULL,
+    indexSlotToSet = NULL,
+    externalRule = NULL,
+    internalRange = NULL,
     varName = character(),
     initialize = function(LHS,
                           context,
@@ -35,12 +37,39 @@ originalIndexingRuleClass <- R6Class(
         context,
         constants
       )
-      graphRuleRev <<- graphRuleClass$new(
+
+      # For use in apply_reverse; we want to produce nodeRanges, not varRanges.
+      fullRule <- graphRuleClass$new(
         LHS,
         dummyLHS,
         context,
         constants
-      )
+        )
+      indexSlotToSet <<- fullRule$indexSets$toIndexSlotToSet
+      if (length(fullRule$indexRules)) { # if any indexing
+        isConstant <- sapply(fullRule$indexRules, function(x) inherits(x, "indexRuleConstantClass"))
+
+        # Treat constants as internal rules that don't relate to indexing over nodes.
+        # Need to relate constant rule types to indexing; constant rules are in order of constant indices.
+        constantIndices <- fullRule$indexSets$toIndexSlotToSet == 0
+
+        externalRule <<- fullRule$clone()
+        externalRule$indexRules[isConstant] <<- NULL
+        externalRule$indexSets$toIndexSlotToSet <<-
+          externalRule$indexSets$toIndexSlotToSet[!constantIndices]
+
+        internalRule <- fullRule$clone()
+        internalRule$indexRules[!isConstant] <- NULL
+        if(length(internalRule$indexRules)) {
+          # Transform indexSets as if LHS is just from the constant rules and RHS is
+          # all constants. E.g., `y[1] <- y[1,1]` if one of two slots is constant.
+          toExpr <- parse(text = paste0("y[", paste(rep(1, sum(constantIndices)), collapse = ","), "]"))[[1]]
+          fromExpr <- parse(text = paste0("y[", paste(rep(1, length(constantIndices)), collapse = ","), "]"))[[1]]
+          internalRule$indexSets <- makeSeparableIndexSets(toExpr, fromExpr, modelContextClass$new())
+          internalRange <<- internalRule$apply(externalRule$getFromRange())
+        } else internalRange <<- varRangeClass$new(list())
+      }
+
     },
 
     # Produces a varRange, though it's not really a range for a variable
@@ -60,8 +89,18 @@ originalIndexingRuleClass <- R6Class(
       graphRule$apply(fromVarRange, removeDuplicates = TRUE)
     },
     
-    apply_reverse = function(indexingRange) {
-      graphRuleRev$apply(indexingRange)
+    apply_reverse = function(indexingRange, decl) {
+      if (length(externalRule$indexRules)) {
+        externalRange <- externalRule$apply(indexingRange)
+        if (is.null(externalRange)) {
+          return(NULL)
+        }
+      } else {
+        externalRange <- varRangeClass$new(list())
+      }
+      return(
+        nodeRangeClass$new(varName, externalRange, internalRange, indexSlotToSet, decl)
+        )
     }
   )
 )
