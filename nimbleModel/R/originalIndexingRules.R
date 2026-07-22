@@ -11,7 +11,7 @@ originalIndexingRuleClass <- R6Class(
     graphRule = NULL,
     indexSlotToSet = NULL,
     externalRule = NULL,
-    internalRange = NULL,
+    myInternalRange = NULL,
     varName = character(),
     initialize = function(LHS,
                           context,
@@ -44,7 +44,8 @@ originalIndexingRuleClass <- R6Class(
         dummyLHS,
         context,
         constants
-        )
+      )
+      if(exists('paciorek')) browser()
       indexSlotToSet <<- fullRule$indexSets$toIndexSlotToSet
       if (length(fullRule$indexRules)) { # if any indexing
         isConstant <- sapply(fullRule$indexRules, function(x) inherits(x, "indexRuleConstantClass"))
@@ -66,8 +67,8 @@ originalIndexingRuleClass <- R6Class(
           toExpr <- parse(text = paste0("y[", paste(rep(1, sum(constantIndices)), collapse = ","), "]"))[[1]]
           fromExpr <- parse(text = paste0("y[", paste(rep(1, length(constantIndices)), collapse = ","), "]"))[[1]]
           internalRule$indexSets <- makeSeparableIndexSets(toExpr, fromExpr, modelContextClass$new())
-          internalRange <<- internalRule$apply(externalRule$getFromRange())
-        } else internalRange <<- varRangeClass$new(list())
+          myInternalRange <<- internalRule$apply(externalRule$getFromRange())
+        } else myInternalRange <<- varRangeClass$new(list())
       }
 
     },
@@ -99,7 +100,7 @@ originalIndexingRuleClass <- R6Class(
         externalRange <- varRangeClass$new(list())
       }
       return(
-        nodeRangeClass$new(varName, externalRange, internalRange, indexSlotToSet, decl)
+        nodeRangeClass$new(varName, externalRange, myInternalRange, indexSlotToSet, decl)
         )
     }
   )
