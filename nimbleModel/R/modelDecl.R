@@ -129,6 +129,9 @@ modelDeclClass <- R6Class(
     # Create declRule and symbolic RHS pieces.
     processDecl = function(nimFunNames, constants = list(), envir) {
       declRule <<- declRuleClass$new(self, 0, context, constants)
+      if(!identical(declRule$fullRange$extractIndexRange()$numElements,
+                    declRule$originalIndexingRule$apply('y')$extractIndexRange()$numElements))
+        stop("found duplicated node definitions in declaring `", declRule$expr, "`.")
       makeSymbolicParentNodes(nimFunNames, constants, envir)
       invisible(NULL)
     },
