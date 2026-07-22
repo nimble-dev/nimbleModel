@@ -133,7 +133,8 @@ varRangeClass <- R6Class(
 
     # Extract one or more columns of a varRange.
     # If multiple columns, result is expanded as a matrix of indices.
-    extractIndexRange = function(indices, returnUsedRanges = FALSE) {
+    extractIndexRange = function(indices = NULL, returnUsedRanges = FALSE) {
+      if(is.null(indices)) indices <- seq_along(indexSlotToRange)
       usedIndices <- unlist(lapply(rangeToIndexSlot, function(x) x[x %in% indices]))
       usedIndicesBool <- lapply(rangeToIndexSlot, function(x) x %in% indices)
       usedRanges <- which(unlist(lapply(usedIndicesBool, any)))
