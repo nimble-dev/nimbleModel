@@ -9,7 +9,7 @@ Authors@R: c(
 Description: This package provides the ability to create 'nimble' models, generally hierarchical models, not necessarily Bayesian, in R that are compiled to C++. It includes graph processing tools (e.g., finding dependent and parent nodes), abstractions for efficiently storing variable ranges, e.g., `y[1:5, c(2,4)]`  and sets of model nodes (e.g., `y[1,1:5],y[2,1:5],...`), and functions for calculating and simulating variables and nodes in a model. It has been developed to support nimble version 2.0 but can be used more generally for setting up models, doing graph queries and carrying out model calculations.
 Depends: R (>= 4.1.0)
 Imports:
-    methods,R6,nCompiler
+    digest,methods,R6,nCompiler
 License: BSD_3_clause + file LICENSE | GPL (>= 2)
 Encoding: UTF-8
 LazyData: true

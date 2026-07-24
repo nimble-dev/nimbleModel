@@ -12,6 +12,8 @@ class modelValuesBase_nClass : public interface_resolver< genericInterfaceC<mode
 public:
       modelValuesBase_nClass (  ) ;
     void  set_sizes ( Rcpp::List new_sizes ) ;
+   virtual  void  resize ( int m ) ;
+   virtual  int  getLength (  ) ;
   Rcpp::List sizes;
   int current_nRow_;
 

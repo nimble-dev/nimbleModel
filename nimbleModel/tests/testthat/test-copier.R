@@ -25,7 +25,7 @@ test_that("multiCopier basics works", {
   data <- list(y = rnorm(5))
 
   mclass <- nimbleModel(code, inits = inits, data = data, returnClass = TRUE)
-  #  m <- mclass$new()
+#  m <- mclass$new()
 
   nf <- nClass(
     Cpublic = list(

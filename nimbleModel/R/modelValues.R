@@ -1,19 +1,20 @@
 # Initial rough drafting of modelValues
-library(nCompiler)
 
-modelValuesBase_nClass <- nClass(
+modelValuesBase_nClass <- nCompiler::nClass(
   classname = "modelValuesBase_nClass",
   Rpublic = list(
     initialize = function(...) {
       super$initialize(...)
+      if(!isCompiled()) {
+        modelValuesBase_nClass()
+      }
     }
   ),
   Cpublic = list(
     sizes = "RcppList",
     current_nRow_ = "integerScalar",
-    modelValuesBase_nClass = nFunction(
+    modelValuesBase_nClass = nCompiler::nFunction(
       function() {
-        super$initialize()
         current_nRow_ <<- 0
         sizes <<- list()
       },
@@ -25,11 +26,32 @@ modelValuesBase_nClass <- nClass(
         }
       )
     ),
-    set_sizes = nFunction(
+    set_sizes = nCompiler::nFunction(
       name = "set_sizes",
       fun = function(new_sizes = "RcppList") {
         self$sizes <<- new_sizes
       }
+    ),
+    resize = nCompiler::nFunction(
+      name = "resize",
+      fun = function(m) {
+        stop("Should not be calling uncompiled modelValuesBase_nClass resize().")
+      },
+      compileInfo = list(
+        C_fun = function(m) {
+          cppLiteral('Rcpp::stop("Should not be calling compiled modelValuesBase_nClass resize().");')
+        },
+        virtual = TRUE
+      ),
+      argTypes = list(m = "integerScalar")
+    ),
+    getLength = nCompiler::nFunction(
+      name = "getLength",
+      function() {
+        return(current_nRow_)
+        returnType("integerScalar")
+      },
+      compileInfo = list(virtual = TRUE)
     )
   ),
   predefined = quote(system.file(file.path("include", "nimbleModel", "predef"),
@@ -47,7 +69,7 @@ modelValues_resize <- function(self, m, sizes) {
   # check preservation issues in resizing
   for (v in names(sizes)) {
     this_sizes <- sizes[[v]]
-    length(self[[v]]) <<- m
+    length(self[[v]]) <- m
     if (length(this_sizes) == 1) {
       for (i in 1:m) self[[v]][[i]] <- numeric(length = this_sizes)
     } else {
@@ -58,6 +80,10 @@ modelValues_resize <- function(self, m, sizes) {
 
 make_modelValues_nClass <- function(varInfo,
                                     classname) {
+  if(missing(classname)) {
+    hashedID <- make_modelValues_hashID(varInfo)
+    classname <- Rname2CppName(paste0("MV_", hashedID))
+  }
   e <- environment()
   CpublicVars <- varInfo$vars |>
     lapply(\(x) {
@@ -95,41 +121,33 @@ make_modelValues_nClass <- function(varInfo,
   #     }
   c_ctor_fun <- function() {}
   body(c_ctor_fun) <- as.call(c(as.name("{"), ctor_lines))
-
   # function(m = 'integerScalar') {
   #             nCpp("resize_one<1>(mu, m, this->sizes[\"mu\"])")
   #             nCpp("resize_one<2>(cov, m, this->sizes[\"cov\"])")
   #             current_nRow_ <<- m
   #           }
   c_resize_fun <- function(m) {}
-  body(c_resize_fun) <- as.call(c(as.name("{"), resize_lines))
-
-  classname <- "modelValues_class_make_this_generic"
+  body(c_resize_fun) <- as.call(c(as.name("{"), resize_lines, list(quote(current_nRow_ <- m))))
 
   CPUBLIC <- c(
     list(
-      CLASSNAME = nFunction(
+      CLASSNAME = nCompiler::nFunction(
         fun = c_ctor_fun,
         compileInfo = list(
           constructor = TRUE
         )
       ),
-      resize = nFunction(
+      resize = nCompiler::nFunction(
         name = "resize",
         fun = function(m) {
           modelValues_resize(self, m, sizes)
+          self$current_nRow_ <- m
           # check preservation issues in resizing
         },
         compileInfo = list(
           C_fun = c_resize_fun
         ),
         argTypes = list(m = "integerScalar")
-      ),
-      getLength = nFunction(
-        function() {
-          return(current_nRow_)
-          returnType("integerScalar")
-        }
       )
     ),
     CpublicVars
@@ -138,9 +156,9 @@ make_modelValues_nClass <- function(varInfo,
   names(CPUBLIC)[1] <- classname
 
   generator_code <- substitute(
-    nClass(
+    nCompiler::nClass(
       classname = CLASSNAME,
-      inherit = nimbleModel:::modelValuesBase_nClass,
+      inherit = modelValuesBase_nClass,
       compileInfo = list(
         nClass_inherit = list(base = "modelValuesClass_")
       ),
@@ -148,14 +166,15 @@ make_modelValues_nClass <- function(varInfo,
         initialize = function(...) {
           super$initialize(...)
           if (!isCompiled()) {
-            CLASSNAME()
+            CLASSNAME_()
           }
         }
       ),
       Cpublic =
         CPUBLIC
     ),
-    list(CLASSNAME = classname)
+    list(CLASSNAME = classname,
+        CLASSNAME_ = as.name(classname))
   )
   generator <- eval(generator_code)
   generator
@@ -178,3 +197,46 @@ make_modelValues_nClass <- function(varInfo,
   x[[var]][[ind]] <- value
   x
 }
+
+make_modelValues_hashID <- function(varInfo) {
+  # We go to some lengths to normalize
+  # so that we obtain the same hash for equivalent varInfo.
+  varsList <- varInfo$vars
+  sortedNames <- sort(names(varsList))
+  sortedVars <- varsList[sortedNames]
+  nested_normalize <- function(x) {
+    if(!is.list(x)) 
+      stop("Elements of a modelValues varInfo list must be lists with elements 'name' and 'nDim' (or unnamed elements in that order)")
+    if(is.null(names(x))) {
+      if(length(x) != 2) {
+        stop("Elements of a modelValues varInfo list must have 2 elements (optionally named 'name' and 'nDim')")
+      }
+      if(!is.character(x[[1]]) || !is.numeric(x[[2]])) {
+        stop("Elements of a modelValues varInfo list, if not named, must have first element character (for the 'name') and second element numeric (for the 'nDim')")
+      }
+      x <- list(name = x[[1]], nDim = x[[2]])
+    }
+    x <- x[sort(names(x))]
+    if(!identical(names(x), sort(c("name", "nDim")))) {
+      # use sort in the RHS of the identical() to avoid 
+      # unknown sort ordering in other locales
+      stop("Elements of a modelValues varInfo list must be named 'name' and 'nDim'")
+    }
+    x
+  }
+  normalizedVars <- lapply(sortedVars, nested_normalize)
+  hashedID <- digest::digest(normalizedVars, algo = "crc32")
+  hashedID
+}
+
+#' @export
+modelValues <- function(varInfo, .ID = FALSE, env = parent.frame()) {
+  hashedID <- make_modelValues_hashID(varInfo)
+  classname <- Rname2CppName(paste0("MV_", hashedID))
+  if(isTRUE(.ID)) {
+    return(classname)
+  }
+  ans <- make_modelValues_nClass(varInfo, classname = classname)
+  ans
+}
+class(modelValues) <- c("function", "nClassBuilder")

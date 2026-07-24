@@ -35,3 +35,6 @@ vignettes/*.pdf
 
 .DS_Store
 **/.DS_Store
+
+# Symlink to inst/include for devtools::load_all()
+nimbleModel/include
