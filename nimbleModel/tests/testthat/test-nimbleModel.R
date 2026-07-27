@@ -1276,6 +1276,14 @@ test_that("overlapping node definitions", {
         y[2] ~ dnorm(0,1)
     })
     expect_error(nimbleModel(code), "found multiple node definitions")
+
+    code=nimbleCode({
+      for(i in 1:2)
+        for(j in 1:2)
+          y[i+j] ~ dnorm(0,1)
+    })
+    expect_error(m <- nimbleModel(code), "found duplicated node definitions")
+
 })
 
 
