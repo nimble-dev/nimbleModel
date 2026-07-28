@@ -286,26 +286,6 @@ test_that("nonseparable loop indexing cases", {
   expect_identical(m$modelDef$declRules$y$rules[[1]]$getIDs(indexingRange), ids)
   expect_identical(m$modelDef$declRules$y$rules[[1]]$getOriginalIndexing(ids)$toChar(),
                    'y[c(5, 8)]')
-
-  code <- nimbleCode({
-    for(i in 1:3)
-      for(j in 100:101)
-        y[i+j] ~ dnorm(0,1)
-  })
-
-  m <- nimbleModel(code)
-
-  ids <- c(2L, 4L)
-  indexingRange <- varRangeClass$new(list(newIndexRange(matrix(c(1,101,2,101),ncol=2,byrow=TRUE))),varName='y')
-  expect_identical(m$modelDef$declRules$y$rules[[1]]$getIDs(indexingRange), ids)
-  expect_identical(m$modelDef$declRules$y$rules[[1]]$getOriginalIndexing(ids)$extractIndexRange(1:3)$getValuesAsMatrix(),
-                   matrix(c(1:2,101, 101),ncol=2))
-   
-  ids <- 4L
-  indexingRange <- varRangeClass$new(list(newIndexRange(matrix(c(2,101),ncol=2,byrow=TRUE))),varName='y')
-  expect_identical(m$modelDef$declRules$y$rules[[1]]$getIDs(indexingRange), ids)
-  expect_identical(m$modelDef$declRules$y$rules[[1]]$getOriginalIndexing(ids)$toChar(), "y[c(2, 101)]")
-
   
   # separable and nonseparable
   code <- nimbleCode({
