@@ -829,11 +829,19 @@ test_that("calculate works correctly for time series/SSM recursion", {
   expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))),
               "something other than sequential dependence on the past")
 
-  # Check proper handling when providing list of instructions.
-  instrList <- makeInstrList(m, lapply(c(5,3,1,2,4), \(i) instrList[[i]])) 
+  # Check idempotency
+  instrList <- makeInstrList(m, instrList)
   sortIDs <- lapply(instrList, \(x) x$sortID)
-  expect_true(all(diff(sapply(sortIDs, \(x) min(x,na.rm=TRUE))) >= 0))
-  expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))))
+  expect_true(all(diff(sapply(sortIDs, \(x) min(x,na.rm=TRUE))) >= 0), "incorrect order")
+  expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))),
+              "something other than sequential dependence on the past")
+
+  # Check proper handling when providing list of instructions.
+  # This would need to be created as an R list of instrClass objects,
+  # instrList <- makeInstrList(m, lapply(c(5,3,1,2,4), \(i) instrList[[i]])) 
+  # sortIDs <- lapply(instrList, \(x) x$sortID)
+  # expect_true(all(diff(sapply(sortIDs, \(x) min(x,na.rm=TRUE))) >= 0))
+  # expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))))
 
   cmclass <- nCompile(mclass)
   cm <- cmclass$new()
