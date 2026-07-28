@@ -186,9 +186,15 @@ nimbleModelID <- labelFunctionCreator("MID")
 
 
 # temporary, as we have some tests of use of `c()` in indexing
-nimC <- function(...) {
+nC <- function(...) {
   c(...)
 }
+
+# temporary
+# nMul <- function (x, y) {
+#   x %*% y
+# } 
+
 
 evalNumeric <- function(expr) {
   if (length(expr) == 1) {

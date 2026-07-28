@@ -34,7 +34,7 @@ modelDefClass <- R6Class(
       checkAndAssignConstants(constants, code)
 
       modelCode <<- codeProcessIfThenElse(code, constants, userEnv)
-      modelCode <<- nimble:::nf_changeNimKeywords(modelCode) # Formerly in `assignBUGScode`.
+      modelCode <<- nCompiler:::nf_changeKeywords(modelCode) # Formerly in `assignBUGScode`.
 
       # TODO: add this later.
       # setModelValuesClassName()

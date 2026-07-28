@@ -738,7 +738,7 @@ test_that("non-sequential indexing cases", {
                    returnClass = TRUE)
   m <- mclass$new()
 
-  # No opDef for chol so comment out compiled operations.
+  # No opDef for {d,r}mnorm_chol so comment out compiled operations.
   # cmclass <- nCompile(mclass)
   # cm <- cmclass$new()
   truth <- nCompiler:::dmnorm_chol(m$y[c(2,3,5)], rep(0,3), diag(3), log = TRUE)
@@ -755,7 +755,7 @@ test_that("non-sequential indexing cases", {
   expect_identical(nr$numExternalIndexRanges, 0L)
   expect_identical(nr$toChar(), "`y[c(2, 3, 5)]`")
 
-  # Cannot compile. No operator def for nimC: This was part of the call:  y[i = nimC(2, 3, 5)]
+  # Cannot compile. Hard to disentangle C++ compilation error, seemingly related to Eigen / Eigen Tensors.
   code <- nimbleCode({
       y[c(2,3,5)] <- x[1:3] + 1
   })
