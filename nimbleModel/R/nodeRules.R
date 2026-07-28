@@ -186,8 +186,8 @@ declRuleClass <- R6Class(
           nodeIDs <- rowSums(indices)
         }
       } else {  # Loop indexing is nonseparable. Fall back to expand and match, even if there are multiple (i.e., crossed) rules.
-        fullIndices <- originalIndexingRule$apply(declRule$varName)$extractIndexRange(seq_len(numLoops))$getValuesAsMatrix()
-        inputIndices <- indexingRange$extractIndexRange(seq_len(numLoops))$getValuesAsMatrix()
+        fullIndices <- originalIndexingRule$apply(originalIndexingRule$varName)$extractIndexRange()$getValuesAsMatrix()
+        inputIndices <- indexingRange$extractIndexRange()$getValuesAsMatrix()
         nodeIDs <- match(
           do.call(interaction, as.data.frame(inputIndices)),
           do.call(interaction, as.data.frame(fullIndices))
@@ -244,7 +244,7 @@ declRuleClass <- R6Class(
                   return(newIndexRange(substitute(MIN:MAX, list(MIN=rg[1], MAX=rg[2]))))
                 } else return(newIndexRange(uniqIndices[[i]]))
               })
-              return(varRangeClass$new(indexRanges, varName = declRule$varName))
+              return(varRangeClass$new(indexRanges, varName = originalIndexingRule$varName))
             }
           } else {
             for(i in seq_len(numLoops))
@@ -252,7 +252,7 @@ declRuleClass <- R6Class(
           }
         }
       } else { # Loop indexing is nonseparable. Fall back to expand and select, even if there are multiple (i.e., crossed) rules.
-        fullIndices <- originalIndexingRule$apply(declRule$varName)$extractIndexRange(seq_len(numLoops))$getValuesAsMatrix()
+        fullIndices <- originalIndexingRule$apply(originalIndexingRule$varName)$extractIndexRange()$getValuesAsMatrix()
         indices <- fullIndices[nodeIDs, ]
       }
       return(varRangeClass$new(list(newIndexRange(indices)), varName = originalIndexingRule$varName))
@@ -262,7 +262,7 @@ declRuleClass <- R6Class(
 
 # TODO: we may want to create more methods for the indexingRules so as not to access their internals in these next two functions.
 # Convert from loop indexing to ID indexing (locally within a given separable loop set) (accounting for offset or non-sequential indexing).
-getOneLoopIDs = function(indexRange, indexingRule) {
+getOneLoopIDs <- function(indexRange, indexingRule) {
   if(inherits(indexingRule, 'indexRuleBlockClass')) {
     init <- indexingRule$setupResults$fromMin
     # We could use `switch` but then can't use `inherits` and would need to pick off [[1]] element from class().
@@ -278,13 +278,17 @@ getOneLoopIDs = function(indexRange, indexingRule) {
     stop("invalid type of indexRange provided for creating nodeIDs")
   }
   if(inherits(indexingRule, 'indexRuleArbitraryClass')) {
-    return(match(indexRange$getValuesAsMatrix(), unlist(indexingRule$setupResults$iRow2toIndices)))
+    values <- match(indexRange$getValuesAsMatrix(), unlist(indexingRule$setupResults$iRow2toIndices))
+    NAs <- is.na(values)
+    if(any(NAs))
+      values <- values[!NAs]
+    return(values)
   }
   stop("invalid type of indexRule provided for creating nodeIDs")
 }
 
 # Convert from ID indexing (locally within a given separable loop set) to the actual loop indexing (accounting for offset or non-sequential indexing).
-getOneLoopIndices = function(relativeNodeIDs, indexingRule) {
+getOneLoopIndices <- function(relativeNodeIDs, indexingRule) {
   if(inherits(indexingRule, 'indexRuleBlockClass')) {
     if(indexingRule$setupResults$fromMin != 1)
       return(relativeNodeIDs + (indexingRule$setupResults$fromMin - 1)) else return(relativeNodeIDs)
