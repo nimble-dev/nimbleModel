@@ -2058,7 +2058,7 @@ test_that("non-sequential indexing in for loop or indexRule", {
         NULL
     )
     
-    rule <- graphRuleClass$new(toExpr = quote(y[nimC(2,3,5)]),
+    rule <- graphRuleClass$new(toExpr = quote(y[nC(2,3,5)]),
                                fromExpr = quote(x[1:3]),
                                context = context_0)
 

@@ -56,8 +56,8 @@ indexRuleConstant_setup <- function(toIndexExprList,
         eval(toIndexExpr[[2]], envir = constants),
         eval(toIndexExpr[[3]], envir = constants)
       )
-    } else if (length(toIndexExpr) > 1 && toIndexExpr[[1]] == "nimC") {
-      toIndexExpr[[1]] <- quote(c) # `nimC` not readily available in series of environments.
+    } else if (length(toIndexExpr) > 1 && toIndexExpr[[1]] == "nC") {
+      toIndexExpr[[1]] <- quote(c) # `nC` not readily available in series of environments.
       toConstant <- indexRangeMatrixClass$new(as.matrix(eval(toIndexExpr, envir = constants)))
     } else {
       stop("input error in `", safeDeparse(toIndexExprList), "`.")
