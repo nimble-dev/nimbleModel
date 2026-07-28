@@ -633,18 +633,16 @@ nodeRangeClass <- R6Class(
       )
     },
 
-    toIDs = function(cache = TRUE) {
-      result <- decl$declRule$getIDs(decl$declRule$originalIndexingRule$apply(self))
-      if(cache) {
-        nodeIDs <<- result
-        invisible(NULL)
-      }
-      return(result)
+    getIDs = function() {
+      if(is.null(nodeIDs)) 
+        nodeIDs <<- decl$declRule$getIDs(decl$declRule$originalIndexingRule$apply(self))
+      return(nodeIDs)
     },
     
     toVarRange = function(fromStochRule = decl$stoch) {
       varRangeClass$new(indexRanges, rangeToIndexSlot = rangeToIndexSlot, varName = varName, fromStochRule = fromStochRule)
     },
+    
     toChar = function() {
       if (is.null(varName)) {
         nm <- as.name("no_name")
