@@ -8,6 +8,7 @@ modelValuesBase_nClass <- nCompiler::nClass(
       if(!isCompiled()) {
         modelValuesBase_nClass()
       }
+      self$sizes <- self$defaultSizes
     }
   ),
   Cpublic = list(
@@ -155,6 +156,14 @@ make_modelValues_nClass <- function(varInfo,
 
   names(CPUBLIC)[1] <- classname
 
+  defaultSizes <- varInfo$sizes
+  if(is.null(defaultSizes)) defaultSizes <- list()
+  for(v in names(varInfo$vars)) {
+    if(is.null(defaultSizes[[v]]) || length(defaultSizes[[v]]) == 0) {
+      defaultSizes[[v]] <- rep(0, varInfo$vars[[v]]$nDim)
+    }
+  }
+
   generator_code <- substitute(
     nCompiler::nClass(
       classname = CLASSNAME,
@@ -163,6 +172,8 @@ make_modelValues_nClass <- function(varInfo,
         nClass_inherit = list(base = "modelValuesClass_")
       ),
       Rpublic = list(
+        defaultSizes = defaultSizes,
+        varInfo = varInfo,
         initialize = function(...) {
           super$initialize(...)
           if (!isCompiled()) {
@@ -177,6 +188,7 @@ make_modelValues_nClass <- function(varInfo,
         CLASSNAME_ = as.name(classname))
   )
   generator <- eval(generator_code)
+  generator$set("public", "NCgenerator", generator)
   generator
 }
 
@@ -231,6 +243,9 @@ make_modelValues_hashID <- function(varInfo) {
 
 #' @export
 modelValues <- function(varInfo, .ID = FALSE, env = parent.frame()) {
+  if(inherits(varInfo, "modelBase_nClass")) {
+    varInfo <- get_varInfo_from_nimbleModel(varInfo)
+  }
   hashedID <- make_modelValues_hashID(varInfo)
   classname <- Rname2CppName(paste0("MV_", hashedID))
   if(isTRUE(.ID)) {
