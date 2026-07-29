@@ -221,7 +221,7 @@ declRuleClass <- R6Class(
             indices[ , loop_idx] <- ((nodeIDs - 1) %/% cumLens[loop_idx+1]) + 1
             nodeIDs <- nodeIDs - (indices[,loop_idx]-1) * cumLens[loop_idx+1]
           }
-          indices[ , 3] <- nodeIDs
+          indices[ , numLoops] <- nodeIDs
 
           # Check for crossed ranges before converting back to actual indexing (to deal with non-sequential cases).
           uniqValues <- lapply(seq_len(numLoops), \(i) {
