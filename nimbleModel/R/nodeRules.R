@@ -261,6 +261,8 @@ declRuleClass <- R6Class(
 )
 
 # TODO: we may want to create more methods for the indexingRules so as not to access their internals in these next two functions.
+# Note that these functions do not deal with validity of IDs or loop indexing. Invalid values are filtered out when
+# going to back to nodeRanges, so we may not need to do that filtering here.
 # Convert from loop indexing to ID indexing (locally within a given separable loop set) (accounting for offset or non-sequential indexing).
 getOneLoopIDs <- function(indexRange, indexingRule) {
   if(inherits(indexingRule, 'indexRuleBlockClass')) {

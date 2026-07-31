@@ -322,7 +322,7 @@ modelClass <- R6Class(
 
 # Determine nodes of interest, potentially of particular types.
 # Incorporates functionality formerly in `getNodeNames` and `expandNodeNames`
-getNodes <- function(model, nodes = NULL,
+getNodes <- function(model, nodes,
                      determOnly = FALSE, stochOnly = FALSE,
                      includeData = TRUE, dataOnly = FALSE,
                      includeRHSonly = FALSE,
@@ -332,6 +332,7 @@ getNodes <- function(model, nodes = NULL,
                      returnScalarComponents = FALSE,
                      .sort = FALSE
                      ) {
+  if(!missing(nodes) && is.null(nodes)) return(nodes)
   # A single nodeRange can have elements that don't share a sortID when converted to calcRange representation,
   # so we can't sort nodeRanges.
   if (.sort && !nodesAsChars)
@@ -347,7 +348,7 @@ getNodes <- function(model, nodes = NULL,
     stop("only one of `topOnly`, `latentOnly`, `endOnly` can be `TRUE`.")
   }
 
-  if (is.null(nodes)) {
+  if (missing(nodes)) {
     nodes <- names(model$modelDef$declRules)
     if (includeRHSonly && !stochOnly && !determOnly) {
       nodes <- unique(c(nodes, names(model$modelDef$rhsOnlyRules)))

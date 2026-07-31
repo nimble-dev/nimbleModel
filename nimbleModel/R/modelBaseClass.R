@@ -374,7 +374,7 @@ modelBase_nClass <- nClass(
     },
     # TODO: not working because `nimbleModel::getNodes` needs the model not just modelDef.
     # Once we integrate modelClass with modelBase_nClass, we should be able to pass `self`.
-    getNodes = function(nodes = NULL, determOnly = FALSE, stochOnly = FALSE,
+    getNodes = function(nodes, determOnly = FALSE, stochOnly = FALSE,
                         includeData = TRUE, dataOnly = FALSE,
                         includeRHSonly = FALSE,
                         topOnly = FALSE, latentOnly = FALSE, endOnly = FALSE,
@@ -382,13 +382,22 @@ modelBase_nClass <- nClass(
                         nodesAsChars = getNimbleModelOption('nodesAsChars'),
                         returnScalarComponents = FALSE,
                         .sort = FALSE) {
-      nimbleModel::getNodes(
-        self, nodes, determOnly, stochOnly, includeData, dataOnly,
-        includeRHSonly,
-        topOnly, latentOnly, endOnly,
-        includePredictive, predictiveOnly, 
-        nodesAsChars, returnScalarComponents, .sort
-      )
+      if(!missing(nodes)) {
+          nimbleModel::getNodes(
+                           self, nodes, determOnly, stochOnly, includeData, dataOnly,
+                           includeRHSonly,
+                           topOnly, latentOnly, endOnly,
+                           includePredictive, predictiveOnly, 
+                           nodesAsChars, returnScalarComponents, .sort
+                       )
+      } else nimbleModel::getNodes(
+                              self, determOnly=determOnly, stochOnly=stochOnly,
+                              includeData=includeData, dataOnly=dataOnly,
+                              includeRHSonly=includeRHSonly,
+                              topOnly=topOnly, latentOnly=latentOnly, endOnly=endOnly,
+                              includePredictive=includePredictive, predictiveOnly=predictiveOnly, 
+                              nodesAsChars=nodesAsChars, returnScalarComponents=returnScalarComponents,
+                              .sort=.sort)
     },
     getNodeNames = function(determOnly = FALSE, stochOnly = FALSE,
                         includeData = TRUE, dataOnly = FALSE, includeRHSonly = FALSE,
