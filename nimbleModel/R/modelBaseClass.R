@@ -115,11 +115,10 @@ modelBase_nClass <- nClass(
 
       # nonpredictive rules
       candidateRules <- unlist(lapply(modelDef$calcRules, function(oneVarRules) {
-        stoch <- sapply(oneVarRules$rules, function(rule) rule$declRule$decl$stoch)
-        return(oneVarRules$rules[stoch])
-      })) # `unlist` removes length-0 entries.
+        return(oneVarRules$rules)
+      }))
       candidateRules <- newVarRules(candidateRules)
-
+        
       for (oneVarPredictiveRules in predictiveRules) {
         for (predictiveRule in oneVarPredictiveRules$rules) {
           predictiveRange <- predictiveRule$fullRange
