@@ -408,7 +408,11 @@ makeModel_nClass <- function(modelVarInfo,
         defaultInits = inits,
         defaultData = data,
         modelDef = modelDef,
-        CpublicDeclFuns = CpublicDeclFuns
+        CpublicDeclFuns = CpublicDeclFuns,
+        initialize = function(...) {
+          if (isTRUE(.GlobalEnv$.debugModelInit)) browser()
+          super$initialize(..., .initialize=TRUE)
+        }
       ),
       # A concatenation of lists
       CPUBLIC = c(CpublicDeclFuns, Cpublic_setup_decl_mgmt, CpublicModelVars, CpublicCtor, CpublicMethods),

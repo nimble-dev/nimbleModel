@@ -7,21 +7,23 @@ modelBase_nClass <- nClass(
     nondataRules = NULL,
     predictiveRules = NULL,
     nonpredictiveRules = NULL,
-    initialize = function(sizes = list(), inits = list(), data = list(), ...) {
+    declFunList = NULL,
+    initialize = function(sizes = list(), inits = list(), data = list(), ..., .initialize = FALSE) {
       # It is not very easy to set debug onto the initialize function, so
       # here is a magic flag.
       if (isTRUE(.GlobalEnv$.debugModelInit)) browser()
       super$initialize(...)
 
-      # TODO: is there a better way to populate declFunNameToIndex in Cpublic?
-      declFunNameToIndex <- self$declFunNameToIndex_
+      CppObj_provided <- "CppObj" %in% ...names()
 
-      declFunNames <- names(declFunNameToIndex)
       if (isCompiled()) {
         # self$setup_decl_mgmt_from_names(declFunNames)
         # setting up the canonically indexed vector of node functions
         # now happens in the C++ constructor.
       } else {
+        # This assumes there is a derived class.
+        declFunNameToIndex <- self$declFunNameToIndex_
+        declFunNames <- names(declFunNameToIndex)
         self$declFunList <- list()
         length(self$declFunList) <- length(declFunNames)
         names(self$declFunList) <- declFunNames
@@ -33,6 +35,39 @@ modelBase_nClass <- nClass(
       }
 
       # TODO: create a merge_and_set function that handles all three of the following.
+      if(isTRUE(.initialize)) {
+        # This assumes there is a derived object with defaultSizes, defaultInits, and defaultData.
+
+        # TODO: do we want to handle data differently?
+        # TODO: need to work through not setting as 'data' if values are NA;
+        #   check back against how dataRules work in nimbleModel work.
+        # # this and the next line used inits. was that a typo? I think so.
+        allData <- self$defaultData
+        if (!missing(data)) {
+          for (nm in names(data)) {
+            allData[[nm]] <- data[[nm]]
+          }
+        }
+
+        if(!CppObj_provided) {
+          self$reset(sizes = sizes, inits = inits, allData = allData)
+        }
+ 
+        dataVarIndices <- names(modelDef$constants) %in% modelDef$varNames & !names(modelDef$constants) %in% names(allData) # don't overwrite anything in 'allData'
+        # TODO: revise messaging below using new nimbleModel messaging system.
+        if (sum(names(modelDef$constants) %in% names(allData))) {
+          messageIfVerbose("  [Note] Found the same variable(s) in both 'data' and 'constants'; using variable(s) from 'data'.\n")
+        }
+        if (sum(dataVarIndices)) {
+          allData <- c(allData, modelDef$constants[dataVarIndices])
+          messageIfVerbose("  [Note] Adding '", paste(names(modelDef$constants)[dataVarIndices], collapse = ", "), "' as data for building model.")
+        }
+        # To-do: possibly build these elsewhere, or make them lazy build-on-demand.
+        makeDataRules(allData)
+        makePredictiveRules()
+      }
+    },
+    reset = function(sizes = list(), inits = list(), data = list(), allData = NULL) {
       allSizes <- self$defaultSizes
       if (!missing(sizes)) {
         for (nm in names(sizes)) {
@@ -55,28 +90,17 @@ modelBase_nClass <- nClass(
         allInits <- self$defaultInits
       } else if (length(inits)) set_from_list(inits)
 
-      # TODO: do we want to handle data differently?
-      # TODO: need to work through not setting as 'data' if values are NA;
-      #   check back against how dataRules work in nimbleModel work.
-      allData <- self$defaultData
-      if (!missing(inits)) {
-        for (nm in names(inits)) {
-          allData[[nm]] <- inits[[nm]]
+      if(is.null(allData)) {
+        allData <- self$defaultData
+        if (!missing(data)) { # this and the next line used inits. was that a typo? I think so. 
+          for (nm in names(data)) {
+            allData[[nm]] <- data[[nm]]
+          }
         }
       }
       if (length(allData)) set_from_list(allData)
 
-      dataVarIndices <- names(modelDef$constants) %in% modelDef$varNames & !names(modelDef$constants) %in% names(allData) # don't overwrite anything in 'allData'
-      # TODO: revise messaging below using new nimbleModel messaging system.
-      if (sum(names(modelDef$constants) %in% names(allData))) {
-        messageIfVerbose("  [Note] Found the same variable(s) in both 'data' and 'constants'; using variable(s) from 'data'.\n")
-      }
-      if (sum(dataVarIndices)) {
-        allData <- c(allData, modelDef$constants[dataVarIndices])
-        messageIfVerbose("  [Note] Adding '", paste(names(modelDef$constants)[dataVarIndices], collapse = ", "), "' as data for building model.")
-      }
-      makeDataRules(allData)
-      makePredictiveRules()
+
     },
     makeDataRules = function(data) {
       nms <- names(data)
@@ -371,8 +395,8 @@ modelBase_nClass <- nClass(
   ),
   Cpublic = list(
     # TODO: using 'RcppObject' was resulting in a symbolTBD error - probably nCompiler issue 186.
-    declFunList = "numericScalar", # 'RcppObject',  # This won't actually be used in C++, but needs to be in Cpublic for accessibility.
-    declFunNameToIndex = "RcppList", # Not sure what type this should be for use in C++.
+    #declFunList = "numericScalar", # 'RcppObject',  # This won't actually be used in C++, but needs to be in Cpublic for accessibility.
+    #declFunNameToIndex = "RcppList", # Not sure what type this should be for use in C++.
     ping = nFunction(
       name = "ping",
       function() {

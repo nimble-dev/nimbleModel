@@ -91,7 +91,7 @@ make_modelValues_nClass <- function(varInfo,
       nDim <- x$nDim
       nLname <- paste0("nL", nDim, "D")
       if (!exists(nLname, envir = e)) {
-        e[[nLname]] <- eval(substitute(nList(numericArray(nDim = NDIM)), list(NDIM = nDim)))
+        e[[nLname]] <- eval(substitute(nCompiler:::nList(numericArray(nDim = NDIM)), list(NDIM = nDim)))
       }
       paste0(nLname)
     })
