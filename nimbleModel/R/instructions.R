@@ -140,7 +140,7 @@ makeInstrList <- function(model, input, use_vec = FALSE) {
   }
   if (is.list(input) && all(sapply(input, function(x) inherits(x, "instr_nClass")))) {
     # Create sort-ordered nList.
-    instrList <- nList(instr_nClass)$new()
+    instrList <- nList(instr_nClass())$new()
     numInstrs <- length(input)
     instrList$setLength(numInstrs)
     ord <- order(unlist(lapply(input, function(x) x$sortID)))
@@ -159,7 +159,7 @@ makeInstrList <- function(model, input, use_vec = FALSE) {
       rule$makeCalcRange(rule$apply(vr))
     })
   }))
-  instrList <- nList(instr_nClass)$new()
+  instrList <- nList(instr_nClass())$new()
   numRanges <- length(ranges)
   instrList$setLength(numRanges)
   ord <- order(unlist(lapply(ranges, function(x) x$sortID)))
@@ -181,7 +181,7 @@ instr_nClass <- nClass(
         self$nDim <- instr$nDim %||% 0L
         self$dims <- instr$dims %||% integer()
         self$slots <- instr$slots %||% integer()
-        self$values <- nList(integerVector)$new()
+        self$values <- nList(integerVector())$new()
         self$values$setLength(length(self$dims))
         if (self$nDim) {
           for (i in 1:length(self$dims)) {
@@ -200,13 +200,13 @@ instr_nClass <- nClass(
     nDim = "integerScalar",
     dims = "integerVector",
     slots = "integerVector",
-    values = "nList(integerVector())",
+    values = "nCompiler:::nList(integerVector())",
     type = "integerScalar",
     sortID = "integerVector",
     declID = "integerScalar",
     instr_nClass = nFunction(
       function() {
-        values <- nList(integerVector)$new()
+        values <- nList(integerVector())$new()
       },
       compileInfo = list(constructor = TRUE)
     )
@@ -216,7 +216,7 @@ instr_nClass <- nClass(
     interface = "full",
     createFromR = TRUE,
     exportName = "instr_nClass_new",
-    needed_units = list("nList(integerVector())"),
+    needed_units = list("nCompiler:::nList(integerVector())"),
     packageNames = c(uncompiled = "instr_nClass_R", compiled = "instr_nClass")
   )
 )

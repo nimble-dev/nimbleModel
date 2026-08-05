@@ -3,14 +3,14 @@ copier_nClass <- nCompiler::nClass(
   classname = "copier_nClass",
   Cpublic = list(
     varName = "string",
-    indsList = "nList(integerVector())"
+    indsList = "nCompiler:::nList(integerVector())"
   ),
   predefined = quote(system.file(file.path("include", "nimbleModel", "predef"), package = "nimbleModel") |> file.path("copier_nClass")),
   compileInfo = list(
     interface = "full",
     createFromR = TRUE,
     exportName = "copier_nClass_new",
-    needed_units = list("nList(integerVector())"),
+    needed_units = list("nCompiler:::nList(integerVector())"),
     packageNames = c(uncompiled = "copier_nClass_R", compiled = "copier_nClass"),
     nClass_inherit = list("copier_nC_base")
   )
@@ -26,7 +26,7 @@ multiCopier_nClass <- nCompiler::nClass(
     }
   ),
   Cpublic = list(
-    copiers = "nList(copier_nClass())",
+    copiers = "nCompiler:::nList(copier_nClass())",
     init = nFunction(
       name = "init",
       function(model) {
@@ -71,7 +71,7 @@ multiCopier_nClass <- nCompiler::nClass(
     interface = "full",
     createFromR = TRUE,
     exportName = "multiCopier_nClass_new",
-    needed_units = list("nList(copier_nClass())", "modelBase_nClass()"),
+    needed_units = list("nCompiler:::nList(copier_nClass())", "modelBase_nClass()"),
     packageNames = c(uncompiled = "multiCopier_nClass_R", compiled = "multiCopier_nClass"),
     nClass_inherit = list("multiCopier_nC_base"),
     opDefs = list(
