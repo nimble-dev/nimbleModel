@@ -80,3 +80,6 @@ export("values<-")
 
 S3method("[", modelValues)
 S3method("[<-", modelValues)
+S3method("length", modelValues)
+S3method("length<-", modelValues)
+S3method("as.list", modelValues)

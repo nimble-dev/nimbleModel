@@ -83,11 +83,13 @@ modelValues_resize <- function(self, m, sizes) {
 }
 
 make_modelValues_nClass <- function(varInfo,
-                                    classname) {
-  if(missing(classname)) {
+                                    cpp_classname) {
+  if(missing(cpp_classname)) {
     hashedID <- make_modelValues_hashID(varInfo)
-    classname <- Rname2CppName(paste0("MV_", hashedID))
+    cpp_classname <- Rname2CppName(paste0("MV_", hashedID))
   }
+  # All cases get the same classname so that they share the same S3 dispatch for `[`, `[<-`, etc.
+  classname <- "modelValues"
   e <- environment()
   CpublicVars <- varInfo$vars |>
     lapply(\(x) {
@@ -135,7 +137,7 @@ make_modelValues_nClass <- function(varInfo,
 
   CPUBLIC <- c(
     list(
-      CLASSNAME = nCompiler::nFunction(
+      CPP_CLASSNAME = nCompiler::nFunction(
         fun = c_ctor_fun,
         compileInfo = list(
           constructor = TRUE
@@ -157,7 +159,7 @@ make_modelValues_nClass <- function(varInfo,
     CpublicVars
   )
 
-  names(CPUBLIC)[1] <- classname
+  names(CPUBLIC)[1] <- cpp_classname
 
   defaultSizes <- varInfo$sizes
   if(is.null(defaultSizes)) defaultSizes <- list()
@@ -172,6 +174,7 @@ make_modelValues_nClass <- function(varInfo,
       classname = CLASSNAME,
       inherit = modelValuesBase_nClass,
       compileInfo = list(
+        cpp_classname = CPP_CLASSNAME,
         nClass_inherit = list(base = "modelValuesClass_")
       ),
       Rpublic = list(
@@ -180,7 +183,7 @@ make_modelValues_nClass <- function(varInfo,
         initialize = function(...) {
           super$initialize(...)
           if (!isCompiled()) {
-            CLASSNAME_()
+            CPP_CLASSNAME_()
           }
         }
       ),
@@ -188,29 +191,12 @@ make_modelValues_nClass <- function(varInfo,
         CPUBLIC
     ),
     list(CLASSNAME = classname,
-        CLASSNAME_ = as.name(classname))
+        CPP_CLASSNAME_ = as.name(cpp_classname),
+        CPP_CLASSNAME = cpp_classname)
   )
   generator <- eval(generator_code)
   generator$set("public", "NCgenerator", generator)
   generator
-}
-
-## This is automatic native behavior anyway
-## However it returns an nList instead of a list.
-## to-do: follow-up for backward compatability.
-## `[[.modelValues` <- function(x, i) {
-##   x[[i]]
-## }
-
-#' @export
-`[.modelValues` <- function(x, var, ind) {
-  x[[var]][[ind]]
-}
-
-#' @export
-`[<-.modelValues` <- function(x, var, ind, value) {
-  x[[var]][[ind]] <- value
-  x
 }
 
 make_modelValues_hashID <- function(varInfo) {
@@ -250,11 +236,64 @@ modelValues <- function(varInfo, .ID = FALSE, env = parent.frame()) {
     varInfo <- get_varInfo_from_nimbleModel(varInfo)
   }
   hashedID <- make_modelValues_hashID(varInfo)
-  classname <- Rname2CppName(paste0("MV_", hashedID))
+  cpp_classname <- Rname2CppName(paste0("MV_", hashedID))
   if(isTRUE(.ID)) {
-    return(classname)
+    return(cpp_classname)
   }
-  ans <- make_modelValues_nClass(varInfo, classname = classname)
+  ans <- make_modelValues_nClass(varInfo, cpp_classname = cpp_classname)
   ans
 }
 class(modelValues) <- c("function", "nClassBuilder")
+
+## We don't need to overload `[[` or `[[<-` because they
+## "just work" by accessing member variables that are nLists.
+## However it does return an nList instead of a list.
+## To-Do: For nimble backward compatability, we may
+##   want to provide an optional way to return a list.
+## `[[.modelValues` <- function(x, i) {
+##   x[[i]]
+## }
+
+#' @exportS3Method
+#' @method `[` modelValues
+`[.modelValues` <- function(x, var, ind) {
+  x[[var]][[ind]]
+}
+
+#' @exportS3Method
+#' @method `[<-` modelValues
+`[<-.modelValues` <- function(x, var, ind, value) {
+  x[[var]][[ind]] <- value
+  x
+}
+
+## To-Do: It would be nice to have an "as.list" that
+## returns a list of lists. This needs 
+## access to the variable names and at the moment
+## that will only work from a derived class, not
+## from a returned base class ptr. 
+#' @exportS3Method
+#' @method as.list modelValues
+as.list.modelValues <- function(x) {
+  varNames <- x$varInfo$vars |> names()
+  if(!is.null(varNames)) {
+    return(
+      varNames |> lapply( 
+        \(var) as.list(x[[var]])) |> 
+          structure(names = varNames))
+  }
+  NULL
+}
+
+#' @exportS3Method
+#' @method length modelValues
+length.modelValues <- function(x) {
+  x$getLength()
+}
+
+#' @exportS3Method
+#' @method `length<-` modelValues
+`length<-.modelValues` <- function(x, value) {
+  x$resize(value)
+  x
+}

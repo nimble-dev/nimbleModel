@@ -20,6 +20,17 @@ test_that("basic modelValues class works", {
   expect_equal(obj$mu |> as.list(), rep(list(numeric(2)), 3))
   expect_equal(obj$cov |> as.list(), matrix(0, nrow = 3, ncol = 4) |> list() |> rep(3))
 
+  expect_equal(length(obj), 3)
+  expect_equal(obj["mu", 1], c(0, 0))
+  obj["mu", 1] <- c(1, 2)
+  expect_equal(obj["mu", 1], c(1, 2))
+  length(obj) <- 2
+  expect_equal(length(obj), 2)
+  obj["mu", 1] <- c(1, 2)
+  obj["mu", 2] <- c(3, 4)
+  list_exp <- list(mu = list(c(1,2), c(3, 4)), cov = matrix(0, nrow = 3, ncol = 4) |> list() |> rep(2))
+  expect_equal(as.list(obj), list_exp)
+
   CmvClass <- nCompiler::nCompile(mvClass)
   obj <- CmvClass$new()
   expect_equal(obj$mu |> as.list(), list())
@@ -29,6 +40,18 @@ test_that("basic modelValues class works", {
   obj$resize(3)
   expect_equal(obj$mu |> as.list(), rep(list(numeric(2)), 3))
   expect_equal(obj$cov |> as.list(), matrix(0, nrow = 3, ncol = 4) |> list() |> rep(3))
+
+  expect_equal(length(obj), 3)
+  expect_equal(obj["mu", 1], c(0, 0))
+  obj["mu", 1] <- c(1, 2)
+  expect_equal(obj["mu", 1], c(1, 2))
+  length(obj) <- 2
+  expect_equal(length(obj), 2)
+  obj["mu", 1] <- c(1, 2)
+  obj["mu", 2] <- c(3, 4)
+  list_exp <- list(mu = list(c(1,2), c(3, 4)), cov = matrix(0, nrow = 3, ncol = 4) |> list() |> rep(2))
+  expect_equal(as.list(obj), list_exp)
+
   rm(obj); gc()
 })
 
