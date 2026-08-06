@@ -5,10 +5,13 @@ modelValuesBase_nClass <- nCompiler::nClass(
   Rpublic = list(
     initialize = function(...) {
       super$initialize(...)
-      if(!isCompiled()) {
-        modelValuesBase_nClass()
+      CppObj_provided <- "CppObj" %in% ...names()
+      if(!CppObj_provided) {
+        if(!isCompiled()) {
+          modelValuesBase_nClass()
+          self$sizes <- self$defaultSizes
+        }
       }
-      self$sizes <- self$defaultSizes
     }
   ),
   Cpublic = list(

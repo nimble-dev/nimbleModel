@@ -9,7 +9,7 @@ test_that("basic modelValues class works", {
     )
   )
   mvClass <- nimbleModel:::make_modelValues_nClass(varInfo)
-  
+
   obj <- mvClass$new()
   #obj$mu
   expect_equal(obj$mu |> as.list(), list())
@@ -19,7 +19,7 @@ test_that("basic modelValues class works", {
   obj$resize(3)
   expect_equal(obj$mu |> as.list(), rep(list(numeric(2)), 3))
   expect_equal(obj$cov |> as.list(), matrix(0, nrow = 3, ncol = 4) |> list() |> rep(3))
-  
+
   CmvClass <- nCompiler::nCompile(mvClass)
   obj <- CmvClass$new()
   expect_equal(obj$mu |> as.list(), list())
@@ -29,6 +29,7 @@ test_that("basic modelValues class works", {
   obj$resize(3)
   expect_equal(obj$mu |> as.list(), rep(list(numeric(2)), 3))
   expect_equal(obj$cov |> as.list(), matrix(0, nrow = 3, ncol = 4) |> list() |> rep(3))
+  rm(obj); gc()
 })
 
 test_that("modelValues hashedID works and is invariant to equivalent cases", {
@@ -114,21 +115,23 @@ test_that("modelValues nClassBuilder types work in nCompiler", {
   sizes <- list(mu = 2, cov = c(3, 4))
   obj$mv$sizes <- sizes
   expect_equal(obj$mv$sizes, sizes)
-  
+
   sizes_alt <- list(mu = 4, cov = c(2, 1))
   obj$mvBase$set_sizes(sizes_alt)
   expect_equal(obj$mv$sizes, sizes_alt)
-  
+
   obj$mv$resize(3)
   expect_equal(obj$mv$cov |> as.list(), rep( list(matrix(0, nrow = 2, ncol = 1)), 3))
+  expect_equal(nCompiler::value(obj$mv, "cov") |> as.list(), rep( list(matrix(0, nrow = 2, ncol = 1)), 3))
   expect_equal(obj$mv$getLength(), 3)
   expect_equal(obj$mvBase$getLength(), 3)
-  
+
   obj$mvBase$resize(4)
   expect_equal(obj$mv$cov |> as.list(), rep( list(matrix(0, nrow = 2, ncol = 1)), 4))
+  expect_equal(nCompiler::value(obj$mv, "cov") |> as.list(), rep( list(matrix(0, nrow = 2, ncol = 1)), 4))
   expect_equal(obj$mv$getLength(), 4)
   expect_equal(obj$mvBase$getLength(), 4)
-  
+
   dup_mv_unc <- nimbleModel:::modelValues(varInfo)
   obj_unc <- dup_mv_unc$new()
   sizes2 <- list(mu = 3, cov = c(1, 2))
@@ -138,16 +141,16 @@ test_that("modelValues nClassBuilder types work in nCompiler", {
   obj$mv <- obj_unc
   # because we assigned an uncompiled to a compiled that already
   # had an instantiated object, it copied contents to the same
-  # compiled object. So mvBase will see this too since it 
+  # compiled object. So mvBase will see this too since it
   # still points to the same object.
-  
+
   expect_true(obj$mv$isCompiled())
   expect_false(obj_unc$isCompiled())
   mu_exp <- rep(list(c(0,0,0)), 5)
   mu_exp[[3]] <- 1:3
   expect_equal(obj_unc$mu |> as.list(), mu_exp)
   expect_equal(obj$mv$mu |> as.list(), mu_exp)
-  
+
   expect_equal(obj_unc$getLength(), 5)
   expect_equal(obj$mv$getLength(), 5)
   expect_equal(obj$mvBase$getLength(), 5)
@@ -161,10 +164,11 @@ test_that("modelValues nClassBuilder types work in nCompiler", {
   expect_equal(obj_new_comp$mu |> as.list(), rep(list(rep(0, 6)), 2))
   obj$mv <- obj_new_comp
   expect_equal(obj$mv$getLength(), 2)
-  expect_equal(obj$mvBase$getLength(), 5)  
-  
+  expect_equal(obj$mvBase$getLength(), 5)
+
   # Finally we will assign the derived to the base ptr
   # and they will point at the same thing again.
   obj$mvBase <- obj$mv
   expect_equal(obj$mvBase$getLength(), 2)
+  rm(obj); gc()
 })

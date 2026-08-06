@@ -16,7 +16,6 @@ using namespace Rcpp;
 
       modelValuesBase_nClass::modelValuesBase_nClass (  ) {
 RESET_EIGEN_ERRORS
-Rcpp::Rcout << "base class compiled Cpublic init\n";;
 flex_(current_nRow_) = 0.0;
 this->sizes = Rcpp::List();;
 }
