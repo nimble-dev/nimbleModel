@@ -37,5 +37,5 @@ test <- nCompile(nimbleModel:::multiCopier_nClass)
 ## # "#include <nimbleModel/predef/modelValuesClass_/modelValuesClass_.h>" to the hContent
 ## # And add "// [[Rcpp::depends(nimbleModel)]]" to the cppContent
 ## # after the declaration of modelValuesBase_nClass.
-nCompile(modelValuesBase_nClass = nimbleModel:::modelValuesBase_nClass, control=list(generate_predefined=TRUE))
-test <- nCompile(nimbleModel:::modelValuesBase_nClass)
+nCompiler::nCompile(modelValuesBase_nClass = nimbleModel:::modelValuesBase_nClass, control=list(generate_predefined=TRUE))
+test <- nCompiler::nCompile(nimbleModel:::modelValuesBase_nClass)

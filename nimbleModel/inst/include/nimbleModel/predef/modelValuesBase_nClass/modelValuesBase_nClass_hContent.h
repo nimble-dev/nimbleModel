@@ -11,11 +11,12 @@
 class modelValuesBase_nClass : public interface_resolver< genericInterfaceC<modelValuesBase_nClass> >, public loadedObjectHookC<modelValuesBase_nClass> {
 public:
       modelValuesBase_nClass (  ) ;
-    void  set_sizes ( Rcpp::List new_sizes ) ;
+    void  set_sizeList ( Rcpp::List sizeList ) ;
+    Rcpp::List  get_sizeList (  ) ;
    virtual  void  resize ( int m ) ;
    virtual  int  getLength (  ) ;
-  Rcpp::List sizes;
-  int current_nRow_;
+  Rcpp::List dot_sizeList;
+  int dot_current_nRow;
 
 };
 

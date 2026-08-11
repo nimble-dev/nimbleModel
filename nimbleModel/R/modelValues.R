@@ -1,7 +1,7 @@
 # Initial rough drafting of modelValues
 
 modelValuesBase_nClass <- nCompiler::nClass(
-  classname = "modelValuesBase_nClass",
+  classname = "modelValues",
   Rpublic = list(
     initialize = function(...) {
       super$initialize(...)
@@ -9,31 +9,39 @@ modelValuesBase_nClass <- nCompiler::nClass(
       if(!CppObj_provided) {
         if(!isCompiled()) {
           modelValuesBase_nClass()
-          self$sizes <- self$defaultSizes
+          self$dot_sizeList <- self$defaultSizes
         }
       }
     }
   ),
   Cpublic = list(
-    sizes = "RcppList",
-    current_nRow_ = "integerScalar",
+    dot_sizeList = "RcppList",
+    dot_current_nRow = "integerScalar",
     modelValuesBase_nClass = nCompiler::nFunction(
       function() {
-        current_nRow_ <<- 0
-        sizes <<- list()
+        self$dot_current_nRow <<- 0
+        self$dot_sizeList <<- list()
       },
       compileInfo = list(
         constructor = TRUE,
         C_fun = function() {
-          current_nRow_ <- 0
-          cppLiteral("this->sizes = Rcpp::List();")
+          self$dot_current_nRow <- 0
+          cppLiteral("this->dot_sizeList = Rcpp::List();")
         }
       )
     ),
-    set_sizes = nCompiler::nFunction(
-      name = "set_sizes",
-      fun = function(new_sizes = "RcppList") {
-        self$sizes <<- new_sizes
+    set_sizeList = nCompiler::nFunction(
+      name = "set_sizeList",
+      fun = function(sizeList = "RcppList") {
+        dot_sizeList <<- sizeList
+        self$dot_sizeList <<- sizeList
+      }
+    ),
+    get_sizeList = nCompiler::nFunction(
+      name = "get_sizeList",
+      fun = function() {
+        return(self$dot_sizeList)
+        returnType("RcppList")
       }
     ),
     resize = nCompiler::nFunction(
@@ -52,7 +60,7 @@ modelValuesBase_nClass <- nCompiler::nClass(
     getLength = nCompiler::nFunction(
       name = "getLength",
       function() {
-        return(current_nRow_)
+        return(self$dot_current_nRow)
         returnType("integerScalar")
       },
       compileInfo = list(virtual = TRUE)
@@ -62,6 +70,7 @@ modelValuesBase_nClass <- nCompiler::nClass(
     package = "nimbleModel"
   ) |> file.path("modelValuesBase_nClass")),
   compileInfo = list(
+    cpp_classname = "modelValuesBase_nClass",
     interface = "full",
     createFromR = FALSE,
     exportName = "modelValuesBase_nClass_new",
@@ -69,15 +78,15 @@ modelValuesBase_nClass <- nCompiler::nClass(
   )
 )
 
-modelValues_resize <- function(self, m, sizes) {
+modelValues_resize <- function(self, m, sizeList) {
   # check preservation issues in resizing
-  for (v in names(sizes)) {
-    this_sizes <- sizes[[v]]
+  for (v in names(sizeList)) {
+    this_sizeList <- sizeList[[v]]
     length(self[[v]]) <- m
-    if (length(this_sizes) == 1) {
-      for (i in 1:m) self[[v]][[i]] <- numeric(length = this_sizes)
+    if (length(this_sizeList) == 1) {
+      for (i in 1:m) self[[v]][[i]] <- numeric(length = this_sizeList)
     } else {
-      for (i in 1:m) self[[v]][[i]] <- array(0, dim = this_sizes)
+      for (i in 1:m) self[[v]][[i]] <- array(0, dim = this_sizeList)
     }
   }
 }
@@ -89,7 +98,7 @@ make_modelValues_nClass <- function(varInfo,
     cpp_classname <- Rname2CppName(paste0("MV_", hashedID))
   }
   # All cases get the same classname so that they share the same S3 dispatch for `[`, `[<-`, etc.
-  classname <- "modelValues"
+  classname <- cpp_classname
   e <- environment()
   CpublicVars <- varInfo$vars |>
     lapply(\(x) {
@@ -116,24 +125,17 @@ make_modelValues_nClass <- function(varInfo,
     lapply(\(x) {
       nDim <- x$nDim
       nLname <- paste0("nL", nDim, "D")
-      Cline <- gsub("NDIM", nDim, "resize_one<NDIM>(V, m, as<SEXP>(this->sizes[NAME]))")
+      Cline <- gsub("NDIM", nDim, "resize_one<NDIM>(V, m, as<SEXP>(this->dot_sizeList[NAME]))")
       Cline <- gsub("NAME", paste0("\"", x$name, "\""), Cline)
       Cline <- gsub("V", x$name, Cline)
       substitute(nCpp(CLINE), list(CLINE = Cline))
     })
-  # function() {
-  #       mu <<- nL1D$new()
-  #       cov <<- nL2D$new()
-  #     }
+
   c_ctor_fun <- function() {}
   body(c_ctor_fun) <- as.call(c(as.name("{"), ctor_lines))
-  # function(m = 'integerScalar') {
-  #             nCpp("resize_one<1>(mu, m, this->sizes[\"mu\"])")
-  #             nCpp("resize_one<2>(cov, m, this->sizes[\"cov\"])")
-  #             current_nRow_ <<- m
-  #           }
+
   c_resize_fun <- function(m) {}
-  body(c_resize_fun) <- as.call(c(as.name("{"), resize_lines, list(quote(current_nRow_ <- m))))
+  body(c_resize_fun) <- as.call(c(as.name("{"), resize_lines, list(quote(dot_current_nRow <- m))))
 
   CPUBLIC <- c(
     list(
@@ -146,8 +148,8 @@ make_modelValues_nClass <- function(varInfo,
       resize = nCompiler::nFunction(
         name = "resize",
         fun = function(m) {
-          modelValues_resize(self, m, sizes)
-          self$current_nRow_ <- m
+          modelValues_resize(self, m, dot_sizeList)
+          self$dot_current_nRow <- m
           # check preservation issues in resizing
         },
         compileInfo = list(
@@ -257,13 +259,21 @@ class(modelValues) <- c("function", "nClassBuilder")
 #' @exportS3Method
 #' @method `[` modelValues
 `[.modelValues` <- function(x, var, ind) {
-  x[[var]][[ind]]
+  if(x$isCompiled()) {
+    nCompiler::value(x, var)[[1]]
+  } else {
+    x[[var]][[ind]]    
+  }
 }
 
 #' @exportS3Method
 #' @method `[<-` modelValues
 `[<-.modelValues` <- function(x, var, ind, value) {
-  x[[var]][[ind]] <- value
+  if(x$isCompiled()) {
+    nCompiler::value(x, var)[[ind]] <- value
+  } else {
+    x[[var]][[ind]] <- value
+  }
   x
 }
 
@@ -275,12 +285,23 @@ class(modelValues) <- c("function", "nClassBuilder")
 #' @exportS3Method
 #' @method as.list modelValues
 as.list.modelValues <- function(x) {
-  varNames <- x$varInfo$vars |> names()
-  if(!is.null(varNames)) {
-    return(
-      varNames |> lapply( 
-        \(var) as.list(x[[var]])) |> 
-          structure(names = varNames))
+  if(x$isCompiled()) {
+    varNames <- nCompiler::interface_names(x, "members")
+    varNames <- varNames[!varNames %in% c("dot_sizeList", "dot_current_nRow")]
+    if(!is.null(varNames)) {
+      return(
+        varNames |> lapply( 
+          \(var) as.list(nCompiler::value(x, var))) |> 
+            structure(names = varNames))
+    }
+  } else {
+    varNames <- x$varInfo$vars |> names()
+    if(!is.null(varNames)) {
+      return(
+        varNames |> lapply( 
+          \(var) as.list(x[[var]]) ) |> 
+            structure(names = varNames))
+    }
   }
   NULL
 }
@@ -288,12 +309,20 @@ as.list.modelValues <- function(x) {
 #' @exportS3Method
 #' @method length modelValues
 length.modelValues <- function(x) {
-  x$getLength()
+  if(x$isCompiled()) {
+    nCompiler::method(x, "getLength")() 
+  } else {
+    x$getLength()
+  }
 }
 
 #' @exportS3Method
 #' @method `length<-` modelValues
 `length<-.modelValues` <- function(x, value) {
-  x$resize(value)
+  if(x$isCompiled()) {
+    nCompiler::method(x, "resize")(value)
+  } else {
+    x$resize(value)
+  }
   x
 }

@@ -11,15 +11,17 @@ test_that("basic modelValues class works", {
   mvClass <- nimbleModel:::make_modelValues_nClass(varInfo)
 
   obj <- mvClass$new()
-  #obj$mu
+
+  # Basic uncompiled uses:
   expect_equal(obj$mu |> as.list(), list())
   sizes <- list(mu = 2, cov = c(3, 4))
-  obj$sizes <- sizes
-  expect_equal(obj$sizes, sizes)
+  obj$set_sizeList(sizes)
+  expect_equal(obj$get_sizeList(), sizes)
   obj$resize(3)
   expect_equal(obj$mu |> as.list(), rep(list(numeric(2)), 3))
   expect_equal(obj$cov |> as.list(), matrix(0, nrow = 3, ncol = 4) |> list() |> rep(3))
 
+  # S3 interface, uncompiled
   expect_equal(length(obj), 3)
   expect_equal(obj["mu", 1], c(0, 0))
   obj["mu", 1] <- c(1, 2)
@@ -31,16 +33,32 @@ test_that("basic modelValues class works", {
   list_exp <- list(mu = list(c(1,2), c(3, 4)), cov = matrix(0, nrow = 3, ncol = 4) |> list() |> rep(2))
   expect_equal(as.list(obj), list_exp)
 
-  CmvClass <- nCompiler::nCompile(mvClass)
+  # Make a holder class so we can test a compiled mv returned
+  # as a base class
+
+  mvHolder <- nCompiler::nClass(
+    Cpublic = list(
+      mv = "modelValuesBase_nClass"
+    )
+  )
+
+#  debug(nCompiler:::compile_generateCpp)
+#  debug(nCompiler:::process_inheritance)
+  comp <- nCompiler::nCompile(mvClass, mvHolder)
+  CmvClass <- comp$mvClass
+  CmvHolder <- comp$mvHolder
   obj <- CmvClass$new()
+
+  # Basic compiled uses
   expect_equal(obj$mu |> as.list(), list())
   sizes <- list(mu = 2, cov = c(3, 4))
-  obj$sizes <- sizes
-  expect_equal(obj$sizes, sizes)
+  obj$set_sizeList(sizes)
+  expect_equal(obj$get_sizeList(), sizes)
   obj$resize(3)
   expect_equal(obj$mu |> as.list(), rep(list(numeric(2)), 3))
   expect_equal(obj$cov |> as.list(), matrix(0, nrow = 3, ncol = 4) |> list() |> rep(3))
 
+  # S3 interface, compiled
   expect_equal(length(obj), 3)
   expect_equal(obj["mu", 1], c(0, 0))
   obj["mu", 1] <- c(1, 2)
@@ -50,9 +68,46 @@ test_that("basic modelValues class works", {
   obj["mu", 1] <- c(1, 2)
   obj["mu", 2] <- c(3, 4)
   list_exp <- list(mu = list(c(1,2), c(3, 4)), cov = matrix(0, nrow = 3, ncol = 4) |> list() |> rep(2))
-  expect_equal(as.list(obj), list_exp)
+  expect_equal(as.list(obj), list_exp[sort(names(list_exp)) ] )
 
-  rm(obj); gc()
+  # Accessed by base class pointer as a member of another class
+  obj <- CmvClass$new()
+  mvh <- CmvHolder$new()
+  mvh$mv <- obj # assign the derived obj to be held by base class pointer
+  obj <- mvh$mv # obj is now a base class pointer
+
+  # In direct use, we need to use value and method because the base class
+  # interface does not have active bindings for the derived content like the specific variables
+  expect_true(is.null(obj$mu))
+  expect_equal(nCompiler::value(obj, "mu") |> as.list(), list())
+  sizes <- list(mu = 2, cov = c(3, 4))
+  nCompiler::method(obj, "set_sizeList")(sizes)
+  expect_equal(nCompiler::method(obj, "get_sizeList")(), sizes)
+  nCompiler::method(obj, "resize")(3)
+  expect_equal(nCompiler::value(obj, "mu") |> as.list(), rep(list(numeric(2)), 3))
+  expect_equal(nCompiler::value(obj, "cov") |> as.list(), matrix(0, nrow = 3, ncol = 4) |> list() |> rep(3))
+
+  # In S3 interface use, normal syntax should work
+  # because the S3 interface functions use value() and method()
+  expect_equal(length(obj), 3)
+  expect_equal(obj["mu", 1], c(0, 0))
+  obj["mu", 1] <- c(1, 2)
+  expect_equal(obj["mu", 1], c(1, 2))
+  length(obj) <- 2
+  expect_equal(length(obj), 2)
+  obj["mu", 1] <- c(1, 2)
+  obj["mu", 2] <- c(3, 4)
+  list_exp <- list(mu = list(c(1,2), c(3, 4)), cov = matrix(0, nrow = 3, ncol = 4) |> list() |> rep(2))
+  expect_equal(as.list(obj), list_exp[sort(names(list_exp))])
+
+  # We can create a new derived interface object with the same underlying C++ object
+  # Then we have the active bindings
+  obj_restored <- CmvClass$new(CppObj = obj)
+  expect_equal(obj_restored[["mu"]][[1]], c(1, 2))
+  expect_equal(obj_restored[["mu"]][[2]], c(3, 4))
+  expect_equal(obj_restored$get_sizeList()$cov, c(3, 4))
+
+  rm(obj, mvh, obj_restored); gc()
 })
 
 test_that("modelValues hashedID works and is invariant to equivalent cases", {
@@ -136,12 +191,12 @@ test_that("modelValues nClassBuilder types work in nCompiler", {
   obj <- comp$nc$new()
   obj$init()
   sizes <- list(mu = 2, cov = c(3, 4))
-  obj$mv$sizes <- sizes
-  expect_equal(obj$mv$sizes, sizes)
+  obj$mv$set_sizeList(sizes)
+  expect_equal(obj$mv$get_sizeList(), sizes)
 
   sizes_alt <- list(mu = 4, cov = c(2, 1))
-  obj$mvBase$set_sizes(sizes_alt)
-  expect_equal(obj$mv$sizes, sizes_alt)
+  obj$mvBase$set_sizeList(sizes_alt)
+  expect_equal(obj$mv$get_sizeList(), sizes_alt)
 
   obj$mv$resize(3)
   expect_equal(obj$mv$cov |> as.list(), rep( list(matrix(0, nrow = 2, ncol = 1)), 3))
@@ -158,7 +213,7 @@ test_that("modelValues nClassBuilder types work in nCompiler", {
   dup_mv_unc <- nimbleModel:::modelValues(varInfo)
   obj_unc <- dup_mv_unc$new()
   sizes2 <- list(mu = 3, cov = c(1, 2))
-  obj_unc$sizes <- sizes2
+  obj_unc$set_sizeList(sizes2)
   obj_unc$resize(5)
   obj_unc$mu[[3]] <- 1:3
   obj$mv <- obj_unc
@@ -182,7 +237,7 @@ test_that("modelValues nClassBuilder types work in nCompiler", {
   # This will result in mv pointing to the new object
   # and mvBase pointing to the old object
   obj_new_comp <- comp$mvc$new()
-  obj_new_comp$set_sizes(list(mu = c(6), cov = c(4, 1)))
+  obj_new_comp$set_sizeList(list(mu = c(6), cov = c(4, 1)))
   obj_new_comp$resize(2)
   expect_equal(obj_new_comp$mu |> as.list(), rep(list(rep(0, 6)), 2))
   obj$mv <- obj_new_comp
