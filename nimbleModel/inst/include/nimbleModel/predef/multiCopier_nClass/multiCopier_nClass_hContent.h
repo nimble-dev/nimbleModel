@@ -9,9 +9,9 @@
 #include "nList_copier_nClass_c_.h"
 #include "multiCopier_nClass_c_.h"
 #include "modelBase_nClass_c_.h"
-#include <nimbleModel/predef/multiCopier_nC_base/multiCopier_nC_base.h>
+#include <nimbleModel/predef/multiCopier_nC_base/multiCopier_model_nC_base.h>
 
-class multiCopier_nClass : public interface_resolver< genericInterfaceC<multiCopier_nClass>, multiCopier_nC_base >, public loadedObjectHookC<multiCopier_nClass> {
+class multiCopier_nClass : public interface_resolver< genericInterfaceC<multiCopier_nClass>, multiCopier_model_nC_base >, public loadedObjectHookC<multiCopier_nClass> {
 public:
     void  init ( std::shared_ptr<modelBase_nClass> model ) ;
     Eigen::Tensor<double, 1>  getValues (  ) ;

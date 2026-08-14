@@ -34,7 +34,7 @@ multiCopier_nClass <- nCompiler::nClass(
       },
       compileInfo = list(
         C_fun = function(model = "nimbleModel:::modelBase_nClass()") {
-          cppLiteral("multiCopier_nC_base::init(this->copiers, model)")
+          cppLiteral("multiCopier_model_nC_base::init(this->copiers, model)")
         }
       )
     ),
@@ -73,7 +73,7 @@ multiCopier_nClass <- nCompiler::nClass(
     exportName = "multiCopier_nClass_new",
     needed_units = list("nCompiler:::nList(copier_nClass())", "modelBase_nClass()"),
     packageNames = c(uncompiled = "multiCopier_nClass_R", compiled = "multiCopier_nClass"),
-    nClass_inherit = list("multiCopier_nC_base"),
+    nClass_inherit = list("multiCopier_model_nC_base"),
     opDefs = list(
       getOrSetValues = list(
         labelAbstractTypes = list(
@@ -89,13 +89,95 @@ multiCopier_getOrSetValues_LAT <- function(...) {
 }
 
 #' @export
-makeMultiCopier <- function(model, nodes, ...) {
+multiCopierMV_nClass <- nCompiler::nClass(
+  classname = "multiCopierMV_nClass",
+  Rpublic = list(
+    initialize = function(...) {
+      super$initialize(...)
+      self$copiers <- nList(copier_nClass())$new()
+    }
+  ),
+  Cpublic = list(
+    copiers = "nCompiler:::nList(copier_nClass())",
+    init = nFunction(
+      name = "init",
+      function(modelValues) {
+        cat("need uncompiled multiCopierMV init() implementation.")
+      },
+      compileInfo = list(
+        C_fun = function(modelValues = "nimbleModel:::modelValuesBase_nClass()") {
+          cppLiteral("multiCopier_modelValues_nC_base::init(this->copiers, modelValues)")
+        }
+      )
+    ),
+    # Selects which row of each variable's nList the flatViewGroup reads
+    # from/writes to. Must be called at least once, after the modelValues has
+    # been resized to have at least one row, before getValues/setValues/
+    # nimCopy_ are used. See multiCopier_modelValues_nC_base::setActiveRow.
+    setActiveRow = nFunction(
+      name = "setActiveRow",
+      function(row) {
+        cat("need uncompiled multiCopierMV setActiveRow() implementation.")
+      },
+      compileInfo = list(
+        C_fun = function(row) {
+          cppLiteral("multiCopier_modelValues_nC_base::setActiveRow(row)")
+        }
+      ),
+      argTypes = list(row = "integerScalar")
+    ),
+    getValues = nFunction(
+      name = "getValues",
+      function() {
+        cat("need uncompiled multiCopierMV getValues() implementation.")
+      },
+      returnType = "numericVector",
+      compileInfo = list(
+        C_fun = function() {
+          cppLiteral("return flatViewGroup.copyIntoVector()")
+        }
+      )
+    ),
+    # See the note on multiCopier_nClass$setValues above: kept for other
+    # contexts even though nimble2 keyword processing uses
+    # copiers->flatViewGroup.setValues_() directly.
+    setValues = nFunction(
+      name = "setValues",
+      function(v = "numericVector") {
+        cat("need uncompiled multiCopierMV setValues() implementation.")
+      },
+      compileInfo = list(
+        C_fun = function(v = "numericVector") {
+          cppLiteral("flatViewGroup.copyFromVector(v)")
+        }
+      )
+    )
+  ),
+  predefined = quote(system.file(file.path("include", "nimbleModel", "predef"), package = "nimbleModel") |> file.path("multiCopierMV_nClass")),
+  compileInfo = list(
+    interface = "full",
+    createFromR = TRUE,
+    exportName = "multiCopierMV_nClass_new",
+    needed_units = list("nCompiler:::nList(copier_nClass())", "modelValuesBase_nClass()"),
+    packageNames = c(uncompiled = "multiCopierMV_nClass_R", compiled = "multiCopierMV_nClass"),
+    nClass_inherit = list("multiCopier_modelValues_nC_base")
+  )
+)
+
+#' @export
+makeMultiCopier <- function(source, nodes, 
+                            sourceType = c("model", "modelValues"), ...) {
   # This will be called from a nimble2 keyword processor
   # The ... is to absorb further arguments that at the time of this writing are not fleshed out.
   if (is.character(nodes)) {
     nodes <- nodes |> lapply(\(x) nimbleModel:::varRangeClass$new(x))
   }
-  multiCopier <- multiCopier_nClass$new()
+  sourceType <- match.arg(sourceType)
+  multiCopier <- 
+   switch(sourceType,
+     model = multiCopier_nClass$new(),
+     modelValues = multiCopierMV_nClass$new()
+   )
   getRange <- function(indexRange) {
     if (!inherits(indexRange, "indexRangeSequenceClass")) {
       stop("In a copy operation, only contiguous index blocks are supported")
@@ -108,7 +190,12 @@ makeMultiCopier <- function(model, nodes, ...) {
     multiCopier$copiers[[i]]$varName <- thisNode$varName
     multiCopier$copiers[[i]]$indsList <- thisNode$indexRanges |> lapply(getRange)
   }
-  multiCopier |> structure(NCgenerator = quote(nimbleModel:::multiCopier_nClass))
+  attr(multiCopier, "NCgenerator") <- 
+    switch(sourceType,
+      model = quote(nimbleModel:::multiCopier_nClass),
+      modelValues = quote(nimbleModel:::multiCopierMV_nClass)
+    )
+  multiCopier
 }
 
 #' @export

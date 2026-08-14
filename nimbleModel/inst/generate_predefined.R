@@ -25,13 +25,21 @@ test <- nCompile(nimbleModel:::modelBase_nClass)
 nCompile(copier_nClass = nimbleModel:::copier_nClass, control=list(generate_predefined=TRUE))
 test <- nCompile(nimbleModel:::copier_nClass)
 
-## # generate new predef/multiCopier_nC. Move to package and add
-## # "#include <nimbleModel/predef/multiCopier_nC_base/multiCopier_nC_base.h>" to the hContent before the class declaration
+## # generate new predef/multiCopier_nClass. Move to package and add
+## # "#include <nimbleModel/predef/multiCopier_nC_base/multiCopier_model_nC_base.h>" to the hContent before the class declaration
 ## # And add "// [[Rcpp::depends(nimbleModel)]]" to the cppContent
 ## # after the declaration of copier_nClass.
-## # Note there will be an expected set of errors when re-generating before the #include has been added.
-nCompile(multiCopier_nClass = nimbleModel:::multiCopier_nClass, control=list(generate_predefined=TRUE))
-test <- nCompile(nimbleModel:::multiCopier_nClass)
+## # Note there will be an EXPECTED SET OF ERRORS when re-generating before the #include has been added.
+nCompiler::nCompile(multiCopier_nClass = nimbleModel:::multiCopier_nClass, control=list(generate_predefined=TRUE))
+test <- nCompiler::nCompile(nimbleModel:::multiCopier_nClass)
+
+## # generate new predef/multiCopierMV_nC. Move to package and add
+## # "#include <nimbleModel/predef/multiCopier_nC_base/multiCopier_modelValues_nC_base.h>" to the hContent before the class declaration
+## # And add "// [[Rcpp::depends(nimbleModel)]]" to the cppContent
+## # after the declaration of copier_nClass.
+## # Note there will be an EXPECTED SET OF ERRORS when re-generating before the #include has been added.
+nCompiler::nCompile(multiCopierMV_nClass = nimbleModel:::multiCopierMV_nClass, control=list(generate_predefined=TRUE))
+test <- nCompiler::nCompile(nimbleModel:::multiCopierMV_nClass)
 
 ## # generate new predef/modelValuesBase_nC. Move to package and add
 ## # "#include <nimbleModel/predef/modelValuesClass_/modelValuesClass_.h>" to the hContent

@@ -1,0 +1,7 @@
+list(saved_at = structure(1786643687.02694, class = c("POSIXct", 
+"POSIXt")), packet_name = "multiCopierMV_nClass", elements = c("preamble", 
+"cppContent", "hContent", "filebase", "post_cpp_compiler", "copyFiles"
+), files = list(preamble = "multiCopierMV_nClass_preamble.cpp", 
+    cppContent = "multiCopierMV_nClass_cppContent.cpp", hContent = "multiCopierMV_nClass_hContent.h", 
+    filebase = "multiCopierMV_nClass_filebase.txt", post_cpp_compiler = "multiCopierMV_nClass_post_cpp_compiler.txt", 
+    copyFiles = "multiCopierMV_nClass_copyFiles.txt"))

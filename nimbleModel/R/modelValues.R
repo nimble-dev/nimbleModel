@@ -82,6 +82,7 @@ modelValues_resize <- function(self, m, sizeList) {
   # check preservation issues in resizing
   for (v in names(sizeList)) {
     this_sizeList <- sizeList[[v]]
+    if(length(this_sizeList) == 0) this_sizeList <- 1
     length(self[[v]]) <- m
     if (length(this_sizeList) == 1) {
       for (i in 1:m) self[[v]][[i]] <- numeric(length = this_sizeList)
@@ -121,7 +122,8 @@ make_modelValues_nClass <- function(varInfo,
         list(V = as.name(x$name), NL = as.name(nLname))
       )
     })
-  resize_lines <- varInfo$vars |>
+  needs_resize <- varInfo$vars |> vapply(\(x) x$nDim > 0, logical(1))
+  resize_lines <- varInfo$vars[needs_resize] |>
     lapply(\(x) {
       nDim <- x$nDim
       nLname <- paste0("nL", nDim, "D")
@@ -235,7 +237,7 @@ make_modelValues_hashID <- function(varInfo) {
 #' @export
 modelValues <- function(varInfo, .ID = FALSE, env = parent.frame()) {
   if(inherits(varInfo, "modelBase_nClass")) {
-    varInfo <- get_varInfo_from_nimbleModel(varInfo)
+    varInfo <- get_varInfo_from_nimbleModel(varInfo$modelDef)
   }
   hashedID <- make_modelValues_hashID(varInfo)
   cpp_classname <- Rname2CppName(paste0("MV_", hashedID))
@@ -260,7 +262,7 @@ class(modelValues) <- c("function", "nClassBuilder")
 #' @method `[` modelValues
 `[.modelValues` <- function(x, var, ind) {
   if(x$isCompiled()) {
-    nCompiler::value(x, var)[[1]]
+    nCompiler::value(x, var)[[ind]]
   } else {
     x[[var]][[ind]]    
   }

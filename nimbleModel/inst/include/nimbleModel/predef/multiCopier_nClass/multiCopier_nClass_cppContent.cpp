@@ -16,7 +16,7 @@ using namespace Rcpp;
 
     void  multiCopier_nClass::init ( std::shared_ptr<modelBase_nClass> model ) {
 RESET_EIGEN_ERRORS
-multiCopier_nC_base::init(this->copiers, model);
+multiCopier_model_nC_base::init(this->copiers, model);
 }
     Eigen::Tensor<double, 1>  multiCopier_nClass::getValues (  ) {
 RESET_EIGEN_ERRORS
