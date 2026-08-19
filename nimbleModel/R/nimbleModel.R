@@ -83,7 +83,7 @@ make_modelClass_from_nimbleModel <- function(modelDef, data, inits, name = NULL)
       lapply(\(x) all.vars(body(x))) |>
       unlist() |>
       unique() |>
-      setdiff(c("idx", "LocalNewLogProb_", "LocalAns_", "model")) %||% character()
+      setdiff(c("idx", "paramID_", "LocalNewLogProb_", "LocalAns_", "model")) %||% character()
     declVarInfo <- modelVarInfo$vars[declVars]
     declID <- as.numeric(declInfo$declRule$ID) # Formerly `sourceLineNumber`, which may not be unique.
     declFun_membername <- declFunNames[i]
@@ -207,7 +207,8 @@ make_declFun_nClass <- function(varInfo = list(),
       Cpublic = CPUBLIC,
       compileInfo = list(
         createFromR = FALSE, # Without a default constructor (which we've disabled here), createFromR is impossible
-        nClass_inherit = list(base = BASECLASS)
+        nClass_inherit = list(base = BASECLASS),
+        interfaceExclude = "getParam_one"
       ) # Ideally this line would be obtained from a base nClass, but we insert it directly for now
     ),
     list(
@@ -589,6 +590,8 @@ make_decl_methods_from_declInfo <- function(declInfo) {
       ),
       list(DETERMCALC = make_determ_calc_line(LHSrep, RHSrep))
     ))
+    # Dummy version of getParam_one:
+    getParamMethods <- list(getParam_one = make_getParam_one_nFxn())
   }
   if (type == "stoch") {
     logProbExpr <- declInfo$genLogProbExpr()
@@ -623,8 +626,59 @@ make_decl_methods_from_declInfo <- function(declInfo) {
         STOCHCALC_DIFF = make_stoch_calc_line(LHSrep, RHSrep, logProbExprRep, diff = TRUE)
       )
     ))
+    getParamMethods <- make_getParam_methods(declInfo, LHSrep, RHSrep)
   }
-  methodList
+  c(methodList, getParamMethods)
+}
+
+make_getParam_methods <- function(declInfo, LHSrep, RHSrep) {
+  distName <- declInfo$distributionName
+  reqdExprs <- if (length(RHSrep) > 1) as.list(RHSrep)[-1] else list()
+  if (length(reqdExprs) > 0) names(reqdExprs) <- names(RHSrep)[-1]
+  allParamExprs <- c(list(value = LHSrep), reqdExprs, declInfo$altParamExprs)
+  paramNames <- names(allParamExprs)
+  paramIDs <- as.integer(getParamID(distName, paramNames))
+  sort_order <- order(paramIDs)
+  paramNames <- paramNames[sort_order]
+  paramIDs <- paramIDs[sort_order]
+  allParamExprs <- allParamExprs[sort_order]
+  nDims <- as.integer(getDimension(distName, paramNames))
+
+  getParamOne <- make_getParam_one_nFxn(paramIDs, allParamExprs, isRef, computeMethodNames)
+  list(getParam_one = getParamOne)
+}
+
+make_getParam_one_nFxn <- function(paramIDs = integer(0), exprs = list(),
+                                    isRefFlags = logical(0), computeMethodNames = character(0)) {
+  if(!length(paramIDs)) {
+    fun <- function(idx, paramID_) {
+      return(ETaccess(0, copy=TRUE))
+    }
+  } else {
+    case_lines <- lapply(exprs, 
+                         function(expr) {
+                           # LocalAns_ is already filtered out of all.vars results
+                           # to determine model variables, so use that name here too.
+                           bquote(LocalAns_ <- ETaccess(.(expr), copy=TRUE))
+                         })
+    
+    
+    switch_line <- bquote(nSwitch(paramID_, .(paramIDs)))
+    switch_line[3 + (1:(length(case_lines)))] <- case_lines
+    
+    fun <- bquote(
+      function(idx, paramID_) {
+        .(switch_line)
+        return(LocalAns_)
+      }
+    ) |> eval()
+  }  
+  nFunction(
+    name = "getParam_one",
+    fun,
+    returnType = "ETaccessor()",
+    argTypes = list(idx = "integerVector", paramID_ = "integerScalar")
+  )
 }
 
 #' @export

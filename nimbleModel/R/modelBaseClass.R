@@ -391,12 +391,30 @@ modelBase_nClass <- nClass(
         }
       }
       return(invisible(NULL))
+    },
+    # `one_instr` is a single instr_nClass (not a list of them).
+    # Within it, one node will be used (see declFunBase_nClass$first_idx). 
+    # `param` is an integer paramID or a character param name.
+    getParam = function(one_instr, param) {
+      if (!inherits(one_instr, "instr_nClass")) {
+        stop("getParam: argument `one_instr` must be an instr_nClass object")
+      }
+      if(is.numeric(param)) paramID <- param
+      else if(is.character(param)) {
+        paramID <- getParamID(self$modelDef$declInfo[[one_instr$declID]]$distributionName,
+                              param)
+        if (is.na(paramID)) stop("getParam: argument `param` is not a valid parameter name for this node.")
+      } else {
+        stop("getParam: argument `param` must be an integer paramID or a character param name.")
+      }
+      if (isCompiled()) {
+        if (!one_instr$isCompiled()) one_instr <- makeCompiledInstr(one_instr)
+        return(self$getParam_impl(one_instr, paramID))
+      }
+      declFunList[[one_instr$declID]]$getParam(one_instr, paramID)
     }
   ),
   Cpublic = list(
-    # TODO: using 'RcppObject' was resulting in a symbolTBD error - probably nCompiler issue 186.
-    #declFunList = "numericScalar", # 'RcppObject',  # This won't actually be used in C++, but needs to be in Cpublic for accessibility.
-    #declFunNameToIndex = "RcppList", # Not sure what type this should be for use in C++.
     ping = nFunction(
       name = "ping",
       function() {
@@ -413,6 +431,17 @@ modelBase_nClass <- nClass(
         return(ans)
       },
       returnType = "nList(instr_nClass)"
+    ),
+    # Like `makeCompiledInstrList` but for a single instr_nClass (used by
+    # `getParam`, which takes one node rather than a list of them).
+    makeCompiledInstr = nFunction(
+      name = "makeCompiledInstr",
+      function(input = "SEXP") {
+        ans <- instr_nClass$new()
+        cppLiteral("ans->set_all_values(input);")
+        return(ans)
+      },
+      returnType = "instr_nClass"
     ),
     calculate_impl = nFunction(
       name = "calculate_impl",
@@ -473,6 +502,21 @@ modelBase_nClass <- nClass(
         C_fun = function(instrList = "nList(instr_nClass)") {
           # NOTE: instrList input will be ordered.
           cppLiteral('Rprintf("modelBase_nClass simulate_impl (should not see this)\\n");')
+        },
+        virtual = TRUE
+      )
+    ),
+    getParam_impl = nFunction(
+      name = "getParam_impl",
+      function(node, paramID) {
+        cat("Uncompiled `getParam_impl` should never be called.\n")
+        return(NULL)
+      },
+      # We must return a general object because it may have different nDim
+      returnType = "SEXP",
+      compileInfo = list(
+        C_fun = function(node = "instr_nClass", paramID = "integerScalar") {
+          cppLiteral('Rprintf("modelBase_nClass getParam_impl (should not see this)\\n"); return R_NilValue;')
         },
         virtual = TRUE
       )

@@ -6,6 +6,7 @@
 #define R_NO_REMAP
 #endif
 #include <Rinternals.h>
+#include "modelBase_nClass_c_.h"
 #include "declFunBase_nClass_c_.h"
 #include "instr_nClass_c_.h"
 #include "nList_instr_nClass_c_.h"
@@ -14,13 +15,14 @@ class modelBase_nClass : public interface_resolver< genericInterfaceC<modelBase_
 public:
    virtual  bool  ping (  ) ;
     std::shared_ptr<nList_instr_nClass>  makeCompiledInstrList ( SEXP input ) ;
+    std::shared_ptr<instr_nClass>  makeCompiledInstr ( SEXP input ) ;
    virtual  double  calculate_impl ( std::shared_ptr<nList_instr_nClass> instrList ) ;
    virtual  double  calculateDiff_impl ( std::shared_ptr<nList_instr_nClass> instrList ) ;
    virtual  double  getLogProb_impl ( std::shared_ptr<nList_instr_nClass> instrList ) ;
    virtual  void  simulate_impl ( std::shared_ptr<nList_instr_nClass> instrList ) ;
+   virtual  SEXP  getParam_impl ( std::shared_ptr<instr_nClass> node, int paramID ) ;
       modelBase_nClass (  ) ;
-  double declFunList;
-  Rcpp::List declFunNameToIndex;
+
 };
 
     void  set_CnClass_env_modelBase_nClass ( SEXP env ) ;

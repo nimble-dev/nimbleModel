@@ -758,7 +758,117 @@ declFunBase_nClass <- nClass(
             }
           }
         }
+      },
+    # getParam: use only the first entry in the instr.
+    getParam = function(instr, paramID) {
+      fi <- first_idx(instr)
+      if (fi$multiple) {
+        warning("getParam: instr covers more than one node; using the first node only.")
       }
+      getParam_one(fi$idx, paramID)
+    },
+    first_idx = function(instr) {
+      multiple <- FALSE
+      idx <- switch(as.character(instr$type),
+        "0" = {
+          multiple <- FALSE
+          instr$lens
+        },
+        "1" = ,
+        "2" = {
+          multiple <- instr$lens[1] > 1
+          instr$values[[1]][1]
+        },
+        "3" = {
+          multiple <- instr$lens[1] > 1
+          instr$values[[1]][1:instr$dims[1]]
+        },
+        "18" = {
+          multiple <- instr$lens[1] > 1
+          out <- rep(0L, instr$dims[1])
+          out[instr$slots] <- instr$values[[1]][1:instr$dims[1]]
+          out
+        },
+        "4" = ,
+        "5" = ,
+        "6" = ,
+        "7" = {
+          multiple <- instr$lens[1] * instr$lens[2] > 1
+          c(instr$values[[1]][1], instr$values[[2]][1])
+        },
+        "8" = {
+          multiple <- instr$lens[1] * instr$lens[2] > 1
+          out <- rep(0L, instr$nDim)
+          out[instr$slots[1]] <- instr$values[[1]][1]
+          out[instr$slots[2:instr$nDim]] <- instr$values[[2]][1:instr$dims[2]]
+          out
+        },
+        "9" = {
+          multiple <- instr$lens[1] * instr$lens[2] > 1
+          out <- rep(0L, instr$nDim)
+          out[instr$slots[1:instr$dims[1]]] <- instr$values[[1]][1:instr$dims[1]]
+          out[instr$slots[instr$nDim]] <- instr$values[[2]][1]
+          out
+        },
+        "10" = {
+          multiple <- instr$lens[1] * instr$lens[2] > 1
+          out <- rep(0L, instr$nDim)
+          out[instr$slots[1:instr$dims[1]]] <- instr$values[[1]][1:instr$dims[1]]
+          out[instr$slots[(instr$dims[1] + 1):instr$nDim]] <- instr$values[[2]][1:instr$dims[2]]
+          out
+        },
+        "11" = {
+          multiple <- instr$lens[1] * instr$lens[2] > 1
+          # Hardcoded swap, matching calc_2_x_y_ord: idx[2] from range 1, idx[1] from range 2.
+          out <- rep(0L, 2)
+          out[2] <- instr$values[[1]][1]
+          out[1] <- instr$values[[2]][1]
+          out
+        },
+        "12" = {
+          multiple <- instr$lens[1] * instr$lens[2] * instr$lens[3] > 1
+          c(instr$values[[1]][1], instr$values[[2]][1], instr$values[[3]][1])
+        },
+        "13" = {
+          multiple <- instr$lens[1] * instr$lens[2] * instr$lens[3] > 1
+          first_idx_generic(instr, 3)
+        },
+        "14" = {
+          multiple <- prod(instr$lens[1:4]) > 1
+          sapply(instr$values[1:4], `[`, 1)
+        },
+        "15" = {
+          multiple <- prod(instr$lens[1:4]) > 1
+          first_idx_generic(instr, 4)
+        },
+        "16" = {
+          multiple <- prod(instr$lens[1:5]) > 1
+          sapply(instr$values[1:5], `[`, 1)
+        },
+        "17" = {
+          multiple <- prod(instr$lens[1:5]) > 1
+          first_idx_generic(instr, 5)
+        },
+        stop("getParam: unrecognized instr type ", instr$type)
+      )
+      list(idx = idx, multiple = multiple)
+    },
+    # Shared "generic" (slot-placed, mixed seq/matp per range) first-tuple logic
+    # for instr types 13, 15, 17, parameterized by the number of ranges `nRanges`.
+    first_idx_generic = function(instr, nRanges) {
+      idx <- rep(0L, instr$nDim)
+      offset <- 0
+      for (r in 1:nRanges) {
+        if (instr$index_types[r] == 1) {
+          idx[instr$slots[offset + 1]] <- instr$values[[r]][1]
+        } else {
+          d <- instr$dims[r]
+          idx[instr$slots[(offset + 1):(offset + d)]] <- instr$values[[r]][1:d]
+        }
+        offset <- offset + instr$dims[r]
+      }
+      idx
+    }
   ),
   Cpublic = list(
     # model = 'modelBase_nClass',
@@ -824,6 +934,20 @@ declFunBase_nClass <- nClass(
           cppLiteral('Rprintf("declFunBase_nClass virtual base simulate_cpp should never be called (something is wrong)\\n");')
         }
       )
+    ),
+    getParam_cpp = nFunction(
+      name = "getParam_cpp",
+      function(instr, paramID) {
+        stop("Uncompiled version of getParam_cpp should not be called.")
+      },
+      returnType = "ETaccessor()",
+      compileInfo = list(
+        virtual = TRUE,
+        C_fun = function(instr = "instr_nClass", paramID = "integerScalar") {
+          cppLiteral('Rprintf("declFunBase_nClass virtual base getParam_cpp should never be called (something is wrong)\\n");')
+          return(ETaccess(0, copy = TRUE))
+        }
+      )
     )
   ),
   # We haven't dealt with ensuring a virtual destructor when any method is virtual
@@ -834,6 +958,7 @@ declFunBase_nClass <- nClass(
     interface = "full",
     createFromR = FALSE,
     exportName = "declFunBase_nClass_new",
+    interfaceExclude = "getParam_cpp",
     needed_units = list("instr_nClass"),
     packageNames = c(uncompiled = "declFunBase_nClass_R", compiled = "declFunBase_nClass")
   )

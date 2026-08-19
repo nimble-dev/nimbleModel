@@ -8,15 +8,15 @@ test <- nCompile(instr_nClass = nimbleModel:::instr_nClass)
 ## # "#include <nimbleModel/predef/declFunClass_/declFunClass_.h>" in the hContent
 ## # And add "// [[Rcpp::depends(nimbleModel)]]" to the cppContent
 ## # after declaration of declFunBase_nClass
-nCompile(nimbleModel:::declFunBase_nClass, control=list(generate_predefined=TRUE))
-test <- nCompile(nimbleModel:::declFunBase_nClass)
+nCompiler::nCompile(nimbleModel:::declFunBase_nClass, control=list(generate_predefined=TRUE))
+test <- nCompiler::nCompile(nimbleModel:::declFunBase_nClass)
 ## #
 ## # generate new predef/modelBase_nC. Move to package and add
 ## # "#include <nimbleModel/predef/modelClass_/modelClass_.h>" to the hContent
 ## # And add "// [[Rcpp::depends(nimbleModel)]]" to the cppContent
 ## # after the declaration of modelBase_nClass.
-nCompile(modelBase_nClass = nimbleModel:::modelBase_nClass, control=list(generate_predefined=TRUE))
-test <- nCompile(nimbleModel:::modelBase_nClass)
+nCompiler::nCompile(modelBase_nClass = nimbleModel:::modelBase_nClass, control=list(generate_predefined=TRUE))
+test <- nCompiler::nCompile(nimbleModel:::modelBase_nClass)
 
 ## # generate new predef/copier_nC. Move to package and add
 ## # "#include <nimbleModel/predef/copier_nC_base/copier_nC_base.h>" to the hContent before the class declaration

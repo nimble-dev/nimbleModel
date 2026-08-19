@@ -55,7 +55,7 @@ public:
         if(len < 1) return(0);
         int iStart = instr->values->operator[](0)[0];
         int iEnd = iStart + len;
-        Eigen::Tensor<int, 1> idx(1);  
+        Eigen::Tensor<int, 1> idx(1);
         double logProb(0.);
         for(int i = iStart; i < iEnd; ++i) {
             idx[0] = i;
@@ -72,7 +72,7 @@ public:
         Eigen::Tensor<int, 1> idx(1);
         double logProb(0.);
         for(int i = 0; i < len; ++i) {
-            idx[0] = vals[i];     
+            idx[0] = vals[i];
             logProb += (static_cast<Derived*>(this)->*Method)(idx);
         }
         return(logProb);
@@ -89,7 +89,7 @@ public:
         for(int i = 0; i < len; ++i) {
             for(int p = 0; p < nDim; ++p)
                 idx[p] = vals[i*nDim+p];
-            logProb += (static_cast<Derived*>(this)->*Method)(idx); 
+            logProb += (static_cast<Derived*>(this)->*Method)(idx);
         }
         return(logProb);
     }
@@ -107,8 +107,8 @@ public:
         double logProb(0.);
         for(int i = 0; i < len; ++i) {
             for(int p = 0; p < nDim; ++p)
-              idx[slots[p]] = vals[i*nDim+p];  
-            logProb += (static_cast<Derived*>(this)->*Method)(idx); 
+              idx[slots[p]] = vals[i*nDim+p];
+            logProb += (static_cast<Derived*>(this)->*Method)(idx);
         }
         return(logProb);
     }
@@ -128,7 +128,7 @@ public:
           idx[0] = i;
           for(int j = iStart2; j < iEnd2; ++j) {
             idx[1] = j;
-            logProb += (static_cast<Derived*>(this)->*Method)(idx); 
+            logProb += (static_cast<Derived*>(this)->*Method)(idx);
           }
         }
         return(logProb);
@@ -149,7 +149,7 @@ public:
           idx[0] = i;
           for(int j = 0; j < len2; ++j) {
             idx[1] = vals2[j];
-            logProb += (static_cast<Derived*>(this)->*Method)(idx); 
+            logProb += (static_cast<Derived*>(this)->*Method)(idx);
           }
         }
         return(logProb);
@@ -170,7 +170,7 @@ public:
           idx[0] = vals1[i];
             for(int j = iStart2; j < iEnd2; ++j) {
               idx[1] = j;
-              logProb += (static_cast<Derived*>(this)->*Method)(idx); 
+              logProb += (static_cast<Derived*>(this)->*Method)(idx);
           }
         }
         return(logProb);
@@ -191,7 +191,7 @@ public:
           idx[0] = vals1[i];
             for(int j = 0; j < len2; ++j) {
               idx[1] = vals2[j];
-              logProb += (static_cast<Derived*>(this)->*Method)(idx); 
+              logProb += (static_cast<Derived*>(this)->*Method)(idx);
           }
         }
         return(logProb);
@@ -219,8 +219,8 @@ public:
           idx[slots[0]] = i;
           for(int j = 0; j < len2; ++j) {
             for(int p = 0; p < dim2; ++p)
-              idx[slots[p+1]] = vals2[j*dim2+p];  
-            logProb += (static_cast<Derived*>(this)->*Method)(idx); 
+              idx[slots[p+1]] = vals2[j*dim2+p];
+            logProb += (static_cast<Derived*>(this)->*Method)(idx);
           }
         }
         return(logProb);
@@ -247,7 +247,7 @@ public:
             idx[slots[p]] = vals1[i*dim1+p];
           for(int j = iStart2; j < iEnd2; ++j) {
             idx[slots[dim1]] = j;
-            logProb += (static_cast<Derived*>(this)->*Method)(idx); 
+            logProb += (static_cast<Derived*>(this)->*Method)(idx);
           }
         }
         return(logProb);
@@ -272,11 +272,11 @@ public:
         double logProb(0.);
         for(int i = 0; i < len1; ++i) {
             for(int p = 0; p < dim1; ++p)
-              idx[slots[p]] = vals1[i*dim1+p];  
+              idx[slots[p]] = vals1[i*dim1+p];
             for(int j = 0; j < len2; ++j) {
               for(int p = 0; p < dim2; ++p)
-                idx[slots[p+dim1]] = vals2[j*dim2+p];  
-              logProb += (static_cast<Derived*>(this)->*Method)(idx); 
+                idx[slots[p+dim1]] = vals2[j*dim2+p];
+              logProb += (static_cast<Derived*>(this)->*Method)(idx);
           }
         }
         return(logProb);
@@ -308,12 +308,12 @@ public:
         for(int i = 0; i < len1; ++i) {
           if(index_type1 == 1) {
             idx[1] = iStart1 + i;
-          } else idx[1] = vals1[i];  
+          } else idx[1] = vals1[i];
           for(int j = 0; j < len2; ++j) {
             if(index_type2 == 1) {
               idx[0] = iStart2 + j;
             } else idx[0] = vals2[j];
-            logProb += (static_cast<Derived*>(this)->*Method)(idx); 
+            logProb += (static_cast<Derived*>(this)->*Method)(idx);
           }
         }
         return(logProb);
@@ -340,7 +340,7 @@ public:
             idx[1] = j;
             for(int k = iStart3; k < iEnd3; ++k) {
               idx[2] = k;
-              logProb += (static_cast<Derived*>(this)->*Method)(idx); 
+              logProb += (static_cast<Derived*>(this)->*Method)(idx);
             }
           }
         }
@@ -380,22 +380,22 @@ public:
         for(int i = 0; i < len1; ++i) {
           if(index_type1 == 1) {
             idx[slots[0]] = iStart1 + i;
-          } else 
+          } else
             for(int p = 0; p < dim1; ++p)
-              idx[slots[p]] = vals1[i*dim1+p];  
+              idx[slots[p]] = vals1[i*dim1+p];
           for(int j = 0; j < len2; ++j) {
             if(index_type2 == 1) {
               idx[slots[dim1]] = iStart2 + j;
-            } else 
+            } else
               for(int p = 0; p < dim2; ++p)
                 idx[slots[p+dim1]] = vals2[j*dim2+p];
             for(int k = 0; k < len3; ++k) {
               if(index_type3 == 1) {
                 idx[slots[cumdim2]] = iStart3 + k;
-              } else 
+              } else
                 for(int p = 0; p < dim3; ++p)
                   idx[slots[p+cumdim2]] = vals3[k*dim3+p];
-              logProb += (static_cast<Derived*>(this)->*Method)(idx); 
+              logProb += (static_cast<Derived*>(this)->*Method)(idx);
             }
           }
         }
@@ -459,34 +459,34 @@ public:
       if(index_types[1] == 2 && lens[1]*dims[1] != vals1.size()) std::cout<<"lens[1]*dims[1] != vals1.size() in calc_4_generic_"<<std::endl;
       if(index_types[2] == 2 && lens[2]*dims[2] != vals2.size()) std::cout<<"lens[2]*dims[2] != vals2.size() in calc_4_generic_"<<std::endl;
       if(index_types[3] == 2 && lens[3]*dims[3] != vals3.size()) std::cout<<"lens[3]*dims[3] != vals3.size() in calc_4_generic_"<<std::endl;
-      
+
       Eigen::Tensor<int, 1> idx(nDim);
       double logProb(0.);
       for(int i0 = 0; i0 < lens[0]; ++i0) {
         if(index_types[0] == 1) {
           idx[slots[0]] = iStart[0] + i0;
-        } else 
+        } else
           for(int p = 0; p < dims[0]; ++p)
-            idx[slots[p]] = vals0[i0*dims[0]+p];  
+            idx[slots[p]] = vals0[i0*dims[0]+p];
         for(int i1 = 0; i1 < lens[1]; ++i1) {
           if(index_types[1] == 1) {
             idx[slots[dims[0]]] = iStart[1] + i1;
-          } else 
+          } else
             for(int p = 0; p < dims[1]; ++p)
               idx[slots[p+dims[0]]] = vals1[i1*dims[1]+p];
           for(int i2 = 0; i2 < lens[2]; ++i2) {
             if(index_types[2] == 1) {
               idx[slots[cumdim1]] = iStart[2] + i2;
-            } else 
+            } else
               for(int p = 0; p < dims[2]; ++p)
                 idx[slots[p+cumdim1]] = vals2[i2*dims[2]+p];
             for(int i3 = 0; i3 < lens[3]; ++i3) {
               if(index_types[3] == 1) {
                 idx[slots[cumdim2]] = iStart[3] + i3;
-              } else 
+              } else
                 for(int p = 0; p < dims[3]; ++p)
                   idx[slots[p+cumdim2]] = vals3[i3*dims[3]+p];
-              logProb += (static_cast<Derived*>(this)->*Method)(idx); 
+              logProb += (static_cast<Derived*>(this)->*Method)(idx);
             }
           }
         }
@@ -557,40 +557,40 @@ public:
         if(index_types[2] == 2 && lens[2]*dims[2] != vals2.size()) std::cout<<"lens[2]*dims[2] != vals2.size() in calc_5_generic_"<<std::endl;
         if(index_types[3] == 2 && lens[3]*dims[3] != vals3.size()) std::cout<<"lens[3]*dims[3] != vals3.size() in calc_5_generic_"<<std::endl;
         if(index_types[4] == 2 && lens[4]*dims[4] != vals4.size()) std::cout<<"lens[4]*dims[4] != vals4.size() in calc_5_generic_"<<std::endl;
-        
+
         Eigen::Tensor<int, 1> idx(nDim);
          double logProb(0.);
          for(int i0 = 0; i0 < lens[0]; ++i0) {
            if(index_types[0] == 1) {
              idx[slots[0]] = iStart[0] + i0;
-           } else 
+           } else
              for(int p = 0; p < dims[0]; ++p)
-               idx[slots[p]] = vals0[i0*dims[0]+p];  
+               idx[slots[p]] = vals0[i0*dims[0]+p];
            for(int i1 = 0; i1 < lens[1]; ++i1) {
              if(index_types[1] == 1) {
                idx[slots[dims[0]]] = iStart[1] + i1;
-             } else 
+             } else
                for(int p = 0; p < dims[1]; ++p)
                  idx[slots[p+dims[0]]] = vals1[i1*dims[1]+p];
              for(int i2 = 0; i2 < lens[2]; ++i2) {
                if(index_types[2] == 1) {
                  idx[slots[cumdim1]] = iStart[2] + i2;
-               } else 
+               } else
                  for(int p = 0; p < dims[2]; ++p)
                    idx[slots[p+cumdim1]] = vals2[i2*dims[2]+p];
                for(int i3 = 0; i3 < lens[3]; ++i3) {
                  if(index_types[3] == 1) {
                    idx[slots[cumdim2]] = iStart[3] + i3;
-                 } else 
+                 } else
                    for(int p = 0; p < dims[3]; ++p)
                      idx[slots[p+cumdim2]] = vals3[i3*dims[3]+p];
                  for(int i4 = 0; i4 < lens[4]; ++i4) {
                    if(index_types[4] == 1) {
                      idx[slots[cumdim3]] = iStart[4] + i4;
-                   } else 
+                   } else
                      for(int p = 0; p < dims[4]; ++p)
                        idx[slots[p+cumdim3]] = vals4[i4*dims[4]+p];
-                   logProb += (static_cast<Derived*>(this)->*Method)(idx); 
+                   logProb += (static_cast<Derived*>(this)->*Method)(idx);
                  }
                }
              }
@@ -598,7 +598,163 @@ public:
          }
          return(logProb);
     }
-  
+
+    // getParam
+    //
+    // This is a bit simpler because we only need the first index.
+        // Unpacks the first node from `instr`, warns (does not error) if `instr`
+    // actually represents more than one node, and dispatches to the
+    // per-distribution generated `getParam_one(idx, paramID)`.
+    std::unique_ptr<ETaccessorBase> getParam_cpp(std::shared_ptr<instr_nClass> instr, int paramID) override {
+        RESET_EIGEN_ERRORS;
+        bool multiple = false;
+        Eigen::Tensor<int, 1> idx = first_idx_(instr, multiple);
+        if (multiple) {
+            Rcpp::warning("getParam: instr covers more than one node; using the first node only.");
+        }
+        return static_cast<Derived*>(this)->getParam_one(idx, paramID);
+    }
+
+    Eigen::Tensor<int, 1> first_idx_(std::shared_ptr<instr_nClass> instr, bool &multiple) {
+        int nDim = instr->nDim;
+        switch (instr->type) {
+        case 0: {
+            // Dummy/unindexed node: `calc_0_` passes `instr->lens` through as a
+            // placeholder idx that generated code for an unindexed decl ignores.
+            multiple = false;
+            return instr->lens;
+        }
+        case 1: case 2: { // 1_seq, 1_mat: single scalar index.
+            multiple = instr->lens[0] > 1;
+            Eigen::Tensor<int, 1> idx(1);
+            idx[0] = instr->values->operator[](0)[0];
+            return idx;
+        }
+        case 3: { // 1_matp: single range, nDim components, no slot reordering.
+            multiple = instr->lens[0] > 1;
+            Eigen::Tensor<int, 1> idx(nDim);
+            const auto& vals = instr->values->operator[](0);
+            for (int p = 0; p < nDim; ++p) idx[p] = vals[p];
+            return idx;
+        }
+        case 18: { // 1_matp_ord: single range, nDim components, slot-placed.
+            multiple = instr->lens[0] > 1;
+            Eigen::Tensor<int, 1> idx(nDim);
+            Eigen::Tensor<int, 1> slots(nDim);
+            for (int p = 0; p < nDim; ++p) slots[p] = instr->slots[p] - 1;
+            const auto& vals = instr->values->operator[](0);
+            for (int p = 0; p < nDim; ++p) idx[slots[p]] = vals[p];
+            return idx;
+        }
+        case 4: case 5: case 6: case 7: { // 2_{seq,mat}_{seq,mat}: two scalar indices, no slots.
+            multiple = (instr->lens[0] * instr->lens[1]) > 1;
+            Eigen::Tensor<int, 1> idx(2);
+            idx[0] = instr->values->operator[](0)[0];
+            idx[1] = instr->values->operator[](1)[0];
+            return idx;
+        }
+        case 8: { // 2_seq_matp: range0 is a single seq slot; range1 is dims[1] components.
+            multiple = (instr->lens[0] * instr->lens[1]) > 1;
+            int dim2 = instr->dims[1];
+            Eigen::Tensor<int, 1> idx(nDim);
+            Eigen::Tensor<int, 1> slots(nDim);
+            for (int p = 0; p < nDim; ++p) slots[p] = instr->slots[p] - 1;
+            idx[slots[0]] = instr->values->operator[](0)[0];
+            const auto& vals2 = instr->values->operator[](1);
+            for (int p = 0; p < dim2; ++p) idx[slots[p + 1]] = vals2[p];
+            return idx;
+        }
+        case 9: { // 2_matp_seq: range0 is dims[0] components; range1 is a single seq slot.
+            multiple = (instr->lens[0] * instr->lens[1]) > 1;
+            int dim1 = instr->dims[0];
+            Eigen::Tensor<int, 1> idx(nDim);
+            Eigen::Tensor<int, 1> slots(nDim);
+            for (int p = 0; p < nDim; ++p) slots[p] = instr->slots[p] - 1;
+            const auto& vals1 = instr->values->operator[](0);
+            for (int p = 0; p < dim1; ++p) idx[slots[p]] = vals1[p];
+            idx[slots[dim1]] = instr->values->operator[](1)[0];
+            return idx;
+        }
+        case 10: { // 2_matp_matp: both ranges are multi-component, slot-placed.
+            multiple = (instr->lens[0] * instr->lens[1]) > 1;
+            int dim1 = instr->dims[0];
+            int dim2 = instr->dims[1];
+            Eigen::Tensor<int, 1> idx(nDim);
+            Eigen::Tensor<int, 1> slots(nDim);
+            for (int p = 0; p < nDim; ++p) slots[p] = instr->slots[p] - 1;
+            const auto& vals1 = instr->values->operator[](0);
+            const auto& vals2 = instr->values->operator[](1);
+            for (int p = 0; p < dim1; ++p) idx[slots[p]] = vals1[p];
+            for (int p = 0; p < dim2; ++p) idx[slots[p + dim1]] = vals2[p];
+            return idx;
+        }
+        case 11: { // 2_x_y_ord: hardcoded swap (idx[1] from range0, idx[0] from range1).
+            // At the first tuple, iStart == values[p][0] regardless of index_type,
+            // so no need to branch on index_types here.
+            multiple = (instr->lens[0] * instr->lens[1]) > 1;
+            Eigen::Tensor<int, 1> idx(2);
+            idx[1] = instr->values->operator[](0)[0];
+            idx[0] = instr->values->operator[](1)[0];
+            return idx;
+        }
+        case 12: { // 3_allseq: three scalar indices, no slots.
+            multiple = (instr->lens[0] * instr->lens[1] * instr->lens[2]) > 1;
+            Eigen::Tensor<int, 1> idx(3);
+            for (int r = 0; r < 3; ++r) idx[r] = instr->values->operator[](r)[0];
+            return idx;
+        }
+        case 13: { // 3_generic: slot-placed, each range either 1 (seq) or dims[r] components.
+            multiple = (instr->lens[0] * instr->lens[1] * instr->lens[2]) > 1;
+            return first_idx_generic_(instr, 3, multiple);
+        }
+        case 14: { // 4_allseq: four scalar indices, no slots.
+            multiple = (instr->lens[0] * instr->lens[1] * instr->lens[2] * instr->lens[3]) > 1;
+            Eigen::Tensor<int, 1> idx(4);
+            for (int r = 0; r < 4; ++r) idx[r] = instr->values->operator[](r)[0];
+            return idx;
+        }
+        case 15: { // 4_generic
+            multiple = (instr->lens[0] * instr->lens[1] * instr->lens[2] * instr->lens[3]) > 1;
+            return first_idx_generic_(instr, 4, multiple);
+        }
+        case 16: { // 5_allseq: five scalar indices, no slots.
+            multiple = (instr->lens[0] * instr->lens[1] * instr->lens[2] * instr->lens[3] * instr->lens[4]) > 1;
+            Eigen::Tensor<int, 1> idx(5);
+            for (int r = 0; r < 5; ++r) idx[r] = instr->values->operator[](r)[0];
+            return idx;
+        }
+        case 17: { // 5_generic
+            multiple = (instr->lens[0] * instr->lens[1] * instr->lens[2] * instr->lens[3] * instr->lens[4]) > 1;
+            return first_idx_generic_(instr, 5, multiple);
+        }
+        default:
+            Rcpp::stop("getParam: unrecognized instr type.");
+        }
+        return instr->lens; // unreachable; keeps compiler happy.
+    }
+
+    // Shared "generic" (slot-placed, mixed seq/matp per range) first-tuple logic
+    // for instr types 13, 15, 17, parameterized by the number of ranges `nRanges`.
+    // Mirrors calc_3_generic_/calc_4_generic_/calc_5_generic_ at their first
+    // (i=j=k=...=0) iteration.
+    Eigen::Tensor<int, 1> first_idx_generic_(std::shared_ptr<instr_nClass> instr, int nRanges, bool &multiple) {
+        int nDim = instr->nDim;
+        Eigen::Tensor<int, 1> idx(nDim);
+        Eigen::Tensor<int, 1> slots(nDim);
+        for (int p = 0; p < nDim; ++p) slots[p] = instr->slots[p] - 1;
+        int offset = 0;
+        for (int r = 0; r < nRanges; ++r) {
+            const auto& vals = instr->values->operator[](r);
+            if (instr->index_types[r] == 1) {
+                idx[slots[offset]] = vals[0];
+            } else {
+                for (int p = 0; p < instr->dims[r]; ++p) idx[slots[offset + p]] = vals[p];
+            }
+            offset += instr->dims[r];
+        }
+        return idx;
+    }
+
     // simulate
     void  simulate_cpp ( std::shared_ptr<instr_nClass> instr ) {
         RESET_EIGEN_ERRORS;
@@ -771,8 +927,8 @@ public:
           idx[slots[0]] = i;
           for(int j = 0; j < len2; ++j) {
             for(int p = 0; p < dim2; ++p)
-              idx[slots[p+1]] = vals2[j*dim2+p];  
-            static_cast<Derived*>(this)->sim_one(idx); 
+              idx[slots[p+1]] = vals2[j*dim2+p];
+            static_cast<Derived*>(this)->sim_one(idx);
           }
         }
     }
@@ -796,7 +952,7 @@ public:
             idx[slots[p]] = vals1[i*dim1+p];
           for(int j = iStart2; j < iEnd2; ++j) {
             idx[slots[dim1]] = j;
-            static_cast<Derived*>(this)->sim_one(idx); 
+            static_cast<Derived*>(this)->sim_one(idx);
           }
         }
     }
@@ -818,11 +974,11 @@ public:
           slots[p] = instr->slots[p]-1;
         for(int i = 0; i < len1; ++i) {
             for(int p = 0; p < dim1; ++p)
-              idx[slots[p]] = vals1[i*dim1+p];  
+              idx[slots[p]] = vals1[i*dim1+p];
             for(int j = 0; j < len2; ++j) {
               for(int p = 0; p < dim2; ++p)
-                idx[slots[p+dim1]] = vals2[j*dim2+p];  
-              static_cast<Derived*>(this)->sim_one(idx); 
+                idx[slots[p+dim1]] = vals2[j*dim2+p];
+              static_cast<Derived*>(this)->sim_one(idx);
           }
         }
     }
@@ -851,12 +1007,12 @@ public:
         for(int i = 0; i < len1; ++i) {
           if(index_type1 == 1) {
             idx[1] = iStart1 + i;
-          } else idx[1] = vals1[i];  
+          } else idx[1] = vals1[i];
           for(int j = 0; j < len2; ++j) {
             if(index_type2 == 1) {
               idx[0] = iStart2 + j;
             } else idx[0] = vals2[j];
-            static_cast<Derived*>(this)->sim_one(idx); 
+            static_cast<Derived*>(this)->sim_one(idx);
           }
         }
     }
@@ -880,7 +1036,7 @@ public:
             idx[1] = j;
             for(int k = iStart3; k < iEnd3; ++k) {
               idx[2] = k;
-              static_cast<Derived*>(this)->sim_one(idx); 
+              static_cast<Derived*>(this)->sim_one(idx);
             }
           }
         }
@@ -917,22 +1073,22 @@ public:
         for(int i = 0; i < len1; ++i) {
           if(index_type1 == 1) {
             idx[slots[0]] = iStart1 + i;
-          } else 
+          } else
             for(int p = 0; p < dim1; ++p)
-              idx[slots[p]] = vals1[i*dim1+p];  
+              idx[slots[p]] = vals1[i*dim1+p];
           for(int j = 0; j < len2; ++j) {
             if(index_type2 == 1) {
               idx[slots[dim1]] = iStart2 + j;
-            } else 
+            } else
               for(int p = 0; p < dim2; ++p)
                 idx[slots[p+dim1]] = vals2[j*dim2+p];
             for(int k = 0; k < len3; ++k) {
               if(index_type3 == 1) {
                 idx[slots[cumdim2]] = iStart3 + k;
-              } else 
+              } else
                 for(int p = 0; p < dim3; ++p)
                   idx[slots[p+cumdim2]] = vals3[k*dim3+p];
-              static_cast<Derived*>(this)->sim_one(idx); 
+              static_cast<Derived*>(this)->sim_one(idx);
             }
           }
         }
@@ -991,33 +1147,33 @@ public:
       if(index_types[1] == 2 && lens[1]*dims[1] != vals1.size()) std::cout<<"lens[1]*dims[1] != vals1.size() in sim_4_generic_"<<std::endl;
       if(index_types[2] == 2 && lens[2]*dims[2] != vals2.size()) std::cout<<"lens[2]*dims[2] != vals2.size() in sim_4_generic_"<<std::endl;
       if(index_types[3] == 2 && lens[3]*dims[3] != vals3.size()) std::cout<<"lens[3]*dims[3] != vals3.size() in sim_4_generic_"<<std::endl;
-      
+
       Eigen::Tensor<int, 1> idx(nDim);
       for(int i0 = 0; i0 < lens[0]; ++i0) {
         if(index_types[0] == 1) {
           idx[slots[0]] = iStart[0] + i0;
-        } else 
+        } else
           for(int p = 0; p < dims[0]; ++p)
-            idx[slots[p]] = vals0[i0*dims[0]+p];  
+            idx[slots[p]] = vals0[i0*dims[0]+p];
         for(int i1 = 0; i1 < lens[1]; ++i1) {
           if(index_types[1] == 1) {
             idx[slots[dims[0]]] = iStart[1] + i1;
-          } else 
+          } else
             for(int p = 0; p < dims[1]; ++p)
               idx[slots[p+dims[0]]] = vals1[i1*dims[1]+p];
           for(int i2 = 0; i2 < lens[2]; ++i2) {
             if(index_types[2] == 1) {
               idx[slots[cumdim1]] = iStart[2] + i2;
-            } else 
+            } else
               for(int p = 0; p < dims[2]; ++p)
                 idx[slots[p+cumdim1]] = vals2[i2*dims[2]+p];
             for(int i3 = 0; i3 < lens[3]; ++i3) {
               if(index_types[3] == 1) {
                 idx[slots[cumdim2]] = iStart[3] + i3;
-              } else 
+              } else
                 for(int p = 0; p < dims[3]; ++p)
                   idx[slots[p+cumdim2]] = vals3[i3*dims[3]+p];
-              static_cast<Derived*>(this)->sim_one(idx); 
+              static_cast<Derived*>(this)->sim_one(idx);
             }
           }
         }
@@ -1083,39 +1239,39 @@ public:
         if(index_types[2] == 2 && lens[2]*dims[2] != vals2.size()) std::cout<<"lens[2]*dims[2] != vals2.size() in sim_5_generic_"<<std::endl;
         if(index_types[3] == 2 && lens[3]*dims[3] != vals3.size()) std::cout<<"lens[3]*dims[3] != vals3.size() in sim_5_generic_"<<std::endl;
         if(index_types[4] == 2 && lens[4]*dims[4] != vals4.size()) std::cout<<"lens[4]*dims[4] != vals4.size() in sim_5_generic_"<<std::endl;
-        
+
         Eigen::Tensor<int, 1> idx(nDim);
          for(int i0 = 0; i0 < lens[0]; ++i0) {
            if(index_types[0] == 1) {
              idx[slots[0]] = iStart[0] + i0;
-           } else 
+           } else
              for(int p = 0; p < dims[0]; ++p)
-               idx[slots[p]] = vals0[i0*dims[0]+p];  
+               idx[slots[p]] = vals0[i0*dims[0]+p];
            for(int i1 = 0; i1 < lens[1]; ++i1) {
              if(index_types[1] == 1) {
                idx[slots[dims[0]]] = iStart[1] + i1;
-             } else 
+             } else
                for(int p = 0; p < dims[1]; ++p)
                  idx[slots[p+dims[0]]] = vals1[i1*dims[1]+p];
              for(int i2 = 0; i2 < lens[2]; ++i2) {
                if(index_types[2] == 1) {
                  idx[slots[cumdim1]] = iStart[2] + i2;
-               } else 
+               } else
                  for(int p = 0; p < dims[2];  ++p)
                    idx[slots[p+cumdim1]] = vals2[i2*dims[2]+p];
                for(int i3 = 0; i3 < lens[3]; ++i3) {
                  if(index_types[3] == 1) {
                    idx[slots[cumdim2]] = iStart[3] + i3;
-                 } else 
+                 } else
                    for(int p = 0; p < dims[3]; ++p)
                      idx[slots[p+cumdim2]] = vals3[i3*dims[3]+p];
                  for(int i4 = 0; i4 < lens[4]; ++i4) {
                    if(index_types[4] == 1) {
                      idx[slots[cumdim3]] = iStart[4] + i4;
-                   } else 
+                   } else
                      for(int p = 0; p < dims[4]; ++p)
                        idx[slots[p+cumdim3]] = vals4[i4*dims[4]+p];
-                   static_cast<Derived*>(this)->sim_one(idx); 
+                   static_cast<Derived*>(this)->sim_one(idx);
                  }
                }
              }
