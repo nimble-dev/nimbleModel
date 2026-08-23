@@ -96,7 +96,6 @@ test_that("basic tests of nodeIDs", {
   expect_identical(decl$getOriginalIndexing(3:5)$toChar(),
                    'y[3:5]')
 
-  # BUG: this gives extra (invalid) IDs and indexing.
   expect_identical(decl$getIDs(varRangeClass$new('y[9:14]')), 9:14)
   expect_identical(decl$getOriginalIndexing(9:14)$toChar(),
                    'y[9:14]')
@@ -188,7 +187,7 @@ test_that("nodeIDs with multiple loops", {
       for(j in 2:5)
         for(k in 4:8)
             y[i,j,k] ~ dnorm(0,1)
-})
+  })
 
   m <- nimbleModel(code)
   decl <- m$modelDef$declRules$y$rules[[1]]
@@ -345,24 +344,56 @@ test_that("nonseparable loop indexing cases", {
 test_that("loop indexing with offsets", {
   code <- nimbleCode({
     for(i in 3:10)
-      y[i+1] ~ dnorm(0,1)
+      y[i+2] ~ dnorm(0,1)
   })
 
   m <- nimbleModel(code)
   decl <- m$modelDef$declRules$y$rules[[1]]
 
-  ids <- 3:6
+  ids <- 3:4
   indexingRange <- varRangeClass$new(list(newIndexRange(quote(5:6))),varName='y')
   expect_identical(decl$getIDs(indexingRange), ids)
 
-  nr <- m$getNodes('y[5:6]')
-  nr[[1]]$getIDs()
+  nr <- m$getNodes('y[7:8]')
+  expect_identical(nr[[1]]$getIDs(), ids)
 
+  expect_identical(decl$getOriginalIndexing(ids)$toChar(),"y[5:6]")
   
   code <- nimbleCode({
     for(i in 3:10)
-      y[i-1] ~ dnorm(0,1)
+      y[i-2] ~ dnorm(0,1)
   })
 
   m <- nimbleModel(code)
   decl <- m$modelDef$declRules$y$rules[[1]]
+
+  ids <- 3:4
+  indexingRange <- varRangeClass$new(list(newIndexRange(quote(5:6))),varName='y')
+  expect_identical(decl$getIDs(indexingRange), ids)
+
+  nr <- m$getNodes('y[3:4]')
+  expect_identical(nr[[1]]$getIDs(), ids)
+
+  expect_identical(decl$getOriginalIndexing(ids)$toChar(),"y[5:6]")
+
+  code <- nimbleCode({
+      for(i in 3:10)
+      for(j in 2:4)
+          y[i,j+2] ~ dnorm(0,1)
+  })
+  
+  m <- nimbleModel(code)
+  decl <- m$modelDef$declRules$y$rules[[1]]
+
+  ids <- c(8,9,11,12)
+  indexingRange <- varRangeClass$new(list(newIndexRange(quote(5:6)), newIndexRange(quote(3:4))),varName='y')
+  expect_identical(decl$getIDs(indexingRange), ids)
+
+  nr <- m$getNodes('y[5:6,5:6]')
+  expect_identical(nr[[1]]$getIDs(), ids)
+
+  expect_identical(decl$getOriginalIndexing(ids)$toChar(),"y[5:6, 3:4]")
+  
+})
+
+

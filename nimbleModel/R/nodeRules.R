@@ -266,7 +266,7 @@ declRuleClass <- R6Class(
 # Convert from loop indexing to ID indexing (locally within a given separable loop set) (accounting for offset or non-sequential indexing).
 getOneLoopIDs <- function(indexRange, indexingRule) {
   if(inherits(indexingRule, 'indexRuleBlockClass')) {
-    init <- indexingRule$setupResults$fromMin
+    init <- indexingRule$setupResults$fromMin + indexingRule$setupResults$offset
     # We could use `switch` but then can't use `inherits` and would need to pick off [[1]] element from class().
     if(inherits(indexRange, 'indexRangeMatrixClass')) {
       return(c(indexRange$values)-init+1)
@@ -292,8 +292,8 @@ getOneLoopIDs <- function(indexRange, indexingRule) {
 # Convert from ID indexing (locally within a given separable loop set) to the actual loop indexing (accounting for offset or non-sequential indexing).
 getOneLoopIndices <- function(relativeNodeIDs, indexingRule) {
   if(inherits(indexingRule, 'indexRuleBlockClass')) {
-    if(indexingRule$setupResults$fromMin != 1)
-      return(relativeNodeIDs + (indexingRule$setupResults$fromMin - 1)) else return(relativeNodeIDs)
+    if(indexingRule$setupResults$fromMin + indexingRule$setupResults$offset != 1)
+      return(relativeNodeIDs + (indexingRule$setupResults$fromMin + indexingRule$setupResults$offset - 1)) else return(relativeNodeIDs)
   }
   if(inherits(indexingRule, 'indexRuleArbitraryClass')) {
     return(unlist(indexingRule$setupResults$iRow2toIndices[relativeNodeIDs]))  
