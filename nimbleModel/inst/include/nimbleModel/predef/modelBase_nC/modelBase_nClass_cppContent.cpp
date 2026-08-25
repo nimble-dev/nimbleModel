@@ -55,6 +55,11 @@ Rprintf("modelBase_nClass simulate_impl (should not see this)\n");;
 RESET_EIGEN_ERRORS
 Rprintf("modelBase_nClass getParam_impl (should not see this)\n"); return R_NilValue;;
 }
+    double  modelBase_nClass::getBound_impl ( std::shared_ptr<instr_nClass> node, int boundID ) {
+RESET_EIGEN_ERRORS
+Rprintf("modelBase_nClass getBound_impl (should not see this)\n");;
+return(0.0);
+}
       modelBase_nClass::modelBase_nClass (  ) {
 RESET_EIGEN_ERRORS
 }
@@ -82,7 +87,8 @@ method("calculate_impl", &modelBase_nClass::calculate_impl, args({{arg("instrLis
 method("calculateDiff_impl", &modelBase_nClass::calculateDiff_impl, args({{arg("instrList",copy)}})),
 method("getLogProb_impl", &modelBase_nClass::getLogProb_impl, args({{arg("instrList",copy)}})),
 method("simulate_impl", &modelBase_nClass::simulate_impl, args({{arg("instrList",copy)}})),
-method("getParam_impl", &modelBase_nClass::getParam_impl, args({{arg("node",copy)},{arg("paramID",copy)}}))
+method("getParam_impl", &modelBase_nClass::getParam_impl, args({{arg("node",copy)},{arg("paramID",copy)}})),
+method("getBound_impl", &modelBase_nClass::getBound_impl, args({{arg("node",copy)},{arg("boundID",copy)}}))
 )
 )
 #endif

@@ -17,6 +17,7 @@ public:
    virtual  double  getLogProb_cpp ( std::shared_ptr<instr_nClass> instr ) ;
    virtual  void  simulate_cpp ( std::shared_ptr<instr_nClass> instr ) ;
    virtual  std::unique_ptr<ETaccessorBase>  getParam_cpp ( std::shared_ptr<instr_nClass> instr, int paramID ) ;
+   virtual  double  getBound_cpp ( std::shared_ptr<instr_nClass> instr, int boundID ) ;
       declFunBase_nClass (  ) ;
 
 };

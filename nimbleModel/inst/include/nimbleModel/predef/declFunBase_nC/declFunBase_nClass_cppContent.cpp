@@ -42,6 +42,11 @@ RESET_EIGEN_ERRORS
 Rprintf("declFunBase_nClass virtual base getParam_cpp should never be called (something is wrong)\n");;
 return(ETaccessPtr<true>(0.0));
 }
+    double  declFunBase_nClass::getBound_cpp ( std::shared_ptr<instr_nClass> instr, int boundID ) {
+RESET_EIGEN_ERRORS
+Rprintf("declFunBase_nClass virtual base getBound_cpp should never be called (something is wrong)\n");;
+return(0.0);
+}
       declFunBase_nClass::declFunBase_nClass (  ) {
 RESET_EIGEN_ERRORS
 }
@@ -66,7 +71,8 @@ method("ping", &declFunBase_nClass::ping, args({{}})),
 method("calculate_cpp", &declFunBase_nClass::calculate_cpp, args({{arg("instr",copy)}})),
 method("calculateDiff_cpp", &declFunBase_nClass::calculateDiff_cpp, args({{arg("instr",copy)}})),
 method("getLogProb_cpp", &declFunBase_nClass::getLogProb_cpp, args({{arg("instr",copy)}})),
-method("simulate_cpp", &declFunBase_nClass::simulate_cpp, args({{arg("instr",copy)}}))
+method("simulate_cpp", &declFunBase_nClass::simulate_cpp, args({{arg("instr",copy)}})),
+method("getBound_cpp", &declFunBase_nClass::getBound_cpp, args({{arg("instr",copy)},{arg("boundID",copy)}}))
 )
 )
 #endif

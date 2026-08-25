@@ -412,6 +412,19 @@ modelBase_nClass <- nClass(
         return(self$getParam_impl(one_instr, paramID))
       }
       declFunList[[one_instr$declID]]$getParam(one_instr, paramID)
+    },
+    getBound = function(one_instr, bound) {
+      if (!inherits(one_instr, "instr_nClass")) {
+        stop("getBound: argument `one_instr` must be an instr_nClass object")
+      }
+      if(!bound %in% c('lower', 'upper'))
+        stop("getBound: 'bound' must be either 'lower' or 'upper'")
+      boundID <- if(bound == 'lower') 0 else 1
+      if (isCompiled()) {
+        if (!one_instr$isCompiled()) one_instr <- makeCompiledInstr(one_instr)
+        return(self$getBound_impl(one_instr, boundID))
+      }
+      declFunList[[one_instr$declID]]$getBound(one_instr, boundID)
     }
   ),
   Cpublic = list(
@@ -517,6 +530,22 @@ modelBase_nClass <- nClass(
       compileInfo = list(
         C_fun = function(node = "instr_nClass", paramID = "integerScalar") {
           cppLiteral('Rprintf("modelBase_nClass getParam_impl (should not see this)\\n"); return R_NilValue;')
+        },
+        virtual = TRUE
+      )
+    ),
+    getBound_impl = nFunction(
+      name = "getBound_impl",
+      function(node, boundID) {
+        cat("Uncompiled `getBound_impl` should never be called.\n")
+        return(0)
+      },
+      # We must return a general object because it may have different nDim
+      returnType = "numericScalar",
+      compileInfo = list(
+        C_fun = function(node = "instr_nClass", boundID = "integerScalar") {
+          cppLiteral('Rprintf("modelBase_nClass getBound_impl (should not see this)\\n");')
+          return(0)
         },
         virtual = TRUE
       )

@@ -83,7 +83,7 @@ make_modelClass_from_nimbleModel <- function(modelDef, data, inits, name = NULL)
       lapply(\(x) all.vars(body(x))) |>
       unlist() |>
       unique() |>
-      setdiff(c("idx", "paramID_", "LocalNewLogProb_", "LocalAns_", "model")) %||% character()
+      setdiff(c("idx", "paramID_", "boundID_","LocalNewLogProb_", "LocalAns_", "model")) %||% character()
     declVarInfo <- modelVarInfo$vars[declVars]
     declID <- as.numeric(declInfo$declRule$ID) # Formerly `sourceLineNumber`, which may not be unique.
     declFun_membername <- declFunNames[i]
@@ -592,6 +592,7 @@ make_decl_methods_from_declInfo <- function(declInfo) {
     ))
     # Dummy version of getParam_one:
     getParamMethods <- list(getParam_one = make_getParam_one_nFxn())
+    getBoundMethods <- list(getBound_one = make_getBound_one_nFxn())
   }
   if (type == "stoch") {
     logProbExpr <- declInfo$genLogProbExpr()
@@ -627,8 +628,9 @@ make_decl_methods_from_declInfo <- function(declInfo) {
       )
     ))
     getParamMethods <- make_getParam_methods(declInfo, LHSrep, RHSrep)
+    getBoundMethods <- make_getBound_methods(declInfo, LHSrep, RHSrep)
   }
-  c(methodList, getParamMethods)
+  c(methodList, getParamMethods, getBoundMethods)
 }
 
 make_getParam_methods <- function(declInfo, LHSrep, RHSrep) {
@@ -651,8 +653,11 @@ make_getParam_methods <- function(declInfo, LHSrep, RHSrep) {
 make_getParam_one_nFxn <- function(paramIDs = integer(0), exprs = list(),
                                     isRefFlags = logical(0), computeMethodNames = character(0)) {
   if(!length(paramIDs)) {
-    fun <- function(idx, paramID_) {
+    Cfun <- function(idx, paramID_) {
       return(ETaccess(0, copy=TRUE))
+    }
+    Rfun <- function(idx, paramID_) {
+      return(0)
     }
   } else {
     case_lines <- lapply(exprs, 
@@ -666,18 +671,88 @@ make_getParam_one_nFxn <- function(paramIDs = integer(0), exprs = list(),
     switch_line <- bquote(nSwitch(paramID_, .(paramIDs)))
     switch_line[3 + (1:(length(case_lines)))] <- case_lines
     
-    fun <- bquote(
+    Cfun <- bquote(
       function(idx, paramID_) {
         .(switch_line)
         return(LocalAns_)
       }
     ) |> eval()
-  }  
+
+    R_case_lines <- lapply(exprs, 
+                         function(expr) {
+                           # LocalAns_ is already filtered out of all.vars results
+                           # to determine model variables, so use that name here too.
+                           bquote(LocalAns_ <- .(expr))
+                         })
+    R_switch_line <- bquote(nSwitch(paramID_, .(paramIDs)))
+    R_switch_line[3 + (1:(length(R_case_lines)))] <- R_case_lines
+    Rfun <- bquote(
+      function(idx, paramID_) {
+        .(R_switch_line)
+        return(LocalAns_)
+      }
+    ) |> eval()
+    body(Rfun) <- nm_addModelDollarSign(body(Rfun), exceptionNames = c("idx", "paramID_", "LocalAns_"))
+  }
   nFunction(
     name = "getParam_one",
-    fun,
+    Rfun,
+    compileInfo = list(C_fun = Cfun),
     returnType = "ETaccessor()",
     argTypes = list(idx = "integerVector", paramID_ = "integerScalar")
+  )
+}
+
+make_getBound_methods <- function(declInfo, LHSrep, RHSrep) {
+  distName <- declInfo$distributionName
+  boundExprs <- declInfo$boundExprs
+  getBoundOne <- make_getBound_one_nFxn(boundExprs)
+  list(getBound_one = getBoundOne)
+}
+
+make_getBound_one_nFxn <- function(boundExprs = list()) {
+  if(!length(boundExprs)) {
+    Rfun <- function(idx, boundID_) {
+      return(NA)
+    }
+    Cfun <- function(idx, boundID_) {
+      return(0)
+    }
+  } else {
+    init_line <- quote(LocalAns_ <- 0) # avoid Windows compile warning of possibly uninitialized return value.
+    case_lines <- lapply(boundExprs, 
+                         function(expr) {
+                           # LocalAns_ is already filtered out of all.vars results
+                           # to determine model variables, so use that name here too.
+                           bquote(LocalAns_ <- .(expr))
+                         })
+    
+    
+    switch_line <- bquote(nSwitch(boundID_, 0:1))
+    switch_line[3 + (1:(length(case_lines)))] <- case_lines
+    
+    Rfun <- bquote(
+      function(idx, boundID_) {
+        .(init_line)
+        .(switch_line)
+        return(LocalAns_)
+      }
+    ) |> eval()
+    Cfun <- bquote(
+      function(idx, boundID_) {
+        .(init_line)
+        .(switch_line)
+        return(LocalAns_)
+      }
+    ) |> eval()
+    body(Rfun) <- nm_addModelDollarSign(body(Rfun), exceptionNames = c("idx", "boundID_", "LocalAns_"))
+  }  
+  nFunction(
+    name = "getBound_one",
+    Rfun,
+    compileInfo = list(C_fun = Cfun),
+    returnType = "numericScalar",
+    argTypes = list(idx = "integerVector", boundID_ = "integerScalar")
   )
 }
 

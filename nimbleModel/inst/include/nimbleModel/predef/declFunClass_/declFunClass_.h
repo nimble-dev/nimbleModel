@@ -614,7 +614,15 @@ public:
         }
         return static_cast<Derived*>(this)->getParam_one(idx, paramID);
     }
-
+    double getBound_cpp(std::shared_ptr<instr_nClass> instr, int boundID) override {
+        RESET_EIGEN_ERRORS;
+        bool multiple = false;
+        Eigen::Tensor<int, 1> idx = first_idx_(instr, multiple);
+        if (multiple) {
+            Rcpp::warning("getBound: instr covers more than one node; using the first node only.");
+        }
+        return static_cast<Derived*>(this)->getBound_one(idx, boundID);
+    }
     Eigen::Tensor<int, 1> first_idx_(std::shared_ptr<instr_nClass> instr, bool &multiple) {
         int nDim = instr->nDim;
         switch (instr->type) {
@@ -728,7 +736,7 @@ public:
             return first_idx_generic_(instr, 5, multiple);
         }
         default:
-            Rcpp::stop("getParam: unrecognized instr type.");
+            Rcpp::stop("getParam or getBound: unrecognized instr type.");
         }
         return instr->lens; // unreachable; keeps compiler happy.
     }

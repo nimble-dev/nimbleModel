@@ -767,6 +767,14 @@ declFunBase_nClass <- nClass(
       }
       getParam_one(fi$idx, paramID)
     },
+    # getBound: use only the first entry in the instr.
+    getBound = function(instr, boundID) {
+      fi <- first_idx(instr)
+      if (fi$multiple) {
+        warning("getBound: instr covers more than one node; using the first node only.")
+      }
+      getBound_one(fi$idx, boundID)
+    },
     first_idx = function(instr) {
       multiple <- FALSE
       idx <- switch(as.character(instr$type),
@@ -946,6 +954,20 @@ declFunBase_nClass <- nClass(
         C_fun = function(instr = "instr_nClass", paramID = "integerScalar") {
           cppLiteral('Rprintf("declFunBase_nClass virtual base getParam_cpp should never be called (something is wrong)\\n");')
           return(ETaccess(0, copy = TRUE))
+        }
+      )
+    ),
+    getBound_cpp = nFunction(
+      name = "getBound_cpp",
+      function(instr, boundID) {
+        stop("Uncompiled version of getBound_cpp should not be called.")
+      },
+      returnType = "numericScalar",
+      compileInfo = list(
+        virtual = TRUE,
+        C_fun = function(instr = "instr_nClass", boundID = "integerScalar") {
+          cppLiteral('Rprintf("declFunBase_nClass virtual base getBound_cpp should never be called (something is wrong)\\n");')
+          return(0)
         }
       )
     )
