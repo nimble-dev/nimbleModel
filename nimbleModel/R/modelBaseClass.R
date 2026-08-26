@@ -35,7 +35,7 @@ modelBase_nClass <- nClass(
       }
 
       # TODO: create a merge_and_set function that handles all three of the following.
-      if(isTRUE(.initialize)) {
+      if (isTRUE(.initialize)) {
         # This assumes there is a derived object with defaultSizes, defaultInits, and defaultData.
 
         # TODO: do we want to handle data differently?
@@ -49,10 +49,10 @@ modelBase_nClass <- nClass(
           }
         }
 
-        if(!CppObj_provided) {
+        if (!CppObj_provided) {
           self$reset(sizes = sizes, inits = inits, allData = allData)
         }
- 
+
         dataVarIndices <- names(modelDef$constants) %in% modelDef$varNames & !names(modelDef$constants) %in% names(allData) # don't overwrite anything in 'allData'
         # TODO: revise messaging below using new nimbleModel messaging system.
         if (sum(names(modelDef$constants) %in% names(allData))) {
@@ -90,17 +90,15 @@ modelBase_nClass <- nClass(
         allInits <- self$defaultInits
       } else if (length(inits)) set_from_list(inits)
 
-      if(is.null(allData)) {
+      if (is.null(allData)) {
         allData <- self$defaultData
-        if (!missing(data)) { # this and the next line used inits. was that a typo? I think so. 
+        if (!missing(data)) { # this and the next line used inits. was that a typo? I think so.
           for (nm in names(data)) {
             allData[[nm]] <- data[[nm]]
           }
         }
       }
       if (length(allData)) set_from_list(allData)
-
-
     },
     makeDataRules = function(data) {
       nms <- names(data)
@@ -393,16 +391,19 @@ modelBase_nClass <- nClass(
       return(invisible(NULL))
     },
     # `one_instr` is a single instr_nClass (not a list of them).
-    # Within it, one node will be used (see declFunBase_nClass$first_idx). 
+    # Within it, one node will be used (see declFunBase_nClass$first_idx).
     # `param` is an integer paramID or a character param name.
     getParam = function(one_instr, param) {
       if (!inherits(one_instr, "instr_nClass")) {
         stop("getParam: argument `one_instr` must be an instr_nClass object")
       }
-      if(is.numeric(param)) paramID <- param
-      else if(is.character(param)) {
-        paramID <- getParamID(self$modelDef$declInfo[[one_instr$declID]]$distributionName,
-                              param)
+      if (is.numeric(param)) {
+        paramID <- param
+      } else if (is.character(param)) {
+        paramID <- getParamID(
+          self$modelDef$declInfo[[one_instr$declID]]$distributionName,
+          param
+        )
         if (is.na(paramID)) stop("getParam: argument `param` is not a valid parameter name for this node.")
       } else {
         stop("getParam: argument `param` must be an integer paramID or a character param name.")
@@ -417,9 +418,10 @@ modelBase_nClass <- nClass(
       if (!inherits(one_instr, "instr_nClass")) {
         stop("getBound: argument `one_instr` must be an instr_nClass object")
       }
-      if(!bound %in% c('lower', 'upper'))
+      if (!bound %in% c("lower", "upper")) {
         stop("getBound: 'bound' must be either 'lower' or 'upper'")
-      boundID <- if(bound == 'lower') 0 else 1
+      }
+      boundID <- if (bound == "lower") 0 else 1
       if (isCompiled()) {
         if (!one_instr$isCompiled()) one_instr <- makeCompiledInstr(one_instr)
         return(self$getBound_impl(one_instr, boundID))

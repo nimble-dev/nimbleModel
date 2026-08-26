@@ -165,7 +165,7 @@ multiCopierMV_nClass <- nCompiler::nClass(
 )
 
 #' @export
-makeMultiCopier <- function(source, nodes, 
+makeMultiCopier <- function(source, nodes,
                             sourceType = c("model", "modelValues"), ...) {
   # This will be called from a nimble2 keyword processor
   # The ... is to absorb further arguments that at the time of this writing are not fleshed out.
@@ -173,11 +173,11 @@ makeMultiCopier <- function(source, nodes,
     nodes <- nodes |> lapply(\(x) nimbleModel:::varRangeClass$new(x))
   }
   sourceType <- match.arg(sourceType)
-  multiCopier <- 
-   switch(sourceType,
-     model = multiCopier_nClass$new(),
-     modelValues = multiCopierMV_nClass$new()
-   )
+  multiCopier <-
+    switch(sourceType,
+      model = multiCopier_nClass$new(),
+      modelValues = multiCopierMV_nClass$new()
+    )
   getRange <- function(indexRange) {
     if (!inherits(indexRange, "indexRangeSequenceClass")) {
       stop("In a copy operation, only contiguous index blocks are supported")
@@ -190,7 +190,7 @@ makeMultiCopier <- function(source, nodes,
     multiCopier$copiers[[i]]$varName <- thisNode$varName
     multiCopier$copiers[[i]]$indsList <- thisNode$indexRanges |> lapply(getRange)
   }
-  attr(multiCopier, "NCgenerator") <- 
+  attr(multiCopier, "NCgenerator") <-
     switch(sourceType,
       model = quote(nimbleModel:::multiCopier_nClass),
       modelValues = quote(nimbleModel:::multiCopierMV_nClass)

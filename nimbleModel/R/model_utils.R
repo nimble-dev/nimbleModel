@@ -37,8 +37,8 @@ is.blank <- function(arg) {
     return(FALSE)
   }
   # slightly simpler approach borrowed from rlang::is_missing
-  return(identical(arg, quote(expr =)))
-  # old approach  
+  return(identical(arg, quote(expr = )))
+  # old approach
   # return(identical(arg, quote(x[])[[3]]))
 }
 

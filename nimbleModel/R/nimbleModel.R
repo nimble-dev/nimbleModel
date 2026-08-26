@@ -83,7 +83,7 @@ make_modelClass_from_nimbleModel <- function(modelDef, data, inits, name = NULL)
       lapply(\(x) all.vars(body(x))) |>
       unlist() |>
       unique() |>
-      setdiff(c("idx", "paramID_", "boundID_","LocalNewLogProb_", "LocalAns_", "model")) %||% character()
+      setdiff(c("idx", "paramID_", "boundID_", "LocalNewLogProb_", "LocalAns_", "model")) %||% character()
     declVarInfo <- modelVarInfo$vars[declVars]
     declID <- as.numeric(declInfo$declRule$ID) # Formerly `sourceLineNumber`, which may not be unique.
     declFun_membername <- declFunNames[i]
@@ -412,7 +412,7 @@ makeModel_nClass <- function(modelVarInfo,
         CpublicDeclFuns = CpublicDeclFuns,
         initialize = function(...) {
           if (isTRUE(.GlobalEnv$.debugModelInit)) browser()
-          super$initialize(..., .initialize=TRUE)
+          super$initialize(..., .initialize = TRUE)
         }
       ),
       # A concatenation of lists
@@ -651,26 +651,28 @@ make_getParam_methods <- function(declInfo, LHSrep, RHSrep) {
 }
 
 make_getParam_one_nFxn <- function(paramIDs = integer(0), exprs = list(),
-                                    isRefFlags = logical(0), computeMethodNames = character(0)) {
-  if(!length(paramIDs)) {
+                                   isRefFlags = logical(0), computeMethodNames = character(0)) {
+  if (!length(paramIDs)) {
     Cfun <- function(idx, paramID_) {
-      return(ETaccess(0, copy=TRUE))
+      return(ETaccess(0, copy = TRUE))
     }
     Rfun <- function(idx, paramID_) {
       return(0)
     }
   } else {
-    case_lines <- lapply(exprs, 
-                         function(expr) {
-                           # LocalAns_ is already filtered out of all.vars results
-                           # to determine model variables, so use that name here too.
-                           bquote(LocalAns_ <- ETaccess(.(expr), copy=TRUE))
-                         })
-    
-    
+    case_lines <- lapply(
+      exprs,
+      function(expr) {
+        # LocalAns_ is already filtered out of all.vars results
+        # to determine model variables, so use that name here too.
+        bquote(LocalAns_ <- ETaccess(.(expr), copy = TRUE))
+      }
+    )
+
+
     switch_line <- bquote(nSwitch(paramID_, .(paramIDs)))
     switch_line[3 + (1:(length(case_lines)))] <- case_lines
-    
+
     Cfun <- bquote(
       function(idx, paramID_) {
         .(switch_line)
@@ -678,12 +680,14 @@ make_getParam_one_nFxn <- function(paramIDs = integer(0), exprs = list(),
       }
     ) |> eval()
 
-    R_case_lines <- lapply(exprs, 
-                         function(expr) {
-                           # LocalAns_ is already filtered out of all.vars results
-                           # to determine model variables, so use that name here too.
-                           bquote(LocalAns_ <- .(expr))
-                         })
+    R_case_lines <- lapply(
+      exprs,
+      function(expr) {
+        # LocalAns_ is already filtered out of all.vars results
+        # to determine model variables, so use that name here too.
+        bquote(LocalAns_ <- .(expr))
+      }
+    )
     R_switch_line <- bquote(nSwitch(paramID_, .(paramIDs)))
     R_switch_line[3 + (1:(length(R_case_lines)))] <- R_case_lines
     Rfun <- bquote(
@@ -711,7 +715,7 @@ make_getBound_methods <- function(declInfo, LHSrep, RHSrep) {
 }
 
 make_getBound_one_nFxn <- function(boundExprs = list()) {
-  if(!length(boundExprs)) {
+  if (!length(boundExprs)) {
     Rfun <- function(idx, boundID_) {
       return(NA)
     }
@@ -720,17 +724,19 @@ make_getBound_one_nFxn <- function(boundExprs = list()) {
     }
   } else {
     init_line <- quote(LocalAns_ <- 0) # avoid Windows compile warning of possibly uninitialized return value.
-    case_lines <- lapply(boundExprs, 
-                         function(expr) {
-                           # LocalAns_ is already filtered out of all.vars results
-                           # to determine model variables, so use that name here too.
-                           bquote(LocalAns_ <- .(expr))
-                         })
-    
-    
+    case_lines <- lapply(
+      boundExprs,
+      function(expr) {
+        # LocalAns_ is already filtered out of all.vars results
+        # to determine model variables, so use that name here too.
+        bquote(LocalAns_ <- .(expr))
+      }
+    )
+
+
     switch_line <- bquote(nSwitch(boundID_, 0:1))
     switch_line[3 + (1:(length(case_lines)))] <- case_lines
-    
+
     Rfun <- bquote(
       function(idx, boundID_) {
         .(init_line)
@@ -746,7 +752,7 @@ make_getBound_one_nFxn <- function(boundExprs = list()) {
       }
     ) |> eval()
     body(Rfun) <- nm_addModelDollarSign(body(Rfun), exceptionNames = c("idx", "boundID_", "LocalAns_"))
-  }  
+  }
   nFunction(
     name = "getBound_one",
     Rfun,

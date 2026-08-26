@@ -6,8 +6,8 @@ modelValuesBase_nClass <- nCompiler::nClass(
     initialize = function(...) {
       super$initialize(...)
       CppObj_provided <- "CppObj" %in% ...names()
-      if(!CppObj_provided) {
-        if(!isCompiled()) {
+      if (!CppObj_provided) {
+        if (!isCompiled()) {
           modelValuesBase_nClass()
           self$dot_sizeList <- self$defaultSizes
         }
@@ -82,7 +82,7 @@ modelValues_resize <- function(self, m, sizeList) {
   # check preservation issues in resizing
   for (v in names(sizeList)) {
     this_sizeList <- sizeList[[v]]
-    if(length(this_sizeList) == 0) this_sizeList <- 1
+    if (length(this_sizeList) == 0) this_sizeList <- 1
     length(self[[v]]) <- m
     if (length(this_sizeList) == 1) {
       for (i in 1:m) self[[v]][[i]] <- numeric(length = this_sizeList)
@@ -94,7 +94,7 @@ modelValues_resize <- function(self, m, sizeList) {
 
 make_modelValues_nClass <- function(varInfo,
                                     cpp_classname) {
-  if(missing(cpp_classname)) {
+  if (missing(cpp_classname)) {
     hashedID <- make_modelValues_hashID(varInfo)
     cpp_classname <- Rname2CppName(paste0("MV_", hashedID))
   }
@@ -166,9 +166,9 @@ make_modelValues_nClass <- function(varInfo,
   names(CPUBLIC)[1] <- cpp_classname
 
   defaultSizes <- varInfo$sizes
-  if(is.null(defaultSizes)) defaultSizes <- list()
-  for(v in names(varInfo$vars)) {
-    if(is.null(defaultSizes[[v]]) || length(defaultSizes[[v]]) == 0) {
+  if (is.null(defaultSizes)) defaultSizes <- list()
+  for (v in names(varInfo$vars)) {
+    if (is.null(defaultSizes[[v]]) || length(defaultSizes[[v]]) == 0) {
       defaultSizes[[v]] <- rep(0, varInfo$vars[[v]]$nDim)
     }
   }
@@ -194,9 +194,11 @@ make_modelValues_nClass <- function(varInfo,
       Cpublic =
         CPUBLIC
     ),
-    list(CLASSNAME = classname,
-        CPP_CLASSNAME_ = as.name(cpp_classname),
-        CPP_CLASSNAME = cpp_classname)
+    list(
+      CLASSNAME = classname,
+      CPP_CLASSNAME_ = as.name(cpp_classname),
+      CPP_CLASSNAME = cpp_classname
+    )
   )
   generator <- eval(generator_code)
   generator$set("public", "NCgenerator", generator)
@@ -210,20 +212,21 @@ make_modelValues_hashID <- function(varInfo) {
   sortedNames <- sort(names(varsList))
   sortedVars <- varsList[sortedNames]
   nested_normalize <- function(x) {
-    if(!is.list(x)) 
+    if (!is.list(x)) {
       stop("Elements of a modelValues varInfo list must be lists with elements 'name' and 'nDim' (or unnamed elements in that order)")
-    if(is.null(names(x))) {
-      if(length(x) != 2) {
+    }
+    if (is.null(names(x))) {
+      if (length(x) != 2) {
         stop("Elements of a modelValues varInfo list must have 2 elements (optionally named 'name' and 'nDim')")
       }
-      if(!is.character(x[[1]]) || !is.numeric(x[[2]])) {
+      if (!is.character(x[[1]]) || !is.numeric(x[[2]])) {
         stop("Elements of a modelValues varInfo list, if not named, must have first element character (for the 'name') and second element numeric (for the 'nDim')")
       }
       x <- list(name = x[[1]], nDim = x[[2]])
     }
     x <- x[sort(names(x))]
-    if(!identical(names(x), sort(c("name", "nDim")))) {
-      # use sort in the RHS of the identical() to avoid 
+    if (!identical(names(x), sort(c("name", "nDim")))) {
+      # use sort in the RHS of the identical() to avoid
       # unknown sort ordering in other locales
       stop("Elements of a modelValues varInfo list must be named 'name' and 'nDim'")
     }
@@ -236,12 +239,12 @@ make_modelValues_hashID <- function(varInfo) {
 
 #' @export
 modelValues <- function(varInfo, .ID = FALSE, env = parent.frame()) {
-  if(inherits(varInfo, "modelBase_nClass")) {
+  if (inherits(varInfo, "modelBase_nClass")) {
     varInfo <- get_varInfo_from_nimbleModel(varInfo$modelDef)
   }
   hashedID <- make_modelValues_hashID(varInfo)
   cpp_classname <- Rname2CppName(paste0("MV_", hashedID))
-  if(isTRUE(.ID)) {
+  if (isTRUE(.ID)) {
     return(cpp_classname)
   }
   ans <- make_modelValues_nClass(varInfo, cpp_classname = cpp_classname)
@@ -261,17 +264,17 @@ class(modelValues) <- c("function", "nClassBuilder")
 #' @exportS3Method
 #' @method `[` modelValues
 `[.modelValues` <- function(x, var, ind) {
-  if(x$isCompiled()) {
+  if (x$isCompiled()) {
     nCompiler::value(x, var)[[ind]]
   } else {
-    x[[var]][[ind]]    
+    x[[var]][[ind]]
   }
 }
 
 #' @exportS3Method
 #' @method `[<-` modelValues
 `[<-.modelValues` <- function(x, var, ind, value) {
-  if(x$isCompiled()) {
+  if (x$isCompiled()) {
     nCompiler::value(x, var)[[ind]] <- value
   } else {
     x[[var]][[ind]] <- value
@@ -280,29 +283,33 @@ class(modelValues) <- c("function", "nClassBuilder")
 }
 
 ## To-Do: It would be nice to have an "as.list" that
-## returns a list of lists. This needs 
+## returns a list of lists. This needs
 ## access to the variable names and at the moment
 ## that will only work from a derived class, not
-## from a returned base class ptr. 
+## from a returned base class ptr.
 #' @exportS3Method
 #' @method as.list modelValues
 as.list.modelValues <- function(x) {
-  if(x$isCompiled()) {
+  if (x$isCompiled()) {
     varNames <- nCompiler::interface_names(x, "members")
     varNames <- varNames[!varNames %in% c("dot_sizeList", "dot_current_nRow")]
-    if(!is.null(varNames)) {
+    if (!is.null(varNames)) {
       return(
-        varNames |> lapply( 
-          \(var) as.list(nCompiler::value(x, var))) |> 
-            structure(names = varNames))
+        varNames |> lapply(
+          \(var) as.list(nCompiler::value(x, var))
+        ) |>
+          structure(names = varNames)
+      )
     }
   } else {
     varNames <- x$varInfo$vars |> names()
-    if(!is.null(varNames)) {
+    if (!is.null(varNames)) {
       return(
-        varNames |> lapply( 
-          \(var) as.list(x[[var]]) ) |> 
-            structure(names = varNames))
+        varNames |> lapply(
+          \(var) as.list(x[[var]])
+        ) |>
+          structure(names = varNames)
+      )
     }
   }
   NULL
@@ -311,8 +318,8 @@ as.list.modelValues <- function(x) {
 #' @exportS3Method
 #' @method length modelValues
 length.modelValues <- function(x) {
-  if(x$isCompiled()) {
-    nCompiler::method(x, "getLength")() 
+  if (x$isCompiled()) {
+    nCompiler::method(x, "getLength")()
   } else {
     x$getLength()
   }
@@ -321,7 +328,7 @@ length.modelValues <- function(x) {
 #' @exportS3Method
 #' @method `length<-` modelValues
 `length<-.modelValues` <- function(x, value) {
-  if(x$isCompiled()) {
+  if (x$isCompiled()) {
     nCompiler::method(x, "resize")(value)
   } else {
     x$resize(value)
