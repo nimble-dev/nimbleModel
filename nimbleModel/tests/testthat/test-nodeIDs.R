@@ -397,3 +397,23 @@ test_that("loop indexing with offsets", {
 })
 
 
+test_that("multivariate nodes", {
+  code <- nimbleCode({
+    for(i in 4:7)
+      y[2:4, i-2] ~ dmnorm(mu[1:3], pr[1:3,1:3])
+  })
+  m <- nimbleModel(code)
+  decl <- m$modelDef$declRules$y$rules[[1]]
+  
+  ids <- 2:3
+  indexingRange <- varRangeClass$new(list(newIndexRange(quote(5:6))),varName='y')
+  expect_identical(decl$getIDs(indexingRange), ids)
+
+  nr <- m$getNodes('y[2:4, 3:4]')
+  expect_identical(nr[[1]]$getIDs(), ids)
+
+  nr <- m$getNodes('y[3:4, 3:4]')
+  expect_identical(nr[[1]]$getIDs(), ids)
+
+  expect_identical(decl$getOriginalIndexing(ids)$toChar(),"y[5:6]")
+})
