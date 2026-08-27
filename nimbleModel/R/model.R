@@ -449,11 +449,12 @@ getNodeNames <- function(model, determOnly = FALSE, stochOnly = FALSE,
                          returnScalarComponents = FALSE) {
   if (returnType != "names")
     stop("In nimble2, one can only request 'names' as the `returnType`")
-  return(getNodes(model, nodes = NULL, determOnly, stochOnly, includeData, dataOnly,
-                  includeRHSonly, topOnly, latentOnly, endOnly,
-                  includePredictive, predictiveOnly,
+  return(getNodes(model, determOnly = determOnly, stochOnly = stochOnly,
+                  includeData = includeData, dataOnly = dataOnly, includeRHSonly = includeRHSonly,
+                  topOnly = topOnly, latentOnly = latentOnly, endOnly = endOnly,
+                  includePredictive = includePredictive, predictiveOnly = predictiveOnly,
                   nodesAsChars = TRUE,
-                  returnScalarComponents, .sort = TRUE))
+                  returnScalarComponents = returnScalarComponents, .sort = TRUE))
 }
 
 # Provided for backward compatibility. 
