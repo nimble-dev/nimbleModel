@@ -37,7 +37,7 @@ Collate:
     miscFunctions.R
     modelDecl.R
     modelDef.R
-    model.R
+    modelFunctions.R
     model_utils.R
     nodeRules.R
     options.R       
