@@ -198,6 +198,8 @@ taggedClass <- R6Class(
 #' @export
 aggregate_nodes <- function(nodeSet) {
   if(!length(nodeSet)) return(nodeSet)
+  if(is.character(nodeSet) || !is.list(nodeSet)) 
+    stop("`nodeSet` must be a list of nodeRanges")
   declIDs <- sapply(nodeSet, \(x) x$decl$declRule$ID)
   nodeIDs <- lapply(nodeSet, \(x) x$getIDs())
   IDsByDecl <- lapply(split(nodeIDs,declIDs),\(x) unique(nimbleModel:::flatten(x)))
@@ -214,6 +216,9 @@ aggregate_nodes <- function(nodeSet) {
 #' @export
 intersect_nodes <- function(nodeSet1, nodeSet2) {
   if(!length(nodeSet1) || !length(nodeSet2)) return(list())
+  if(is.character(nodeSet1) || is.character(nodeSet2) ||
+       !is.list(nodeSet1) || !is.list(nodeSet2))
+    stop("`nodeSet1` and `nodeSet2` must be lists of nodeRanges")
   declIDs1 <- sapply(nodeSet1, \(x) x$decl$declRule$ID)
   declIDs2 <- sapply(nodeSet2, \(x) x$decl$declRule$ID)
   nodeIDs1 <- lapply(nodeSet1, \(x) x$getIDs())
@@ -234,6 +239,9 @@ intersect_nodes <- function(nodeSet1, nodeSet2) {
 #' @export
 setdiff_nodes <- function(nodeSet1, nodeSet2) {
   if(!length(nodeSet1) || !length(nodeSet2)) return(nodeSet1)
+  if(is.character(nodeSet1) || is.character(nodeSet2) ||
+       !is.list(nodeSet1) || !is.list(nodeSet2))
+    stop("`nodeSet1` and `nodeSet2` must be lists of nodeRanges")
   declIDs1 <- sapply(nodeSet1, \(x) x$decl$declRule$ID)
   declIDs2 <- sapply(nodeSet2, \(x) x$decl$declRule$ID)
   nodeIDs1 <- lapply(nodeSet1, \(x) x$getIDs())
@@ -536,7 +544,7 @@ setupMargNodes <- function(model, paramNodes, randomEffectsNodes, calcNodes,
       if(paramsHandled) { # This means reProvided OR paramsProvided. Including parents allows checking
         # of potentially missing REs.
         reNodesDefault <- intersect_nodes(reNodesDefault, 
-                                     model$getNodes(model$getParents(calcNodes, upstream=TRUE, self=TRUE), stochOnly = TRUE))
+                                     model$getNodes(model$getParents(calcNodes, upstream=TRUE, self=TRUE, nodesAsChars = FALSE), stochOnly = TRUE, nodesAsChars = FALSE))
       } else { # This means !paramsHandled and hence !reProvided AND !paramsProvided
         reNodesDefault <- intersect_nodes(reNodesDefault, calcNodes)
       }
@@ -569,7 +577,7 @@ setupMargNodes <- function(model, paramNodes, randomEffectsNodes, calcNodes,
     if(length(reCheck)) {
       # Top nodes should never trigger warning.
       # Descendants of top nodes that are in randomEffectsNodes should not trigger warning
-      topNodes <- model$getNodes(topOnly=TRUE)
+      topNodes <- model$getNodes(topOnly=TRUE, nodesAsChars = FALSE)
       reCheckTopNodes <- intersect_nodes(reCheck, topNodes)
       if(length(reCheckTopNodes)) {
         # Simple downstream=TRUE here is not a perfect check of connection among all nodes
@@ -739,7 +747,7 @@ setupMargNodes <- function(model, paramNodes, randomEffectsNodes, calcNodes,
     if(!paramDetermDepsCalculated) {
       # We need to process each individual node.
       paramDetermDeps <- model$getNodes(model$getDependencies(paramNodes, nodesAsChars = FALSE), determOnly = TRUE,
-                                        includePredictive = FALSE, nodesAsChars = TRUE, nodesAsChars = FALSE)
+                                        includePredictive = FALSE, nodesAsChars = TRUE)
       paramDetermDepsCalculated <- TRUE
     }
     numParamDetermDeps <- length(paramDetermDeps)
