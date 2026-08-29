@@ -269,7 +269,7 @@ modelBase_nClass <- nClass(
                                     if(inherits(x, 'varRangeClass')) getNodes(x, includeRHSonly = TRUE) else x))
       }
       if (is.character(nodeRanges)) 
-        nodeRanges <- getNodes(nodeRanges, includeRHSonly = TRUE)
+        nodeRanges <- getNodes(nodeRanges, includeRHSonly = TRUE, nodesAsChars = FALSE)
       if(!(is.list(nodeRanges) && all(sapply(nodeRanges, inherits, "nodeRangeClass"))))
           stop("isData: argument must be a character vector, a `nodeRange` or `varRange` or list of `nodeRange`s")
 
@@ -417,6 +417,23 @@ modelBase_nClass <- nClass(
     topologicallySortNodes = function(nodes) {
       nimbleModel::expandNodeNames(self, nodes, sort = TRUE, unique = TRUE)
     },
+    getConditionallyIndependentSets = function(nodes, givenNodes, 
+                                            explore = c("both", "down", "up"),
+                                            unknownAsGiven = TRUE, returnScalarComponents = FALSE,
+                                            endAsGiven = FALSE,
+                                            nodesAsChars = getNimbleModelOption('nodesAsChars')) {
+        nimbleModel::getConditionallyIndependentSets(self, nodes, givenNodes, explore, unknownAsGiven,
+                                        returnScalarComponents, endAsGiven, nodesAsChars)
+    },
+    setupMargNodes = function(paramNodes, randomEffectsNodes, calcNodes,
+                           calcNodesOther,
+                           split = TRUE,
+                           check = TRUE,
+                           allowDiscreteLatent = FALSE) {
+        nimbleModel::setupMargNodes(self, paramNodes, randomEffectsNodes, calcNodes,
+                                    calcNodesOther, split = TRUE, check = TRUE, allowDiscreteLatent = FALSE)
+    },
+    
     calc_op = function(instr, fn, fn_cpp) {
       if (missing(instr)) {
         instr <- getVarNames()
