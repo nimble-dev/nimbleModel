@@ -238,8 +238,8 @@ conjugacyRelationshipsClass <- R6Class(
       }
 
       # CHECK: is this sufficiently efficient? Is getting a char representation the best strategy?
-      targetNode <- getNodes(model, nodes = nodeRange$toNodeChars(1))[[1]] # First node as representative.
-      deps <- getNodes(model, getDependencies(model$modelDef, targetNode, self = FALSE), stochOnly = TRUE)
+      targetNode <- getNodes(model, nodes = nodeRange$toNodeChars(1), nodesAsChars = FALSE)[[1]] # First node as representative.
+      deps <- getNodes(model, getDependencies(model$modelDef, targetNode, self = FALSE, nodesAsChars = FALSE), stochOnly = TRUE, nodesAsChars = FALSE)
 
       depTypes <- sapply(deps, function(x) conjugacyObj$checkConjugacyOneDep(model, targetNode, x, restrictLink))
 
@@ -337,7 +337,7 @@ conjugacyClass <- R6Class(
       }
 
       targetNodeChar <- targetNode$toNodeChars()
-      depNodeOne <- getNodes(model, depNode$toNodeChars(1))[[1]]
+      depNodeOne <- getNodes(model, depNode$toNodeChars(1), nodesAsChars = FALSE)[[1]]
       if (currentLink != "stickbreaking") {
         depNodeParamName <- dependentObj$param
         linearityCheckExprRaw <- model$getParamExpr(depNodeOne, depNodeParamName) # extracts the expression for 'param' from 'depNode'
@@ -396,8 +396,8 @@ conjugacyClass <- R6Class(
     genSetupFunction = function(dependentCounts, doDependentScreen = FALSE) {
       functionBody <- codeBlockClass()
       functionBody$addCode({
-        calcNodes <- getNodes(model, getDependencies(model$modelDef, target))
-        calcNodesDeterm <- getNodes(model, getDependencies(model$modelDef, target), determOnly = TRUE)
+        calcNodes <- getNodes(model, getDependencies(model$modelDef, target, nodesAsChars = FALSE), nodesAsChars = FALSE)
+        calcNodesDeterm <- getNodes(model, getDependencies(model$modelDef, target, nodesAsChars = FALSE), determOnly = TRUE, nodesAsChars = FALSE)
       })
 
       # if this conjugate sampler is for a multivariate node (i.e., nDim > 0), then we need to determine the size (d)
@@ -1251,7 +1251,7 @@ cc_expandDetermNodesInExpr <- function(model, expr, targetNode = NULL, skipExpan
       }
     }
     exprText <- safeDeparse(expr, warn = TRUE)
-    tmp <- getNodes(model, exprText)[[1]]
+    tmp <- getNodes(model, exprText, nodesAsChars = FALSE)[[1]]
     if (is.null(tmp)) {
       return(expr)
     } # RHSonly case
@@ -1259,7 +1259,7 @@ cc_expandDetermNodesInExpr <- function(model, expr, targetNode = NULL, skipExpan
 
     # skipExpansionsNode was added specifically for CAR model target nodes:
     # CHECK: see about handling of CAR stuff here
-    if (!is.null(skipExpansionsNode) && (exprText %in% getNodes(model, nodes = skipExpansionsNode)[[1]]$toNodeChars)) {
+    if (!is.null(skipExpansionsNode) && (exprText %in% getNodes(model, nodes = skipExpansionsNode, nodesAsChars = FALSE)[[1]]$toNodeChars)) {
       return(expr)
     }
 
@@ -1268,7 +1268,7 @@ cc_expandDetermNodesInExpr <- function(model, expr, targetNode = NULL, skipExpan
     if (exprText %in% expandedNodeNamesRaw) {
       expandedNodeNames <- exprText
     } else {
-      if (length(setdiff(getNodes(model, expandedNodeNamesRaw)[[1]]$toNodeChars(), varRangeClass$new(exprText)$toVarChars()))) {
+      if (length(setdiff(getNodes(model, expandedNodeNamesRaw, nodesAsChars = FALSE)[[1]]$toNodeChars(), varRangeClass$new(exprText)$toVarChars()))) {
         expandedNodeNames <- exprText
       } else {
         expandedNodeNames <- expandedNodeNamesRaw # CHECK: I don't this is ever invoked.
@@ -1277,16 +1277,16 @@ cc_expandDetermNodesInExpr <- function(model, expr, targetNode = NULL, skipExpan
 
     if (length(expandedNodeNames) == 1 && (expandedNodeNames == exprText) && (exprText %in% expandedNodeNamesRaw)) {
       # expr is a single node in the model
-      nodeRange <- getNodes(model, exprText)[[1]]
+      nodeRange <- getNodes(model, exprText, nodesAsChars = FALSE)[[1]]
       if (model$isStoch(nodeRange)) {
         return(expr)
       }
       if (model$isDeterm(nodeRange)) {
         # CHECK: is this being handled properly?
-        if (!(exprText %in% sapply(getNodes(model, determOnly = TRUE), function(x) x$toNodeChars()))) {
+        if (!(exprText %in% sapply(getNodes(model, determOnly = TRUE, nodesAsChars = FALSE), function(x) x$toNodeChars()))) {
           return(expr)
         } # exprText is a single element of a multivariate deterministic node
-        newExpr <- model$getValueExpr(getNodes(model, exprText)[[1]])
+        newExpr <- model$getValueExpr(getNodes(model, exprText, nodesAsChars = FALSE)[[1]])
         return(cc_expandDetermNodesInExpr(model, newExpr, targetNode, skipExpansionsNode))
       }
       stop(paste0("Unexpected model structure for expression: ", exprText, ". Please report this to the NIMBLE development team."))
@@ -1317,7 +1317,7 @@ cc_structureExprName <- quote(structureExpr)
 
 # creates an expression of the form [cc_structureExprName](element11, element12, etc...) to represent vectors / arrays defined in terms of other stoch/determ nodes,
 cc_createStructureExpr <- function(model, exprText) {
-  nodeRanges <- getNodes(model, exprText)
+  nodeRanges <- getNodes(model, exprText, nodesAsChars = FALSE)
   # CHECK: would this ever have more than one nodeRange?
   expandedNodeNamesVector <- unlist(lapply(nodeRanges, function(x) x$toNodeChars()))
 

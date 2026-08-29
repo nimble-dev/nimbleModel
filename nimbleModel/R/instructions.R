@@ -170,7 +170,7 @@ makeInstrList <- function(model, input, includeData = TRUE, use_vec = FALSE) {
   if (inherits(input, "varRangeClass")) input <- list(input)
 
   if (!includeData) {
-    input <- model$getNodes(input, includeData = FALSE)
+    input <- model$getNodes(input, includeData = FALSE, nodesAsChars = FALSE)
     if(!length(input)) return(NULL)
   }
   
