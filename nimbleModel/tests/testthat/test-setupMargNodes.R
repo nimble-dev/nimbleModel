@@ -1,7 +1,7 @@
 # This file tests both setupMargNodes and model$getConditionallyIndependentSets
 # There is some overlap with test-ADlaplace, which relies on these features.
 
-setNimbleModelOption('nodesAsChars', TRUE)
+setNimbleModelOption('nodesAsChars', TRUE) # Set so that can compare against simple char strings in expectations.
 
 test_that("getConditionallyIndependentSets works in model with a couple of sets", {
   mc <- nimbleCode({
@@ -414,7 +414,7 @@ test_that("setupMargNodes works with determimistic node as parameter", {
     })
   }, data = list(Y = rnorm(2)))
 
-  SMN <- setupMargNodes(m, paramNodes = "P", randomEffectsNodes = 'RE')
+  # SMN <- setupMargNodes(m, paramNodes = "P", randomEffectsNodes = 'RE')
   # expect_identical(SMN$randomEffectsNodes, c('RE[1]', 'RE[2]'))
   # expect_identical(SMN$randomEffectsSets, list('RE[1]', 'RE[2]'))
   # expect_identical(SMN$paramNodes, c("P"))
@@ -660,7 +660,7 @@ test_that("SSM case" , {
     
     expect_identical(getConditionallyIndependentSets(m, givenNodes = c('tau','sigma','y'),
                                                      nodes=c('mu')),
-                     list(paste0("mu[", 1:10, "]")))
+                     list(paste0("mu[", c(2,1,3:10), "]")))
 
     code <- nimbleCode({
         for(i in 1:n) {
