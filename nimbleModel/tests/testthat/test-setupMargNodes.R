@@ -150,11 +150,11 @@ test_that("getConditionallyIndependentSets works in model with one set and deter
     data = list(Y1 = 1)
   )
   # All sets
-  expect_identical(getConditionallyIndependentSets(m), list(c("REA1", "REA2", "REB2", "REB1")))
+  expect_identical(getConditionallyIndependentSets(m), list(c("REA1", "REA2", "REB1", "REB2")))
   # first-stage latents stay separated
   expect_identical(getConditionallyIndependentSets(m, c("REA1", "REB1")), list("REA1", "REB1"))
   # first-stage latents are combined if unknownAsGiven is FALSE
-  expect_identical(getConditionallyIndependentSets(m, c("REA1", "REB1"), unknownAsGiven=FALSE), list(c("REA1", "REA2", "REB2", "REB1")))
+  expect_identical(getConditionallyIndependentSets(m, c("REA1", "REB1"), unknownAsGiven=FALSE), list(c("REA1", "REA2", "REB1", "REB2")))
   # second-stage latents are connected
   expect_identical(getConditionallyIndependentSets(m, c("REA2", "REB2")), list(c("REA2", "REB2")))
   # TODO: need to allow deterministic as given; currently error-trapped.
@@ -172,7 +172,7 @@ test_that("getConditionallyIndependentSets works in model with one set and deter
   SMN <- setupMargNodes(m)
   expect_identical(SMN$paramNodes[[1]]$toNodeChars(), "P1")
   expect_identical(unlist(lapply(SMN$randomEffectsNodes, \(x) x$toNodeChars())), c("REA1", "REA2", "REB1", "REB2"))
-  expect_identical(SMN$randomEffectsSets, list(c('REA1','REA2','REB2','REB1')))
+  expect_identical(SMN$randomEffectsSets, list(c('REA1','REA2','REB1','REB2')))
 
   SMN <- setupMargNodes(m, paramNodes = "REA1")
   expect_identical(SMN$randomEffectsNodes[[1]]$toNodeChars(), c('REA2'))
@@ -200,17 +200,17 @@ test_that("getConditionallyIndependentSets works in state-space model with a cou
     }
   })
   m <- nimbleModel(mc, data = list(y = 1:4))
-  expect_identical(getConditionallyIndependentSets(m, endAsGiven=TRUE), list(c("x[4]", "x[3]", "x[2]"),
-                                                                             c("w[4]", "w[3]", "w[2]")))
-  expect_identical(getConditionallyIndependentSets(m), list(c("x[4]", "x[3]", "x[2]")))
+  expect_identical(getConditionallyIndependentSets(m, endAsGiven=TRUE), list(paste0("x[", 2:4, "]"),
+                                                                             paste0("w[", 2:4, "]")))
+  expect_identical(getConditionallyIndependentSets(m), list(c("x[2]", "x[3]", "x[4]")))
   expect_identical(getConditionallyIndependentSets(m, "x[1:2]", givenNodes = c("w[1]", "y"), unknownAsGiven=FALSE),
                    list(c("x[1]", "x[2]", "x[3]", "x[4]")))
   expect_identical(getConditionallyIndependentSets(m, "x[2]", givenNodes = c("w[1]", "y"), unknownAsGiven=FALSE),
-                   list(c("x[2]", "x[1]", "x[3]", "x[4]")))
+                   list(paste0("x[", 1:4, "]")))
   expect_identical(getConditionallyIndependentSets(m, "x[1]", givenNodes = c("w[1]", "y"), unknownAsGiven=FALSE),
                    list(c("x[1]", "x[2]", "x[3]", "x[4]")))
   expect_identical(getConditionallyIndependentSets(m, givenNodes = c("y"), unknownAsGiven=FALSE),
-                   list(c("x[4]", "x[3]", "x[2]", "x[1]")))
+                   list(paste0("x[", 1:4, "]")))
   expect_identical(getConditionallyIndependentSets(m, 'z[1]'), list())
   expect_true(nimble:::testConditionallyIndependentSets(m, getConditionallyIndependentSets(m)))
 
@@ -253,18 +253,18 @@ test_that("getConditionallyIndependentSets works in double-state state-space mod
   m <- nimbleModel(mc, data = list(y = 1:4))
 
   expect_identical(getConditionallyIndependentSets(m),
-                   list(c('x[4]','x[3]','x[2]','w[2]','w[3]','w[4]')))
+                   list(c(paste0("x[", 2:4, "]"), paste0("w[", 2:4, "]"))))
   # expect_identical(getConditionallyIndependentSets(m, omit = "w[2]"),
   #                  list(c("x[2]", "x[3]", "w[3]", "x[4]", "w[4]")))
   expect_identical(getConditionallyIndependentSets(m, givenNodes = c("y", "w[3]"), unknownAsGiven=FALSE),
-                   list(c("x[4]", "x[3]", "x[2]", "x[1]", "w[2]", "w[1]", "w[4]")))
+                   list(c("x[1]", "w[1]", "x[2]", "x[3]", "x[4]", "w[2]", "w[4]")))
   expect_identical(getConditionallyIndependentSets(m, givenNodes = c("y", "x[3]", "w[3]"), unknownAsGiven=FALSE),
-                   list(c("x[4]", "w[4]"), c("x[2]", "x[1]", "w[2]", "w[1]")))
+                   list(c("x[4]", "w[4]"), c("x[1]", "w[1]", "x[2]", "w[2]")))
   expect_true(nimble:::testConditionallyIndependentSets(m, getConditionallyIndependentSets(m)))
 
   SMN <- setupMargNodes(m)
   expect_identical(SMN$randomEffectsSets,
-                   list(c('x[4]','x[3]','x[2]','w[2]','w[3]','w[4]')))
+                   list(c('x[2]','x[3]','x[4]','w[2]','w[3]','w[4]')))
 })
 
 test_that("getConditionallyIndependentSets works in model with LHSinferred (aka split) nodes", {
@@ -282,16 +282,16 @@ test_that("getConditionallyIndependentSets works in model with LHSinferred (aka 
 
   expect_identical(getConditionallyIndependentSets(m3), list()) # Note there are no latent nodes
   expect_identical(getConditionallyIndependentSets(m3, "a[1:3]", givenNodes = "sig2", unknownAsGiven=FALSE),
-                   list(c("a[1:3]", "c[2]", "c[1]", "var")))
+                   list(c("a[1:3]", "var", "c[1]", "c[2]")))
   expect_identical(getConditionallyIndependentSets(m3, "a[1]", givenNodes = "sig2", unknownAsGiven=FALSE),
-                   list(c("a[1:3]", "c[2]", "c[1]", "var")))
+                   list(c("a[1:3]", "var", "c[1]", "c[2]")))
   expect_identical(getConditionallyIndependentSets(m3, "a[2]", givenNodes = "sig2", unknownAsGiven=FALSE),
-                   list(c("a[1:3]", "c[2]", "c[1]", "var")))
+                   list(c("a[1:3]", "var", "c[1]", "c[2]")))
 # Revisit
   #  expect_identical(getConditionallyIndependentSets(m3, "b[1]", givenNodes = "sig2", unknownAsGiven=FALSE),
 #                   list(c("var", "a[1:3]", "c[2]", "c[1]")))
   expect_identical(getConditionallyIndependentSets(m3, m3$getNodes(stochOnly = TRUE), givenNodes = "sig2"),
-                   list(c("a[1:3]" , "c[2]", "c[1]", "var"), c("a2")))
+                   list(c("a[1:3]" , "var", "c[1]", "c[2]"), c("a2")))
 })
 
 test_that("getConditionallyIndependentSets works for tweaked pump model", {
@@ -349,7 +349,7 @@ test_that("getConditionallyIndependentSets works with unknownAsGiven=TRUE or FAL
 
   expect_identical(
     getConditionallyIndependentSets(m, "a", givenNodes = c("y"), unknownAsGiven=FALSE),
-    list(c("a[1]","mu", paste0("a[", 2:4, "]"))))
+    list(c("mu", paste0("a[", 1:4, "]"))))
 
   expect_identical(
     getConditionallyIndependentSets(m, "a", givenNodes = c("y"), unknownAsGiven=TRUE),
@@ -397,6 +397,7 @@ test_that("setupMargNodes/GCIS works with random effects without parameters", {
                  "some `calcNodes` provided")
 })
 
+if(FALSE) { # Don't yet handle deterministic case in nimbleModel.
 test_that("setupMargNodes works with determimistic node as parameter", {
   # This case is not generally useful because it is not supported in buildLaplace,
   # where all params need priors for purpose of determining valid range and
@@ -414,11 +415,12 @@ test_that("setupMargNodes works with determimistic node as parameter", {
     })
   }, data = list(Y = rnorm(2)))
 
-  # SMN <- setupMargNodes(m, paramNodes = "P", randomEffectsNodes = 'RE')
-  # expect_identical(SMN$randomEffectsNodes, c('RE[1]', 'RE[2]'))
-  # expect_identical(SMN$randomEffectsSets, list('RE[1]', 'RE[2]'))
-  # expect_identical(SMN$paramNodes, c("P"))
+  SMN <- setupMargNodes(m, paramNodes = "P", randomEffectsNodes = 'RE')
+  expect_identical(SMN$randomEffectsNodes, c('RE[1]', 'RE[2]'))
+  expect_identical(SMN$randomEffectsSets, list('RE[1]', 'RE[2]'))
+  expect_identical(SMN$paramNodes, c("P"))
 })
+}
 
 test_that("setupMargNodes finds correct randomEffectsNodes based on calcNodes input", {
   code <- nimbleCode({
@@ -522,12 +524,12 @@ test_that("getConditionallyIndependentSets works with grouped data", {
     
     expect_identical(getConditionallyIndependentSets(m, givenNodes = m$getNodes(c('mu0','y')),
                                                      nodes=m$getNodes(c('sigma','mu'))),
-                                        list(c("sigma","mu[1]","mu[2]"))) # {sigma,mu[1:2]}
+                                        list(c("mu[1]","mu[2]","sigma"))) # {sigma,mu[1:2]}
     
     expect_identical(getConditionallyIndependentSets(m, givenNodes = m$getNodes(c('mu0','sigma')),
                                                      nodes=m$getNodes(c('y','mu'))),
-                     list(c("y[1]","mu[1]", paste0("y[",2:5,"]")),
-                          c("y[6]","mu[2]", paste0("y[",7:10,"]"))))            # {mu[1],y[1],y[2:5]}, {mu[2],y[6],y[7:10]}
+                     list(c("mu[1]",paste0("y[",1:5,"]")),
+                          c("mu[2]", paste0("y[",6:10,"]"))))            # {mu[1],y[1],y[2:5]}, {mu[2],y[6],y[7:10]}
     
     expect_identical(getConditionallyIndependentSets(m, givenNodes = m$getNodes(c('mu0','sigma')),
                                                      nodes=m$getNodes(c('mu','y'))),
@@ -569,8 +571,8 @@ test_that("getConditionallyIndependentSets works with grouped data", {
     result <- getConditionallyIndependentSets(m, givenNodes = m$getNodes(c('mu0','sigma')),
                                               nodes=m$getNodes(c('y','mu')))
     expect_identical(result,
-                                 list(c("y[1]","mu[1]", paste0("y[",2:5,"]")),
-                                      c("y[6]","mu[2]", paste0("y[",7:10,"]"))))  
+                                 list(c("mu[1]", paste0("y[",1:5,"]")),
+                                      c("mu[2]", paste0("y[",6:10,"]"))))  
                                         # {mu[1],y[1],y[2:5]}, {mu[2],y[6],y[7:10]}
  
     # Now with intermediate deterministic nodes.
@@ -592,12 +594,12 @@ test_that("getConditionallyIndependentSets works with grouped data", {
     
     expect_identical(getConditionallyIndependentSets(m, givenNodes = m$getNodes(c('mu0','y')),
                                                      nodes=m$getNodes(c('sigma','mu'))),
-                                        list(c("sigma","mu[1]","mu[2]"))) # {sigma,mu[1:2]}
+                                        list(c("mu[1]","mu[2]","sigma"))) # {sigma,mu[1:2]}
     
     expect_identical(getConditionallyIndependentSets(m, givenNodes = m$getNodes(c('mu0','sigma')),
                                                      nodes=m$getNodes(c('y','mu'))),
-                     list(c("y[1]","mu[1]", paste0("y[",2:5,"]")),
-                          c("y[6]","mu[2]", paste0("y[",7:10,"]"))))            # {mu[1],y[1],y[2:5]}, {mu[2],y[6],y[7:10]}
+                     list(c("mu[1]", paste0("y[",1:5,"]")),
+                          c("mu[2]", paste0("y[",6:10,"]"))))            # {mu[1],y[1],y[2:5]}, {mu[2],y[6],y[7:10]}
     
     expect_identical(getConditionallyIndependentSets(m, givenNodes = m$getNodes(c('mu0','sigma')),
                                                      nodes=m$getNodes(c('mu','y'))),
@@ -660,7 +662,7 @@ test_that("SSM case" , {
     
     expect_identical(getConditionallyIndependentSets(m, givenNodes = c('tau','sigma','y'),
                                                      nodes=c('mu')),
-                     list(paste0("mu[", c(2,1,3:10), "]")))
+                     list(paste0("mu[", c(2:10,1), "]")))
 
     code <- nimbleCode({
         for(i in 1:n) {

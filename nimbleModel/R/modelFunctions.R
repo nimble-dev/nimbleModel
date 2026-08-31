@@ -290,7 +290,7 @@ getConditionallyIndependentSets <- function(model, nodes, givenNodes,
       if(length(givenNodes) != length(model$getNodes(givenNodesChar, nodesAsChars = FALSE)))
         stop("At the moment, `getConditionallyIndependentSets` does not allow deterministic nodes in `givenNodes`. This is work in progress.")
     }
-    if(!all(sapply(givenNodes, \(x) m$isStoch(x))))
+    if(!all(sapply(givenNodes, \(x) model$isStoch(x))))
       stop("At the moment, `getConditionallyIndependentSets` does not allow deterministic nodes in `givenNodes`. This is work in progress.")
   }
   
@@ -368,7 +368,7 @@ getOneConditionallyIndependentSet <- function(model, currentNode, currentID, giv
     ans <- exploreUp(ans, model, currentNode, given, touched)
   if(startDown)
     ans <- exploreDown(ans, model, currentNode, given, touched)
-  return(ans)
+  return(aggregate_nodes(ans))
 }
 
 exploreDown <- function(ans, model, currentNodes, given, touched) {
