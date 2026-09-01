@@ -11,7 +11,7 @@ code <- quote({
     sigma ~ dunif(0,5)
 })
 
-m <- modelClass$new(code, data = list(y = rnorm(5)))
+m <- nimbleModel(code, data = list(y = rnorm(5)))
 
 conf <- nimbleModel:::mcmcConfClass$new(m)
 
@@ -46,7 +46,7 @@ code <- quote({
     sigma ~ dunif(0,5)
 })
 
-m <- modelClass$new(code, data = list(y = rnorm(5)))
+m <- nimbleModel(code, data = list(y = rnorm(5)))
 conf <- nimbleModel:::mcmcConfClass$new(m)
 
 conf$addSampler('mu[1]','RW')
@@ -72,7 +72,7 @@ code <- quote({
 })
 
 
-m <- modelClass$new(code, data = list(y = matrix(rnorm(15),3,5)))
+m <- nimbleModel(code, data = list(y = matrix(rnorm(15),3,5)))
 conf <- nimbleModel:::mcmcConfClass$new(m)
 
 conf$addSampler("mu[1:2]",'conjugate')
@@ -89,7 +89,7 @@ code <- quote({
 })
 
 
-m <- modelClass$new(code, data = list(y = matrix(rnorm(15),3,5)))
+m <- nimbleModel(code, data = list(y = matrix(rnorm(15),3,5)))
 conf <- nimbleModel:::mcmcConfClass$new(m)
 nr1 <- getNodes(m, "mu[1,1:5]")[[1]]
 nr2 <- getNodes(m, "mu[1:2,1:5]")[[1]]

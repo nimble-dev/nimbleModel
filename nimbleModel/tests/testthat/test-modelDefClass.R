@@ -245,40 +245,40 @@ test_that("detection of duplicated declarations", {
         z ~ dbin(p, 1)
         z ~ dbin(p, c)
     })
-    expect_error(m <- modelClass$new(code), "There are multiple definitions")
+    expect_error(m <- nimbleModel(code), "There are multiple definitions")
     
     code <- quote({
         z ~ dbin(p, 1)
         z[1:2] <- tmp[1:2]
     })
-    expect_error(m <- modelClass$new(code), "Inconsistent dimensions")
+    expect_error(m <- nimbleModel(code), "Inconsistent dimensions")
 
     # Issue 27
     code <- quote({
         z[1:2] <- tmp[3:4]
         z[1:2] <- tmp[1:2]
     })
-    expect_failure(expect_error(m <- modelClass$new(code), "overlaps"))
+    expect_failure(expect_error(m <- nimbleModel(code), "overlaps"))
 
     # Issue 27
     code <- quote({
         z[1:2] <- tmp[3:4]
         z[2:3] <- tmp[1:2]
     })
-    expect_failure(expect_error(m <- modelClass$new(code), "overlaps"))
+    expect_failure(expect_error(m <- nimbleModel(code), "overlaps"))
     
     # Issue 27
     code <- quote({
         z[1:2,1:2] <- tmp[3:4,1:2]
         z[2:3,1:2] <- tmp[1:2,1:2]
     })
-    expect_failure(expect_error(m <- modelClass$new(code), "overlaps"))
+    expect_failure(expect_error(m <- nimbleModel(code), "overlaps"))
     
     code <- quote({
         z[1:2,1:2] <- tmp[3:4,1:2]
         z[3:4,1:2] <- tmp[1:2,1:2]
     })
-    m <- modelClass$new(code)
+    m <- nimbleModel(code)
     
 })
 

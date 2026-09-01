@@ -1431,7 +1431,7 @@ test_that("removal of indexing for scalar elements of nodeRanges work", {
             mu[j] ~ dnorm(mu0,1)
         }    
     })
-    m <- modelClass$new(code,data=list(y=array(rnorm(3*4*6*3), c(4,6,3,3))))
+    m <- nimbleModel(code,data=list(y=array(rnorm(3*4*6*3), c(4,6,3,3))))
     nr <- getNodes(m, 'y[1:4,6,1,3]')[[1]]
     expect_identical(nr$indexSlotToRange, as.integer(c(1,2,4,3)))
     expect_equal(nr$indexRanges[[1]], newIndexRange(quote(1:4)))
