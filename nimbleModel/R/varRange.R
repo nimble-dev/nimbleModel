@@ -242,9 +242,6 @@ varRangeClass <- R6Class(
         } else {
           externalMatrix <- crossIndexRanges(indexRanges)$values
         } # not ordered
-        if (ncol(externalMatrix) == 1) {
-          externalMatrix <- t(externalMatrix)
-        } 
         indicesList <- list()
         indices <- unlist(rangeToIndexSlot)
         for (i in seq_along(indices)) {
@@ -275,9 +272,6 @@ varRangeClass <- R6Class(
         } else {
           externalMatrix <- crossIndexRanges(indexRanges[boolMatrixIndexRanges])$values
         } # not ordered
-        if (ncol(externalMatrix) == 1) {
-          externalMatrix <- t(externalMatrix)
-        } else 
         for (i in seq_along(matrixIndices)) {
           indicesList[[matrixIndices[i]]] <- externalMatrix[, i]
         }
