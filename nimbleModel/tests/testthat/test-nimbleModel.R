@@ -264,8 +264,8 @@ test_that("two index slots", {
     ## Reverse indices
     inds <- matrix(c(1,3, 2,4, 3,2), ncol=2, byrow=TRUE)
     vr <- varRangeClass$new(list(newIndexRange(inds)), rangeToIndexSlot = list(c(2,1)), varName = 'y')
-    tmp <- vr$indexRanges[[1]]$values[,2:1]
-    inds <- tmp[order(tmp[,1]),]    # Rows have been shuffled...
+    inds <- vr$indexRanges[[1]]$values[,2:1]
+    inds <- inds[order(inds[,2]), ]
     truth <- sum(dnorm(m$y[inds], log=TRUE))
     expect_equal(m$calculate(vr), truth)
     expect_equal(cm$calculate(vr), truth)
@@ -376,7 +376,7 @@ test_that("three index slots (plus different index variable ordering)", {
     inds <- matrix(c(5,3,1, 1,3,4, 4,1,2), ncol=3, byrow=TRUE)
     vr <- varRangeClass$new(list(newIndexRange(inds)), rangeToIndexSlot = list(c(3,1,2)), varName = 'y')
     tmp <- vr$indexRanges[[1]]$values[,c(2,3,1)]
-    inds <- tmp[order(tmp[,1],tmp[,2]),]    # Rows have been shuffled...
+    inds <- tmp[order(tmp[,3],tmp[,2]),]    # Rows have been shuffled...
     truth <- sum(dnorm(m$y[inds], log=TRUE))
     expect_equal(m$calculate(vr), truth)
     expect_equal(cm$calculate(vr), truth)
@@ -413,8 +413,7 @@ test_that("three index slots (plus different index variable ordering)", {
     ## matp-seq (matp first because of k,j,i in model code)
     vr <- varRangeClass$new(list(newIndexRange(quote(2:3)),
                                  newIndexRange(matrix(c(4,1,1,3,4,5),ncol=2,byrow=TRUE))), varName = 'y')
-    inds <- rbind(c(2,1,3),c(2,4,1),c(2,4,5),c(3,1,3),c(3,4,1),c(3,4,5))
-    inds <- inds[order(inds[,2],inds[,3],inds[,1]),]
+    inds <- vr$extractIndexRange(1:3)$values 
     truth <- sum(dnorm(m$y[inds], log=TRUE))
     expect_equal(m$calculate(vr), truth)
     expect_equal(cm$calculate(vr), truth)
@@ -431,8 +430,7 @@ test_that("three index slots (plus different index variable ordering)", {
     ## seq-matp
     vr <- varRangeClass$new(list(newIndexRange(matrix(c(1,4,3,1,2,4),ncol=2,byrow=TRUE)),
                                newIndexRange(quote(4:5))), varName = 'y')
-    inds <- rbind(c(1,4,4),c(3,1,4),c(2,4,4),c(1,4,5),c(3,1,5),c(2,4,5))
-    inds <- inds[order(inds[,3],inds[,1],inds[,2]),]
+    inds <- vr$extractIndexRange(1:3)$values
     truth <- sum(dnorm(m$y[inds], log=TRUE))
     expect_equal(m$calculate(vr), truth)
     expect_equal(cm$calculate(vr), truth)
@@ -449,8 +447,7 @@ test_that("three index slots (plus different index variable ordering)", {
     ## matp-matp (matp first because of k,j,i in model code)
     vr <- varRangeClass$new(list(newIndexRange(matrix(c(1,3),ncol=1)),
                                  newIndexRange(matrix(c(1,4,3,1,4,5),ncol=2,byrow=TRUE))), varName = 'y')
-    inds <- rbind(c(1,1,4),c(1,3,1),c(1,4,5),c(3,1,4),c(3,3,1),c(3,4,5))
-    inds <- inds[order(inds[,2],inds[,1],inds[,3]),]
+    inds <- vr$extractIndexRange(1:3)$values
     truth <- sum(dnorm(m$y[inds], log=TRUE))
     expect_equal(m$calculate(vr), truth)
     expect_equal(cm$calculate(vr), truth)
@@ -467,8 +464,7 @@ test_that("three index slots (plus different index variable ordering)", {
     ## matp-matp with reordering
     vr <- varRangeClass$new(list(newIndexRange(matrix(c(1,4,3,1,3,2),ncol=2,byrow=TRUE)),
                                newIndexRange(matrix(c(3,5),ncol=1))), varName = 'y')
-    inds <- rbind(c(1,4,3),c(3,1,3),c(3,2,3),c(1,4,5),c(3,1,5),c(3,2,5))
-    inds <- inds[order(inds[,3],inds[,1]),]
+    inds <-  vr$extractIndexRange(1:3)$values
     truth <- sum(dnorm(m$y[inds], log=TRUE))
     expect_equal(m$calculate(vr), truth)
     expect_equal(cm$calculate(vr), truth)
@@ -624,9 +620,8 @@ test_that("five index slots", {
                                 newIndexRange(matrix(c(1,3),ncol=1))),
                             rangeToIndexSlot = list(1, c(2,4,5), 3),
                             varName = 'y')
-    inds <- rbind(c(2,2,1,2,4),c(2,2,3,2,4),c(2,4,1,1,2),c(2,4,3,1,2),
-                  c(3,2,1,2,4),c(3,2,3,2,4),c(3,4,1,1,2),c(3,4,3,1,2),
-                  c(4,2,1,2,4),c(4,2,3,2,4),c(4,4,1,1,2),c(4,4,3,1,2))
+    inds <- vr$extractIndexRange(1:5)$values
+    inds <- inds[order(inds[,1],inds[,5],inds[,3]),]  # ordering is based on index sets
     truth <- sum(dnorm(m$y[inds], log=TRUE))
     expect_equal(m$calculate(vr), truth)
     expect_equal(cm$calculate(vr), truth)

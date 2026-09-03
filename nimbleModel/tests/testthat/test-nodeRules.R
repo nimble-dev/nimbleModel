@@ -771,7 +771,7 @@ test_that("calcRule fracturing works", {
     }
 
     
-    ## two external indices, both fractured: mu[1:3, j ,2, i]
+    ## two external indices, both fractured: mu[1:3,j,i,2]
     LHS <- quote(mu[1:3,j,i,2])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_ij)
     calcRule <- calcRuleClass$new(LHSrule, NULL, NULL, context_ij)
@@ -791,25 +791,23 @@ test_that("calcRule fracturing works", {
     }
 
     context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:4){}))))
-    idx1 <- as.integer(c(2,2,3,3))
-    idx2 <- as.integer(c(2,3,2,3))
+    idx1 <- as.integer(c(2,3,2,3))
+    idx2 <- as.integer(c(2,2,3,3))
     expr <- quote(mu[idx1[i],idx2[i]])
     expected <- nodeRuleClass$new(expr, 1, context_tmp, constants = list(idx1 = idx1, idx2 = idx2))
     expect_equal(result[[1]]$externalRule$indexRules[[1]]$setupResults,
                  expected$externalRule$indexRules[[1]]$setupResults)
+    
     context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:24){}))))
     idx1 <- as.integer(c(1,4,1,4,rep(1:4, 5)))
     idx2 <- as.integer(c(2,2,3,3,rep(4:8, each = 4)))
-    ord <- order(idx1, idx2)
-    idx1 <- idx1[ord]
-    idx2 <- idx2[ord]
     expr <- quote(mu[idx1[i],idx2[i]])
     expected <- nodeRuleClass$new(expr, 1, context_tmp, constants = list(idx1 = idx1, idx2 = idx2))
     expect_equal(result[[2]]$externalRule$indexRules[[1]]$setupResults,
                  expected$externalRule$indexRules[[1]]$setupResults)
 
 
-    ## two external indices fractured: mu[1:3, j ,2, i] , based on 2-d matrix
+    ## two external indices fractured: mu[1:3,j,i,2], based on 2-d matrix
     LHS <- quote(mu[1:3,j,i,2])
     LHSrule <- nodeRuleClass$new(LHS, 1, context_ij)
     calcRule <- calcRuleClass$new(LHSrule, NULL, NULL, context_ij)
@@ -841,9 +839,6 @@ test_that("calcRule fracturing works", {
     wh <- (idx1 == 2 & idx2 == 3) | (idx1 == 3 & idx2 == 7)
     idx1 <- idx1[!wh]
     idx2 <- idx2[!wh]
-    ord <- order(idx1, idx2)
-    idx1 <- idx1[ord]
-    idx2 <- idx2[ord]
     expr <- quote(mu[idx1[i],idx2[i]])
     expected <- nodeRuleClass$new(expr, 1, context_tmp, constants = list(idx1 = idx1, idx2 = idx2))
     expect_equal(result[[2]]$externalRule$indexRules[[1]]$setupResults,
@@ -994,9 +989,6 @@ test_that("RHS exclusion works", {
     context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:5){}))))
     idx1 <- c(11,11,12,13,5)
     idx2 <- c(2,5,6,7,13)
-    ord <- order(idx1, idx2)
-    idx1 <- idx1[ord]
-    idx2 <- idx2[ord]
     expected <- rhsRuleClass$new(RHS, 1, context_tmp, constants = list(idx1 = idx1,idx2=idx2))
     expect_equal(result[[1]]$externalRule$indexRules[[1]]$setupResults,
                      expected$externalRule$indexRules[[1]]$setupResults)
@@ -1015,9 +1007,6 @@ test_that("RHS exclusion works", {
     context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:26){}))))
     idx1 <- c(2,3,5,6,7,8,2,4:8,rep(2:8, 2))
     idx2 <- c(rep(1,6),rep(2,6),rep(3,7), rep(4,7))
-    ord <- order(idx1, idx2)
-    idx1 <- idx1[ord]
-    idx2 <- idx2[ord]
     expected <- rhsRuleClass$new(LHS, 1, context_tmp, constants = list(idx1 = idx1,idx2=idx2))
     expect_equal(result[[1]]$externalRule$indexRules[[1]]$setupResults,
                      expected$externalRule$indexRules[[1]]$setupResults)
@@ -1116,9 +1105,6 @@ test_that("RHS exclusion works", {
     context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:17){}))))
     idx1 <- c(2:6,2:6,2:8)
     idx2 <- c(rep(1,5), rep(2,5), rep(3, 7))
-    ord <- order(idx1, idx2)
-    idx1 <- idx1[ord]
-    idx2 <- idx2[ord]
     RHS <- quote(mu[idx1[i], idx2[i]])
     expected <- rhsRuleClass$new(RHS, 1, context_tmp, constants = list(idx1 = idx1,idx2=idx2))
     expect_equal(result[[1]]$externalRule$indexRules[[1]]$setupResults,
@@ -1135,9 +1121,6 @@ test_that("RHS exclusion works", {
     context_tmp <- modelContextClass$new(list(singleContextClass$new(forCode = quote(for(i in 1:20){}))))
     idx1 <- c(2:8,2:8,2,4:8)
     idx2 <- c(rep(1,7), rep(2,7), rep(3, 6))
-    ord <- order(idx1, idx2)
-    idx1 <- idx1[ord]
-    idx2 <- idx2[ord]
     RHS <- quote(mu[idx1[i], idx2[i]])
     expected <- rhsRuleClass$new(RHS, 1, context_tmp, constants = list(idx1 = idx1,idx2=idx2))
     expect_equal(result[[1]]$externalRule$indexRules[[1]]$setupResults,
@@ -1193,9 +1176,6 @@ test_that("RHS exclusion works", {
                                               singleContextClass$new(forCode = quote(for(j in 1:4){}))))
     idx1 <- c(2:6,2:6,2:8)
     idx2 <- c(rep(1,5), rep(2,5), rep(3, 7))
-    ord <- order(idx1, idx2)
-    idx1 <- idx1[ord]
-    idx2 <- idx2[ord]
     expr <- quote(mu[idx1[i], j, idx2[i]])
     expected <- rhsRuleClass$new(expr, 1, context_tmp, constants = list(idx1 = idx1,idx2=idx2))
     expect_equal(result[[1]]$externalRule$indexRules[[2]]$setupResults,
@@ -1363,9 +1343,9 @@ test_that("nodeRange::toNodeChars works correctly", {
     expect_identical(nodeRanges[[2]]$toNodeChars(),
                      "lifted_chol_oPpr_oB1to3_comma_1to3_cB_cP[1:3, 1:3]")
     expect_identical(nodeRanges[[3]]$toNodeChars(),
-        c("y[1, 3, 1, 1, 2:4]", "y[1, 3, 2, 1, 2:4]", "y[2, 3, 1, 2, 2:4]", 
-          "y[2, 3, 2, 2, 2:4]", "y[3, 3, 1, 3, 2:4]", "y[3, 3, 2, 3, 2:4]",
-          "y[4, 3, 1, 4, 2:4]", "y[4, 3, 2, 4, 2:4]"))
+        c("y[1, 3, 1, 1, 2:4]", "y[2, 3, 1, 2, 2:4]", "y[3, 3, 1, 3, 2:4]", 
+          "y[4, 3, 1, 4, 2:4]", "y[1, 3, 2, 1, 2:4]", "y[2, 3, 2, 2, 2:4]",
+          "y[3, 3, 2, 3, 2:4]", "y[4, 3, 2, 4, 2:4]"))
     expect_identical(nodeRanges[[4]]$toNodeChars(), c("w[1]", "w[2]", "w[3]"))
     expect_identical(nodeRanges[[5]]$toNodeChars(),
                      c("v[1, 1]", "v[2, 2]", "v[3, 3]"))

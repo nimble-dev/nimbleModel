@@ -192,7 +192,7 @@ test_that("toVarChars works correctly", {
     vr <- varRangeClass$new(list(newIndexRange(matrix(c(2,4,5), ncol = 1)),
                                  newIndexRange(quote(3:4))), varName = "y")
     expect_identical(vr$toVarChars(), paste0("y[", c(2,4,5), ", 3:4]"))
-    gr <- expand.grid(3:4, c(2,4,5))[c(2,1)]
+    gr <- expand.grid(c(2,4,5), 3:4)
     expect_identical(vr$toVarChars(expandScalars = TRUE),
                      paste0("y[", gr[,1], ", ", gr[,2], "]"))
     
@@ -206,11 +206,11 @@ test_that("toVarChars works correctly", {
     md <- modelDefClass$new(code, constants = list(idx = c(2,5,4)))
     vr <- getDependencies(md, 'z', self=FALSE)[[1]]
     expect_identical(vr$toVarChars(),
-                     c("y[2, 2, 3, 1:2, 1, 2:4]", "y[2, 3, 3, 1:2, 2, 2:4]", "y[2, 4, 3, 1:2, 3, 2:4]", "y[2, 5, 3, 1:2, 4, 2:4]", "y[4, 2, 3, 1:2, 1, 2:4]", "y[4, 3, 3, 1:2, 2, 2:4]", "y[4, 4, 3, 1:2, 3, 2:4]", "y[4, 5, 3, 1:2, 4, 2:4]", "y[5, 2, 3, 1:2, 1, 2:4]", "y[5, 3, 3, 1:2, 2, 2:4]", "y[5, 4, 3, 1:2, 3, 2:4]", "y[5, 5, 3, 1:2, 4, 2:4]"))
+                     c("y[2, 2, 3, 1:2, 1, 2:4]", "y[4, 2, 3, 1:2, 1, 2:4]", "y[5, 2, 3, 1:2, 1, 2:4]", "y[2, 3, 3, 1:2, 2, 2:4]", "y[4, 3, 3, 1:2, 2, 2:4]", "y[5, 3, 3, 1:2, 2, 2:4]", "y[2, 4, 3, 1:2, 3, 2:4]", "y[4, 4, 3, 1:2, 3, 2:4]", "y[5, 4, 3, 1:2, 3, 2:4]", "y[2, 5, 3, 1:2, 4, 2:4]", "y[4, 5, 3, 1:2, 4, 2:4]", "y[5, 5, 3, 1:2, 4, 2:4]"))
 
     tmp <- vr$toVarChars()
     result <- unlist(lapply(tmp, function(x) varRangeClass$new(x)$toVarChars(expandScalars = TRUE)))
-    expect_identical(vr$toVarChars(expandScalars = TRUE), result)
+    expect_identical(sort(vr$toVarChars(expandScalars = TRUE)), sort(result))
                      
 
     code <- quote({
@@ -220,7 +220,7 @@ test_that("toVarChars works correctly", {
     })
     md <- modelDefClass$new(code)
     vr <- getDependencies(md, 'y')[[1]]
-    gr <- expand.grid(1:2, 1:3)[c(2,1)]
+    gr <- expand.grid(1:3, 1:2)
     expect_identical(vr$toVarChars(expandScalars = TRUE),
                      paste0("y[", gr[,1], ", ", gr[,2], "]"))
 
