@@ -31,7 +31,7 @@ originalIndexingRuleClass <- R6Class(
       } else {
         dummyLHS <- as.name(varName)
       }
-        
+
       graphRule <<- graphRuleClass$new(
         dummyLHS,
         LHS,
@@ -62,7 +62,7 @@ originalIndexingRuleClass <- R6Class(
 
         internalRule <<- fullRule$clone()
         internalRule$indexRules[!isConstant] <<- NULL
-        if(length(internalRule$indexRules)) {
+        if (length(internalRule$indexRules)) {
           # Transform indexSets as if LHS is just from the constant rules and RHS is
           # all constants. E.g., `y[1] <- y[1,1]` if one of two slots is constant.
           toExpr <- parse(text = paste0("y[", paste(rep(1, sum(constantIndices)), collapse = ","), "]"))[[1]]
@@ -88,7 +88,6 @@ originalIndexingRuleClass <- R6Class(
     apply = function(fromVarRange) {
       graphRule$apply(fromVarRange, removeDuplicates = TRUE)
     },
-    
     apply_reverse = function(indexingRange, decl) {
       if (length(externalRule$indexRules)) {
         externalRange <- externalRule$apply(indexingRange)
@@ -98,12 +97,13 @@ originalIndexingRuleClass <- R6Class(
       } else {
         externalRange <- varRangeClass$new(list())
       }
-      if(length(internalRule$indexRules)) {
+      if (length(internalRule$indexRules)) {
         internalRange <- internalRule$apply(externalRule$getFromRange()) # This needs to be instantiated anew to avoid having multiple references to the internalRange indexRanges.
-      } else internalRange <- varRangeClass$new(list())
+      } else {
+        internalRange <- varRangeClass$new(list())
+      }
 
       return(nodeRangeClass$new(varName, externalRange, internalRange, indexSlotToSet, decl))
     }
   )
 )
-

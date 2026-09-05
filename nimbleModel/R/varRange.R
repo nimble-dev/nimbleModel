@@ -134,7 +134,7 @@ varRangeClass <- R6Class(
     # Extract one or more columns of a varRange.
     # If multiple columns, result is expanded as a matrix of indices.
     extractIndexRange = function(indices = NULL, returnUsedRanges = FALSE) {
-      if(is.null(indices)) indices <- seq_along(indexSlotToRange)
+      if (is.null(indices)) indices <- seq_along(indexSlotToRange)
       usedIndices <- unlist(lapply(rangeToIndexSlot, function(x) x[x %in% indices]))
       usedIndicesBool <- lapply(rangeToIndexSlot, function(x) x %in% indices)
       usedRanges <- which(unlist(lapply(usedIndicesBool, any)))
@@ -209,7 +209,7 @@ varRangeClass <- R6Class(
           do.call("call",
             c(
               list("[", nm),
-              if(is.list(indexRangeExprs)) indexRangeExprs[indexSlotToRange] else indexRangeExprs
+              if (is.list(indexRangeExprs)) indexRangeExprs[indexSlotToRange] else indexRangeExprs
             ),
             quote = TRUE
           )
@@ -248,7 +248,7 @@ varRangeClass <- R6Class(
         for (i in seq_along(indices)) {
           indicesList[[indices[i]]] <- externalMatrix[, i]
         }
-        ord <- do.call(order, indicesList[sort(sapply(rangeToIndexSlot, \(x) x[1]), decreasing = TRUE)])  # Enforce column-major, but using only first index in nonseparable cases).
+        ord <- do.call(order, indicesList[sort(sapply(rangeToIndexSlot, \(x) x[1]), decreasing = TRUE)]) # Enforce column-major, but using only first index in nonseparable cases).
         indicesList <- lapply(indicesList, \(x) x[ord])
         return(paste0(varName, "[", do.call(pasteIndices, indicesList), "]"))
       }

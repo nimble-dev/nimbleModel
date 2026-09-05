@@ -55,7 +55,7 @@ range2instr <- function(range) {
   instr$instr_type <- determineInstrType(instr)
   instr$sortID <- range$sortID
   instr$declID <- range$declID
-  class(instr) <- "Rinstr"  
+  class(instr) <- "Rinstr"
   return(instr)
 }
 
@@ -131,7 +131,7 @@ makeInstrList <- function(model, input, includeData = TRUE, use_vec = FALSE) {
   # (2) a list of (or single) varRanges
   # (3) an nList of (or single) instr_nClass objects (assumed to be in sort order)
   # (4) an R list of Rinstr objects (created by `range2instr`) (not assumed to be in sort order)
-    
+
   # A single instruction.
   if (inherits(input, "instr_nClass")) {
     return(list(input))
@@ -146,39 +146,45 @@ makeInstrList <- function(model, input, includeData = TRUE, use_vec = FALSE) {
   }
 
   # An R list of instr_nClass-like R lists
-  if(inherits(input, "Rlist_Rinstr"))
+  if (inherits(input, "Rlist_Rinstr")) {
     return(input)
+  }
 
   # An R list of `Rinstr` elements, not assumed to be in sort order.
-  if (inherits(input, "Rlist_Rinstr") || (is.list(input) && all(sapply(input, \(x) inherits(x, 'Rinstr'))))) {
+  if (inherits(input, "Rlist_Rinstr") || (is.list(input) && all(sapply(input, \(x) inherits(x, "Rinstr"))))) {
     # Create sort-ordered `Rlist_Rinstr`.
     sortIDs <- lapply(input, \(x) x$sortID)
     sortIDranges <- sapply(sortIDs, \(x) range(x, na.rm = TRUE))
-    multiSortID <- which(sortIDranges[1,] != sortIDranges[2,])
-    for(i in multiSortID) 
-      if(!all(diff(sortIDs[[i]]) == 1, na.rm = TRUE)) {
+    multiSortID <- which(sortIDranges[1, ] != sortIDranges[2, ])
+    for (i in multiSortID) {
+      if (!all(diff(sortIDs[[i]]) == 1, na.rm = TRUE)) {
         stop("multiple sortID values found for the ", i, "th instruction. Only sequential backward dependence is allowed when providing a list of instructions")
-      } else {  # Check for any overlapping sortID values for the sequential backward dependence calcRange.
-        if(any(sortIDranges[2,-i] > sortIDranges[1,i] & sortIDranges[1,-i] < sortIDranges[2,i]))
-          stop("the multiple sortID values in the ", i, "th instruction overlap with sortID values in other instructions")                
+      } else { # Check for any overlapping sortID values for the sequential backward dependence calcRange.
+        if (any(sortIDranges[2, -i] > sortIDranges[1, i] & sortIDranges[1, -i] < sortIDranges[2, i])) {
+          stop("the multiple sortID values in the ", i, "th instruction overlap with sortID values in other instructions")
+        }
       }
-    ord <- order(sortIDranges[1,])
+    }
+    ord <- order(sortIDranges[1, ])
     input <- input[ord]
-    class(input) <- "Rlist_Rinstr" 
+    class(input) <- "Rlist_Rinstr"
     return(input)
   }
 
   # Finally handle character vectors or varRanges.
   if (inherits(input, "varRangeClass")) input <- list(input)
 
-  if (!(is.character(input) || all(sapply(input, \(x) inherits(x, "varRangeClass")))))
+  if (!(is.character(input) || all(sapply(input, \(x) inherits(x, "varRangeClass"))))) {
     stop("unexpected type for `input` argument")
-  
+  }
+
   if (!includeData) {
     input <- model$getNodes(input, includeData = FALSE, nodesAsChars = FALSE)
-    if(!length(input)) return(NULL)
+    if (!length(input)) {
+      return(NULL)
+    }
   }
-  
+
   # First apply calcRule to get overlap between input and the rule.
   # Then make the calcRange to convert to loop indexing.
   # Note that `calcRule$apply` handles converting char to varRange and handling full variable extent.
@@ -189,29 +195,32 @@ makeInstrList <- function(model, input, includeData = TRUE, use_vec = FALSE) {
   }))
   sortIDs <- lapply(ranges, \(x) x$sortID)
   sortIDranges <- sapply(sortIDs, \(x) range(x, na.rm = TRUE))
-  multiSortID <- which(sortIDranges[1,] != sortIDranges[2,])
+  multiSortID <- which(sortIDranges[1, ] != sortIDranges[2, ])
 
   newInstrs <- list()
   rangesToRemove <- numeric(0)
-  for(i in multiSortID) 
-    if(!all(diff(sortIDs[[i]]) == 1, na.rm = TRUE)) {
+  for (i in multiSortID) {
+    if (!all(diff(sortIDs[[i]]) == 1, na.rm = TRUE)) {
       # This quickly creates a list of R lists, where the elements mimic instr_nClass objects,
       # from a calcRange with multiple sortID values. Creating many calcRanges or instr_nClass objects is slow.
       newInstrs <- c(newInstrs, ranges[[i]]$makeScalarInstrInfoLists())
       rangesToRemove <- c(rangesToRemove, i)
-    } else {  # Check for any overlapping sortID values for the sequential backward dependence calcRange.
-      if(any(sortIDranges[2,-i] > sortIDranges[1,i] & sortIDranges[1,-i] < sortIDranges[2,i]))
-        stop("the multiple sortID values in the ", i, "th calcRange overlap with sortID values in other calcRanges")                
+    } else { # Check for any overlapping sortID values for the sequential backward dependence calcRange.
+      if (any(sortIDranges[2, -i] > sortIDranges[1, i] & sortIDranges[1, -i] < sortIDranges[2, i])) {
+        stop("the multiple sortID values in the ", i, "th calcRange overlap with sortID values in other calcRanges")
+      }
     }
-  if(length(rangesToRemove))
+  }
+  if (length(rangesToRemove)) {
     ranges <- ranges[-rangesToRemove]
+  }
 
   # Again, returning a list of R lists that mimic instr_nClass objects is much faster
   # than instantiating instr_nClass objects.
   Rlist <- c(newInstrs, lapply(ranges, \(x) range2instr(x)))
-  sortIDs <- sapply(Rlist, \(x) min(x$sortID, na.rm = TRUE))  # `min` still needed for case of ascending sortIDs (e.g., dependence on the past), which are not split.
+  sortIDs <- sapply(Rlist, \(x) min(x$sortID, na.rm = TRUE)) # `min` still needed for case of ascending sortIDs (e.g., dependence on the past), which are not split.
   Rlist <- Rlist[order(sortIDs)]
-  class(Rlist) <- "Rlist_Rinstr"  # For checking idempotency.
+  class(Rlist) <- "Rlist_Rinstr" # For checking idempotency.
   return(Rlist)
 }
 
@@ -221,9 +230,10 @@ instr_nClass <- nClass(
   Rpublic = list(
     initialize = function(calcRange, instr, ...) {
       super$initialize(...)
-      if(!missing(calcRange) || !missing(instr)) {
-        if(!missing(calcRange))
-          instr <- range2instr(calcRange) 
+      if (!missing(calcRange) || !missing(instr)) {
+        if (!missing(calcRange)) {
+          instr <- range2instr(calcRange)
+        }
         self$lens <- instr$lens %||% integer()
         self$index_types <- instr$index_types %||% integer()
         self$nDim <- instr$nDim %||% 0L

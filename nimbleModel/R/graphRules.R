@@ -113,8 +113,9 @@ graphRuleClass <- R6Class(
             class(x)[1] %in% c("indexRuleBlockClass", "indexRuleArbitraryClass")
           }))
           for (set in sets) {
-            if(any(indexSets$fromIndexSlotToSet == set)) # Avoid assignment that converts `maxes` to a list when indexRule not used.
+            if (any(indexSets$fromIndexSlotToSet == set)) { # Avoid assignment that converts `maxes` to a list when indexRule not used.
               maxes[indexSets$fromIndexSlotToSet == set] <- indexRules[[set]]$getMax()
+            }
           }
         }
 

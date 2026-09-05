@@ -741,16 +741,16 @@ modelDefClass <- R6Class(
         anyStoch <- varInfo[[lhsVar]]$anyStoch
         if (anyStoch) lhsLogProbVar <- makeLogProbName(lhsVar)
         if (varInfo[[lhsVar]]$nDim > 0) {
-          if (!is.null(decl$declRule$fullRange)) {  # NULL can occur with backwards indexing.
-              newMinMax <- decl$declRule$fullRange$getMinMax()
-              # Force overwrite of placeholder max based on LHS info.
-              varInfo[[lhsVar]]$maxs[varInfo[[lhsVar]]$maxs == .Machine$integer.max] <<- 0
-              varInfo[[lhsVar]]$mins <<- pmin(varInfo[[lhsVar]]$mins, newMinMax[, 1])
-              varInfo[[lhsVar]]$maxs <<- pmax(varInfo[[lhsVar]]$maxs, newMinMax[, 2])
-              if (anyStoch) {
-                logProbVarInfo[[lhsLogProbVar]]$mins <<- pmin(logProbVarInfo[[lhsLogProbVar]]$mins, newMinMax[, 1])
-                logProbVarInfo[[lhsLogProbVar]]$maxs <<- pmax(logProbVarInfo[[lhsLogProbVar]]$maxs, newMinMax[, 2])
-              }
+          if (!is.null(decl$declRule$fullRange)) { # NULL can occur with backwards indexing.
+            newMinMax <- decl$declRule$fullRange$getMinMax()
+            # Force overwrite of placeholder max based on LHS info.
+            varInfo[[lhsVar]]$maxs[varInfo[[lhsVar]]$maxs == .Machine$integer.max] <<- 0
+            varInfo[[lhsVar]]$mins <<- pmin(varInfo[[lhsVar]]$mins, newMinMax[, 1])
+            varInfo[[lhsVar]]$maxs <<- pmax(varInfo[[lhsVar]]$maxs, newMinMax[, 2])
+            if (anyStoch) {
+              logProbVarInfo[[lhsLogProbVar]]$mins <<- pmin(logProbVarInfo[[lhsLogProbVar]]$mins, newMinMax[, 1])
+              logProbVarInfo[[lhsLogProbVar]]$maxs <<- pmax(logProbVarInfo[[lhsLogProbVar]]$maxs, newMinMax[, 2])
+            }
           }
         }
       }
@@ -762,7 +762,7 @@ modelDefClass <- R6Class(
           rhsVar <- rhsRule$varName
           # Corner case would be having the dynamically indexed RHS var also defined elsewhere on RHS.
           # We do not address that so will fail below if dimensions are not specified.
-          bothLHSandRHS <- rhsVar %in% LHSvars  
+          bothLHSandRHS <- rhsVar %in% LHSvars
           if (!bothLHSandRHS) {
             tmp <- stripIndexWrapping(decl$symbolicParentNodes[[iRHR]])
             nDim <- if (length(tmp) == 1) 0 else length(tmp) - 2
@@ -776,18 +776,18 @@ modelDefClass <- R6Class(
           }
           if (varInfo[[rhsVar]]$nDim) {
             newMinMax <- rhsRule$fullRange$getMinMax()
-            intmax <- newMinMax[,2] == .Machine$integer.max
-            if (bothLHSandRHS && any(intmax)) # Use dim from LHS.
-              newMinMax[intmax,2] <- 0
+            intmax <- newMinMax[, 2] == .Machine$integer.max
+            if (bothLHSandRHS && any(intmax)) { # Use dim from LHS.
+              newMinMax[intmax, 2] <- 0
+            }
             varInfo[[rhsVar]]$mins <<- pmin(varInfo[[rhsVar]]$mins, newMinMax[, 1])
             varInfo[[rhsVar]]$maxs <<- pmax(varInfo[[rhsVar]]$maxs, newMinMax[, 2])
           }
-          
         }
       }
 
       # Find non-scalar constants on RHS.
-      # These should only be indexing variables as others will have RHS rules.  
+      # These should only be indexing variables as others will have RHS rules.
       constantVars <- unique(unlist(sapply(declInfo, \(x) all.vars(x$code))))
       constantVars <- constantVars[constantVars %in% names(constants)]
       constantVars <- constantVars[!constantVars %in% names(varInfo)]
@@ -846,7 +846,7 @@ modelDefClass <- R6Class(
       }
 
       missingMaxs <- sapply(varInfo, function(x) any(x$maxs == .Machine$integer.max))
-      if (any(missingMaxs) ) {
+      if (any(missingMaxs)) {
         problemVars <- which(missingMaxs)
         stop(
           "no maximum dimension available for model variable(s): `",
@@ -977,15 +977,21 @@ modelDefClass <- R6Class(
 
       for (var in names(declRules)) {
         numRules <- length(declRules[[var]]$rules)
-        if (numRules > 1)
-          for (i in 2:numRules) 
-            for (j in 1:(i-1)) 
-              if (!is.null(declRules[[var]]$rules[[i]]$apply(declRules[[var]]$rules[[j]]$apply())))
-                stop("found multiple node definitions in declaring `",
-                     safeDeparse(declRules$y$rules[[i]]$expr), "` and `",
-                     safeDeparse(declRules$y$rules[[j]]$expr))
+        if (numRules > 1) {
+          for (i in 2:numRules) {
+            for (j in 1:(i - 1)) {
+              if (!is.null(declRules[[var]]$rules[[i]]$apply(declRules[[var]]$rules[[j]]$apply()))) {
+                stop(
+                  "found multiple node definitions in declaring `",
+                  safeDeparse(declRules$y$rules[[i]]$expr), "` and `",
+                  safeDeparse(declRules$y$rules[[j]]$expr)
+                )
+              }
+            }
+          }
+        }
       }
-      
+
       invisible(NULL)
     },
     makeVarNames = function() {
@@ -1039,31 +1045,29 @@ modelDefClass <- R6Class(
 getDependencies <- function(modelDef, nodes,
                             self = TRUE,
                             downstream = FALSE, immediateOnly = FALSE,
-                            nodesAsChars = getNimbleModelOption('nodesAsChars'),
-                            returnScalarComponents = FALSE, .sort = FALSE
-                            ) {
+                            nodesAsChars = getNimbleModelOption("nodesAsChars"),
+                            returnScalarComponents = FALSE, .sort = FALSE) {
   traverseGraph(modelDef$downstreamRules, modelDef$declRules,
     nodes = nodes,
     down = TRUE, self = self,
     follow = downstream, immediateOnly = immediateOnly,
     nodesAsChars = nodesAsChars, returnScalarComponents = returnScalarComponents,
     .sort = .sort, modelDef = modelDef
-    )
+  )
 }
 
 getParents <- function(modelDef, nodes,
                        self = FALSE,
                        upstream = FALSE, immediateOnly = FALSE,
-                       nodesAsChars = getNimbleModelOption('nodesAsChars'),
-                       returnScalarComponents = FALSE, .sort = FALSE
-                       ) {
+                       nodesAsChars = getNimbleModelOption("nodesAsChars"),
+                       returnScalarComponents = FALSE, .sort = FALSE) {
   traverseGraph(modelDef$upstreamRules, modelDef$declRules,
     nodes = nodes,
     down = FALSE, self = self,
     follow = upstream, immediateOnly = immediateOnly,
     nodesAsChars = nodesAsChars, returnScalarComponents = returnScalarComponents,
     .sort = .sort, modelDef = modelDef
-    )
+  )
 }
 
 

@@ -68,8 +68,10 @@ indexConstraintSequenceClass <- R6Class(
       )
     },
     checkFunction = function(indexRange) {
-      if(end == .Machine$integer.max) return(indexRange$values[,1] >= start)
-      return(indexRange$values[,1] >= start & indexRange$values[,1] <= end)
+      if (end == .Machine$integer.max) {
+        return(indexRange$values[, 1] >= start)
+      }
+      return(indexRange$values[, 1] >= start & indexRange$values[, 1] <= end)
     },
     getMax = function() {
       return(end)

@@ -381,5 +381,3 @@ is.Cmodel <- function(obj, inputIsName = FALSE) {
   if (inputIsName) obj <- get(obj)
   return(inherits(obj, "CmodelBaseClass"))
 }
-
-

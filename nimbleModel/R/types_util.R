@@ -32,10 +32,12 @@ nl_expandNodeIndexExpr <- function(nodeExpr, env = parent.frame()) {
   scipen <- options("scipen")[[1]]
   options(scipen = 1000000)
   on.exit(options(scipen = scipen))
-  if (length(nodeExpr) == 1) if (is.name(nodeExpr)) {
-    return(as.character(nodeExpr))
-  } else {
-    stop("node expression with only one element, but not a variable name")
+  if (length(nodeExpr) == 1) {
+    if (is.name(nodeExpr)) {
+      return(as.character(nodeExpr))
+    } else {
+      stop("node expression with only one element, but not a variable name")
+    }
   }
   indexExprs <- nodeExpr[-c(1, 2)]
   indexStrs <- lapply(indexExprs, function(ind) as.character(eval(ind, envir = env)))
@@ -62,10 +64,12 @@ nl_expandNodeIndex <- function(node, env = parent.frame()) {
   options(scipen = 1000000)
   on.exit(options(scipen = scipen))
   nodeExpr <- parse(text = node, keep.source = FALSE)[[1]]
-  if (length(nodeExpr) == 1) if (is.name(nodeExpr)) {
-    return(as.character(nodeExpr))
-  } else {
-    stop("node expression with only one element, but not a variable name")
+  if (length(nodeExpr) == 1) {
+    if (is.name(nodeExpr)) {
+      return(as.character(nodeExpr))
+    } else {
+      stop("node expression with only one element, but not a variable name")
+    }
   }
   indexExprs <- nodeExpr[-c(1, 2)]
   indexStrs <- lapply(indexExprs, function(ind) as.character(eval(ind, envir = env)))

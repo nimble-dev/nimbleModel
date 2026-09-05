@@ -205,7 +205,7 @@ mcmcConfClass <- R6Class(
       }
       if (is.character(type)) {
         if (type == "conjugate") {
-          if (inherits(target, 'varRangeClass') && !inherits(target, 'nodeRangeClass')) {
+          if (inherits(target, "varRangeClass") && !inherits(target, "nodeRangeClass")) {
             target <- getNodes(model, target)
             if (length(target) == 1) target <- target[[1]]
           }
