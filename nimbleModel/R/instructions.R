@@ -55,6 +55,7 @@ range2instr <- function(range) {
   instr$type <- determineInstrType(instr)
   instr$sortID <- range$sortID
   instr$declID <- range$declID
+  class(instr) <- "Rinstr"  
   return(instr)
 }
 
@@ -120,7 +121,8 @@ determineInstrType <- function(instr, use_vec = FALSE) {
 }
 
 # TODO: document this since it may be user-facing.
-# We may want to work more on the interface/what inputs are allowed.
+# This feels clunky in terms of what inputs it can handle;
+# we may want to work more on the interface/what inputs are allowed.
 # This only omits data nodes if given chars or varRanges.
 #' @export
 makeInstrList <- function(model, input, includeData = TRUE, use_vec = FALSE) {
@@ -128,11 +130,8 @@ makeInstrList <- function(model, input, includeData = TRUE, use_vec = FALSE) {
   # (1) a char vector of "nodes"
   # (2) a list of (or single) varRanges
   # (3) an nList of (or single) instr_nClass objects (assumed to be in sort order)
-  # (4) an R list of instr_nClass objects (not assumed to be in sort order)
-  # (5) an R list of instr_nClass-like R lists (produced by makeScalarInstrInfoLists when splitting a calcRange with multiple sortID values.
+  # (4) an R list of Rinstr objects (created by `range2instr`) (not assumed to be in sort order)
     
-  # TODO: do we really need to handle case #4? 
-  
   # A single instruction.
   if (inherits(input, "instr_nClass")) {
     return(list(input))
@@ -145,12 +144,14 @@ makeInstrList <- function(model, input, includeData = TRUE, use_vec = FALSE) {
       return(input)
     }
   }
-  # An R list of instructions.
-  if (is.list(input) && all(sapply(input, function(x) inherits(x, "instr_nClass")))) {
-    # Create sort-ordered nList.
-    instrList <- nList(instr_nClass)$new()
-    numInstrs <- length(input)
-    instrList$setLength(numInstrs)
+
+  # An R list of instr_nClass-like R lists
+  if(inherits(input, "Rlist_Rinstr"))
+    return(input)
+
+  # An R list of `Rinstr` elements, not assumed to be in sort order.
+  if (inherits(input, "Rlist_Rinstr") || (is.list(input) && all(sapply(input, \(x) inherits(x, 'Rinstr'))))) {
+    # Create sort-ordered `Rlist_Rinstr`.
     sortIDs <- lapply(input, \(x) x$sortID)
     sortIDranges <- sapply(sortIDs, \(x) range(x, na.rm = TRUE))
     multiSortID <- which(sortIDranges[1,] != sortIDranges[2,])
@@ -162,20 +163,17 @@ makeInstrList <- function(model, input, includeData = TRUE, use_vec = FALSE) {
           stop("the multiple sortID values in the ", i, "th instruction overlap with sortID values in other instructions")                
       }
     ord <- order(sortIDranges[1,])
-    # We need a loop to populate an nList; can't use `input[ord]`.
-    for (i in 1:numInstrs) {
-      instrList[[i]] <- input[[ord[i]]]
-    }
-    return(instrList)
-  }
-
-  # An R list of instr_nClass-like R lists
-  if(inherits(input, "Rlist_Rinstr"))
+    input <- input[ord]
+    class(input) <- "Rlist_Rinstr" 
     return(input)
+  }
 
   # Finally handle character vectors or varRanges.
   if (inherits(input, "varRangeClass")) input <- list(input)
 
+  if (!(is.character(input) || all(sapply(input, \(x) inherits(x, "varRangeClass")))))
+    stop("unexpected type for `input` argument")
+  
   if (!includeData) {
     input <- model$getNodes(input, includeData = FALSE)
     if(!length(input)) return(NULL)

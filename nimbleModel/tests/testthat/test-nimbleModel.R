@@ -868,8 +868,7 @@ test_that("calculate works correctly for time series/SSM recursion", {
   expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))),
               "something other than sequential dependence on the past")
 
-  # Check proper handling when providing list of instructions.
-  instrList <- makeInstrList(m, lapply(c(5,3,1,2,4), \(i) instrList[[i]])) 
+  instrList <- makeInstrList(m, instrList[c(5,3,1,2,4,6,9,8,7)])
   sortIDs <- lapply(instrList, \(x) x$sortID)
   expect_true(all(diff(sapply(sortIDs, \(x) min(x,na.rm=TRUE))) >= 0))
   expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))))

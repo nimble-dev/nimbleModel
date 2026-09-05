@@ -390,9 +390,11 @@ calcRangeClass <- R6Class(
       if(length(indices) != length(sortID))
         stop("mismatch between indexing values and node-based sortIDs")
       
-      results <- lapply(seq_along(indices), \(i)
-                        list(dims = 1, index_types = 2, lens = 1, nDim = 1, slots = 1, sortID = sortID[i],
-                             declID = declID, type = 2, values = list(indices[i])))
+      results <- lapply(seq_along(indices), \(i) {
+                        tmp <- list(dims = 1, index_types = 2, lens = 1, nDim = 1, slots = 1, sortID = sortID[i],
+                                    declID = declID, type = 2, values = list(indices[i]))
+                        class(tmp) <- "Rinstr"
+                        return(tmp) })
       class(results) <- "Rlist_Rinstr"  # For ease of determining the type of the object in `makeInstrList`.
       return(results)
     }
