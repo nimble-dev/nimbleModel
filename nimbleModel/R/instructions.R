@@ -55,6 +55,7 @@ range2instr <- function(range) {
   instr$type <- determineInstrType(instr)
   instr$sortID <- range$sortID
   instr$declID <- range$declID
+  class(instr) <- "Rinstr"  
   return(instr)
 }
 
@@ -120,7 +121,8 @@ determineInstrType <- function(instr, use_vec = FALSE) {
 }
 
 # TODO: document this since it may be user-facing.
-# We may want to work more on the interface/what inputs are allowed.
+# This feels clunky in terms of what inputs it can handle;
+# we may want to work more on the interface/what inputs are allowed.
 # This only omits data nodes if given chars or varRanges.
 #' @export
 makeInstrList <- function(model, input, includeData = TRUE, use_vec = FALSE) {
@@ -128,8 +130,8 @@ makeInstrList <- function(model, input, includeData = TRUE, use_vec = FALSE) {
   # (1) a char vector of "nodes"
   # (2) a list of (or single) varRanges
   # (3) an nList of (or single) instr_nClass objects (assumed to be in sort order)
-  # (4) an R list of instr_nClass objects (not assumed to be in sort order)
-
+  # (4) an R list of Rinstr objects (created by `range2instr`) (not assumed to be in sort order)
+    
   # A single instruction.
   if (inherits(input, "instr_nClass")) {
     return(list(input))
@@ -142,12 +144,14 @@ makeInstrList <- function(model, input, includeData = TRUE, use_vec = FALSE) {
       return(input)
     }
   }
-  # An R list of instructions.
-  if (is.list(input) && all(sapply(input, function(x) inherits(x, "instr_nClass")))) {
-    # Create sort-ordered nList.
-    instrList <- nList(instr_nClass)$new()
-    numInstrs <- length(input)
-    instrList$setLength(numInstrs)
+
+  # An R list of instr_nClass-like R lists
+  if(inherits(input, "Rlist_Rinstr"))
+    return(input)
+
+  # An R list of `Rinstr` elements, not assumed to be in sort order.
+  if (inherits(input, "Rlist_Rinstr") || (is.list(input) && all(sapply(input, \(x) inherits(x, 'Rinstr'))))) {
+    # Create sort-ordered `Rlist_Rinstr`.
     sortIDs <- lapply(input, \(x) x$sortID)
     sortIDranges <- sapply(sortIDs, \(x) range(x, na.rm = TRUE))
     multiSortID <- which(sortIDranges[1,] != sortIDranges[2,])
@@ -159,16 +163,17 @@ makeInstrList <- function(model, input, includeData = TRUE, use_vec = FALSE) {
           stop("the multiple sortID values in the ", i, "th instruction overlap with sortID values in other instructions")                
       }
     ord <- order(sortIDranges[1,])
-    # We need a loop to populate an nList; can't use `input[ord]`.
-    for (i in 1:numInstrs) {
-      instrList[[i]] <- input[[ord[i]]]
-    }
-    return(instrList)
+    input <- input[ord]
+    class(input) <- "Rlist_Rinstr" 
+    return(input)
   }
 
   # Finally handle character vectors or varRanges.
   if (inherits(input, "varRangeClass")) input <- list(input)
 
+  if (!(is.character(input) || all(sapply(input, \(x) inherits(x, "varRangeClass")))))
+    stop("unexpected type for `input` argument")
+  
   if (!includeData) {
     input <- model$getNodes(input, includeData = FALSE)
     if(!length(input)) return(NULL)
@@ -190,17 +195,9 @@ makeInstrList <- function(model, input, includeData = TRUE, use_vec = FALSE) {
   rangesToRemove <- numeric(0)
   for(i in multiSortID) 
     if(!all(diff(sortIDs[[i]]) == 1, na.rm = TRUE)) {
-      newRanges <- ranges[[i]]$makeScalars()  # Somewhat slow; 5s per 10k items.
-      # Attempt to avoid repeated identical processing in `range2instr`.
-      # However, that is not the bottleneck; simply passing the `newRanges` elements into `instr_nClass$new()`
-      # would not be much slower. For now, leave the approach of using the template.
-      templateInstr <- range2instr(newRanges[[1]])
-      newInstrs <- c(newInstrs, lapply(seq_along(newRanges), 
-                                     function(idx) {
-                                       templateInstr$sortID <- newRanges[[idx]]$sortID
-                                       templateInstr$values[[1]] <- newRanges[[idx]]$indexingRange$indexRanges[[1]]$values[1]
-                                       return(templateInstr)
-                                     }))
+      # This quickly creates a list of R lists, where the elements mimic instr_nClass objects,
+      # from a calcRange with multiple sortID values. Creating many calcRanges or instr_nClass objects is slow.
+      newInstrs <- c(newInstrs, ranges[[i]]$makeScalarInstrInfoLists())
       rangesToRemove <- c(rangesToRemove, i)
     } else {  # Check for any overlapping sortID values for the sequential backward dependence calcRange.
       if(any(sortIDranges[2,-i] > sortIDranges[1,i] & sortIDranges[1,-i] < sortIDranges[2,i]))
@@ -208,21 +205,14 @@ makeInstrList <- function(model, input, includeData = TRUE, use_vec = FALSE) {
     }
   if(length(rangesToRemove))
     ranges <- ranges[-rangesToRemove]
-  # This is slow - 40 ms per new instr_nClass, regardless of whether pass in a calcRange
-  # or an R list containing instruction info.
-  Rlist <- c(lapply(ranges, \(x) instr_nClass$new(x)),
-             lapply(newInstrs, \(x) instr_nClass$new(instr = x)))
 
-  numRanges <- length(Rlist)
-  sortIDranges <- sapply(Rlist, \(x) min(x$sortID, na.rm = TRUE))
-  ord <- order(sortIDranges)
-  instrList <- nList(instr_nClass)$new()
-  instrList$setLength(numRanges)
-  # We need a loop to populate an nList; can't use `input[ord]`.
-  for (i in seq_len(numRanges)) {
-    instrList[[i]] <- Rlist[[ord[i]]]
-  }
-  return(instrList)
+  # Again, returning a list of R lists that mimic instr_nClass objects is much faster
+  # than instantiating instr_nClass objects.
+  Rlist <- c(newInstrs, lapply(ranges, \(x) range2instr(x)))
+  sortIDs <- sapply(Rlist, \(x) min(x$sortID, na.rm = TRUE))  # `min` still needed for case of ascending sortIDs (e.g., dependence on the past), which are not split.
+  Rlist <- Rlist[order(sortIDs)]
+  class(Rlist) <- "Rlist_Rinstr"  # For checking idempotency.
+  return(Rlist)
 }
 
 
@@ -231,9 +221,9 @@ instr_nClass <- nClass(
   Rpublic = list(
     initialize = function(calcRange, instr, ...) {
       super$initialize(...)
-      if (!missing(calcRange) || !missing(instr)) {
+      if(!missing(calcRange) || !missing(instr)) {
         if(!missing(calcRange))
-          instr <- range2instr(calcRange) # This processing could simply be included here in `initialize`.
+          instr <- range2instr(calcRange) 
         self$lens <- instr$lens %||% integer()
         self$index_types <- instr$index_types %||% integer()
         self$nDim <- instr$nDim %||% 0L

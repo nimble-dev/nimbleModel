@@ -786,7 +786,7 @@ test_that("calculate works correctly for time series/SSM recursion", {
               "something other than sequential dependence on the past")
 
   # Check proper handling when providing list of instructions.
-  instrList <- makeInstrList(m, lapply(c(5,3,1,2,4), \(i) instrList[[i]])) 
+  instrList <- makeInstrList(m, instrList[c(5,3,1,2,4)])
   sortIDs <- lapply(instrList, \(x) x$sortID)
   expect_true(all(diff(sapply(sortIDs, \(x) min(x,na.rm=TRUE))) >= 0))
   expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))))
@@ -824,11 +824,19 @@ test_that("calculate works correctly for time series/SSM recursion", {
   expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))),
               "something other than sequential dependence on the past")
 
-  # Check proper handling when providing list of instructions.
-  instrList <- makeInstrList(m, lapply(c(5,3,1,2,4), \(i) instrList[[i]])) 
+  # Check idempotency
+  instrList <- makeInstrList(m, instrList)
   sortIDs <- lapply(instrList, \(x) x$sortID)
-  expect_true(all(diff(sapply(sortIDs, \(x) min(x,na.rm=TRUE))) >= 0))
-  expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))))
+  expect_true(all(diff(sapply(sortIDs, \(x) min(x,na.rm=TRUE))) >= 0), "incorrect order")
+  expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))),
+              "something other than sequential dependence on the past")
+
+  # Check proper handling when providing list of instructions.
+  # This would need to be created as an R list of instrClass objects,
+  # instrList <- makeInstrList(m, lapply(c(5,3,1,2,4), \(i) instrList[[i]])) 
+  # sortIDs <- lapply(instrList, \(x) x$sortID)
+  # expect_true(all(diff(sapply(sortIDs, \(x) min(x,na.rm=TRUE))) >= 0))
+  # expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))))
 
   cmclass <- nCompile(mclass)
   cm <- cmclass$new()
@@ -855,8 +863,7 @@ test_that("calculate works correctly for time series/SSM recursion", {
   expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))),
               "something other than sequential dependence on the past")
 
-  # Check proper handling when providing list of instructions.
-  instrList <- makeInstrList(m, lapply(c(5,3,1,2,4), \(i) instrList[[i]])) 
+  instrList <- makeInstrList(m, instrList[c(5,3,1,2,4,6,9,8,7)])
   sortIDs <- lapply(instrList, \(x) x$sortID)
   expect_true(all(diff(sapply(sortIDs, \(x) min(x,na.rm=TRUE))) >= 0))
   expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))))
@@ -987,19 +994,20 @@ test_that("calculate works correctly for time series/SSM recursion", {
   expect_identical(ranges$sortID, c(5,4,3))
   expect_identical(ranges$multiSortIDindex, 1L)
   expect_identical(ranges$indexingRange$toVarChars(), c("y[4:6, 2]"))
-  scalars <- ranges$makeScalars()
+  scalars <- ranges$makeScalarInstrInfoLists()
   expect_identical(length(scalars), 3L)
   expect_identical(sapply(scalars, \(x) x$sortID), c(5,4,3))
-  expect_identical(sapply(scalars, \(x) x$indexingRange$toVarChars()), c("[4]", "[5]", "[6]"))
+  expect_identical(sapply(scalars, \(x) unlist(x[['values']])), c(4,5,6))
   
   ranges <- m$modelDef$calcRules[['y']]$rules[[2]]$makeCalcRange(m$modelDef$calcRules[['y']]$rules[[2]]$apply('y[2,c(7,5)]'))
   expect_identical(ranges$sortID, c(5,3))
   expect_identical(ranges$multiSortIDindex, 1L)
   expect_identical(ranges$indexingRange$toVarChars(), c("y[4, 2]", "y[6, 2]"))
-  scalars <- ranges$makeScalars()                 
+  scalars <- ranges$makeScalarInstrInfoLists()
   expect_identical(length(scalars), 2L)
   expect_identical(sapply(scalars, \(x) x$sortID), c(5,3))
-  expect_identical(sapply(scalars, \(x) x$indexingRange$toVarChars()), c("[4]", "[6]"))
+  expect_identical(sapply(scalars, \(x) unlist(x[['values']])), c(4,6))
+
 
   code <- nimbleCode({
     for(i in 2:6)  
@@ -1012,18 +1020,18 @@ test_that("calculate works correctly for time series/SSM recursion", {
   ranges <- m$modelDef$calcRules[['y']]$rules[[1]]$makeCalcRange(m$modelDef$calcRules[['y']]$rules[[1]]$apply('y[3:5]'))
   expect_identical(ranges$sortID, c(4,6,8))
   expect_identical(ranges$indexingRange$toVarChars(), "y[3:5]")
-  scalars <- ranges$makeScalars()
+  scalars <- ranges$makeScalarInstrInfoLists()
   expect_identical(length(scalars), 3L)
   expect_identical(sapply(scalars, \(x) x$sortID), c(4,6,8))
-  expect_identical(sapply(scalars, \(x) x$indexingRange$toVarChars()), c("[3]", "[4]", "[5]"))
+  expect_identical(sapply(scalars, \(x) unlist(x[['values']])), c(3,4,5))
   
   ranges <- m$modelDef$calcRules[['lifted_rho_times_y_oBi_minus_1_cB_L2']]$rules[[1]]$makeCalcRange(m$modelDef$calcRules[['lifted_rho_times_y_oBi_minus_1_cB_L2']]$rules[[1]]$apply('lifted_rho_times_y_oBi_minus_1_cB_L2[3:5]'))
   expect_identical(ranges$sortID, c(3,5,7))
   expect_identical(ranges$indexingRange$toVarChars(), "lifted_rho_times_y_oBi_minus_1_cB_L2[3:5]")
-  scalars <- ranges$makeScalars()
+  scalars <- ranges$makeScalarInstrInfoLists()
   expect_identical(length(scalars), 3L)
   expect_identical(sapply(scalars, \(x) x$sortID), c(3,5,7))
-  expect_identical(sapply(scalars, \(x) x$indexingRange$toVarChars()), c("[3]", "[4]", "[5]"))
+  expect_identical(sapply(scalars, \(x) unlist(x[['values']])), c(3,4,5))
   
 })
 
