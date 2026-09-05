@@ -17,7 +17,7 @@ public:
   Eigen::Tensor<int, 1> dims;
   Eigen::Tensor<int, 1> slots;
   std::shared_ptr<nList_I1> values;
-  int type;
+  int instr_type;
   Eigen::Tensor<int, 1> sortID;
   int declID;
 };

@@ -1081,28 +1081,28 @@ test_that("basic creation of list of instr_nClass objects", {
     data <- list(y = matrix(rnorm(20), 5))
     m <- nimbleModel(code, data = data)
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(2:5)), newIndexRange(quote(1:3))), varName = 'y'))[[1]]
-    expect_identical(instr$type, 4)
+    expect_identical(instr$instr_type, 4)
 
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(2:5)), newIndexRange(matrix(c(1,4),ncol=1))), varName = 'y'))[[1]]
-    expect_identical(instr$type, 5)
+    expect_identical(instr$instr_type, 5)
     
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(matrix(c(1,4),ncol=1)), newIndexRange(quote(2:5))), varName = 'y'))[[1]]
-    expect_identical(instr$type, 6)
+    expect_identical(instr$instr_type, 6)
     
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(matrix(c(1,4),ncol=1)), newIndexRange(matrix(c(2,4),ncol=1))), varName = 'y'))[[1]]
-    expect_identical(instr$type, 7)
+    expect_identical(instr$instr_type, 7)
 
     ## order is shuffled to put first index slot in first range
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(2:5)), newIndexRange(matrix(c(1,4),ncol=1))),
                                                 rangeToIndexSlot=list(2,1), varName = 'y'))[[1]]
-    expect_identical(instr$type, 6)
+    expect_identical(instr$instr_type, 6)
     expect_identical(instr$slots, c(1,2))
     expect_identical(instr$index_types, c(2,1))
 
     ## order is shuffled to put first index slot in first range
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(matrix(c(1,4),ncol=1)), newIndexRange(quote(2:5))),
                                                 rangeToIndexSlot=list(2,1), varName = 'y'))[[1]]
-    expect_identical(instr$type, 5)
+    expect_identical(instr$instr_type, 5)
     expect_identical(instr$slots, c(1,2))
     expect_identical(instr$index_types, c(1,2))
 
@@ -1118,28 +1118,28 @@ test_that("basic creation of list of instr_nClass objects", {
     data <- list(y = matrix(rnorm(20), 4))
     m <- nimbleModel(code, data = data)
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(1:3)), newIndexRange(quote(2:5))), varName = 'y'))[[1]]
-    expect_identical(instr$type, 4)
+    expect_identical(instr$instr_type, 4)
 
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(1:3)), newIndexRange(matrix(c(2,5),ncol=1))), varName = 'y'))[[1]]
-    expect_identical(instr$type, 6)  # shuffled
+    expect_identical(instr$instr_type, 6)  # shuffled
     
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(matrix(c(1,4),ncol=1)), newIndexRange(quote(2:5))), varName = 'y'))[[1]]
-    expect_identical(instr$type, 5)  # shuffled
+    expect_identical(instr$instr_type, 5)  # shuffled
     
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(matrix(c(1,4),ncol=1)), newIndexRange(matrix(c(2,5),ncol=1))), varName = 'y'))[[1]]
-    expect_identical(instr$type, 7)
+    expect_identical(instr$instr_type, 7)
 
     ## order is shuffled to put first index slot in first range
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(2:5)), newIndexRange(matrix(c(1,4),ncol=1))),
                                                 rangeToIndexSlot=list(2,1), varName = 'y'))[[1]]
-    expect_identical(instr$type, 5)
+    expect_identical(instr$instr_type, 5)
     expect_identical(instr$slots, c(1,2))
     expect_identical(instr$index_types, c(1,2))
 
     ## order is shuffled to put first index slot in first range
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(matrix(c(1,5),ncol=1)), newIndexRange(quote(2:4))),
                                                 rangeToIndexSlot=list(2,1), varName = 'y'))[[1]]
-    expect_identical(instr$type, 6)
+    expect_identical(instr$instr_type, 6)
     expect_identical(instr$slots, c(1,2))
     expect_identical(instr$index_types, c(2,1))
 
@@ -1159,14 +1159,14 @@ test_that("basic creation of list of instr_nClass objects", {
     expect_identical(instr$slots, c(1,2,3))
     expect_identical(instr$index_types, c(1,2))
     expect_identical(instr$values[[2]], c(1,2,2,3))
-    expect_identical(instr$type, 8) # seq_matp
+    expect_identical(instr$instr_type, 8) # seq_matp
 
     data <- list(y = array(rnorm(60),c(5,4,3)))
     m <- nimbleModel(code, data = data)
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(2:5)), newIndexRange(quote(1:2)),
                                                      newIndexRange(quote(1:2))), 
                                                 varName = 'y'))[[1]]
-    expect_identical(instr$type, 12) # allseq
+    expect_identical(instr$instr_type, 12) # allseq
 
 
     ## indexRange order is shuffled to put first index slot in first indexRange.
@@ -1175,7 +1175,7 @@ test_that("basic creation of list of instr_nClass objects", {
     expect_identical(instr$slots, c(1,3,2))  # shuffled
     expect_identical(instr$index_types, c(2,1))
     expect_identical(instr$values[[1]], c(1,2,2,3))
-    expect_identical(instr$type, 9) # seq_matp
+    expect_identical(instr$instr_type, 9) # seq_matp
 
     ## order within the matrix indexRange is shuffled to be ascending.
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(2:5)), newIndexRange(matrix(c(1,2,2,3),ncol=2,byrow=TRUE))),
@@ -1183,11 +1183,11 @@ test_that("basic creation of list of instr_nClass objects", {
     expect_identical(instr$slots, c(1,3,2))  # shuffled
     expect_identical(instr$index_types, c(2,1))
     expect_identical(instr$values[[1]], c(2,1,3,2))  # shuffled
-    expect_identical(instr$type, 9) # seq_matp
+    expect_identical(instr$instr_type, 9) # seq_matp
 
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(matrix(c(1,3),ncol=1)), newIndexRange(matrix(c(1,2,2,3),ncol=2,byrow=TRUE))),
                                                 varName = 'y'))[[1]]
-    expect_identical(instr$type, 10)
+    expect_identical(instr$instr_type, 10)
 
     ## Check technique of building and copying nList(instr_nClass) as a method.
     instr_nClass <- nimbleModel:::instr_nClass  # work-around for scoping

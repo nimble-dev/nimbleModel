@@ -52,7 +52,7 @@ range2instr <- function(range) {
       )
     }) # in calcRange, column major; need row major here for simpler/more efficient determination of indices
   }
-  instr$type <- determineInstrType(instr)
+  instr$instr_type <- determineInstrType(instr)
   instr$sortID <- range$sortID
   instr$declID <- range$declID
   class(instr) <- "Rinstr"  
@@ -64,60 +64,60 @@ range2instr <- function(range) {
 # vectorize based on whether possible based on the declaration.
 # Open question of when to determine if to use parallel calculate.
 determineInstrType <- function(instr, use_vec = FALSE) {
-  type <- NULL
+  instr_type <- NULL
   if (!instr$nDim) {
-    type <- "0"
+    instr_type <- "0"
   }
   if (length(instr$dims) == 1) {
     if (instr$index_types[1] == 1) {
-      type <- "1_seq"
+      instr_type <- "1_seq"
     } else {
       if (instr$dims[1] == 1) {
-        type <- "1_mat"
+        instr_type <- "1_mat"
       } else {
-        if (identical(instr$slots, as.numeric(1:length(instr$slots)))) type <- "1_matp" else type <- "1_matp_ord"
+        if (identical(instr$slots, as.numeric(1:length(instr$slots)))) instr_type <- "1_matp" else instr_type <- "1_matp_ord"
       }
     }
   }
   if (length(instr$dims) == 2) {
     if (identical(instr$dims, c(1, 1))) {
       if (identical(instr$slots, c(2, 1))) {
-        type <- "2_x_y_ord"
+        instr_type <- "2_x_y_ord"
       } else {
-        if (identical(instr$index_types, c(1, 1))) type <- "2_seq_seq"
-        if (identical(instr$index_types, c(1, 2))) type <- "2_seq_mat"
-        if (identical(instr$index_types, c(2, 1))) type <- "2_mat_seq"
-        if (identical(instr$index_types, c(2, 2))) type <- "2_mat_mat"
+        if (identical(instr$index_types, c(1, 1))) instr_type <- "2_seq_seq"
+        if (identical(instr$index_types, c(1, 2))) instr_type <- "2_seq_mat"
+        if (identical(instr$index_types, c(2, 1))) instr_type <- "2_mat_seq"
+        if (identical(instr$index_types, c(2, 2))) instr_type <- "2_mat_mat"
       }
     } else {
-      type <- "2_matp_matp"
-      if (instr$index_types[1] == 1) type <- "2_seq_matp"
-      if (instr$index_types[2] == 1) type <- "2_matp_seq"
+      instr_type <- "2_matp_matp"
+      if (instr$index_types[1] == 1) instr_type <- "2_seq_matp"
+      if (instr$index_types[2] == 1) instr_type <- "2_matp_seq"
     }
   }
   if (length(instr$dims) == 3) {
     if (all(instr$index_types == 1) && identical(instr$slots, as.numeric(1:length(instr$slots)))) {
-      type <- "3_allseq"
+      instr_type <- "3_allseq"
     } else {
-      type <- "3_generic"
+      instr_type <- "3_generic"
     }
   }
   if (length(instr$dims) == 4) {
     if (all(instr$index_types == 1) && identical(instr$slots, as.numeric(1:length(instr$slots)))) {
-      type <- "4_allseq"
+      instr_type <- "4_allseq"
     } else {
-      type <- "4_generic"
+      instr_type <- "4_generic"
     }
   }
   if (length(instr$dims) == 5) {
     if (all(instr$index_types == 1) && identical(instr$slots, as.numeric(1:length(instr$slots)))) {
-      type <- "5_allseq"
+      instr_type <- "5_allseq"
     } else {
-      type <- "5_generic"
+      instr_type <- "5_generic"
     }
   }
-  if (is.null(type)) stop("no available specific instruction type")
-  return(type2itype[[type]])
+  if (is.null(instr_type)) stop("no available specific instruction type")
+  return(type2itype[[instr_type]])
 }
 
 # TODO: document this since it may be user-facing.
@@ -236,7 +236,7 @@ instr_nClass <- nClass(
             self$values[[i]] <- instr$values[[i]]
           }
         }
-        self$type <- instr$type %||% 0L # Use integer for compilation (would char be ok?).
+        self$instr_type <- instr$instr_type %||% 0L # Use integer for compilation (would char be ok?).
         self$sortID <- instr$sortID %||% integer()
         self$declID <- instr$declID %||% 0L
       }
@@ -249,7 +249,7 @@ instr_nClass <- nClass(
     dims = "integerVector",
     slots = "integerVector",
     values = "nList(integerVector)",
-    type = "integerScalar",
+    instr_type = "integerScalar",
     sortID = "integerVector",
     declID = "integerScalar",
     instr_nClass = nFunction(
