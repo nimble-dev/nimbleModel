@@ -654,7 +654,7 @@ test_that("non-sequential indexing cases", {
   nr <- m$getNodes()[[1]]
   expect_true(inherits(nr$indexRanges[[1]], "indexRangeMatrixClass"))
   expect_identical(nr$numExternalIndexRanges, 1L)
-  expect_identical(nr$toChar(), "`y[idx1]`, for idx1 in c(2, 3, 5)")
+  expect_identical(nr$toChar(), "`y[idx1]`, for `idx1` in c(2, 3, 5)")
 
   code <- nimbleCode({
     y[c(2,3,5)] ~ dmnorm(mu[1:3], pr[1:3,1:3])
@@ -681,22 +681,23 @@ test_that("non-sequential indexing cases", {
   nr <- m$getNodes()[[2]]
   expect_true(inherits(nr$indexRanges[[1]], "indexRangeMatrixClass"))
   expect_identical(nr$numExternalIndexRanges, 0L)
-  expect_identical(nr$toChar(), "y[c(2, 3, 5)]")
+  expect_identical(nr$toChar(), "`y[c(2, 3, 5)]`")
 
-  if(FALSE) {  # No operator def for nimC: This was part of the call:  y[i = nimC(2, 3, 5)]
-    code <- nimbleCode({
+  # Cannot compile. No operator def for nimC: This was part of the call:  y[i = nimC(2, 3, 5)]
+  code <- nimbleCode({
       y[c(2,3,5)] <- x[1:3] + 1
-    })
-    mclass <- nimbleModel(code, inits = list(x = 1:3), 
-                          returnClass = TRUE)
-    m <- mclass$new()
-    cmclass <- nCompile(mclass)
-    cm <- cmclass$new()
-    m$calculate()
-    cm$calculate()
-    expect_identical(m$y, c(NA,2,3,NA,4))
-    expect_identical(cm$y, c(NA,2,3,NA,4))
-  }
+  })
+  mclass <- nimbleModel(code, inits = list(x = 1:3), 
+                        returnClass = TRUE)
+  m <- mclass$new()
+  m$calculate()
+  expect_identical(m$y, c(NA,2,3,NA,4))
+  expect_error({
+      cmclass <- nCompile(mclass)
+      cm <- cmclass$new()
+      cm$calculate()
+      expect_identical(cm$y, c(NA,2,3,NA,4))
+  })
   
 })
 
@@ -766,52 +767,128 @@ test_that("calculate/simulate work correctly for deterministic node", {
   expect_identical(cm$y, 4.5)
 })
 
-
-
 test_that("calculate works correctly for time series/SSM recursion", {
-  library(nimbleModel); library(testthat); library(nCompiler)
+
   code <- nimbleCode({
-    for(i in 3:6) {
-      y[i] <- y[i-1] + 1.5
+    for(i in 3:8) {
+      y[i] <- y[i-1] + mu
     }
     y[2] <- 1
+    mu <- 1.5
   })
   mclass <- nimbleModel(code, returnClass = TRUE)
   m <- mclass$new()
+
+  instrList <- makeInstrList(m, c("y","mu"))
+  sortIDs <- lapply(instrList, \(x) x$sortID)
+  expect_true(all(diff(sapply(sortIDs, \(x) min(x,na.rm=TRUE))) >= 0), "incorrect order")
+  expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))),
+              "something other than sequential dependence on the past")
+
+  # Check proper handling when providing list of instructions.
+  instrList <- makeInstrList(m, lapply(c(5,3,1,2,4), \(i) instrList[[i]])) 
+  sortIDs <- lapply(instrList, \(x) x$sortID)
+  expect_true(all(diff(sapply(sortIDs, \(x) min(x,na.rm=TRUE))) >= 0))
+  expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))))
+  
   cmclass <- nCompile(mclass)
   cm <- cmclass$new()
+  m$y <- cm$y <- rep(-99,8)
   m$calculate()
   cm$calculate()
-  truth <- c(NA, 1, 2.5, 4, 5.5, 7)
+  truth <- c(-99, 1, 2.5, 4, 5.5, 7, 8.5, 10)
   expect_identical(m$y, truth)
-  truth[1] <- 0
   expect_equal(cm$y, truth)
+
+  m$y <- cm$y <- rep(-99,8)
+  m$calculate('y[1:5]')
+  cm$calculate('y[1:5]')
+  truth <- c(-99, 1, 2.5, 4, 5.5, -99,-99,-99)
+  expect_identical(m$y, truth)
+  expect_equal(cm$y, truth)
+  
     
-
   code <- nimbleCode({
-    for(i in 2:5) {
-      y[i+1] <- y[i] + 1.5
+    for(i in 2:7) {
+      y[i+1] <- y[i] + mu
     }
     y[2] <- 1
+    mu <- 1.5
   })
   mclass <- nimbleModel(code, returnClass = TRUE)
   m <- mclass$new()
+
+  instrList <- makeInstrList(m, c("y","mu"))
+  sortIDs <- lapply(instrList, \(x) x$sortID)
+  expect_true(all(diff(sapply(sortIDs, \(x) min(x,na.rm=TRUE))) >= 0), "incorrect order")
+  expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))),
+              "something other than sequential dependence on the past")
+
+  # Check proper handling when providing list of instructions.
+  instrList <- makeInstrList(m, lapply(c(5,3,1,2,4), \(i) instrList[[i]])) 
+  sortIDs <- lapply(instrList, \(x) x$sortID)
+  expect_true(all(diff(sapply(sortIDs, \(x) min(x,na.rm=TRUE))) >= 0))
+  expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))))
+
   cmclass <- nCompile(mclass)
   cm <- cmclass$new()
+  m$y <- cm$y <- rep(-99,8)
   m$calculate()
   cm$calculate()
-  truth <- c(NA, 1, 2.5, 4, 5.5, 7)
+  truth <- c(-99, 1, 2.5, 4, 5.5, 7, 8.5, 10)
   expect_identical(m$y, truth)
-  truth[1] <- 0
   expect_equal(cm$y, truth)
 
+  # Dependence on the future. This involves creating new scalar calcRanges.
+  code <- nimbleCode({
+      for(i in 1:7)
+          y[i] <- y[i+1] + mu
+      mu <- 1.5
+      y[8] <- 0
+  })
+  mclass <- nimbleModel(code, returnClass = TRUE)
+  m <- mclass$new()
+  
+  instrList <- makeInstrList(m, c("y","mu"))
+  sortIDs <- lapply(instrList, \(x) x$sortID)
+  expect_true(all(diff(sapply(sortIDs, \(x) min(x,na.rm=TRUE))) >= 0), "incorrect order")
+  expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))),
+              "something other than sequential dependence on the past")
+
+  # Check proper handling when providing list of instructions.
+  instrList <- makeInstrList(m, lapply(c(5,3,1,2,4), \(i) instrList[[i]])) 
+  sortIDs <- lapply(instrList, \(x) x$sortID)
+  expect_true(all(diff(sapply(sortIDs, \(x) min(x,na.rm=TRUE))) >= 0))
+  expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))))
+
+  cmclass <- nCompile(mclass)
+  cm <- cmclass$new()
+  m$y <- cm$y <- rep(-99, 8)
+  m$calculate()
+  cm$calculate()
+  truth <- rev(seq(0,10.5,by=1.5))
+  expect_identical(m$y, truth)
+  expect_equal(cm$y, truth)
+
+  m$y <- cm$y <- rep(-99, 8)
+  m$calculate('y[5:8]')
+  cm$calculate('y[5:8]')
+  truth[1:4] <- -99
+  expect_identical(m$y, truth)
+  expect_equal(cm$y, truth)
+ 
+
+  # This case will be "unrolled" via fracturing when creating calcRules.
   code <- nimbleCode({
     for(i in 3:7) {
-      y[i] <- y[i-2] + 1.5
+      y[i] <- y[i-2] + mu
     }
+    mu <- 1.5
+    y[1] <- 1
+    y[2] <- 3
   })
-  mclass <- nimbleModel(code, returnClass = TRUE, inits=list(y=c(1,3,rep(0,5))))
-  m <- mclass$new()
+  mclass <- nimbleModel(code, returnClass = TRUE)
+  m <- mclass$new()  
   cmclass <- nCompile(mclass)
   cm <- cmclass$new()
   m$calculate()
@@ -819,7 +896,6 @@ test_that("calculate works correctly for time series/SSM recursion", {
   truth <- c(1, 3, 2.5, 4.5, 4, 6, 5.5)
   expect_identical(m$y, truth)
   expect_equal(cm$y, truth)
-
 
   code <- nimbleCode({
     for(i in 2:3)
@@ -842,40 +918,116 @@ test_that("calculate works correctly for time series/SSM recursion", {
   expect_identical(m$y, truth)
   expect_equal(cm$y, truth)
 
-  # Work on these once we address issue #25.
-  if(FALSE) {    
-    code <- nimbleCode({
-      for(i in 1:5)
-        y[i] ~ dnorm(y[i+1], 1)
-      # y[6] <- 0
-    })
-    mclass <- nimbleModel(code, returnClass = TRUE)
-    m <- mclass$new()
-    cmclass <- nCompile(mclass)
-    cm <- cmclass$new()
-    # BUG - calculation done in wrong order.
-    m$calculate()
-    cm$calculate()
     
-    
-    ## This interleaves the sortID values across different calcRules/ranges.
-    code <- nimbleCode({
-      for(i in 1:10)
-        y[i] ~ dnorm(z[i], 1)
-      for(i in 2:10)
-        z[i] <- y[i-1]
-    })
-    mclass <- nimbleModel(code, returnClass = TRUE)
-    m <- mclass$new()
-    # BUG: need to interweave calculations.
-  }  
-})
+  ## This interleaves the sortID values across different calcRules/ranges.
+  code <- nimbleCode({
+      for(i in 1:6)
+          y[i] <- z[i] + 1
+      for(i in 2:6)
+          z[i] <- y[i-1] + .5
+      z[1] <- 0
+  })
+  set.seed(1)
+  mclass <- nimbleModel(code, returnClass = TRUE)
+  m <- mclass$new()
+
+  instrList <- makeInstrList(m, c("y","mu"))
+  sortIDs <- lapply(instrList, \(x) x$sortID)
+  expect_true(all(diff(sapply(sortIDs, \(x) min(x,na.rm=TRUE))) >= 0), "incorrect order")
+  expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))),
+              "something other than sequential dependence on the past")
+
+  # Check proper handling when providing list of instructions.
+  instrList <- makeInstrList(m, lapply(c(5,3,1,2,4), \(i) instrList[[i]])) 
+  sortIDs <- lapply(instrList, \(x) x$sortID)
+  expect_true(all(diff(sapply(sortIDs, \(x) min(x,na.rm=TRUE))) >= 0))
+  expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))))
+
+  cmclass <- nCompile(mclass)
+  cm <- cmclass$new()
+  truth_y <- c(1,2.5,4,5.5,7,8.5)
+  truth_z <- c(0,1.5,3,4.5,6,7.5) 
+  m$calculate()
+  cm$calculate()
+  expect_identical(m$y, truth_y)
+  expect_equal(cm$y, truth_y)
+  expect_identical(m$z, truth_z)
+  expect_equal(cm$z, truth_z)
+
+  # This is completely fractured/unrolled so there are no vector sortIDs
+  code <- nimbleCode({
+      for(i in 3:7) {
+          for(j in 1:2)
+              y[j,1:3,i] <- y[j,1:3,i-1] + mu[1:3]
+    }
+    y[1,1,2] <- 0
+    y[1,2,2] <- 0
+    y[1,3,2] <- 0
+    y[2,1,2] <- 0
+    y[2,2,2] <- 0
+    y[2,3,2] <- 0
+    mu[1:3] <- c(1,2,3)
+  })
+  mclass <- nimbleModel(code, returnClass = TRUE, inits = list(y = array(-99,c(2,3,7))))
+  m <- mclass$new()
+  expect_identical(unique(sapply(m$modelDef$calcRules$y$rules, \(rule) length(rule$sortID))),1L)
+
+  # Check tricky indexing cases with multiple sortID values.
+  code <- nimbleCode({
+    for(i in 3:8)  
+        for(j in 1:2)
+            y[j,i+1] ~ dnorm(y[j,i+2],1)
+  })
+  m <- nimbleModel(code)
+  expect_identical(m$modelDef$calcRules$y$rules[[2]]$sortID, c(rep(NA, 4), 5,4,3,2))
+  expect_identical(m$modelDef$calcRules$y$rules[[2]]$multiSortIDindex, 2L)
+
+  # Indexing gets swapped around and reordered.
+  ranges <- m$modelDef$calcRules[['y']]$rules[[2]]$makeCalcRange(m$modelDef$calcRules[['y']]$rules[[2]]$apply('y[2,5:7]'))
+  expect_identical(ranges$sortID, c(5,4,3))
+  expect_identical(ranges$multiSortIDindex, 1L)
+  expect_identical(ranges$indexingRange$toVarChars(), c("y[4:6, 2]"))
+  scalars <- ranges$makeScalars()
+  expect_identical(length(scalars), 3L)
+  expect_identical(sapply(scalars, \(x) x$sortID), c(5,4,3))
+  expect_identical(sapply(scalars, \(x) x$indexingRange$toVarChars()), c("[4]", "[5]", "[6]"))
   
- 
- 
+  ranges <- m$modelDef$calcRules[['y']]$rules[[2]]$makeCalcRange(m$modelDef$calcRules[['y']]$rules[[2]]$apply('y[2,c(7,5)]'))
+  expect_identical(ranges$sortID, c(5,3))
+  expect_identical(ranges$multiSortIDindex, 1L)
+  expect_identical(ranges$indexingRange$toVarChars(), c("y[4, 2]", "y[6, 2]"))
+  scalars <- ranges$makeScalars()                 
+  expect_identical(length(scalars), 2L)
+  expect_identical(sapply(scalars, \(x) x$sortID), c(5,3))
+  expect_identical(sapply(scalars, \(x) x$indexingRange$toVarChars()), c("[4]", "[6]"))
+
+  code <- nimbleCode({
+    for(i in 2:6)  
+      y[i] ~ dnorm(rho*y[i-1],1)
+  })
+  m <- nimbleModel(code)
+  expect_identical(m$modelDef$calcRules$y$rules[[1]]$sortID, c(NA, 2,4,6,8))
+  expect_identical(m$modelDef$calcRules$lifted_rho_times_y_oBi_minus_1_cB_L2$rules[[1]]$sortID, c(NA,NA,3,5,7,9))
+
+  ranges <- m$modelDef$calcRules[['y']]$rules[[1]]$makeCalcRange(m$modelDef$calcRules[['y']]$rules[[1]]$apply('y[3:5]'))
+  expect_identical(ranges$sortID, c(4,6,8))
+  expect_identical(ranges$indexingRange$toVarChars(), "y[3:5]")
+  scalars <- ranges$makeScalars()
+  expect_identical(length(scalars), 3L)
+  expect_identical(sapply(scalars, \(x) x$sortID), c(4,6,8))
+  expect_identical(sapply(scalars, \(x) x$indexingRange$toVarChars()), c("[3]", "[4]", "[5]"))
+  
+  ranges <- m$modelDef$calcRules[['lifted_rho_times_y_oBi_minus_1_cB_L2']]$rules[[1]]$makeCalcRange(m$modelDef$calcRules[['lifted_rho_times_y_oBi_minus_1_cB_L2']]$rules[[1]]$apply('lifted_rho_times_y_oBi_minus_1_cB_L2[3:5]'))
+  expect_identical(ranges$sortID, c(3,5,7))
+  expect_identical(ranges$indexingRange$toVarChars(), "lifted_rho_times_y_oBi_minus_1_cB_L2[3:5]")
+  scalars <- ranges$makeScalars()
+  expect_identical(length(scalars), 3L)
+  expect_identical(sapply(scalars, \(x) x$sortID), c(3,5,7))
+  expect_identical(sapply(scalars, \(x) x$indexingRange$toVarChars()), c("[3]", "[4]", "[5]"))
+  
+})
 
 test_that("basic creation of list of instr_nClass objects", {
-
     code <- quote({
         mu ~ dnorm(0, 1)
         for(i in 1:5) 
@@ -1119,6 +1271,14 @@ test_that("overlapping node definitions", {
         y[2] ~ dnorm(0,1)
     })
     expect_error(nimbleModel(code), "found multiple node definitions")
+
+    code=nimbleCode({
+      for(i in 1:2)
+        for(j in 1:2)
+          y[i+j] ~ dnorm(0,1)
+    })
+    expect_error(m <- nimbleModel(code), "found duplicated node definitions")
+
 })
 
 
@@ -1182,8 +1342,6 @@ test_that("simulation without data nodes", {
 })
 
 test_that("column-major node/variable ordering when converted to chars", {
-    library(nimbleModel); library(testthat)
-    
     code <- nimbleCode({
         for(i in 1:2)
             for(j in 1:3)
@@ -1300,5 +1458,224 @@ test_that("column-major node/variable ordering when converted to chars", {
     truth <- paste0('y[', apply(grid, 1, \(x) paste0(x[1], ", ", x[2], ", ", x[3])), ']')
     expect_identical(m$getNodes('y',nodesAsChars=TRUE, returnScalarComponents=TRUE), truth)
     expect_identical(m$getDependencies('y', self=TRUE)[[1]]$toVarChars(expandScalars=TRUE), truth)
+})
+
+test_that("isData", {
+    code = nimbleCode({
+        for(i in 1:3)
+            y[i]~dnorm(mu,1)
+        y[4] ~ dnorm(mu,1)
+        w[2] ~ dnorm(mu,1)
+        w[4] ~ dnorm(mu,1)
+        for(i in 1:3)
+            z[i, 1:3] ~ dmnorm(mu0[1:3], pr[1:3,1:3])
+        mu0[1:3] <- tmp[1:3]
+    })
+    y <- rnorm(4)
+    y[2] <- NA
+    z <- matrix(rnorm(9),3)
+    z[1,2] <- NA
+    z[3,1:3] <- NA
+    m <- nimbleModel(code, data = list(y=y, z=z, w=c(NA,2,NA,NA)))
+
+    truth <- c(TRUE,FALSE,TRUE,TRUE)
+    names(truth) <- c('y[1]','y[2]','y[3]','y[4]')
+
+    expect_identical(m$isData('y'), truth)
+    expect_identical(m$isData('y[1:4]'), truth)
+
+    truth <- c(truth, TRUE, FALSE)
+    names(truth)[5:6] <- c('w[2]','w[4]')
+    expect_identical(m$isData(c('y','w')), truth)           
+    expect_identical(m$isData(c('y','w'), reduceToScalar = TRUE), truth)
+
+    expect_true(m$isData(c('y[1]','y[3]'), reduceToScalar = TRUE))
+    expect_false(m$isData(c('y[2]','mu'), reduceToScalar = TRUE))
+
+    nodes <- m$getNodes(c('y','w','mu','tmp'), includeRHSonly = TRUE)
+    truth <- list(c(TRUE,FALSE,TRUE),
+                  TRUE,
+                  TRUE,
+                  FALSE,
+                  FALSE,
+                  c(FALSE,FALSE,FALSE))
+    names(truth[[1]]) <- c('y[1]','y[2]','y[3]')
+    names(truth[[2]]) <- 'y[4]'
+    names(truth[[3]]) <- 'w[2]'
+    names(truth[[4]]) <- 'w[4]'
+    names(truth[[5]]) <- 'mu'
+    names(truth[[6]]) <- c('tmp[1]','tmp[2]','tmp[3]')
+    expect_identical(m$isData(nodes), truth)
+    
+    nodes <- m$getDependencies('mu')  # varRanges
+    truth <- truth[1:4]
+    expect_identical(m$isData(nodes), truth)
+
+    truth <- c(TRUE,TRUE,FALSE)
+    names(truth) <- c('z[1, 1:3]','z[2, 1:3]','z[3, 1:3]')
+    expect_identical(m$isData('z'), truth)
+
+    code = nimbleCode({
+        for(i in 1:3)
+            y[i]~dnorm(mu,1)
+        w[2] ~ dnorm(mu,1)
+        w[4] ~ dnorm(mu,1)
+    })
+    m <- nimbleModel(code)
+    expect_identical(m$isData(m$getNodes(), reduceToScalar = TRUE), list(FALSE,FALSE,FALSE))
+    m <- nimbleModel(code, data = list(y=rnorm(3)))
+    expect_identical(m$isData(m$getNodes(), reduceToScalar = TRUE), list(TRUE,FALSE,FALSE))
     
 })
+
+test_that("non-constant block indexing", {
+    # Changing dimensions.
+    code <- quote({
+        for(i in 1:3)
+            y[i, n1[i]:n2[i]] ~ dmnorm(mu[n1[i]:n2[i]], pr[n1[i]:n2[i],n1[i]:n2[i]])
+    })
+    model <- nimbleModel(code, data=list(y=matrix(rnorm(7*6),7)), constants = list(mu=rep(0,6), pr=diag(6),n1 = c(3,1,2), n2 = c(6,3,3)))
+    expect_identical(model$getNodes('y',nodesAsChars=TRUE),
+                     c(paste0("y[1, ", 3:6, "]"),
+                       paste0("y[2, ", 1:3, "]"),
+                       paste0("y[3, ", 2:3, "]")))
+                       
+    truth <- dmnorm_chol(model$y[1,3:6],rep(0,4),diag(4), log=TRUE)+
+        dmnorm_chol(model$y[2,1:3],rep(0,3),diag(3), log=TRUE)+
+        dmnorm_chol(model$y[3,2:3],rep(0,2),diag(2), log=TRUE)
+    model$calculate()
+    expect_identical(model$getLogProb('y'), truth)  # Formerly incorrect as discussed in issue 31.
+
+    # All same dimensions, constant precision.
+    code <- quote({
+        for(i in 1:3)
+            y[i, n1[i]:n2[i]] ~ dmnorm(mu[n1[i]:n2[i]], pr[1:3,1:3])
+    })
+    model <- nimbleModel(code, data=list(y=matrix(rnorm(7*6),7)), constants = list(mu=rep(0,6), pr=diag(6),n1 = c(3,1,2), n2 = c(5,3,4)))
+    expect_identical(model$getNodes('y',nodesAsChars=TRUE),
+                     c(paste0("y[1, ", 3:5, "]"),
+                       paste0("y[2, ", 1:3, "]"),
+                       paste0("y[3, ", 2:4, "]")))
+    truth <- dmnorm_chol(model$y[1,3:5],rep(0,3),diag(3), log=TRUE)+
+        dmnorm_chol(model$y[2,1:3],rep(0,3),diag(3), log=TRUE)+
+        dmnorm_chol(model$y[3,2:4],rep(0,3),diag(3), log=TRUE)
+    model$calculate()
+    expect_identical(model$getLogProb('y'), truth)
+
+    # Various crazy cases.
+    code <- quote({
+        for(i in 1:3)
+            y[n1[i]:n2[i], k[i], i] ~ dmnorm(mu[n1[i]:n2[i]], pr[1:3,1:3])
+    })
+    model <- nimbleModel(code, data=list(y=array(rnorm(5*5*3),c(5,5,3))), constants = list(k = c(2,4,5), mu=rep(0,6), pr=diag(6), n1 = c(3,1,2), n2 = c(5,3,4)))
+    expect_identical(sort(model$getNodes('y',nodesAsChars=TRUE)),
+                     sort(c(paste0("y[", 3:5, ", 2, 1]"),
+                       paste0("y[", 1:3, ", 4, 2]"),
+                       paste0("y[", 2:4, ", 5, 3]"))))
+    truth <- dmnorm_chol(model$y[3:5,2,1],rep(0,3),diag(3), log=TRUE)+
+        dmnorm_chol(model$y[1:3,4,2],rep(0,3),diag(3), log=TRUE)+
+        dmnorm_chol(model$y[2:4,5,3],rep(0,3),diag(3), log=TRUE)
+    model$calculate()
+    expect_identical(model$getLogProb('y'), truth)
+
+    code <- quote({
+      for(i in 1:3)
+          for(j in 1:2)
+            y[i,j,n1[i]:n2[i]] ~ dmnorm(mu[n1[i]:n2[i]], pr[n1[i]:n2[i],n1[i]:n2[i]])
+    })
+    model <- nimbleModel(code, data=list(y=array(rnorm(7*3*2),c(3,2,7))), constants = list(mu=rep(0,6), pr=diag(6),n1 = c(3,1,2), n2 = c(6,3,3)))
+    expect_identical(sort(model$getNodes('y',nodesAsChars=TRUE)),
+                     sort(c(paste0("y[1, 1, ", 3:6, "]"),
+                            paste0("y[1, 2, ", 3:6, "]"),
+                            paste0("y[2, 1, ", 1:3, "]"),
+                            paste0("y[2, 2, ", 1:3, "]"),
+                            paste0("y[3, 1, ", 2:3, "]"),
+                            paste0("y[3, 2, ", 2:3, "]"))))
+    truth <- dmnorm_chol(model$y[1,1,3:6],rep(0,3),diag(4), log=TRUE)+
+        dmnorm_chol(model$y[1,2,3:6],rep(0,3),diag(4), log=TRUE)+
+        dmnorm_chol(model$y[2,1,1:3],rep(0,3),diag(3), log=TRUE)+
+        dmnorm_chol(model$y[2,2,1:3],rep(0,3),diag(3), log=TRUE)+
+        dmnorm_chol(model$y[3,1,2:3],rep(0,3),diag(2), log=TRUE)+
+        dmnorm_chol(model$y[3,2,2:3],rep(0,3),diag(2), log=TRUE)
+    model$calculate()
+    expect_identical(model$getLogProb('y'), truth)
+    
+     code <- quote({
+        for(i in 1:3)
+            for(j in 1:2)
+                y[i,j,n1[i]:n2[i],n1[i]:n2[i]] ~ dwish(pr[1:4,1:4], df = 10)
+    })
+    y <- array(0, c(3,2,6,6))
+    n1 <- c(3,1,2); n2 <- c(6,4,5)
+    for(i in 1:3)
+        for(j in 1:2)
+            y[i,j,n1[i]:n2[i],n1[i]:n2[i]] <- rwish_chol(1, diag(4), 10)
+    model <- nimbleModel(code, data=list(y=y), constants =list( pr=diag(6),n1 = n1,n2=n2))
+    expect_length(model$getNodes('y',nodesAsChars=TRUE), 6*4*4)
+    truth <- dwish_chol(model$y[1,1,3:6,3:6],diag(4), 10, log=TRUE)+
+        dwish_chol(model$y[1,2,3:6,3:6],diag(4), 10, log=TRUE)+
+        dwish_chol(model$y[2,1,1:4,1:4],diag(4), 10, log=TRUE)+
+        dwish_chol(model$y[2,2,1:4,1:4],diag(4), 10, log=TRUE)+
+        dwish_chol(model$y[3,1,2:5,2:5],diag(4), 10, log=TRUE)+
+        dwish_chol(model$y[3,2,2:5,2:5],diag(4),10, log=TRUE)
+    model$calculate()
+    expect_identical(model$getLogProb('y'), truth)
+
+    code <- quote({
+        for(i in 1:3)
+            for(j in 1:2)
+                y[i,j,n1[i]:n2[i],n1[i]:n2[i]] ~ dwish(pr[n1[i]:n2[i],n1[i]:n2[i]], df = 10)
+    })
+    y <- array(0, c(3,2,6,6))
+    n1 <- c(3,1,2); n2 <- c(6,4,5)
+    for(i in 1:3)
+        for(j in 1:2)
+            y[i,j,n1[i]:n2[i],n1[i]:n2[i]] <- rwish_chol(1, diag(4), 10, 10)
+    model <- nimbleModel(code, data=list(y=y), constants =list( pr=diag(6),n1 = n1,n2=n2))
+    expect_length(model$getNodes('y',nodesAsChars=TRUE), 6*4*4)
+    truth <- dwish_chol(model$y[1,1,3:6,3:6],diag(4), 10, log=TRUE)+
+        dwish_chol(model$y[1,2,3:6,3:6],diag(4), 10, log=TRUE)+
+        dwish_chol(model$y[2,1,1:4,1:4],diag(4),  10, log=TRUE)+
+        dwish_chol(model$y[2,2,1:4,1:4],diag(4),  10, log=TRUE)+
+        dwish_chol(model$y[3,1,2:5,2:5],diag(4),  10, log=TRUE)+
+        dwish_chol(model$y[3,2,2:5,2:5],diag(4),10, log=TRUE)
+    model$calculate()
+    expect_identical(model$getLogProb('y'), truth)
+
+    code <- quote({
+        for(i in 1:3)
+            for(j in 1:2)
+                y[i,j,n1[i]:n2[i],n3[j]:n4[j]] ~ dwish(pr[n1[i]:n2[i],n3[j]:n4[j]], df = 10)
+    })
+    y <- array(0, c(3,2,6,7))
+    n1 <- c(3,1,2); n2 <- c(6,4,5)
+    n3 <- c(2,4); n4 <- c(5,7)
+    for(i in 1:3)
+        for(j in 1:2)
+            y[i,j,n1[i]:n2[i],n3[j]:n4[j]] <- rwish_chol(1, diag(4), 10, 10)    
+    model <- nimbleModel(code, data=list(y=y), constants =list( pr=diag(7),n1 = n1,n2=n2,n3=n3,n4=n4))
+    expect_length(model$getNodes('y',nodesAsChars=TRUE), 6*4*4)
+
+    ## SS case
+    code <- quote({
+        for(i in 2:4)
+            y[i, n1[i]:n2[i]] ~ dmnorm(y[i-1,n1[i]:n2[i]], pr[1:3,1:3])
+    })
+    model <- nimbleModel(code, data=list(y=matrix(rnorm(4*5),4)), constants = list(pr=diag(3), n1 = c(1,3,1,2), n2 = c(1,5,3,4)))
+    expect_identical(sort(model$getNodes('y',nodesAsChars=TRUE)),
+                     sort(c(paste0("y[2, ", 3:5, "]"),
+                     paste0("y[3, ", 1:3, "]"),
+                     paste0("y[4, ", 2:4, "]"))))
+                     
+    truth <- dmnorm_chol(model$y[2,3:5],model$y[1,3:5],diag(3), log=TRUE)+
+        dmnorm_chol(model$y[3,1:3],model$y[2,1:3],diag(3), log=TRUE)+
+        dmnorm_chol(model$y[4,2:4],model$y[3,2:4],diag(3), log=TRUE)
+    model$calculate()
+    expect_identical(model$getLogProb('y'), truth) 
+})
+
+
+
+
+
+    
