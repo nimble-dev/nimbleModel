@@ -115,11 +115,10 @@ modelBase_nClass <- nClass(
 
       # nonpredictive rules
       candidateRules <- unlist(lapply(modelDef$calcRules, function(oneVarRules) {
-        stoch <- sapply(oneVarRules$rules, function(rule) rule$declRule$decl$stoch)
-        return(oneVarRules$rules[stoch])
-      })) # `unlist` removes length-0 entries.
+        return(oneVarRules$rules)
+      }))
       candidateRules <- newVarRules(candidateRules)
-
+        
       for (oneVarPredictiveRules in predictiveRules) {
         for (predictiveRule in oneVarPredictiveRules$rules) {
           predictiveRange <- predictiveRule$fullRange
@@ -270,7 +269,7 @@ modelBase_nClass <- nClass(
                                     if(inherits(x, 'varRangeClass')) getNodes(x, includeRHSonly = TRUE) else x))
       }
       if (is.character(nodeRanges)) 
-        nodeRanges <- getNodes(nodeRanges, includeRHSonly = TRUE)
+        nodeRanges <- getNodes(nodeRanges, includeRHSonly = TRUE, nodesAsChars = FALSE)
       if(!(is.list(nodeRanges) && all(sapply(nodeRanges, inherits, "nodeRangeClass"))))
           stop("isData: argument must be a character vector, a `nodeRange` or `varRange` or list of `nodeRange`s")
 
@@ -374,7 +373,7 @@ modelBase_nClass <- nClass(
     },
     # TODO: not working because `nimbleModel::getNodes` needs the model not just modelDef.
     # Once we integrate modelClass with modelBase_nClass, we should be able to pass `self`.
-    getNodes = function(nodes = NULL, determOnly = FALSE, stochOnly = FALSE,
+    getNodes = function(nodes, determOnly = FALSE, stochOnly = FALSE,
                         includeData = TRUE, dataOnly = FALSE,
                         includeRHSonly = FALSE,
                         topOnly = FALSE, latentOnly = FALSE, endOnly = FALSE,
@@ -382,13 +381,22 @@ modelBase_nClass <- nClass(
                         nodesAsChars = getNimbleModelOption('nodesAsChars'),
                         returnScalarComponents = FALSE,
                         .sort = FALSE) {
-      nimbleModel::getNodes(
-        self, nodes, determOnly, stochOnly, includeData, dataOnly,
-        includeRHSonly,
-        topOnly, latentOnly, endOnly,
-        includePredictive, predictiveOnly, 
-        nodesAsChars, returnScalarComponents, .sort
-      )
+      if(!missing(nodes)) {
+          nimbleModel::getNodes(
+                           self, nodes, determOnly, stochOnly, includeData, dataOnly,
+                           includeRHSonly,
+                           topOnly, latentOnly, endOnly,
+                           includePredictive, predictiveOnly, 
+                           nodesAsChars, returnScalarComponents, .sort
+                       )
+      } else nimbleModel::getNodes(
+                              self, determOnly=determOnly, stochOnly=stochOnly,
+                              includeData=includeData, dataOnly=dataOnly,
+                              includeRHSonly=includeRHSonly,
+                              topOnly=topOnly, latentOnly=latentOnly, endOnly=endOnly,
+                              includePredictive=includePredictive, predictiveOnly=predictiveOnly, 
+                              nodesAsChars=nodesAsChars, returnScalarComponents=returnScalarComponents,
+                              .sort=.sort)
     },
     getNodeNames = function(determOnly = FALSE, stochOnly = FALSE,
                         includeData = TRUE, dataOnly = FALSE, includeRHSonly = FALSE,
@@ -409,6 +417,23 @@ modelBase_nClass <- nClass(
     topologicallySortNodes = function(nodes) {
       nimbleModel::expandNodeNames(self, nodes, sort = TRUE, unique = TRUE)
     },
+    getConditionallyIndependentSets = function(nodes, givenNodes, 
+                                            explore = c("both", "down", "up"),
+                                            unknownAsGiven = TRUE, returnScalarComponents = FALSE,
+                                            endAsGiven = FALSE,
+                                            nodesAsChars = getNimbleModelOption('nodesAsChars')) {
+        nimbleModel::getConditionallyIndependentSets(self, nodes, givenNodes, explore, unknownAsGiven,
+                                        returnScalarComponents, endAsGiven, nodesAsChars)
+    },
+    setupMargNodes = function(paramNodes, randomEffectsNodes, calcNodes,
+                           calcNodesOther,
+                           split = TRUE,
+                           check = TRUE,
+                           allowDiscreteLatent = FALSE) {
+        nimbleModel::setupMargNodes(self, paramNodes, randomEffectsNodes, calcNodes,
+                                    calcNodesOther, split = TRUE, check = TRUE, allowDiscreteLatent = FALSE)
+    },
+    
     calc_op = function(instr, fn, fn_cpp) {
       if (missing(instr)) {
         instr <- getVarNames()

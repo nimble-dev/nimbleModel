@@ -22,13 +22,17 @@ indexRuleArbitraryClass <- R6Class(
       if (!inherits(indexRange, "indexRangeClass")) {
         stop("an index rule must be applied to an `indexRange`.")
       }
-      indexRuleArbitrary_applyMatrix(indexRange$getValuesAsMatrix(), setupResults, collapse = collapse)
+      indexRuleArbitrary_applyMatrix(indexRange$getValuesAsMatrix(), setupResults,
+                                     collapse = collapse)
     },
     getMax = function() {
       sapply(
         setupResults$fromInfo,
         function(fromInfo) fromInfo$offset + fromInfo$size
       )
+    },
+    getNumElements = function() {
+      return(setupResults$unrolledSize)
     }
   )
 )
@@ -282,7 +286,7 @@ indexRuleArbitrary_applyMatrix <- function(indexRangeMatrixValues,
 
   # iRowsList has the declaration iRows for each fromFlat.
   iRowsList <- setupResults$from_flat2iRow[fromFlat]
-
+  
   # CHECK: unique???
   # `toIndicesList` has the matrix of "to" indices for each fromFlat
   # need NAs in places where input matches no output to be able to

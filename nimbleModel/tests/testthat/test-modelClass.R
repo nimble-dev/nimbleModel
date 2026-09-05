@@ -8,7 +8,7 @@ test_that("dataRules determination works", {
         z ~ dnorm(0, 1)
     })
     data = list(y=c(rnorm(10),NA,3.5), z = 3.5)
-    m <- modelClass$new(code, data = data)
+    m <- nimbleModel(code, data = data)
     expect_length(m$dataRules, 2)
     expect_length(m$dataRules[[1]]$rules, 2)
     expect_length(m$dataRules[[2]]$rules, 1)
@@ -23,10 +23,10 @@ test_that("predictive/nonpredictive rule determination works", {
         mu ~ dnorm(0, 1)
     })
     data = list(y=rnorm(5))
-    m <- modelClass$new(code, data = data)
+    m <- nimbleModel(code, data = data)
     expect_identical(m$predictiveRules, NULL)
-    expect_length(m$nonpredictiveRules, 2)
-    expect_identical(names(m$nonpredictiveRules), c('mu','y'))
+    expect_length(m$nonpredictiveRules, 3)
+    expect_identical(names(m$nonpredictiveRules), c('mu','lifted_d1_over_sqrt_oPsigma_cP','y'))
     
 
     code <- quote({
@@ -42,7 +42,7 @@ test_that("predictive/nonpredictive rule determination works", {
         theta ~ dnorm(phi, 1)
     })
     data = list(y=rnorm(5))
-    m <- modelClass$new(code, data = data)
+    m <- nimbleModel(code, data = data)
 
     expect_length(m$predictiveRules, 3)
     expect_length(m$predictiveRules$w$rules, 1)
@@ -55,8 +55,8 @@ test_that("predictive/nonpredictive rule determination works", {
     expect_equal(m$predictiveRules$theta$rules[[1]]$fullRange,
                  varRangeClass$new(list(), varName = 'theta'))
 
-    expect_length(m$nonpredictiveRules, 3)
-    expect_identical(names(m$nonpredictiveRules), c('mu','logsigma','y'))
+    expect_length(m$nonpredictiveRules, 7)
+    expect_identical(names(m$nonpredictiveRules), c("mu","logsigma","lifted_d1_over_sqrt_oPsigma_cP","y","sigma","lifted_d1_over_sqrt_oPexp_oPlogsigma_cP_cP","w_mean"))
     expect_length(m$nonpredictiveRules$mu$rules, 1)
     expect_length(m$nonpredictiveRules$logsigma$rules, 1)
     expect_length(m$nonpredictiveRules$y$rules, 1)
@@ -89,7 +89,7 @@ test_that("predictive/nonpredictive rule determination works", {
     y <- z <- w <- rnorm(1:10)
     w[1:10] <- NA
     z[6:8] <- NA
-    m <- modelClass$new(code, data = list(z = z, y = y, w = w))
+    m <- nimbleModel(code, data = list(z = z, y = y, w = w))
 
     expect_length(m$dataRules, 2)
 
@@ -135,7 +135,7 @@ test_that("predictive/nonpredictive rule determination works", {
     data = list(y=rnorm(50))
     data$y[20] <- NA
     data$y[48:50] <- NA
-    m <- modelClass$new(code, data = data)
+    m <- nimbleModel(code, data = data)
     expect_length(m$predictiveRules, 2)
     expect_identical(names(m$predictiveRules), c('y','mu'))
     expect_length(m$predictiveRules[[1]]$rules, 2)
@@ -150,11 +150,12 @@ test_that("predictive/nonpredictive rule determination works", {
                      varRangeClass$new(list(newIndexRange(quote(48:50))), varName = 'mu'))
 
 
-    expect_length(m$nonpredictiveRules, 3)
-    expect_identical(names(m$nonpredictiveRules), c('mu0','y', 'mu'))
+    expect_length(m$nonpredictiveRules, 4)
+    expect_identical(names(m$nonpredictiveRules), c('mu0','lifted_d1_over_sqrt_oPsigma_cP','y', 'mu'))
     expect_length(m$nonpredictiveRules[[1]]$rules, 1)
-    expect_length(m$nonpredictiveRules[[2]]$rules, 2)
+    expect_length(m$nonpredictiveRules[[2]]$rules, 1)
     expect_length(m$nonpredictiveRules[[3]]$rules, 2)
+    expect_length(m$nonpredictiveRules[[4]]$rules, 2)
 
     expect_equal(m$nonpredictiveRules$y$rules[[1]]$fullRange,
                  varRangeClass$new(list(newIndexRange(quote(1:19))), varName = 'y'))
@@ -189,7 +190,7 @@ test_that("getNodes with data or predictive works", {
     y <- z <- w <- rnorm(1:10)
     w[1:10] <- NA
     z[6:8] <- NA
-    m <- modelClass$new(code, data = list(z = z, y = y, w = w))
+    m <- nimbleModel(code, data = list(z = z, y = y, w = w))
 
     base <- getNodes(m)
     expect_length(base, 9)
@@ -255,7 +256,7 @@ test_that("getNodes with data or predictive works", {
         for(i in 1:20)
             mu0[i] ~ dnorm(0, 1)
     })
-    m <- modelClass$new(code, data = list(y = c(rnorm(10),rep(NA, 20), rnorm(10))))
+    m <- nimbleModel(code, data = list(y = c(rnorm(10),rep(NA, 20), rnorm(10))))
 
     base <- getNodes(m)
     expect_length(base, 3)
@@ -296,7 +297,7 @@ test_that("getNodes with data or predictive works", {
             y[i,1:3] ~ dmnorm(mu[1:3], pr[1:3,1:3])
     })
 
-    m <- modelClass$new(code, data = list(y = matrix(c(1,2,3,NA,3,4,5,NA,6,rep(NA,3)), 4,3)))
+    m <- nimbleModel(code, data = list(y = matrix(c(1,2,3,NA,3,4,5,NA,6,rep(NA,3)), 4,3)))
 
     base <- getNodes(m)
 
@@ -329,7 +330,7 @@ test_that("getNodes with data or predictive works", {
 
     result <- getNodes(m, includePredictive = FALSE)
     resultNames <- sapply(result, nimbleModel:::getVarName)
-    expect_length(result, 1)
+    expect_length(result, 2)
     expect_identical(result[[which(resultNames == 'y')]]$boolExternalIndexRanges, c(TRUE, FALSE))
     expect_equal(result[[which(resultNames == 'y')]]$indexRanges,
                  list(newIndexRange(quote(1:3)), newIndexRange(quote(1:3))))
@@ -394,7 +395,7 @@ test_that("`is` queries of nodes works", {
         pr[1:5,1:5] ~ dwish(R[1:5,1:5], nu)
         nu ~ T(dnorm(0,1),0,Inf)
     })
-    m <- modelClass$new(code, data = list(y = rpois(5,1)), inits = list(nu = 2, R = diag(5), pr = diag(5)))
+    m <- nimbleModel(code, data = list(y = rpois(5,1)), inits = list(nu = 2, R = diag(5), pr = diag(5)))
     nodes <- getNodes(m, includeRHSonly = TRUE)
     expect_identical(m$isDiscrete(nodes), c(TRUE, NA, NA, FALSE, NA, FALSE, FALSE, NA, NA))
     expect_identical(m$isStoch(nodes), c(TRUE, FALSE, FALSE, TRUE, FALSE,TRUE, TRUE, FALSE, FALSE))
@@ -421,7 +422,7 @@ test_that("`is` queries of nodes works", {
         u ~ dbin(p, c)
         w ~ dbin(p, n)
     })
-    m <- modelClass$new(code, constants = list(c=1), inits = list(n=1))
+    m <- nimbleModel(code, constants = list(c=1), inits = list(n=1))
     nodes <- getNodes(m, includeRHSonly = TRUE)
     expect_identical(m$isBinary(nodes), c(TRUE,FALSE,TRUE,TRUE,FALSE,NA))
 })

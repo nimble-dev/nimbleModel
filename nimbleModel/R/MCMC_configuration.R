@@ -28,7 +28,7 @@ samplerConfClass <- R6Class(
       if (name == "crossLevel") {
         control <<- c(
           control,
-          list(dependent_nodes = getNodes(model, getDependencies(model$modelDef, target, self = FALSE), stochOnly = TRUE))
+          list(dependent_nodes = getNodes(model, getDependencies(model$modelDef, target, self = FALSE, nodesAsChars = FALSE), stochOnly = TRUE, nodesAsChars = FALSE))
         )
       } # special case for printing dependents of crossLevel sampler (only)
     },
@@ -69,8 +69,8 @@ mcmcConfClass <- R6Class(
       # Splitting into top and latent nodes results in homogeneous nodeRanges in terms of children (and parents,
       # though that is not relevant here) of a given nodeRange.
       nodeRanges <- c(
-        getNodes(model, nodes = nodes, stochOnly = TRUE, includeData = FALSE, topOnly = TRUE),
-        getNodes(model, nodes = nodes, stochOnly = TRUE, includeData = FALSE, latentOnly = TRUE)
+        getNodes(model, nodes = nodes, stochOnly = TRUE, includeData = FALSE, topOnly = TRUE, nodesAsChars = FALSE),
+        getNodes(model, nodes = nodes, stochOnly = TRUE, includeData = FALSE, latentOnly = TRUE, nodesAsChars = FALSE)
       )
 
       # FIX: could pre-allocate samplers rather than having `addOneSampler` grow the list of confs.
@@ -228,7 +228,7 @@ mcmcConfClass <- R6Class(
           }
 
           # For efficiency, first see if can be treated as a single nodeRange.
-          targetNodes <- getNodes(model, target)
+          targetNodes <- getNodes(model, target, nodesAsChars = FALSE)
           # Otherwise, expand (inefficiently).
           if (length(targetNodes) > 1 || model$isMultivariate(targetNodes[[1]])) {
             target <- lapply(target$toVarChars(expandScalars = TRUE), function(x) varRangeClass$new(x))
