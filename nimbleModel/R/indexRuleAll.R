@@ -97,7 +97,14 @@ indexRuleAll_setup <- function(toIndexExprList,
   unrolledSize <- unrolledIndicesEnv$outputSize
 
   if (length(unrolledResults) > 1) {
-    allIndices <- do.call("cbind", unrolledResults)
+    lists <- sapply(unrolledResults, is.list)
+    if(any(lists)) {  # Cases like `y[i,n1[i]:n2[i]]`. We unroll these.
+      allIndices <- do.call("rbind", lapply(seq_along(unrolledResults[[1]]), \(i)
+                                            as.matrix(do.call("expand.grid",
+                                                              lapply(unrolledResults, \(x) x[[i]])
+                                                              ))
+                                            ))
+    } else allIndices <- do.call("cbind", unrolledResults)
   } else {
     allIndices <- matrix(unrolledResults[[1]], nrow = unrolledSize)
   }

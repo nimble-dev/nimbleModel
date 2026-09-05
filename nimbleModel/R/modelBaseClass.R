@@ -257,7 +257,58 @@ modelBase_nClass <- nClass(
       result[!RHSonly] <- sapply(nodeRanges[!RHSonly], function(x) x$decl$truncated)
       return(result)
     },
+    isData = function(nodeRanges, reduceToScalar = FALSE) {
+      # Returns list or vector of boolean indicators of being data, at the node level.
+      # Handles either character string input, as in nimble, or list of node/varRanges. 
+      # As with nimble, if any element of a multivariate node is data, then the whole node is flagged as data.
+      returnList <- FALSE
+      if (inherits(nodeRanges, "varRangeClass"))
+        nodeRanges <- list(nodeRanges)
+      if (is.list(nodeRanges)) {
+        returnList <- TRUE
+        nodeRanges <- flatten(lapply(nodeRanges, \(x)
+                                    if(inherits(x, 'varRangeClass')) getNodes(x, includeRHSonly = TRUE) else x))
+      }
+      if (is.character(nodeRanges)) 
+        nodeRanges <- getNodes(nodeRanges, includeRHSonly = TRUE)
+      if(!(is.list(nodeRanges) && all(sapply(nodeRanges, inherits, "nodeRangeClass"))))
+          stop("isData: argument must be a character vector, a `nodeRange` or `varRange` or list of `nodeRange`s")
 
+      allElements <- lapply(nodeRanges, \(v) v$toNodeChars())
+      
+      dataElements <- lapply(allElements, \(listItem) 
+                             unlist(lapply(listItem, \(x) {
+                               if (getVarName(x) %in% names(dataRules)) {
+                                 unlist(lapply(dataRules[[getVarName(x)]]$apply(x),
+                                               \(v) if(is.null(v)) v else x))  # Use `x` not `v` as any data elements mean whole node is data by old nimble handling.
+                               } else NULL
+                             })))
+      
+      isData <- lapply(seq_along(allElements), \(i) {
+        result <- rep(FALSE, length(allElements[[i]]))
+        names(result) <- allElements[[i]]
+        result[allElements[[i]] %in% dataElements[[i]]] <- TRUE
+        if (returnList && reduceToScalar) {
+          numData <- sum(result)
+          if (numData == length(result)) result <- TRUE
+          if (numData == 0) result <- FALSE
+        }
+        return (result)
+      })
+      if (length(isData) == 1)
+        isData <- isData[[1]]
+
+      if(!returnList) {
+        isData <- unlist(isData)
+        if(reduceToScalar) {
+          numData <- sum(isData)
+          if (numData == length(isData)) isData <- TRUE
+          if (numData == 0) isData <- FALSE
+        }
+      }
+      return(isData)
+    },
+    
     # Returns the expr corresponding to 'param' in the distribution of `nodeRange`.
     getParamExpr = function(nodeRange, param) {
       if (!inherits(nodeRange, "nodeRangeClass")) {
@@ -309,17 +360,17 @@ modelBase_nClass <- nClass(
     },
     getDependencies = function(nodes, self = TRUE, downstream = FALSE, immediateOnly = FALSE,
                                nodesAsChars = getNimbleModelOption('nodesAsChars'),
-                               returnScalarComponents = FALSE
+                               returnScalarComponents = FALSE, .sort = FALSE
                                ) {
       nimbleModel::getDependencies(modelDef, nodes, self, downstream, immediateOnly,
-                                   nodesAsChars, returnScalarComponents)
+                                   nodesAsChars, returnScalarComponents, .sort)
     },
-    getParents = function(nodes, self = TRUE, upstream = FALSE, immediateOnly = FALSE,
+    getParents = function(nodes, self = FALSE, upstream = FALSE, immediateOnly = FALSE,
                           nodesAsChars = getNimbleModelOption('nodesAsChars'),
-                          returnScalarComponents = FALSE
+                          returnScalarComponents = FALSE, .sort = FALSE
                           ) {
       nimbleModel::getParents(modelDef, nodes, self, upstream, immediateOnly,
-                              nodesAsChars, returnScalarComponents)
+                              nodesAsChars, returnScalarComponents, .sort)
     },
     # TODO: not working because `nimbleModel::getNodes` needs the model not just modelDef.
     # Once we integrate modelClass with modelBase_nClass, we should be able to pass `self`.
@@ -354,6 +405,9 @@ modelBase_nClass <- nClass(
     expandNodeNames = function(nodes, returnScalarComponents = FALSE,
                                returnType = "names", sort = FALSE, unique = TRUE) {
       nimbleModel::expandNodeNames(self, nodes, returnScalarComponents, "names", sort, unique)
+    },
+    topologicallySortNodes = function(nodes) {
+      nimbleModel::expandNodeNames(self, nodes, sort = TRUE, unique = TRUE)
     },
     calc_op = function(instr, fn, fn_cpp) {
       if (missing(instr)) {

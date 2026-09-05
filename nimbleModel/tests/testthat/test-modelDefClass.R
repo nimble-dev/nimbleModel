@@ -282,19 +282,3 @@ test_that("detection of duplicated declarations", {
     
 })
 
-test_that("detection of non-constant block indices", {
-    code <- quote({
-        for(i in 1:2) {
-            x[i:5] ~ dmnorm(z[i:5], Q[i:5,i:5])
-        }
-    })
-    expect_error(m <- modelClass$new(code), "Non-constant indexing")
-    
-    code <- quote({
-        for(i in 1:2) {
-            x[i,(i+1):5] ~ dmnorm(z[(i+1):5], Q[(i+1):5,(i+1):5])
-        }
-    })
-    expect_error(m <- modelClass$new(code), "Non-constant indexing")
-
-})

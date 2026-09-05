@@ -179,8 +179,8 @@ evalBracketArgs <- function(code, constantEnv) {
         code[[i]] <- as.numeric(eval(code[[i]], constantEnv))
       } else {
         # vectorized index. evaluate it, then set it to the resulting expression:  MIN:MAX
-        indicies <- as.numeric(eval(code[[i]], constantEnv))
-        code[[i]] <- substitute(MIN:MAX, list(MIN = min(indicies), MAX = max(indicies)))
+        indices <- as.numeric(eval(code[[i]], constantEnv))
+        code[[i]] <- substitute(MIN:MAX, list(MIN = min(indices), MAX = max(indices)))
       }
     }
   }
@@ -195,8 +195,8 @@ evalBracketArgsKnownBracket <- function(code, constantEnv, isVectorized) {
       code[[i]] <- as.numeric(eval(code[[i]], constantEnv))
     } else {
       # vectorized index. evaluate it, then set it to the resulting expression:  MIN:MAX
-      indicies <- as.numeric(eval(code[[i]], constantEnv))
-      code[[i]] <- substitute(MIN:MAX, list(MIN = min(indicies), MAX = max(indicies)))
+      indices <- as.numeric(eval(code[[i]], constantEnv))
+      code[[i]] <- substitute(MIN:MAX, list(MIN = min(indices), MAX = max(indices)))
     }
   }
   code
@@ -381,3 +381,5 @@ is.Cmodel <- function(obj, inputIsName = FALSE) {
   if (inputIsName) obj <- get(obj)
   return(inherits(obj, "CmodelBaseClass"))
 }
+
+
