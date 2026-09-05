@@ -76,7 +76,7 @@ test_that("old model API calls", {
   chars <- m$expandNodeNames(c('mu','y','x'), sort = TRUE)
   expect_identical(chars, c("x", "mu", "y[1, 1]","y[2, 1]","y[1, 2]", "y[2, 2]", "y[1, 3]", "y[2, 3]"))
   chars <- m$topologicallySortNodes(c('mu','y','x'))
-  expect_identical(chars, c("x", "mu", "y[1, 1]","y[1, 2]","y[1, 3]", "y[2, 1]", "y[2, 2]", "y[2, 3]"))
+  expect_identical(chars, c("x", "mu", "y[1, 1]","y[2, 1]","y[1, 2]", "y[2, 2]", "y[1, 3]", "y[2, 3]"))
   
   chars <- m$expandNodeNames(c('y','y[2,1]'))
   expect_identical(chars, c("y[1, 1]","y[2, 1]","y[1, 2]", "y[2, 2]", "y[1, 3]", "y[2, 3]"))
@@ -258,8 +258,8 @@ test_that("Use of .sort in cases with multiple and/or overlapping sortID values"
   expect_identical(m$getNodes(.sort=TRUE,nodesAsChars=TRUE), truth)
   expect_identical(m$getParents('y', .sort=TRUE, nodesAsChars = TRUE, self = TRUE), truth)
   truth <- c(
-    paste0("lifted_chol_oPpr_oB1to2_comma_1to2_cB_cP[1, ", 1:2, "]"),
-    paste0("lifted_chol_oPpr_oB1to2_comma_1to2_cB_cP[2, ", 1:2, "]"),
+    paste0("lifted_chol_oPpr_oB1to2_comma_1to2_cB_cP[", 1:2, ", 1]"),
+    paste0("lifted_chol_oPpr_oB1to2_comma_1to2_cB_cP[", 1:2, ", 2]"),
     paste0("y[", 1:2, ", 2]"),
     paste0("y[", 1:2, ", 3]"),
     paste0("y[", 1:2, ", 4]"),
