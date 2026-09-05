@@ -1002,7 +1002,7 @@ test_that("calculate works correctly for time series/SSM recursion", {
   scalars <- ranges$makeScalarInstrInfoLists()
   expect_identical(length(scalars), 3L)
   expect_identical(sapply(scalars, \(x) x$sortID), c(5,4,3))
-  expect_identical(sapply(scalars, \(x) x$indexingRange$toVarChars()), c("[4]", "[5]", "[6]"))
+  expect_identical(sapply(scalars, \(x) unlist(x[['values']])), c(4,5,6))
   
   ranges <- m$modelDef$calcRules[['y']]$rules[[2]]$makeCalcRange(m$modelDef$calcRules[['y']]$rules[[2]]$apply('y[2,c(7,5)]'))
   expect_identical(ranges$sortID, c(5,3))
@@ -1011,7 +1011,8 @@ test_that("calculate works correctly for time series/SSM recursion", {
   scalars <- ranges$makeScalarInstrInfoLists()
   expect_identical(length(scalars), 2L)
   expect_identical(sapply(scalars, \(x) x$sortID), c(5,3))
-  expect_identical(sapply(scalars, \(x) x$indexingRange$toVarChars()), c("[4]", "[6]"))
+  expect_identical(sapply(scalars, \(x) unlist(x[['values']])), c(4,6))
+
 
   code <- nimbleCode({
     for(i in 2:6)  
@@ -1027,7 +1028,7 @@ test_that("calculate works correctly for time series/SSM recursion", {
   scalars <- ranges$makeScalarInstrInfoLists()
   expect_identical(length(scalars), 3L)
   expect_identical(sapply(scalars, \(x) x$sortID), c(4,6,8))
-  expect_identical(sapply(scalars, \(x) x$indexingRange$toVarChars()), c("[3]", "[4]", "[5]"))
+  expect_identical(sapply(scalars, \(x) unlist(x[['values']])), c(3,4,5))
   
   ranges <- m$modelDef$calcRules[['lifted_rho_times_y_oBi_minus_1_cB_L2']]$rules[[1]]$makeCalcRange(m$modelDef$calcRules[['lifted_rho_times_y_oBi_minus_1_cB_L2']]$rules[[1]]$apply('lifted_rho_times_y_oBi_minus_1_cB_L2[3:5]'))
   expect_identical(ranges$sortID, c(3,5,7))
@@ -1035,7 +1036,7 @@ test_that("calculate works correctly for time series/SSM recursion", {
   scalars <- ranges$makeScalarInstrInfoLists()
   expect_identical(length(scalars), 3L)
   expect_identical(sapply(scalars, \(x) x$sortID), c(3,5,7))
-  expect_identical(sapply(scalars, \(x) x$indexingRange$toVarChars()), c("[3]", "[4]", "[5]"))
+  expect_identical(sapply(scalars, \(x) unlist(x[['values']])), c(3,4,5))
   
 })
 
