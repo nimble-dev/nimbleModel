@@ -1535,10 +1535,10 @@ test_that("non-constant block indexing", {
             y[i, n1[i]:n2[i]] ~ dmnorm(mu[n1[i]:n2[i]], pr[n1[i]:n2[i],n1[i]:n2[i]])
     })
     model <- nimbleModel(code, data=list(y=matrix(rnorm(7*6),7)), constants = list(mu=rep(0,6), pr=diag(6),n1 = c(3,1,2), n2 = c(6,3,3)))
+    
     expect_identical(model$getNodes('y',nodesAsChars=TRUE),
-                     c(paste0("y[1, ", 3:6, "]"),
-                       paste0("y[2, ", 1:3, "]"),
-                       paste0("y[3, ", 2:3, "]")))
+                     c("y[2, 1]", "y[2, 2]", "y[3, 2]", "y[1, 3]", "y[2, 3]",
+                       "y[3, 3]", "y[1, 4]", "y[1, 5]", "y[1, 6]"))
                        
     truth <- dmnorm_chol(model$y[1,3:6],rep(0,4),diag(4), log=TRUE)+
         dmnorm_chol(model$y[2,1:3],rep(0,3),diag(3), log=TRUE)+
@@ -1553,9 +1553,9 @@ test_that("non-constant block indexing", {
     })
     model <- nimbleModel(code, data=list(y=matrix(rnorm(7*6),7)), constants = list(mu=rep(0,6), pr=diag(6),n1 = c(3,1,2), n2 = c(5,3,4)))
     expect_identical(model$getNodes('y',nodesAsChars=TRUE),
-                     c(paste0("y[1, ", 3:5, "]"),
-                       paste0("y[2, ", 1:3, "]"),
-                       paste0("y[3, ", 2:4, "]")))
+                     c("y[2, 1]", "y[2, 2]", "y[3, 2]", "y[1, 3]", "y[2, 3]",
+                       "y[3, 3]", "y[1, 4]", "y[3, 4]", "y[1, 5]"))
+    
     truth <- dmnorm_chol(model$y[1,3:5],rep(0,3),diag(3), log=TRUE)+
         dmnorm_chol(model$y[2,1:3],rep(0,3),diag(3), log=TRUE)+
         dmnorm_chol(model$y[3,2:4],rep(0,3),diag(3), log=TRUE)
