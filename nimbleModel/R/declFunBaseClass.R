@@ -12,64 +12,64 @@ declFunBase_nClass <- nClass(
       calc_op(instr, "getLogProb_one")
     },
     calc_op = function(instr, fn) {
-      if (instr$type == 0) {
+      if (instr$instr_type == 0) {
         return(calc_0(instr, fn))
       }
-      if (instr$type == 1) {
+      if (instr$instr_type == 1) {
         return(calc_1_seq(instr, fn))
       }
-      if (instr$type == 2) {
+      if (instr$instr_type == 2) {
         return(calc_1_mat(instr, fn))
       }
-      if (instr$type == 3) {
+      if (instr$instr_type == 3) {
         return(calc_1_matp(instr, fn))
       }
-      if (instr$type == 4) {
+      if (instr$instr_type == 4) {
         return(calc_2_seq_seq(instr, fn))
       }
-      if (instr$type == 5) {
+      if (instr$instr_type == 5) {
         return(calc_2_seq_mat(instr, fn))
       }
-      if (instr$type == 6) {
+      if (instr$instr_type == 6) {
         return(calc_2_mat_seq(instr, fn))
       }
-      if (instr$type == 7) {
+      if (instr$instr_type == 7) {
         return(calc_2_mat_mat(instr, fn))
       }
-      if (instr$type == 8) {
+      if (instr$instr_type == 8) {
         return(calc_2_seq_matp(instr, fn))
       }
-      if (instr$type == 9) {
+      if (instr$instr_type == 9) {
         return(calc_2_matp_seq(instr, fn))
       }
-      if (instr$type == 10) {
+      if (instr$instr_type == 10) {
         return(calc_2_matp_matp(instr, fn))
       }
-      if (instr$type == 11) {
+      if (instr$instr_type == 11) {
         return(calc_2_x_y_ord(instr, fn))
       }
-      if (instr$type == 12) {
+      if (instr$instr_type == 12) {
         return(calc_3_allseq(instr, fn))
       }
-      if (instr$type == 13) {
+      if (instr$instr_type == 13) {
         return(calc_3_generic(instr, fn))
       }
-      if (instr$type == 14) {
+      if (instr$instr_type == 14) {
         return(calc_4_allseq(instr, fn))
       }
-      if (instr$type == 15) {
+      if (instr$instr_type == 15) {
         return(calc_4_generic(instr, fn))
       }
-      if (instr$type == 16) {
+      if (instr$instr_type == 16) {
         return(calc_5_allseq(instr, fn))
       }
-      if (instr$type == 17) {
+      if (instr$instr_type == 17) {
         return(calc_5_generic(instr, fn))
       }
-      if (instr$type == 18) {
+      if (instr$instr_type == 18) {
         return(calc_1_matp_ord(instr, fn))
       }
-      stop("declaration for type ", instr$type, " no implemented")
+      stop("declaration for type ", instr$instr_type, " no implemented")
     },
     calc_0 = function(instr, fn) {
       return(self[[fn]](0))
@@ -405,64 +405,64 @@ declFunBase_nClass <- nClass(
         return(logProb)
       },
     simulate = function(instr) {
-      if (instr$type == 0) {
+      if (instr$instr_type == 0) {
         return(sim_0(instr))
       }
-      if (instr$type == 1) {
+      if (instr$instr_type == 1) {
         return(sim_1_seq(instr))
       }
-      if (instr$type == 2) {
+      if (instr$instr_type == 2) {
         return(sim_1_mat(instr))
       }
-      if (instr$type == 3) {
+      if (instr$instr_type == 3) {
         return(sim_1_matp(instr))
       }
-      if (instr$type == 4) {
+      if (instr$instr_type == 4) {
         return(sim_2_seq_seq(instr))
       }
-      if (instr$type == 5) {
+      if (instr$instr_type == 5) {
         return(sim_2_seq_mat(instr))
       }
-      if (instr$type == 6) {
+      if (instr$instr_type == 6) {
         return(sim_2_mat_seq(instr))
       }
-      if (instr$type == 7) {
+      if (instr$instr_type == 7) {
         return(sim_2_mat_mat(instr))
       }
-      if (instr$type == 8) {
+      if (instr$instr_type == 8) {
         return(sim_2_seq_matp(instr))
       }
-      if (instr$type == 9) {
+      if (instr$instr_type == 9) {
         return(sim_2_matp_seq(instr))
       }
-      if (instr$type == 10) {
+      if (instr$instr_type == 10) {
         return(sim_2_matp_matp(instr))
       }
-      if (instr$type == 11) {
+      if (instr$instr_type == 11) {
         return(sim_2_x_y_ord(instr))
       }
-      if (instr$type == 12) {
+      if (instr$instr_type == 12) {
         return(sim_3_allseq(instr))
       }
-      if (instr$type == 13) {
+      if (instr$instr_type == 13) {
         return(sim_3_generic(instr))
       }
-      if (instr$type == 14) {
+      if (instr$instr_type == 14) {
         return(sim_4_allseq(instr))
       }
-      if (instr$type == 15) {
+      if (instr$instr_type == 15) {
         return(sim_4_generic(instr))
       }
-      if (instr$type == 16) {
+      if (instr$instr_type == 16) {
         return(sim_5_allseq(instr))
       }
-      if (instr$type == 17) {
+      if (instr$instr_type == 17) {
         return(sim_5_generic(instr))
       }
-      if (instr$type == 18) {
+      if (instr$instr_type == 18) {
         return(sim_1_matp_ord(instr))
       }
-      stop("declaration for type ", instr$type, " no implemented")
+      stop("declaration for type ", instr$instr_type, " no implemented")
     },
     sim_0 = function(instr) {
       sim_one(0)

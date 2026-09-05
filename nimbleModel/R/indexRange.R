@@ -260,7 +260,7 @@ indexRangeMatrixClass <- R6Class(
     numColumns = numeric(),
     initialize = function(values, sort = TRUE) {
       if (sort) {
-        ord <- do.call(order, lapply(seq_len(ncol(values)), function(i) values[, i]))
+        ord <- do.call(order, lapply(rev(seq_len(ncol(values))), function(i) values[, i]))
         values <<- values[ord, , drop = FALSE]
       } else {
         values <<- values

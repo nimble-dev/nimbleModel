@@ -264,8 +264,8 @@ test_that("two index slots", {
     ## Reverse indices
     inds <- matrix(c(1,3, 2,4, 3,2), ncol=2, byrow=TRUE)
     vr <- varRangeClass$new(list(newIndexRange(inds)), rangeToIndexSlot = list(c(2,1)), varName = 'y')
-    tmp <- vr$indexRanges[[1]]$values[,2:1]
-    inds <- tmp[order(tmp[,1]),]    # Rows have been shuffled...
+    inds <- vr$indexRanges[[1]]$values[,2:1]
+    inds <- inds[order(inds[,2]), ]
     truth <- sum(dnorm(m$y[inds], log=TRUE))
     expect_equal(m$calculate(vr), truth)
     expect_equal(cm$calculate(vr), truth)
@@ -376,7 +376,7 @@ test_that("three index slots (plus different index variable ordering)", {
     inds <- matrix(c(5,3,1, 1,3,4, 4,1,2), ncol=3, byrow=TRUE)
     vr <- varRangeClass$new(list(newIndexRange(inds)), rangeToIndexSlot = list(c(3,1,2)), varName = 'y')
     tmp <- vr$indexRanges[[1]]$values[,c(2,3,1)]
-    inds <- tmp[order(tmp[,1],tmp[,2]),]    # Rows have been shuffled...
+    inds <- tmp[order(tmp[,3],tmp[,2]),]    # Rows have been shuffled...
     truth <- sum(dnorm(m$y[inds], log=TRUE))
     expect_equal(m$calculate(vr), truth)
     expect_equal(cm$calculate(vr), truth)
@@ -413,8 +413,7 @@ test_that("three index slots (plus different index variable ordering)", {
     ## matp-seq (matp first because of k,j,i in model code)
     vr <- varRangeClass$new(list(newIndexRange(quote(2:3)),
                                  newIndexRange(matrix(c(4,1,1,3,4,5),ncol=2,byrow=TRUE))), varName = 'y')
-    inds <- rbind(c(2,1,3),c(2,4,1),c(2,4,5),c(3,1,3),c(3,4,1),c(3,4,5))
-    inds <- inds[order(inds[,2],inds[,3],inds[,1]),]
+    inds <- vr$extractIndexRange(1:3)$values 
     truth <- sum(dnorm(m$y[inds], log=TRUE))
     expect_equal(m$calculate(vr), truth)
     expect_equal(cm$calculate(vr), truth)
@@ -431,8 +430,7 @@ test_that("three index slots (plus different index variable ordering)", {
     ## seq-matp
     vr <- varRangeClass$new(list(newIndexRange(matrix(c(1,4,3,1,2,4),ncol=2,byrow=TRUE)),
                                newIndexRange(quote(4:5))), varName = 'y')
-    inds <- rbind(c(1,4,4),c(3,1,4),c(2,4,4),c(1,4,5),c(3,1,5),c(2,4,5))
-    inds <- inds[order(inds[,3],inds[,1],inds[,2]),]
+    inds <- vr$extractIndexRange(1:3)$values
     truth <- sum(dnorm(m$y[inds], log=TRUE))
     expect_equal(m$calculate(vr), truth)
     expect_equal(cm$calculate(vr), truth)
@@ -449,8 +447,7 @@ test_that("three index slots (plus different index variable ordering)", {
     ## matp-matp (matp first because of k,j,i in model code)
     vr <- varRangeClass$new(list(newIndexRange(matrix(c(1,3),ncol=1)),
                                  newIndexRange(matrix(c(1,4,3,1,4,5),ncol=2,byrow=TRUE))), varName = 'y')
-    inds <- rbind(c(1,1,4),c(1,3,1),c(1,4,5),c(3,1,4),c(3,3,1),c(3,4,5))
-    inds <- inds[order(inds[,2],inds[,1],inds[,3]),]
+    inds <- vr$extractIndexRange(1:3)$values
     truth <- sum(dnorm(m$y[inds], log=TRUE))
     expect_equal(m$calculate(vr), truth)
     expect_equal(cm$calculate(vr), truth)
@@ -467,8 +464,7 @@ test_that("three index slots (plus different index variable ordering)", {
     ## matp-matp with reordering
     vr <- varRangeClass$new(list(newIndexRange(matrix(c(1,4,3,1,3,2),ncol=2,byrow=TRUE)),
                                newIndexRange(matrix(c(3,5),ncol=1))), varName = 'y')
-    inds <- rbind(c(1,4,3),c(3,1,3),c(3,2,3),c(1,4,5),c(3,1,5),c(3,2,5))
-    inds <- inds[order(inds[,3],inds[,1]),]
+    inds <-  vr$extractIndexRange(1:3)$values
     truth <- sum(dnorm(m$y[inds], log=TRUE))
     expect_equal(m$calculate(vr), truth)
     expect_equal(cm$calculate(vr), truth)
@@ -624,9 +620,8 @@ test_that("five index slots", {
                                 newIndexRange(matrix(c(1,3),ncol=1))),
                             rangeToIndexSlot = list(1, c(2,4,5), 3),
                             varName = 'y')
-    inds <- rbind(c(2,2,1,2,4),c(2,2,3,2,4),c(2,4,1,1,2),c(2,4,3,1,2),
-                  c(3,2,1,2,4),c(3,2,3,2,4),c(3,4,1,1,2),c(3,4,3,1,2),
-                  c(4,2,1,2,4),c(4,2,3,2,4),c(4,4,1,1,2),c(4,4,3,1,2))
+    inds <- vr$extractIndexRange(1:5)$values
+    inds <- inds[order(inds[,1],inds[,5],inds[,3]),]  # ordering is based on index sets
     truth <- sum(dnorm(m$y[inds], log=TRUE))
     expect_equal(m$calculate(vr), truth)
     expect_equal(cm$calculate(vr), truth)
@@ -791,7 +786,7 @@ test_that("calculate works correctly for time series/SSM recursion", {
               "something other than sequential dependence on the past")
 
   # Check proper handling when providing list of instructions.
-  instrList <- makeInstrList(m, lapply(c(5,3,1,2,4), \(i) instrList[[i]])) 
+  instrList <- makeInstrList(m, instrList[c(5,3,1,2,4)])
   sortIDs <- lapply(instrList, \(x) x$sortID)
   expect_true(all(diff(sapply(sortIDs, \(x) min(x,na.rm=TRUE))) >= 0))
   expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))))
@@ -829,11 +824,19 @@ test_that("calculate works correctly for time series/SSM recursion", {
   expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))),
               "something other than sequential dependence on the past")
 
-  # Check proper handling when providing list of instructions.
-  instrList <- makeInstrList(m, lapply(c(5,3,1,2,4), \(i) instrList[[i]])) 
+  # Check idempotency
+  instrList <- makeInstrList(m, instrList)
   sortIDs <- lapply(instrList, \(x) x$sortID)
-  expect_true(all(diff(sapply(sortIDs, \(x) min(x,na.rm=TRUE))) >= 0))
-  expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))))
+  expect_true(all(diff(sapply(sortIDs, \(x) min(x,na.rm=TRUE))) >= 0), "incorrect order")
+  expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))),
+              "something other than sequential dependence on the past")
+
+  # Check proper handling when providing list of instructions.
+  # This would need to be created as an R list of instrClass objects,
+  # instrList <- makeInstrList(m, lapply(c(5,3,1,2,4), \(i) instrList[[i]])) 
+  # sortIDs <- lapply(instrList, \(x) x$sortID)
+  # expect_true(all(diff(sapply(sortIDs, \(x) min(x,na.rm=TRUE))) >= 0))
+  # expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))))
 
   cmclass <- nCompile(mclass)
   cm <- cmclass$new()
@@ -860,8 +863,7 @@ test_that("calculate works correctly for time series/SSM recursion", {
   expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))),
               "something other than sequential dependence on the past")
 
-  # Check proper handling when providing list of instructions.
-  instrList <- makeInstrList(m, lapply(c(5,3,1,2,4), \(i) instrList[[i]])) 
+  instrList <- makeInstrList(m, instrList[c(5,3,1,2,4,6,9,8,7)])
   sortIDs <- lapply(instrList, \(x) x$sortID)
   expect_true(all(diff(sapply(sortIDs, \(x) min(x,na.rm=TRUE))) >= 0))
   expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))))
@@ -992,19 +994,20 @@ test_that("calculate works correctly for time series/SSM recursion", {
   expect_identical(ranges$sortID, c(5,4,3))
   expect_identical(ranges$multiSortIDindex, 1L)
   expect_identical(ranges$indexingRange$toVarChars(), c("y[4:6, 2]"))
-  scalars <- ranges$makeScalars()
+  scalars <- ranges$makeScalarInstrInfoLists()
   expect_identical(length(scalars), 3L)
   expect_identical(sapply(scalars, \(x) x$sortID), c(5,4,3))
-  expect_identical(sapply(scalars, \(x) x$indexingRange$toVarChars()), c("[4]", "[5]", "[6]"))
+  expect_identical(sapply(scalars, \(x) unlist(x[['values']])), c(4,5,6))
   
   ranges <- m$modelDef$calcRules[['y']]$rules[[2]]$makeCalcRange(m$modelDef$calcRules[['y']]$rules[[2]]$apply('y[2,c(7,5)]'))
   expect_identical(ranges$sortID, c(5,3))
   expect_identical(ranges$multiSortIDindex, 1L)
   expect_identical(ranges$indexingRange$toVarChars(), c("y[4, 2]", "y[6, 2]"))
-  scalars <- ranges$makeScalars()                 
+  scalars <- ranges$makeScalarInstrInfoLists()
   expect_identical(length(scalars), 2L)
   expect_identical(sapply(scalars, \(x) x$sortID), c(5,3))
-  expect_identical(sapply(scalars, \(x) x$indexingRange$toVarChars()), c("[4]", "[6]"))
+  expect_identical(sapply(scalars, \(x) unlist(x[['values']])), c(4,6))
+
 
   code <- nimbleCode({
     for(i in 2:6)  
@@ -1017,18 +1020,18 @@ test_that("calculate works correctly for time series/SSM recursion", {
   ranges <- m$modelDef$calcRules[['y']]$rules[[1]]$makeCalcRange(m$modelDef$calcRules[['y']]$rules[[1]]$apply('y[3:5]'))
   expect_identical(ranges$sortID, c(4,6,8))
   expect_identical(ranges$indexingRange$toVarChars(), "y[3:5]")
-  scalars <- ranges$makeScalars()
+  scalars <- ranges$makeScalarInstrInfoLists()
   expect_identical(length(scalars), 3L)
   expect_identical(sapply(scalars, \(x) x$sortID), c(4,6,8))
-  expect_identical(sapply(scalars, \(x) x$indexingRange$toVarChars()), c("[3]", "[4]", "[5]"))
+  expect_identical(sapply(scalars, \(x) unlist(x[['values']])), c(3,4,5))
   
   ranges <- m$modelDef$calcRules[['lifted_rho_times_y_oBi_minus_1_cB_L2']]$rules[[1]]$makeCalcRange(m$modelDef$calcRules[['lifted_rho_times_y_oBi_minus_1_cB_L2']]$rules[[1]]$apply('lifted_rho_times_y_oBi_minus_1_cB_L2[3:5]'))
   expect_identical(ranges$sortID, c(3,5,7))
   expect_identical(ranges$indexingRange$toVarChars(), "lifted_rho_times_y_oBi_minus_1_cB_L2[3:5]")
-  scalars <- ranges$makeScalars()
+  scalars <- ranges$makeScalarInstrInfoLists()
   expect_identical(length(scalars), 3L)
   expect_identical(sapply(scalars, \(x) x$sortID), c(3,5,7))
-  expect_identical(sapply(scalars, \(x) x$indexingRange$toVarChars()), c("[3]", "[4]", "[5]"))
+  expect_identical(sapply(scalars, \(x) unlist(x[['values']])), c(3,4,5))
   
 })
 
@@ -1078,28 +1081,28 @@ test_that("basic creation of list of instr_nClass objects", {
     data <- list(y = matrix(rnorm(20), 5))
     m <- nimbleModel(code, data = data)
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(2:5)), newIndexRange(quote(1:3))), varName = 'y'))[[1]]
-    expect_identical(instr$type, 4)
+    expect_identical(instr$instr_type, 4)
 
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(2:5)), newIndexRange(matrix(c(1,4),ncol=1))), varName = 'y'))[[1]]
-    expect_identical(instr$type, 5)
+    expect_identical(instr$instr_type, 5)
     
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(matrix(c(1,4),ncol=1)), newIndexRange(quote(2:5))), varName = 'y'))[[1]]
-    expect_identical(instr$type, 6)
+    expect_identical(instr$instr_type, 6)
     
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(matrix(c(1,4),ncol=1)), newIndexRange(matrix(c(2,4),ncol=1))), varName = 'y'))[[1]]
-    expect_identical(instr$type, 7)
+    expect_identical(instr$instr_type, 7)
 
     ## order is shuffled to put first index slot in first range
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(2:5)), newIndexRange(matrix(c(1,4),ncol=1))),
                                                 rangeToIndexSlot=list(2,1), varName = 'y'))[[1]]
-    expect_identical(instr$type, 6)
+    expect_identical(instr$instr_type, 6)
     expect_identical(instr$slots, c(1,2))
     expect_identical(instr$index_types, c(2,1))
 
     ## order is shuffled to put first index slot in first range
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(matrix(c(1,4),ncol=1)), newIndexRange(quote(2:5))),
                                                 rangeToIndexSlot=list(2,1), varName = 'y'))[[1]]
-    expect_identical(instr$type, 5)
+    expect_identical(instr$instr_type, 5)
     expect_identical(instr$slots, c(1,2))
     expect_identical(instr$index_types, c(1,2))
 
@@ -1115,28 +1118,28 @@ test_that("basic creation of list of instr_nClass objects", {
     data <- list(y = matrix(rnorm(20), 4))
     m <- nimbleModel(code, data = data)
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(1:3)), newIndexRange(quote(2:5))), varName = 'y'))[[1]]
-    expect_identical(instr$type, 4)
+    expect_identical(instr$instr_type, 4)
 
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(1:3)), newIndexRange(matrix(c(2,5),ncol=1))), varName = 'y'))[[1]]
-    expect_identical(instr$type, 6)  # shuffled
+    expect_identical(instr$instr_type, 6)  # shuffled
     
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(matrix(c(1,4),ncol=1)), newIndexRange(quote(2:5))), varName = 'y'))[[1]]
-    expect_identical(instr$type, 5)  # shuffled
+    expect_identical(instr$instr_type, 5)  # shuffled
     
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(matrix(c(1,4),ncol=1)), newIndexRange(matrix(c(2,5),ncol=1))), varName = 'y'))[[1]]
-    expect_identical(instr$type, 7)
+    expect_identical(instr$instr_type, 7)
 
     ## order is shuffled to put first index slot in first range
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(2:5)), newIndexRange(matrix(c(1,4),ncol=1))),
                                                 rangeToIndexSlot=list(2,1), varName = 'y'))[[1]]
-    expect_identical(instr$type, 5)
+    expect_identical(instr$instr_type, 5)
     expect_identical(instr$slots, c(1,2))
     expect_identical(instr$index_types, c(1,2))
 
     ## order is shuffled to put first index slot in first range
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(matrix(c(1,5),ncol=1)), newIndexRange(quote(2:4))),
                                                 rangeToIndexSlot=list(2,1), varName = 'y'))[[1]]
-    expect_identical(instr$type, 6)
+    expect_identical(instr$instr_type, 6)
     expect_identical(instr$slots, c(1,2))
     expect_identical(instr$index_types, c(2,1))
 
@@ -1156,14 +1159,14 @@ test_that("basic creation of list of instr_nClass objects", {
     expect_identical(instr$slots, c(1,2,3))
     expect_identical(instr$index_types, c(1,2))
     expect_identical(instr$values[[2]], c(1,2,2,3))
-    expect_identical(instr$type, 8) # seq_matp
+    expect_identical(instr$instr_type, 8) # seq_matp
 
     data <- list(y = array(rnorm(60),c(5,4,3)))
     m <- nimbleModel(code, data = data)
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(2:5)), newIndexRange(quote(1:2)),
                                                      newIndexRange(quote(1:2))), 
                                                 varName = 'y'))[[1]]
-    expect_identical(instr$type, 12) # allseq
+    expect_identical(instr$instr_type, 12) # allseq
 
 
     ## indexRange order is shuffled to put first index slot in first indexRange.
@@ -1172,7 +1175,7 @@ test_that("basic creation of list of instr_nClass objects", {
     expect_identical(instr$slots, c(1,3,2))  # shuffled
     expect_identical(instr$index_types, c(2,1))
     expect_identical(instr$values[[1]], c(1,2,2,3))
-    expect_identical(instr$type, 9) # seq_matp
+    expect_identical(instr$instr_type, 9) # seq_matp
 
     ## order within the matrix indexRange is shuffled to be ascending.
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(2:5)), newIndexRange(matrix(c(1,2,2,3),ncol=2,byrow=TRUE))),
@@ -1180,11 +1183,11 @@ test_that("basic creation of list of instr_nClass objects", {
     expect_identical(instr$slots, c(1,3,2))  # shuffled
     expect_identical(instr$index_types, c(2,1))
     expect_identical(instr$values[[1]], c(2,1,3,2))  # shuffled
-    expect_identical(instr$type, 9) # seq_matp
+    expect_identical(instr$instr_type, 9) # seq_matp
 
     instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(matrix(c(1,3),ncol=1)), newIndexRange(matrix(c(1,2,2,3),ncol=2,byrow=TRUE))),
                                                 varName = 'y'))[[1]]
-    expect_identical(instr$type, 10)
+    expect_identical(instr$instr_type, 10)
 
     ## Check technique of building and copying nList(instr_nClass) as a method.
     instr_nClass <- nimbleModel:::instr_nClass  # work-around for scoping
@@ -1344,7 +1347,125 @@ test_that("simulation without data nodes", {
     set.seed(1)
     cm$simulate('y')
     expect_identical(y, cm$y)
+})
+
+test_that("column-major node/variable ordering when converted to chars", {
+    code <- nimbleCode({
+        for(i in 1:2)
+            for(j in 1:3)
+                y[i,j] ~ dnorm(0,1)
+    })
     
+    m <- nimbleModel(code)
+    grid <- expand.grid(1:2,1:3)
+    truth <- paste0('y[', apply(grid, 1, \(x) paste0(x[1], ", ", x[2])), ']')
+    expect_identical(m$getNodes(nodesAsChars=TRUE), truth)
+    expect_identical(m$getNodeNames(), truth)
+    expect_identical(m$expandNodeNames('y'), truth)
+    expect_identical(m$getDependencies('y', self=TRUE)[[1]]$toVarChars(expandScalars=TRUE), truth)
+    
+    code <- nimbleCode({
+        for(i in 1:2)
+            for(j in 1:3)
+                y[j,i] ~ dnorm(0,1)
+    })
+    
+    m <- nimbleModel(code)
+    grid <- expand.grid(1:3,1:2)
+    truth <- paste0('y[', apply(grid, 1, \(x) paste0(x[1], ", ", x[2])), ']')
+    expect_identical(m$getNodes(nodesAsChars=TRUE), truth)
+    expect_identical(m$getNodeNames(), truth)
+    expect_identical(m$expandNodeNames('y'), truth)
+    expect_identical(m$getDependencies('y', self=TRUE)[[1]]$toVarChars(expandScalars=TRUE), truth)
+   
+    code <- nimbleCode({
+        for(i in 1:2)
+            for(j in 1:3)
+                y[i,k[j]] ~ dnorm(0,1)
+    })
+    
+    m <- nimbleModel(code, constants = list(k=c(3,4,1)))
+    grid <- expand.grid(1:2,c(1,3,4))
+    truth <- paste0('y[', apply(grid, 1, \(x) paste0(x[1], ", ", x[2])), ']')
+    
+    expect_identical(m$getNodes(nodesAsChars=TRUE), truth)
+    expect_identical(m$getDependencies('y', self=TRUE)[[1]]$toVarChars(expandScalars=TRUE), truth)
+    
+    code <- nimbleCode({
+        for(i in 1:2)
+            for(j in 1:3)
+                y[k[i],l[j]] ~ dnorm(0,1)
+    })
+    
+    m <- nimbleModel(code, constants = list(k=c(3,1), l = c(3,4,1)))
+    grid <- expand.grid(c(1,3),c(1,3,4))
+    truth <- paste0('y[', apply(grid, 1, \(x) paste0(x[1], ", ", x[2])), ']')
+    
+    expect_identical(m$getNodes(nodesAsChars=TRUE), truth)
+    expect_identical(m$getDependencies('y', self=TRUE)[[1]]$toVarChars(expandScalars=TRUE), truth)
+ 
+    code <- nimbleCode({
+        for(i in 1:2)
+            for(j in 1:3)
+                y[k[j],i,k[j]+1] ~ dnorm(0,1)
+    })
+    
+    m <- nimbleModel(code, constants = list(k=c(3,4,1)))
+    truth <- c("y[1, 1, 2]","y[3, 1, 4]","y[4, 1, 5]","y[1, 2, 2]","y[3, 2, 4]","y[4, 2, 5]")
+    
+    expect_identical(m$getNodes(nodesAsChars=TRUE), truth)
+    expect_identical(m$getDependencies('y', self=TRUE)[[1]]$toVarChars(expandScalars=TRUE), truth)
+                     
+    code <- nimbleCode({
+        for(i in 1:2)
+            for(j in 1:3)
+                y[1:4,i,j] ~ dmnorm(z[1:4],pr[1:4,1:4])
+    })
+    
+    m <- nimbleModel(code)
+    grid <- expand.grid(1:2,1:3)
+    truth <- paste0('y[1:4, ', apply(grid, 1, \(x) paste0(x[1], ", ", x[2])), ']')
+
+    expect_identical(m$getNodes('y',nodesAsChars=TRUE), truth)
+
+    grid <- expand.grid(1:4,1:2,1:3)
+    truth <- paste0('y[', apply(grid, 1, \(x) paste0(x[1], ", ", x[2], ", ", x[3])), ']')
+    expect_identical(m$getNodes('y',nodesAsChars=TRUE, returnScalarComponents=TRUE), truth)
+    expect_identical(m$getDependencies('y', self=TRUE)[[1]]$toVarChars(expandScalars=TRUE), truth)
+
+    code <- nimbleCode({
+        for(i in 1:2)
+            for(j in 1:3)
+                y[i,1:4,j] ~ dmnorm(z[1:4],pr[1:4,1:4])
+    })
+    
+    m <- nimbleModel(code)
+    grid <- expand.grid(1:2,1:3)
+    truth <- paste0('y[', apply(grid, 1, \(x) paste0(x[1], ", 1:4, ", x[2])), ']')
+
+    expect_identical(m$getNodes('y',nodesAsChars=TRUE), truth)
+
+    grid <- expand.grid(1:2,1:4,1:3)
+    truth <- paste0('y[', apply(grid, 1, \(x) paste0(x[1], ", ", x[2], ", ", x[3])), ']')
+    expect_identical(m$getNodes('y',nodesAsChars=TRUE, returnScalarComponents=TRUE), truth)
+    expect_identical(m$getDependencies('y', self=TRUE)[[1]]$toVarChars(expandScalars=TRUE), truth)
+
+    code <- nimbleCode({
+        for(i in 1:2)
+            for(j in 1:3)
+                y[i,j,1:4] ~ dmnorm(z[1:4],pr[1:4,1:4])
+    })
+    
+    m <- nimbleModel(code)
+    grid <- expand.grid(1:2,1:3)
+    truth <- paste0('y[', apply(grid, 1, \(x) paste0(x[1], ", ", x[2], ", 1:4")), ']')
+
+    expect_identical(m$getNodes('y',nodesAsChars=TRUE), truth)
+
+    grid <- expand.grid(1:2,1:3,1:4)
+    truth <- paste0('y[', apply(grid, 1, \(x) paste0(x[1], ", ", x[2], ", ", x[3])), ']')
+    expect_identical(m$getNodes('y',nodesAsChars=TRUE, returnScalarComponents=TRUE), truth)
+    expect_identical(m$getDependencies('y', self=TRUE)[[1]]$toVarChars(expandScalars=TRUE), truth)
 })
 
 test_that("isData", {
@@ -1422,10 +1543,10 @@ test_that("non-constant block indexing", {
             y[i, n1[i]:n2[i]] ~ dmnorm(mu[n1[i]:n2[i]], pr[n1[i]:n2[i],n1[i]:n2[i]])
     })
     model <- nimbleModel(code, data=list(y=matrix(rnorm(7*6),7)), constants = list(mu=rep(0,6), pr=diag(6),n1 = c(3,1,2), n2 = c(6,3,3)))
+    
     expect_identical(model$getNodes('y',nodesAsChars=TRUE),
-                     c(paste0("y[1, ", 3:6, "]"),
-                       paste0("y[2, ", 1:3, "]"),
-                       paste0("y[3, ", 2:3, "]")))
+                     c("y[2, 1]", "y[2, 2]", "y[3, 2]", "y[1, 3]", "y[2, 3]",
+                       "y[3, 3]", "y[1, 4]", "y[1, 5]", "y[1, 6]"))
                        
     truth <- dmnorm_chol(model$y[1,3:6],rep(0,4),diag(4), log=TRUE)+
         dmnorm_chol(model$y[2,1:3],rep(0,3),diag(3), log=TRUE)+
@@ -1440,9 +1561,9 @@ test_that("non-constant block indexing", {
     })
     model <- nimbleModel(code, data=list(y=matrix(rnorm(7*6),7)), constants = list(mu=rep(0,6), pr=diag(6),n1 = c(3,1,2), n2 = c(5,3,4)))
     expect_identical(model$getNodes('y',nodesAsChars=TRUE),
-                     c(paste0("y[1, ", 3:5, "]"),
-                       paste0("y[2, ", 1:3, "]"),
-                       paste0("y[3, ", 2:4, "]")))
+                     c("y[2, 1]", "y[2, 2]", "y[3, 2]", "y[1, 3]", "y[2, 3]",
+                       "y[3, 3]", "y[1, 4]", "y[3, 4]", "y[1, 5]"))
+    
     truth <- dmnorm_chol(model$y[1,3:5],rep(0,3),diag(3), log=TRUE)+
         dmnorm_chol(model$y[2,1:3],rep(0,3),diag(3), log=TRUE)+
         dmnorm_chol(model$y[3,2:4],rep(0,3),diag(3), log=TRUE)

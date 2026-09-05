@@ -20,7 +20,7 @@ public:
     template<auto Method>
     double  calc_op_ ( std::shared_ptr<instr_nClass> instr ) {
         RESET_EIGEN_ERRORS;
-        int instr_type = instr->type;
+        int instr_type = instr->instr_type;
         if(instr_type == 0) return calc_0_< Method >(instr);
         if(instr_type == 1) return calc_1_seq_< Method >(instr);
         if(instr_type == 2) return calc_1_mat_< Method >(instr);
@@ -602,7 +602,7 @@ public:
     // simulate
     void  simulate_cpp ( std::shared_ptr<instr_nClass> instr ) {
         RESET_EIGEN_ERRORS;
-        int instr_type = instr->type;
+        int instr_type = instr->instr_type;
         if(instr_type == 0) return sim_0_(instr);
         if(instr_type == 1) return sim_1_seq_(instr);
         if(instr_type == 2) return sim_1_mat_(instr);

@@ -243,15 +243,13 @@ varRangeClass <- R6Class(
         } else {
           externalMatrix <- crossIndexRanges(indexRanges)$values
         } # not ordered
-        tmp <- t(apply(externalMatrix, 1, as.character))
-        if (ncol(externalMatrix) == 1) {
-          tmp <- t(tmp)
-        }
         indicesList <- list()
         indices <- unlist(rangeToIndexSlot)
         for (i in seq_along(indices)) {
-          indicesList[[indices[i]]] <- tmp[, i]
+          indicesList[[indices[i]]] <- externalMatrix[, i]
         }
+        ord <- do.call(order, indicesList[sort(sapply(rangeToIndexSlot, \(x) x[1]), decreasing = TRUE)])  # Enforce column-major, but using only first index in nonseparable cases).
+        indicesList <- lapply(indicesList, \(x) x[ord])
         return(paste0(varName, "[", do.call(pasteIndices, indicesList), "]"))
       }
 
@@ -275,12 +273,8 @@ varRangeClass <- R6Class(
         } else {
           externalMatrix <- crossIndexRanges(indexRanges[boolMatrixIndexRanges])$values
         } # not ordered
-        tmp <- t(apply(externalMatrix, 1, as.character))
-        if (ncol(externalMatrix) == 1) {
-          tmp <- t(tmp)
-        }
         for (i in seq_along(matrixIndices)) {
-          indicesList[[matrixIndices[i]]] <- tmp[, i]
+          indicesList[[matrixIndices[i]]] <- externalMatrix[, i]
         }
       }
       return(paste0(varName, "[", do.call(pasteIndices, indicesList), "]"))

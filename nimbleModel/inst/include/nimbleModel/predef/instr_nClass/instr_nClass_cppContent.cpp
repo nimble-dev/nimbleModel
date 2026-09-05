@@ -45,7 +45,7 @@ field("nDim", &instr_nClass::nDim),
 field("dims", &instr_nClass::dims),
 field("slots", &instr_nClass::slots),
 field("values", &instr_nClass::values),
-field("type", &instr_nClass::type),
+field("instr_type", &instr_nClass::instr_type),
 field("sortID", &instr_nClass::sortID),
 field("declID", &instr_nClass::declID)
 ),
