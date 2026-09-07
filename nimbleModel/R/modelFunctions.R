@@ -87,6 +87,8 @@ getNodes <- function(model, nodes,
     }
   }
 
+  result <- aggregate_nodes(result)
+
   if (.sort) {
     # Ordering is only relevant at calcRange stage and a single nodeRange can contain
     # elements with various sortIDs, so we convert to nodeChars first and then get their
@@ -224,7 +226,13 @@ aggregate_nodes <- function(nodeSet) {
   if (is.character(nodeSet) || !is.list(nodeSet)) {
     stop("`nodeSet` must be a list of nodeRanges")
   }
-  declIDs <- sapply(nodeSet, \(x) x$decl$declRule$ID)
+  declIDs <- lapply(nodeSet, \(x) x$decl$declRule$ID)
+
+  nullCases <- sapply(declIDs, is.null)
+  RHSonly <- nodeSet[nullCases]
+
+  nodeSet <- nodeSet[!nullCases]
+  declIDs <- unlist(declIDs[!nullCases])
   nodeIDs <- lapply(nodeSet, \(x) x$getIDs())
   IDsByDecl <- lapply(split(nodeIDs, declIDs), \(x) unique(nimbleModel:::flatten(x)))
   nms <- names(IDsByDecl)
@@ -235,7 +243,7 @@ aggregate_nodes <- function(nodeSet) {
       decl$declRule$getOriginalIndexing(IDsByDecl[[i]]), decl
     ))
   })
-  return(newNodeSet)
+  return(c(newNodeSet, RHSonly))
 }
 
 #' @export

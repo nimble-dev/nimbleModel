@@ -621,7 +621,6 @@ test_that("five index slots", {
                             rangeToIndexSlot = list(1, c(2,4,5), 3),
                             varName = 'y')
     inds <- vr$extractIndexRange(1:5)$values
-    inds <- inds[order(inds[,1],inds[,5],inds[,3]),]  # ordering is based on index sets
     truth <- sum(dnorm(m$y[inds], log=TRUE))
     expect_equal(m$calculate(vr), truth)
     expect_equal(cm$calculate(vr), truth)
@@ -1682,8 +1681,20 @@ test_that("non-constant block indexing", {
     expect_identical(model$getLogProb('y'), truth) 
 })
 
+ 
+test_that("duplication cases", {
+    code <- nimbleCode({
+        for(i in 1:3)
+            y[i] ~ dnorm(0,1)
+        z[1:3] ~ dmnorm(mu[1:3], pr[1:3,1:3])
+    })
+    set.seed(1)
+    m <- nimbleModel(code, data = list(y=rnorm(3), z=rnorm(3)))
 
-
-
-
+    expect_identical(m$getNodes(c('y[1]','y[1]', 'y[2]'), nodesAsChars = TRUE),
+                     c('y[1]','y[2]'))
     
+    expect_identical(m$getNodes(c('z[1]','z[2]'), nodesAsChars = TRUE),
+                     c('z[1:3]'))
+
+})
