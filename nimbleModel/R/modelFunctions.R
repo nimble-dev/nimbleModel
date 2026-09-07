@@ -233,15 +233,18 @@ aggregate_nodes <- function(nodeSet) {
 
   nodeSet <- nodeSet[!nullCases]
   declIDs <- unlist(declIDs[!nullCases])
+  names(nodeSet) <- declIDs
   nodeIDs <- lapply(nodeSet, \(x) x$getIDs())
   IDsByDecl <- lapply(split(nodeIDs, declIDs), \(x) unique(nimbleModel:::flatten(x)))
   nms <- names(IDsByDecl)
   newNodeSet <- lapply(seq_along(IDsByDecl), \(i) {
-    whichDecl <- match(nms[i], declIDs)
-    decl <- nodeSet[[whichDecl]]$decl
-    return(decl$declRule$originalIndexingRule$apply_reverse(
-      decl$declRule$getOriginalIndexing(IDsByDecl[[i]]), decl
-    ))
+    if(sum(nms[i] == declIDs) > 1) {
+      whichDecl <- match(nms[i], declIDs)
+      decl <- nodeSet[[whichDecl]]$decl
+      return(decl$declRule$originalIndexingRule$apply_reverse(
+        decl$declRule$getOriginalIndexing(IDsByDecl[[i]]), decl
+      ))
+    } else return(nodeSet[[nms[i]]])
   })
   return(c(newNodeSet, RHSonly))
 }
