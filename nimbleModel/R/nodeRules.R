@@ -581,6 +581,31 @@ calcRangeClass <- R6Class(
   )
 )
 
+aggregate_calcRanges <- function(rangeSet) {
+  if (!length(rangeSet)) {
+    return(rangeSet)
+  }
+  if (is.character(rangeSet) || !is.list(rangeSet) ||
+      !all(sapply(rangeSet, \(x) inherits(x, 'calcRangeClass')))) {
+    stop("`rangeSet` must be a list of calcRanges")
+  }
+  declIDs <- sapply(rangeSet, \(x) x$declID)
+  rangesByDecl <- split(rangeSet, declIDs)
+  lens <- sapply(rangesByDecl, length)
+  if(exists('paciorek')) browser()
+  if(any(lens > 1)) {
+    for(i in which(lens > 1)) {
+      result <- combine_indexingRanges(rangesByDecl[[i]][[1]], rangesByDecl[[i]][[2]])
+      idx <- 3
+      while(idx <= lens[[i]]) {
+        result <- combine_indexingRanges(result, rangesByDecl[[i]][[idx]])
+        idx <- idx+1
+      }
+      rangesByDecl[[i]] <- result
+    }
+  }
+  return(unlist(rangesByDecl)) # flatten()?
+}
 
 # Class for managing a set of like nodes (same declaration, but not necessarily same graph role or same sort ID).
 # Basically a `varRange` but with indication of which indexRanges relate to node indexing (external indexRanges)

@@ -202,3 +202,14 @@ evalNumeric <- function(expr) {
   }
   return(expr)
 }
+
+# Flatten nested lists.
+flatten <- function(x) {
+  result <- do.call(c, x)
+  names(result) <- NULL
+  if (identical(result, list(NULL))) {
+    return(NULL)
+  }
+  result <- result[!sapply(result, is.null)]
+  return(result)
+}

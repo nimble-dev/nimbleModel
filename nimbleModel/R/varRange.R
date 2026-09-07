@@ -403,19 +403,19 @@ removeDuplicateVarRangesOne <- function(varRanges) {
   return(varRanges[!dups])
 }
 
-# Flatten nested lists.
-flatten <- function(x) {
-  result <- do.call(c, x)
-  names(result) <- NULL
-  if (identical(result, list(NULL))) {
-    return(NULL)
-  }
-  result <- result[!sapply(result, is.null)]
-  return(result)
+
+combine_indexingRanges <- function(range1, range2) {
+  if(!identical(range1$rangeToIndexSlot, range2$rangeToIndexSlot))
+    stop("unexpected incompatibility between indexing ranges when combining calcRanges")
+  range <- range1$clone()
+  for(i in seq_along(range$indexingRange$indexRanges))
+    range$indexingRange$indexRanges[[i]] <- combine_indexRanges(range1$indexingRange$indexRanges[[i]], range2$indexingRange$indexRanges[[i]])
+  return(range)
 }
 
 
 # TODO: need combine() that combines "adjacent" varRanges
+# the a
 
 # scalar+seq = seq
 # seq + seq = seq

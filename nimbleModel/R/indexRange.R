@@ -416,3 +416,65 @@ matrixExpandGrid <- function(matrixList) {
   )
   return(do.call("cbind", unfoldedMatrices))
 }
+
+combine_indexRanges <- function(range1, range2) {
+  if(is(range1, 'indexRangeMatrixClass') && is(range2, 'indexRangeMatrixClass'))
+    return(newIndexRange(unique(rbind(range1$values, range2$values))))
+  if(is(range1, 'indexRangeMatrixClass') && is(range2, 'indexRangeSequenceClass')) {
+    tmp <- range1; range1 <- range2; range2 <- tmp
+  }
+  if(is(range1, 'indexRangeSequenceClass') && is(range2, 'indexRangeMatrixClass')) {
+    keep <- range2$values < range1$start | range2$values >= range1$start + range1$numElements
+    newValues <- range2$values[keep]
+    if(length(newValues)) {
+      range2 <- newIndexRange(newValues)
+      return(c(range1, range2))
+    } else return(range1)
+  }
+  if(is(range1, 'indexRangeMatrixClass') && is(range2, 'indexRangeScalarClass')) {
+    tmp <- range1; range1 <- range2; range2 <- tmp
+  }
+  if(is(range1, 'indexRangeScalarClass') && is(range2, 'indexRangeMatrixClass')) {
+    if(range1$value %in% range2$values)
+      return(range2)
+    return(newIndexRange(c(range1$value, range2$values)))
+  }
+  if(is(range1, 'indexRangeSequenceClass') && is(range2, 'indexRangeScalarClass')) {
+    tmp <- range1; range1 <- range2; range2 <- tmp
+  }
+  if(is(range1, 'indexRangeScalarClass') && is(range2, 'indexRangeSequenceClass')) {
+    if(range1$value >= range2$start && range1$value < range2$start + range2$numElements)
+      return(range2)
+    if(range1$value == range2$start - 1)
+      return(newIndexRange(substitute(START:END, list(START=range2$start - 1, END=range2$start+range2$numElements-1))))
+    if(range1$value == range2$start + range2$numElements)
+      return(newIndexRange(substitute(START:END, list(START=range2$start, END=range2$start+range2$numElements))))
+    return(list(range2, range1))
+  }
+  if(is(range1, 'indexRangeScalarClass') && is(range2, 'indexRangeScalarClass')) {
+    if(range1$value == range2$value)
+      return(range1)
+    if(abs(range1$value - range2$value) == 1) {
+      vals <- sort(c(range1$value, range2$value))
+      return(newIndexRange(substitute(START:END, list(START=vals[1],END=vals[1]+1))))
+    }
+    return(newIndexRange(c(range1$value, range2$value)))
+  }
+  if(is(range1, 'indexRangeSequenceClass') && is(range2, 'indexRangeSequenceClass')) {
+    if(range2$start < range1$start) {
+      tmp <- range1; range1 <- range2; range2 <- tmp
+    }
+    if(range1$start == range2$start)
+      return(newIndexRange(substitute(START:END, list(START=range1$start,
+                                                      END=range1$start+max(c(range1$numElements,range2$numElements))-1))))
+    if(range2$start <= range1$start+range1$numElements) 
+      return(newIndexRange(substitute(START:END, list(START=range1$start,
+                                                      END=max(c(range1$start+range1$numElements-1),
+                                                              range2$start+range2$numElements-1)))))
+    return(c(range1, range2))
+  }
+  stop("Unexpected input ranges")
+} 
+  
+
+       
