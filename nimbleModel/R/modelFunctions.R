@@ -8,7 +8,7 @@ getNodes <- function(model, nodes,
                      includePredictive = TRUE, predictiveOnly = FALSE,
                      nodesAsChars = getNimbleModelOption("nodesAsChars"),
                      returnScalarComponents = FALSE,
-                     .sort = FALSE) {
+                     .sort = FALSE, .aggregate = TRUE) {
   if (!missing(nodes) && is.null(nodes)) {
     return(nodes)
   }
@@ -87,7 +87,8 @@ getNodes <- function(model, nodes,
     }
   }
 
-  result <- aggregate_nodes(result)
+  if(.aggregate)
+    result <- aggregate_nodes(result)
 
   if (.sort) {
     # Ordering is only relevant at calcRange stage and a single nodeRange can contain
@@ -160,9 +161,8 @@ expandNodeNames <- function(model, nodes, returnScalarComponents = FALSE,
   }
   result <- getNodes(model, nodes,
     includeRHSonly = TRUE, nodesAsChars = TRUE,
-    returnScalarComponents = returnScalarComponents, .sort = sort
-  )
-  if (unique) result <- unique(result)
+    returnScalarComponents = returnScalarComponents,
+    .sort = sort, .aggregate = unique)
   return(result)
 }
 

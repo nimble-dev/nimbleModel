@@ -1049,25 +1049,25 @@ test_that("basic creation of list of instr_nClass objects", {
     expect_identical(instr0$lens, 1)
     expect_identical(length(instr0$values), 0L)
     expect_identical(instr0$index_types, 0)
-    expect_identical(instr0$type, 0)
+    expect_identical(instr0$instr_type, 0)
 
     instr1 <- makeInstrList(m, 'y[3:4]')[[1]]
     expect_identical(instr1$lens, 2)
     expect_identical(instr1$values[[1]], 3) # offset
     expect_identical(instr1$index_types, 1)
-    expect_identical(instr1$type, 1)
+    expect_identical(instr1$instr_type, 1)
 
     instr2 <- makeInstrList(m, c('y[c(2,5)]'))[[1]]
     expect_identical(instr2$lens, 2)
     expect_identical(instr2$values[[1]], c(2,5))
     expect_identical(instr2$index_types, 2)
-    expect_identical(instr2$type, 2)
+    expect_identical(instr2$instr_type, 2)
 
     instr2 <- makeInstrList(m, varRangeClass$new(list(newIndexRange(matrix(c(2,5), ncol=1))), varName='y'))[[1]]
     expect_identical(instr2$lens, 2)
     expect_identical(instr2$values[[1]], c(2,5))
     expect_identical(instr2$index_types, 2)
-    expect_identical(instr2$type, 2)
+    expect_identical(instr2$instr_type, 2)
 
     ## This does some testing of multiple index cases but could be fleshed out further.
     code <- quote({

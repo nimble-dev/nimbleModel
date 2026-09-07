@@ -72,7 +72,7 @@ test_that("old model API calls", {
   expect_identical(chars, c("x", "mu", "lifted_mu_plus_x", "y[1, 1]","y[2, 1]","y[1, 2]", "y[2, 2]", "y[1, 3]", "y[2, 3]"))
 
   chars <- m$expandNodeNames(c('mu','y','x'))
-  expect_identical(chars, c("mu", "y[1, 1]","y[2, 1]","y[1, 2]", "y[2, 2]", "y[1, 3]", "y[2, 3]", "x"))
+  expect_identical(chars, c("y[1, 1]","y[2, 1]","y[1, 2]", "y[2, 2]", "y[1, 3]", "y[2, 3]", "mu", "x"))
   chars <- m$expandNodeNames(c('mu','y','x'), sort = TRUE)
   expect_identical(chars, c("x", "mu", "y[1, 1]","y[2, 1]","y[1, 2]", "y[2, 2]", "y[1, 3]", "y[2, 3]"))
   chars <- m$topologicallySortNodes(c('mu','y','x'))
