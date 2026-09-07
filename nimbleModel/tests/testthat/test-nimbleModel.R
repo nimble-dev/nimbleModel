@@ -1697,4 +1697,101 @@ test_that("duplication cases", {
     expect_identical(m$getNodes(c('z[1]','z[2]'), nodesAsChars = TRUE),
                      c('z[1:3]'))
 
+    code <- nimbleCode({
+    for(i in 1:3)
+        y[i] ~ dnorm(0,1)
+    y[4] ~ dnorm(0,1)
+    })
+    set.seed(99)
+    mclass <- nimbleModel(code, data = list(y=rnorm(4)), returnClass = TRUE)
+    cmclass <- nCompile(mclass)
+    m <- mclass$new()
+    cm <- cmclass$new()
+
+    result <- sum(dnorm(m$y[c(1,2,4)], log=TRUE))
+    expect_identical(m$calculate(c('y[1]','y[4]','y[1]','y[2]')),
+                     result)
+    expect_identical(cm$calculate(c('y[1]','y[4]','y[1]','y[2]')),
+                     result)
+
+    set.seed(1)
+    vals <- rnorm(3)
+    set.seed(1)
+    m$simulate(c('y[1]','y[4]','y[1]','y[2]'), includeData = TRUE)
+    expect_identical(vals, m$y[c(1,2,4)])
+    set.seed(1)
+    cm$simulate(c('y[1]','y[4]','y[1]','y[2]'), includeData = TRUE)
+    expect_identical(vals, cm$y[c(1,2,4)])
+
+    code <- nimbleCode({
+        for(i in 1:3)
+            for(j in 1:2)
+                y[i,j] ~ dnorm(0,1)
+    })
+    set.seed(99)
+    mclass <- nimbleModel(code, data = list(y=matrix(rnorm(6),3)), returnClass = TRUE)
+    cmclass <- nCompile(mclass)
+    m <- mclass$new()
+    cm <- cmclass$new()
+
+    nodes <- c('y[1,2]','y[1,2]','y[1:2,2]')
+    result <- sum(dnorm(c(m$y[1,2],m$y[2,2]),log=TRUE))
+    expect_identical(m$calculate(nodes), result)
+    expect_identical(cm$calculate(nodes), result)
+
+    set.seed(1)
+    vals <- rnorm(2)
+    set.seed(1)
+    m$simulate(nodes, includeData = TRUE)
+    expect_identical(vals, c(m$y[1,2],m$y[2,2]))
+    set.seed(1)
+    cm$simulate(nodes, includeData = TRUE)
+    expect_identical(vals, c(m$y[1,2],m$y[2,2]))
+
+    code <- nimbleCode({
+        y[1:3] ~ dmnorm(z[1:3],pr[1:3,1:3])
+    })
+    set.seed(99)
+    mclass <- nimbleModel(code, data = list(y=rnorm(3)), inits = list(z=rep(0,3),pr=diag(3)), returnClass = TRUE)
+    # cmclass <- nCompile(mclass)
+    m <- mclass$new()
+    # cm <- cmclass$new()
+
+    ## TODO: add compiled simulate when {d,r}mnorm_chol is resolved.
+    m$calculate()
+    nodes <- c('y[1]','y[2]')
+    result <- sum(dnorm(m$y,log=TRUE))
+    expect_equal(m$calculate(nodes), result)
+    
+    set.seed(1)
+    vals <- rnorm(3)
+    set.seed(1)
+    m$simulate(nodes, includeData = TRUE)
+    expect_identical(vals, m$y)
+
+    # With SSM situation.
+    code <- nimbleCode({
+        for(i in 3:8) {
+            y[i] <- y[i-1] + mu
+        }
+    })
+    mclass <- nimbleModel(code, returnClass = TRUE)
+    cmclass <- nCompile(mclass)
+    m <- mclass$new()
+    cm <- cmclass$new()
+    m$y[8] <- 99
+    cm$y[8] <- 99
+    m$y[2] <- 1
+    cm$y[2] <- 1
+    m$mu <- 1.5
+    cm$mu <- 1.5
+
+    expected <- c(1,2.5,4,5.5,7,8.5,99)
+    
+    nodes <- c('y[4:7]','y[3:5]')
+    m$calculate(nodes)
+    cm$calculate(nodes)
+    expect_identical(expected, m$y[2:8])
+    expect_identical(expected, cm$y[2:8])
+
 })
