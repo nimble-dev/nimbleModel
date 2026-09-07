@@ -176,7 +176,7 @@ test_that("getConditionallyIndependentSets works in model with one set and deter
 
   SMN <- setupMargNodes(m, paramNodes = "REA1")
   expect_identical(SMN$randomEffectsNodes[[1]]$toNodeChars(), c('REA2'))
-  expect_identical(unlist(lapply(SMN$calcNodes, \(x) x$toNodeChars())), c('REA2','D3','D3C3','Y1'))
+  expect_identical(unlist(lapply(SMN$calcNodes, \(x) x$toNodeChars())), c('D3C3','Y1','REA2','D3'))
 
   SMN <- setupMargNodes(m, calcNodes = m$getDependencies("REB2"))
   expect_identical(unlist(lapply(SMN$paramNodes, \(x) x$toNodeChars())), c("REA2", "REB1"))
@@ -216,7 +216,7 @@ test_that("getConditionallyIndependentSets works in state-space model with a cou
 
   SMN <- setupMargNodes(m)
   expect_identical(SMN$paramNodes[[1]]$toNodeChars(), "x[1]")
-  expect_identical(unlist(lapply(SMN$randomEffectsNodes, \(x) x$toNodeChars())), c("x[4]","x[2]","x[3]"))
+  expect_identical(unlist(lapply(SMN$randomEffectsNodes, \(x) x$toNodeChars())), c("x[2]","x[3]","x[4]"))
 
   SMN <- setupMargNodes(m, randomEffectsNodes = 'x[1:4]')
   expect_identical(SMN$paramNodes, NULL)
@@ -259,7 +259,7 @@ test_that("getConditionallyIndependentSets works in double-state state-space mod
   expect_identical(getConditionallyIndependentSets(m, givenNodes = c("y", "w[3]"), unknownAsGiven=FALSE),
                    list(c("x[1]", "w[1]", "x[2]", "x[3]", "x[4]", "w[2]", "w[4]")))
   expect_identical(getConditionallyIndependentSets(m, givenNodes = c("y", "x[3]", "w[3]"), unknownAsGiven=FALSE),
-                   list(c("x[4]", "w[4]"), c("x[1]", "w[1]", "x[2]", "w[2]")))
+                   list(c("x[1]", "w[1]", "x[2]", "w[2]"), c("x[4]", "w[4]")))
   expect_true(nimble:::testConditionallyIndependentSets(m, getConditionallyIndependentSets(m)))
 
   SMN <- setupMargNodes(m)

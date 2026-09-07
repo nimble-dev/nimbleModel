@@ -1204,7 +1204,7 @@ test_that("basic check of graph interface", {
                      c('theta'))
     result <- getNodes(model, c('theta','y'))
     expect_identical(sapply(result, function(node) node$varName),
-                     c('theta','y'))
+                     c('y','theta'))
 
     result <- getDependencies(model$modelDef, 'mu0')
     expect_identical(sapply(result, function(node) node$varName),
@@ -1375,7 +1375,7 @@ test_that("basic hierarchical models", {
 
     result <- getNodes(model, c('z[1:5]', 'mu'))
     expect_identical(sapply(result, function(node) node$varName),
-                     c('z','mu'))
+                     c('mu','z'))
 
     result <- getNodes(model, topOnly = TRUE)
     expect_identical(sapply(result, function(node) node$varName),
@@ -1668,9 +1668,8 @@ test_that("state-space model", {
                      list(newIndexRange(1)))
 
     result <- getNodes(model, latentOnly = TRUE)
-    expect_length(result, 3)
-    expect_identical(sapply(result, function(node) node$varName),
-                     rep('z',3))
+    expect_length(result, 1)
+    expect_identical(result[[1]]$varName, 'z')
 
     result <- getDependencies(modelDef, 'z')
     expect_length(result, 3)

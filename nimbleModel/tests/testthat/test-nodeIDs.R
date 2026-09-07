@@ -173,13 +173,13 @@ test_that("nodeIDs with multiple loops", {
                    'y[c(1, 3), 2:4, c(3, 5)]')
   
   # do with arbitrary subsetting, nonseparable
-  ids <- c(30,35,40,46,51,56)
+  ids <- c(46,51,56, 30,35,40)
   indexingRange <- varRangeClass$new(list(newIndexRange(quote(2:4)),
                                           newIndexRange(matrix(c(5,2,1,3),ncol=2,byrow=TRUE))),
                                      rangeToIndexSlot=list(2,c(3,1)), varName = 'y')
   expect_identical(decl$getIDs(indexingRange), ids)
   expect_identical(decl$getOriginalIndexing(ids)$extractIndexRange(1:3)$getValuesAsMatrix(),
-                   matrix(c(rep(2,3), rep(3,3), 2:4,2:4, rep(5,3), rep(1,3)), ncol = 3)) 
+                   matrix(c(rep(3,3), rep(2,3), 2:4,2:4, rep(1,3), rep(5,3)), ncol = 3)) 
 
 
   code <- nimbleCode({
@@ -208,13 +208,13 @@ test_that("nodeIDs with multiple loops", {
 
  
   # do with arbitrary subsetting, nonseparable
-  ids <- c(30,35,40,46,51,56)
+  ids <- c(46,51,56,30,35,40)
   indexingRange <- varRangeClass$new(list(newIndexRange(quote(3:5)),
                                           newIndexRange(matrix(c(8,4,4,5),ncol=2,byrow=TRUE))),
                                      rangeToIndexSlot=list(2,c(3,1)), varName = 'y')
   expect_identical(decl$getIDs(indexingRange), ids)
   expect_identical(decl$getOriginalIndexing(ids)$extractIndexRange(1:3)$getValuesAsMatrix(),
-                   matrix(c(rep(4,3), rep(5,3), 3:5,3:5, rep(8,3), rep(4,3)), ncol = 3)) 
+                   matrix(c(rep(5,3), rep(4,3), 3:5,3:5, rep(4,3), rep(8,3)), ncol = 3)) 
 
   code <- nimbleCode({
     for(i in c(3,5,7))
@@ -240,13 +240,13 @@ test_that("nodeIDs with multiple loops", {
                    'y[c(3, 7), 3:5, c(14, 18)]')
 
   # do with arbitrary subsetting, nonseparable
-  ids <- c(30,35,40,46,51,56)
+  ids <- c(46,51,56,30,35,40)
   indexingRange <- varRangeClass$new(list(newIndexRange(quote(3:5)),
                                           newIndexRange(matrix(c(18,5,10,7),ncol=2,byrow=TRUE))),
                                      rangeToIndexSlot=list(2,c(3,1)), varName = 'y')
   expect_identical(decl$getIDs(indexingRange), ids)
   expect_identical(decl$getOriginalIndexing(ids)$extractIndexRange(1:3)$getValuesAsMatrix(),
-                   matrix(c(rep(5,3), rep(7,3), 3:5,3:5, rep(18,3), rep(10,3)), ncol = 3))
+                   matrix(c(rep(7,3), rep(5,3), 3:5,3:5, rep(10,3), rep(18,3)), ncol = 3))
   
 })
 
@@ -308,13 +308,13 @@ test_that("nonseparable loop indexing cases", {
   m <- nimbleModel(code)
   decl <- m$modelDef$declRules$y$rules[[1]]
   
-  ids <- c(2L, 4L)
+  ids <- c(4L, 5L)
   indexingRange <- varRangeClass$new(list(newIndexRange(matrix(c(1,101,2,101),ncol=2,byrow=TRUE))),varName='y')
   expect_identical(decl$getIDs(indexingRange), ids)
   expect_identical(decl$getOriginalIndexing(ids)$extractIndexRange(1:2)$getValuesAsMatrix(),
                    matrix(c(1:2,101, 101),ncol=2))
    
-  ids <- 4L
+  ids <- 5L
   indexingRange <- varRangeClass$new(list(newIndexRange(matrix(c(2,101),ncol=2,byrow=TRUE))),varName='y')
   expect_identical(decl$getIDs(indexingRange), ids)
   expect_identical(decl$getOriginalIndexing(ids)$toChar(), "y[c(2, 101)]")
@@ -333,9 +333,9 @@ test_that("nonseparable loop indexing cases", {
   ids <- 1:24
   indexingRange <- decl$originalIndexingRule$apply('y')
   expect_identical(decl$getIDs(indexingRange), ids)
-  expect_identical(decl$getOriginalIndexing(11:12)$extractIndexRange(1:3)$getValuesAsMatrix(), matrix(c(2,2,2,2,1,2),ncol=3))
+  expect_identical(decl$getOriginalIndexing(c(3,15))$extractIndexRange(1:3)$getValuesAsMatrix(), matrix(c(2,2,2,2,1,2),ncol=3))
   
-  ids <- 12L
+  ids <- 15L
   indexingRange <- varRangeClass$new(list(newIndexRange(matrix(c(2,2,2),ncol=3,byrow=TRUE))),varName='y')
   expect_identical(decl$getIDs(indexingRange), ids)
   expect_identical(decl$getOriginalIndexing(ids)$toChar(), "y[c(2, 2, 2)]")

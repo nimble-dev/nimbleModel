@@ -193,6 +193,7 @@ makeInstrList <- function(model, input, includeData = TRUE, use_vec = FALSE) {
       rule$makeCalcRange(rule$apply(vr))
     })
   }))
+
   sortIDs <- lapply(ranges, \(x) x$sortID)
   sortIDranges <- sapply(sortIDs, \(x) range(x, na.rm = TRUE))
   multiSortID <- which(sortIDranges[1, ] != sortIDranges[2, ])

@@ -8,7 +8,7 @@ getNodes <- function(model, nodes,
                      includePredictive = TRUE, predictiveOnly = FALSE,
                      nodesAsChars = getNimbleModelOption("nodesAsChars"),
                      returnScalarComponents = FALSE,
-                     .sort = FALSE) {
+                     .sort = FALSE, .aggregate = TRUE) {
   if (!missing(nodes) && is.null(nodes)) {
     return(nodes)
   }
@@ -87,6 +87,9 @@ getNodes <- function(model, nodes,
     }
   }
 
+  if(.aggregate)
+    result <- aggregate_nodes(result)
+
   if (.sort) {
     # Ordering is only relevant at calcRange stage and a single nodeRange can contain
     # elements with various sortIDs, so we convert to nodeChars first and then get their
@@ -158,9 +161,8 @@ expandNodeNames <- function(model, nodes, returnScalarComponents = FALSE,
   }
   result <- getNodes(model, nodes,
     includeRHSonly = TRUE, nodesAsChars = TRUE,
-    returnScalarComponents = returnScalarComponents, .sort = sort
-  )
-  if (unique) result <- unique(result)
+    returnScalarComponents = returnScalarComponents,
+    .sort = sort, .aggregate = unique)
   return(result)
 }
 
@@ -224,7 +226,13 @@ aggregate_nodes <- function(nodeSet) {
   if (is.character(nodeSet) || !is.list(nodeSet)) {
     stop("`nodeSet` must be a list of nodeRanges")
   }
-  declIDs <- sapply(nodeSet, \(x) x$decl$declRule$ID)
+  declIDs <- lapply(nodeSet, \(x) x$decl$declRule$ID)
+
+  nullCases <- sapply(declIDs, is.null)
+  RHSonly <- nodeSet[nullCases]
+
+  nodeSet <- nodeSet[!nullCases]
+  declIDs <- unlist(declIDs[!nullCases])
   nodeIDs <- lapply(nodeSet, \(x) x$getIDs())
   IDsByDecl <- lapply(split(nodeIDs, declIDs), \(x) unique(nimbleModel:::flatten(x)))
   nms <- names(IDsByDecl)
@@ -235,7 +243,7 @@ aggregate_nodes <- function(nodeSet) {
       decl$declRule$getOriginalIndexing(IDsByDecl[[i]]), decl
     ))
   })
-  return(newNodeSet)
+  return(c(newNodeSet, RHSonly))
 }
 
 #' @export
