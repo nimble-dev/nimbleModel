@@ -604,7 +604,7 @@ aggregate_calcRanges <- function(rangeSet) {
       rangesByDecl[[i]] <- result
     }
   }
-  return(unlist(rangesByDecl)) # flatten()?
+  return(flatten(rangesByDecl))
 }
 
 # Class for managing a set of like nodes (same declaration, but not necessarily same graph role or same sort ID).
