@@ -621,6 +621,7 @@ test_that("five index slots", {
                             rangeToIndexSlot = list(1, c(2,4,5), 3),
                             varName = 'y')
     inds <- vr$extractIndexRange(1:5)$values
+    inds <- inds[order(inds[,1]),]  # Separable sets, so order is based on looping order.
     truth <- sum(dnorm(m$y[inds], log=TRUE))
     expect_equal(m$calculate(vr), truth)
     expect_equal(cm$calculate(vr), truth)
