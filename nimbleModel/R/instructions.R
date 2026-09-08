@@ -178,11 +178,9 @@ makeInstrList <- function(model, input, includeData = TRUE, use_vec = FALSE) {
     stop("unexpected type for `input` argument")
   }
 
-  if (!includeData) {
-    input <- model$getNodes(input, includeData = FALSE, nodesAsChars = FALSE)
-    if (!length(input)) {
-      return(NULL)
-    }
+  input <- model$getNodes(input, includeData = includeData)
+  if (!length(input)) {
+    return(NULL)
   }
 
   # First apply calcRule to get overlap between input and the rule.
