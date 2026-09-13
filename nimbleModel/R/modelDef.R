@@ -1024,53 +1024,6 @@ modelDefClass <- R6Class(
 )
 
 
-# Core graph and node querying functions in the model API.
-# These are standalone functions for now, but may become
-# part of model class. That said, more naturally part of modelDef class.
-
-# Note: `getDependencies` and `getParents` cannot handle `stochOnly` or `determOnly`
-# because a given varRange result for getParents could be partially stochastic and
-# partially deterministic. Instead a user would pass the result through `getNodes()`.
-# Similarly, filtering by RHSonly will be done in `getNodes()`.
-
-getDependencies <- function(model, nodes,
-                            self = TRUE, determOnly = FALSE, stochOnly = FALSE,
-                            includeData = TRUE, dataOnly = FALSE,
-                            includePredictive = nimble::getNimbleOption('getDependenciesIncludesPredictiveNodes'),
-                            predictiveOnly = FALSE, includeRHSonly = FALSE,
-                            downstream = FALSE, immediateOnly = FALSE,
-                            nodesAsChars = getNimbleModelOption("nodesAsChars"),
-                            returnScalarComponents = FALSE, .sort = FALSE) {
-  traverseGraph(model$modelDef$downstreamRules, model$modelDef$declRules,
-    nodes = nodes,
-    down = TRUE, self = self,
-    determOnly = determOnly, stochOnly = stochOnly,
-    includeData = includeData, dataOnly = dataOnly, includePredictive = includePredictive,
-    predictiveOnly = predictiveOnly, includeRHSonly = includeRHSonly,
-    follow = downstream, immediateOnly = immediateOnly,
-    nodesAsChars = nodesAsChars, returnScalarComponents = returnScalarComponents,
-    .sort = .sort, model = model
-  )
-}
-
-getParents <- function(model, nodes,
-                       self = FALSE, determOnly = FALSE, stochOnly = FALSE,
-                       includeData = TRUE, dataOnly = FALSE, includeRHSonly = FALSE,
-                       upstream = FALSE, immediateOnly = FALSE,
-                       nodesAsChars = getNimbleModelOption("nodesAsChars"),
-                       returnScalarComponents = FALSE, .sort = FALSE) {
-  traverseGraph(model$modelDef$upstreamRules, model$modelDef$declRules,
-    nodes = nodes,
-    down = FALSE, self = self,
-    determOnly = determOnly, stochOnly = stochOnly,
-    includeData = includeData, dataOnly = dataOnly, includePredictive = TRUE,
-    predictiveOnly = FALSE, includeRHSonly = includeRHSonly,
-    follow = upstream, immediateOnly = immediateOnly,
-    nodesAsChars = nodesAsChars, returnScalarComponents = returnScalarComponents,
-    .sort = .sort, model = model
-  )
-}
-
 
 # Evaluates `if` statements in model code to generate actual model code
 # without any `if` statements. Condition of if statement can use variables

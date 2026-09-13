@@ -216,6 +216,46 @@ taggedClass <- R6Class(
   )
 )
 
+getDependencies <- function(model, nodes,
+                            self = TRUE, determOnly = FALSE, stochOnly = FALSE,
+                            includeData = TRUE, dataOnly = FALSE,
+                            includePredictive = nimble::getNimbleOption('getDependenciesIncludesPredictiveNodes'),
+                            predictiveOnly = FALSE, includeRHSonly = FALSE,
+                            downstream = FALSE, immediateOnly = FALSE,
+                            nodesAsChars = getNimbleModelOption("nodesAsChars"),
+                            returnScalarComponents = FALSE, .sort = FALSE) {
+  traverseGraph(model$modelDef$downstreamRules, model$modelDef$declRules,
+    nodes = nodes,
+    down = TRUE, self = self,
+    determOnly = determOnly, stochOnly = stochOnly,
+    includeData = includeData, dataOnly = dataOnly, includePredictive = includePredictive,
+    predictiveOnly = predictiveOnly, includeRHSonly = includeRHSonly,
+    follow = downstream, immediateOnly = immediateOnly,
+    nodesAsChars = nodesAsChars, returnScalarComponents = returnScalarComponents,
+    .sort = .sort, model = model
+  )
+}
+
+getParents <- function(model, nodes,
+                       self = FALSE, determOnly = FALSE, stochOnly = FALSE,
+                       includeData = TRUE, dataOnly = FALSE, includeRHSonly = FALSE,
+                       upstream = FALSE, immediateOnly = FALSE,
+                       nodesAsChars = getNimbleModelOption("nodesAsChars"),
+                       returnScalarComponents = FALSE, .sort = FALSE) {
+  traverseGraph(model$modelDef$upstreamRules, model$modelDef$declRules,
+    nodes = nodes,
+    down = FALSE, self = self,
+    determOnly = determOnly, stochOnly = stochOnly,
+    includeData = includeData, dataOnly = dataOnly, includePredictive = TRUE,
+    predictiveOnly = FALSE, includeRHSonly = includeRHSonly,
+    follow = upstream, immediateOnly = immediateOnly,
+    nodesAsChars = nodesAsChars, returnScalarComponents = returnScalarComponents,
+    .sort = .sort, model = model
+  )
+}
+
+
+
 # This may not optimally aggregate in cases without contiguity - e.g., 2:4 + 6:8 will become a matrix, even though
 # it may be more efficient to leave it as two nodeRanges.
 #' @export
