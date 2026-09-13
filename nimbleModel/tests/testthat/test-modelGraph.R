@@ -2598,5 +2598,10 @@ test_that("handling RHSonly with getParents", {
     })
     m <- nimbleModel(code)
     expect_identical(m$getParents('y[2]', includeRHSonly = TRUE, nodesAsChars = TRUE), "mu[2]")
+
+    expect_identical(m$getParents('y[2]', includeRHSonly = TRUE, nodesAsChars = TRUE, .sort = TRUE),
+                     c("mu[2]"))
+    expect_identical(m$getParents('y[2]', self = TRUE, includeRHSonly = TRUE, nodesAsChars = TRUE, .sort = TRUE),
+                     c("mu[2]","y[2]"))
     
 })

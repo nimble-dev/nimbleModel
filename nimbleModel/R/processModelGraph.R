@@ -276,15 +276,24 @@ traverseGraph <- function(streamRules, declRules,
     # elements with various sortIDs, so we convert to nodeChars first and then get their
     # sortID by creating a temporary calcRange for each.
     nodeChars <- unlist(lapply(results, \(nr) nr$toNodeChars()))
-    calcRanges <- flatten(lapply(nodeChars, function(node) {
-      lapply(model$modelDef$calcRules[[getVarName(node)]]$rules, function(rule) {
+    calcRanges <- lapply(nodeChars, function(node) {
+      calcRange <- flatten(lapply(model$modelDef$calcRules[[getVarName(node)]]$rules, function(rule) {
         rule$makeCalcRange(rule$apply(node))
-      })
-    }))
+      }))
+      if(length(calcRange) > 1) stop("unexpected multiple calcRange results from single nodeRange")
+      if(length(calcRange) == 1) calcRange <- calcRange[[1]]
+      return(calcRange)
+    })
     if (length(nodeChars) != length(calcRanges)) {
       stop("unexpected mismatch between node character representation and calcRanges in `getNodes` sorting")
     }
-    ord <- order(sapply(calcRanges, \(x) x$sortID))
+    ord <- order(sapply(calcRanges, \(x) {
+      if(inherits(x,'calcRangeClass')) {
+        return(x$sortID)
+      } else {
+        return(-Inf) # This handles RHSonly.
+      }
+    }))
     results <- nodeChars[ord]
     if (returnScalarComponents) {
       results <- unlist(lapply(results, \(x) varRangeClass$new(x)$toVarChars(expandScalars = TRUE)))
