@@ -922,8 +922,7 @@ splitLatents <- function(model, paramNodes, latentNodes, calcNodes, calcNodesOth
     latentNodes <- margNodes$randomEffectsNodes
     deps <- model$getNodes(model$getDependencies(latentNodes, self = FALSE, nodesAsChars = FALSE), includeData = FALSE, nodesAsChars = FALSE)
     ## By default, we treat "siblings" of latent nodes as latents.
-    ## This attempts to have fixed effects in latents,
-    ## along with random effects.
+    ## This attempts to have fixed effects in latents, along with random effects.
     newLatents <- model$getNodes(model$getParents(deps, nodesAsChars = FALSE), stochOnly = TRUE, includeData = FALSE, nodesAsChars = FALSE)
     paramNodes <- setdiff_nodes(paramNodes, newLatents)
     latentNodes <- aggregate_nodes(c(latentNodes, newLatents))
