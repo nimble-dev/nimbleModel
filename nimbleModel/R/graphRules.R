@@ -98,6 +98,7 @@ graphRuleClass <- R6Class(
       applyGraphRule(fromVarRange, self, removeDuplicates = removeDuplicates)
     },
     getFromRange = function() {
+      # Returns maximal extent; so for y[2:5], it returns 1:5; same for y[c(2,5)].
       if (!length(indexSets$fromIndexSlotToSet)) { # no indexing
         varRange <- varRangeClass$new(fromVarName)
       } else {
