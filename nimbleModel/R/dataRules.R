@@ -151,7 +151,7 @@ makeRulePieces <- function(elements, varName, all, sequenceThreshold = 0.1) {
 }
 
 
-excludeFromPredictiveRules <- function(modelDef, currentRanges, candidateRules) {
+excludeFromPredictiveRules <- function(model, currentRanges, candidateRules) {
   if (!length(candidateRules)) {
     return(NULL)
   }
@@ -164,8 +164,8 @@ excludeFromPredictiveRules <- function(modelDef, currentRanges, candidateRules) 
     } else {
       candidateRules[[varName]] <- NULL
     }
-    parents <- getParents(modelDef, range, nodesAsChars = FALSE)
-    candidateRules <- excludeFromPredictiveRules(modelDef, parents, candidateRules)
+    parents <- getParents(model, range, nodesAsChars = FALSE)
+    candidateRules <- excludeFromPredictiveRules(model, parents, candidateRules)
   }
   return(candidateRules)
 }

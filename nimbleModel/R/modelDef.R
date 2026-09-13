@@ -1028,45 +1028,46 @@ modelDefClass <- R6Class(
 # These are standalone functions for now, but may become
 # part of model class. That said, more naturally part of modelDef class.
 
-# TODO: move these functions into a new stand-alone code file for user-facing functions?
-
 # Note: `getDependencies` and `getParents` cannot handle `stochOnly` or `determOnly`
 # because a given varRange result for getParents could be partially stochastic and
 # partially deterministic. Instead a user would pass the result through `getNodes()`.
 # Similarly, filtering by RHSonly will be done in `getNodes()`.
 
-# Note: data-related flags not handled as that relates to flags on a model
-# and not part of modelDef.
-
-# TODO: these should presumably take the model not modelDef as the first arg.
-# Once we integrate modelClass with modelBase_nClass, we should be able to
-# pass `self` from the getDeps and getParents methods to these functions.
-
-getDependencies <- function(modelDef, nodes,
-                            self = TRUE,
+getDependencies <- function(model, nodes,
+                            self = TRUE, determOnly = FALSE, stochOnly = FALSE,
+                            includeData = TRUE, dataOnly = FALSE,
+                            includePredictive = nimble::getNimbleOption('getDependenciesIncludesPredictiveNodes'),
+                            predictiveOnly = FALSE, includeRHSonly = FALSE,
                             downstream = FALSE, immediateOnly = FALSE,
                             nodesAsChars = getNimbleModelOption("nodesAsChars"),
                             returnScalarComponents = FALSE, .sort = FALSE) {
-  traverseGraph(modelDef$downstreamRules, modelDef$declRules,
+  traverseGraph(model$modelDef$downstreamRules, model$modelDef$declRules,
     nodes = nodes,
     down = TRUE, self = self,
+    determOnly = determOnly, stochOnly = stochOnly,
+    includeData = includeData, dataOnly = dataOnly, includePredictive = includePredictive,
+    predictiveOnly = predictiveOnly, includeRHSonly = includeRHSonly,
     follow = downstream, immediateOnly = immediateOnly,
     nodesAsChars = nodesAsChars, returnScalarComponents = returnScalarComponents,
-    .sort = .sort, modelDef = modelDef
+    .sort = .sort, model = model
   )
 }
 
-getParents <- function(modelDef, nodes,
-                       self = FALSE,
+getParents <- function(model, nodes,
+                       self = FALSE, determOnly = FALSE, stochOnly = FALSE,
+                       includeData = TRUE, dataOnly = FALSE, includeRHSonly = FALSE,
                        upstream = FALSE, immediateOnly = FALSE,
                        nodesAsChars = getNimbleModelOption("nodesAsChars"),
                        returnScalarComponents = FALSE, .sort = FALSE) {
-  traverseGraph(modelDef$upstreamRules, modelDef$declRules,
+  traverseGraph(model$modelDef$upstreamRules, model$modelDef$declRules,
     nodes = nodes,
     down = FALSE, self = self,
+    determOnly = determOnly, stochOnly = stochOnly,
+    includeData = includeData, dataOnly = dataOnly, includePredictive = TRUE,
+    predictiveOnly = FALSE, includeRHSonly = includeRHSonly,
     follow = upstream, immediateOnly = immediateOnly,
     nodesAsChars = nodesAsChars, returnScalarComponents = returnScalarComponents,
-    .sort = .sort, modelDef = modelDef
+    .sort = .sort, model = model
   )
 }
 

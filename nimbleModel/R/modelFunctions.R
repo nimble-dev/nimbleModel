@@ -236,6 +236,7 @@ aggregate_nodes <- function(nodeSet) {
   names(nodeSet) <- declIDs
   nodeIDs <- lapply(nodeSet, \(x) x$getIDs())
   IDsByDecl <- lapply(split(nodeIDs, declIDs), \(x) unique(nimbleModel:::flatten(x)))
+  IDsByDecl <- IDsByDecl[unique(declIDs)]  # Try to keep in order provided.
   nms <- names(IDsByDecl)
   newNodeSet <- lapply(seq_along(IDsByDecl), \(i) {
     if(sum(nms[i] == declIDs) > 1) {
@@ -288,6 +289,16 @@ setdiff_nodes <- function(nodeSet1, nodeSet2) {
   }
   declIDs1 <- sapply(nodeSet1, \(x) x$decl$declRule$ID)
   declIDs2 <- sapply(nodeSet2, \(x) x$decl$declRule$ID)
+
+  nullCases <- sapply(declIDs1, is.null)
+  RHSonly <- nodeSet1[nullCases]
+  nodeSet1 <- nodeSet1[!nullCases]
+  declIDs1 <- unlist(declIDs1[!nullCases])
+
+  nullCases <- sapply(declIDs2, is.null)
+  nodeSet2 <- nodeSet2[!nullCases]
+  declIDs2 <- unlist(declIDs2[!nullCases])
+
   nodeIDs1 <- lapply(nodeSet1, \(x) x$getIDs())
   nodeIDs2 <- lapply(nodeSet2, \(x) x$getIDs())
   excludeNodeIDs <- lapply(split(nodeIDs2, declIDs2), \(x) unique(nimbleModel:::flatten(x)))
@@ -301,7 +312,7 @@ setdiff_nodes <- function(nodeSet1, nodeSet2) {
       )
     }
   }
-  return(newNodeSet1[!sapply(newNodeSet1, is.null)])
+  return(c(newNodeSet1[!sapply(newNodeSet1, is.null)], RHSonly))
 }
 
 #' @export
