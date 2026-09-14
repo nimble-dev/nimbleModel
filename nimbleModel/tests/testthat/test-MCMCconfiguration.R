@@ -2,7 +2,6 @@
 ## how to create and add to an MCMC configuration, using
 ## a nodeRange or varRange.
 
-library(nimbleModel)
 code <- quote({
     for(i in 1:5) {
         y[i] ~ dnorm(mu, sd = sigma)

@@ -239,7 +239,7 @@ conjugacyRelationshipsClass <- R6Class(
 
       # CHECK: is this sufficiently efficient? Is getting a char representation the best strategy?
       targetNode <- getNodes(model, nodes = nodeRange$toNodeChars(1), nodesAsChars = FALSE)[[1]] # First node as representative.
-      deps <- getNodes(model, getDependencies(model$modelDef, targetNode, self = FALSE, nodesAsChars = FALSE), stochOnly = TRUE, nodesAsChars = FALSE)
+      deps <- getNodes(model, getDependencies(model, targetNode, self = FALSE, nodesAsChars = FALSE), stochOnly = TRUE, nodesAsChars = FALSE)
 
       depTypes <- sapply(deps, function(x) conjugacyObj$checkConjugacyOneDep(model, targetNode, x, restrictLink))
 
@@ -396,8 +396,8 @@ conjugacyClass <- R6Class(
     genSetupFunction = function(dependentCounts, doDependentScreen = FALSE) {
       functionBody <- codeBlockClass()
       functionBody$addCode({
-        calcNodes <- getNodes(model, getDependencies(model$modelDef, target, nodesAsChars = FALSE), nodesAsChars = FALSE)
-        calcNodesDeterm <- getNodes(model, getDependencies(model$modelDef, target, nodesAsChars = FALSE), determOnly = TRUE, nodesAsChars = FALSE)
+        calcNodes <- getNodes(model, getDependencies(model, target, nodesAsChars = FALSE), nodesAsChars = FALSE)
+        calcNodesDeterm <- getNodes(model, getDependencies(model, target, nodesAsChars = FALSE), determOnly = TRUE, nodesAsChars = FALSE)
       })
 
       # if this conjugate sampler is for a multivariate node (i.e., nDim > 0), then we need to determine the size (d)

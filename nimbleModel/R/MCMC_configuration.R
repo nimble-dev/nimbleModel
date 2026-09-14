@@ -28,7 +28,7 @@ samplerConfClass <- R6Class(
       if (name == "crossLevel") {
         control <<- c(
           control,
-          list(dependent_nodes = getNodes(model, getDependencies(model$modelDef, target, self = FALSE, nodesAsChars = FALSE), stochOnly = TRUE, nodesAsChars = FALSE))
+          list(dependent_nodes = getNodes(model, getDependencies(model, target, self = FALSE, nodesAsChars = FALSE), stochOnly = TRUE, nodesAsChars = FALSE))
         )
       } # special case for printing dependents of crossLevel sampler (only)
     },
