@@ -1024,52 +1024,6 @@ modelDefClass <- R6Class(
 )
 
 
-# Core graph and node querying functions in the model API.
-# These are standalone functions for now, but may become
-# part of model class. That said, more naturally part of modelDef class.
-
-# TODO: move these functions into a new stand-alone code file for user-facing functions?
-
-# Note: `getDependencies` and `getParents` cannot handle `stochOnly` or `determOnly`
-# because a given varRange result for getParents could be partially stochastic and
-# partially deterministic. Instead a user would pass the result through `getNodes()`.
-# Similarly, filtering by RHSonly will be done in `getNodes()`.
-
-# Note: data-related flags not handled as that relates to flags on a model
-# and not part of modelDef.
-
-# TODO: these should presumably take the model not modelDef as the first arg.
-# Once we integrate modelClass with modelBase_nClass, we should be able to
-# pass `self` from the getDeps and getParents methods to these functions.
-
-getDependencies <- function(modelDef, nodes,
-                            self = TRUE,
-                            downstream = FALSE, immediateOnly = FALSE,
-                            nodesAsChars = getNimbleModelOption("nodesAsChars"),
-                            returnScalarComponents = FALSE, .sort = FALSE) {
-  traverseGraph(modelDef$downstreamRules, modelDef$declRules,
-    nodes = nodes,
-    down = TRUE, self = self,
-    follow = downstream, immediateOnly = immediateOnly,
-    nodesAsChars = nodesAsChars, returnScalarComponents = returnScalarComponents,
-    .sort = .sort, modelDef = modelDef
-  )
-}
-
-getParents <- function(modelDef, nodes,
-                       self = FALSE,
-                       upstream = FALSE, immediateOnly = FALSE,
-                       nodesAsChars = getNimbleModelOption("nodesAsChars"),
-                       returnScalarComponents = FALSE, .sort = FALSE) {
-  traverseGraph(modelDef$upstreamRules, modelDef$declRules,
-    nodes = nodes,
-    down = FALSE, self = self,
-    follow = upstream, immediateOnly = immediateOnly,
-    nodesAsChars = nodesAsChars, returnScalarComponents = returnScalarComponents,
-    .sort = .sort, modelDef = modelDef
-  )
-}
-
 
 # Evaluates `if` statements in model code to generate actual model code
 # without any `if` statements. Condition of if statement can use variables

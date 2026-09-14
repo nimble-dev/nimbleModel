@@ -2,6 +2,7 @@
 modelBase_nClass <- nClass(
   classname = "modelBase_nClass",
   Rpublic = list(
+    thisModel = NULL,
     modelDef = NULL,
     dataRules = NULL,
     nondataRules = NULL,
@@ -12,6 +13,8 @@ modelBase_nClass <- nClass(
       # here is a magic flag.
       if (isTRUE(.GlobalEnv$.debugModelInit)) browser()
       super$initialize(...)
+
+      self$thisModel <- self   # A hack needed because we use `self` as method argument name below.
 
       # TODO: is there a better way to populate declFunNameToIndex in Cpublic?
       declFunNameToIndex <- self$declFunNameToIndex_
@@ -111,7 +114,7 @@ modelBase_nClass <- nClass(
           dataRule$rule$apply(dataRule$varName)
         })
       }))
-      self$predictiveRules <- excludeFromPredictiveRules(modelDef, dataRanges, candidateRules)
+      self$predictiveRules <- excludeFromPredictiveRules(self, dataRanges, candidateRules)
 
       # nonpredictive rules
       candidateRules <- unlist(lapply(modelDef$calcRules, function(oneVarRules) {
@@ -365,24 +368,36 @@ modelBase_nClass <- nClass(
         return(expr)
       }
     },
-    getDependencies = function(nodes, self = TRUE, downstream = FALSE, immediateOnly = FALSE,
+    # `self` arg masks the reference to the object.
+    # TODO: perhaps we should rename the arg `includeSelf`, but that is not back compatible.
+    getDependencies = function(nodes, self = TRUE, determOnly = FALSE, stochOnly = FALSE,
+                               includeData = TRUE, dataOnly = FALSE,
+                               includePredictive = nimble::getNimbleOption('getDependenciesIncludesPredictiveNodes'),
+                               predictiveOnly = FALSE, includeRHSonly = FALSE,
+                               downstream = FALSE, immediateOnly = FALSE,
                                nodesAsChars = getNimbleModelOption("nodesAsChars"),
                                returnScalarComponents = FALSE, .sort = FALSE) {
       nimbleModel::getDependencies(
-        modelDef, nodes, self, downstream, immediateOnly,
+        thisModel, nodes, self,
+        determOnly, stochOnly, includeData, dataOnly,
+        includePredictive, predictiveOnly, includeRHSonly,
+        downstream, immediateOnly,
         nodesAsChars, returnScalarComponents, .sort
       )
     },
-    getParents = function(nodes, self = FALSE, upstream = FALSE, immediateOnly = FALSE,
+    getParents = function(nodes, self = FALSE,
+                          determOnly = FALSE, stochOnly = FALSE,
+                          includeData = TRUE, dataOnly = FALSE, includeRHSonly = FALSE,
+                          upstream = FALSE, immediateOnly = FALSE,
                           nodesAsChars = getNimbleModelOption("nodesAsChars"),
                           returnScalarComponents = FALSE, .sort = FALSE) {
       nimbleModel::getParents(
-        modelDef, nodes, self, upstream, immediateOnly,
+        thisModel, nodes, self,
+        determOnly, stochOnly, includeData, dataOnly, includeRHSonly,        
+        upstream, immediateOnly,
         nodesAsChars, returnScalarComponents, .sort
       )
     },
-    # TODO: not working because `nimbleModel::getNodes` needs the model not just modelDef.
-    # Once we integrate modelClass with modelBase_nClass, we should be able to pass `self`.
     getNodes = function(nodes, determOnly = FALSE, stochOnly = FALSE,
                         includeData = TRUE, dataOnly = FALSE,
                         includeRHSonly = FALSE,

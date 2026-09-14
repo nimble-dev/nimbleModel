@@ -216,6 +216,46 @@ taggedClass <- R6Class(
   )
 )
 
+getDependencies <- function(model, nodes,
+                            self = TRUE, determOnly = FALSE, stochOnly = FALSE,
+                            includeData = TRUE, dataOnly = FALSE,
+                            includePredictive = nimble::getNimbleOption('getDependenciesIncludesPredictiveNodes'),
+                            predictiveOnly = FALSE, includeRHSonly = FALSE,
+                            downstream = FALSE, immediateOnly = FALSE,
+                            nodesAsChars = getNimbleModelOption("nodesAsChars"),
+                            returnScalarComponents = FALSE, .sort = FALSE) {
+  traverseGraph(model$modelDef$downstreamRules, model$modelDef$declRules,
+    nodes = nodes,
+    down = TRUE, self = self,
+    determOnly = determOnly, stochOnly = stochOnly,
+    includeData = includeData, dataOnly = dataOnly, includePredictive = includePredictive,
+    predictiveOnly = predictiveOnly, includeRHSonly = includeRHSonly,
+    follow = downstream, immediateOnly = immediateOnly,
+    nodesAsChars = nodesAsChars, returnScalarComponents = returnScalarComponents,
+    .sort = .sort, model = model
+  )
+}
+
+getParents <- function(model, nodes,
+                       self = FALSE, determOnly = FALSE, stochOnly = FALSE,
+                       includeData = TRUE, dataOnly = FALSE, includeRHSonly = FALSE,
+                       upstream = FALSE, immediateOnly = FALSE,
+                       nodesAsChars = getNimbleModelOption("nodesAsChars"),
+                       returnScalarComponents = FALSE, .sort = FALSE) {
+  traverseGraph(model$modelDef$upstreamRules, model$modelDef$declRules,
+    nodes = nodes,
+    down = FALSE, self = self,
+    determOnly = determOnly, stochOnly = stochOnly,
+    includeData = includeData, dataOnly = dataOnly, includePredictive = TRUE,
+    predictiveOnly = FALSE, includeRHSonly = includeRHSonly,
+    follow = upstream, immediateOnly = immediateOnly,
+    nodesAsChars = nodesAsChars, returnScalarComponents = returnScalarComponents,
+    .sort = .sort, model = model
+  )
+}
+
+
+
 # This may not optimally aggregate in cases without contiguity - e.g., 2:4 + 6:8 will become a matrix, even though
 # it may be more efficient to leave it as two nodeRanges.
 #' @export
@@ -236,6 +276,7 @@ aggregate_nodes <- function(nodeSet) {
   names(nodeSet) <- declIDs
   nodeIDs <- lapply(nodeSet, \(x) x$getIDs())
   IDsByDecl <- lapply(split(nodeIDs, declIDs), \(x) unique(nimbleModel:::flatten(x)))
+  IDsByDecl <- IDsByDecl[unique(declIDs)]  # Try to keep in order provided.
   nms <- names(IDsByDecl)
   newNodeSet <- lapply(seq_along(IDsByDecl), \(i) {
     if(sum(nms[i] == declIDs) > 1) {
@@ -288,6 +329,16 @@ setdiff_nodes <- function(nodeSet1, nodeSet2) {
   }
   declIDs1 <- sapply(nodeSet1, \(x) x$decl$declRule$ID)
   declIDs2 <- sapply(nodeSet2, \(x) x$decl$declRule$ID)
+
+  nullCases <- sapply(declIDs1, is.null)
+  RHSonly <- nodeSet1[nullCases]
+  nodeSet1 <- nodeSet1[!nullCases]
+  declIDs1 <- unlist(declIDs1[!nullCases])
+
+  nullCases <- sapply(declIDs2, is.null)
+  nodeSet2 <- nodeSet2[!nullCases]
+  declIDs2 <- unlist(declIDs2[!nullCases])
+
   nodeIDs1 <- lapply(nodeSet1, \(x) x$getIDs())
   nodeIDs2 <- lapply(nodeSet2, \(x) x$getIDs())
   excludeNodeIDs <- lapply(split(nodeIDs2, declIDs2), \(x) unique(nimbleModel:::flatten(x)))
@@ -301,7 +352,7 @@ setdiff_nodes <- function(nodeSet1, nodeSet2) {
       )
     }
   }
-  return(newNodeSet1[!sapply(newNodeSet1, is.null)])
+  return(c(newNodeSet1[!sapply(newNodeSet1, is.null)], RHSonly))
 }
 
 #' @export
@@ -922,8 +973,7 @@ splitLatents <- function(model, paramNodes, latentNodes, calcNodes, calcNodesOth
     latentNodes <- margNodes$randomEffectsNodes
     deps <- model$getNodes(model$getDependencies(latentNodes, self = FALSE, nodesAsChars = FALSE), includeData = FALSE, nodesAsChars = FALSE)
     ## By default, we treat "siblings" of latent nodes as latents.
-    ## This attempts to have fixed effects in latents,
-    ## along with random effects.
+    ## This attempts to have fixed effects in latents, along with random effects.
     newLatents <- model$getNodes(model$getParents(deps, nodesAsChars = FALSE), stochOnly = TRUE, includeData = FALSE, nodesAsChars = FALSE)
     paramNodes <- setdiff_nodes(paramNodes, newLatents)
     latentNodes <- aggregate_nodes(c(latentNodes, newLatents))

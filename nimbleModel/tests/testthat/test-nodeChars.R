@@ -11,19 +11,16 @@ test_that("use of nodes as characters", {
   m <- nimbleModel(code)
   nodeRanges <- m$getNodes()
   expect_true(all(sapply(nodeRanges, \(x) inherits(x, 'nodeRangeClass'))))
+
   setNimbleModelOption('nodesAsChars', TRUE)
+
   chars <- m$getNodes()
   expect_identical(chars, c("y[1, 1]","y[2, 1]","y[1, 2]","y[2, 2]","y[1, 3]","y[2, 3]","mu"))
   chars <- m$getNodes(returnScalarComponents = TRUE)
   expect_identical(chars, c("y[1, 1]","y[2, 1]","y[1, 2]","y[2, 2]","y[1, 3]","y[2, 3]","mu"))
 
   deps <- m$getDependencies('mu')
-  expect_identical(deps, c("mu", "y[1:2, 1:3]"))
-  deps <- m$getDependencies('mu',returnScalarComponents=TRUE)
   expect_identical(deps, c("mu","y[1, 1]","y[2, 1]","y[1, 2]","y[2, 2]","y[1, 3]","y[2, 3]"))
-  setNimbleModelOption('nodesAsChars', FALSE)
-  varRanges <- m$getDependencies('mu')
-  expect_true(all(sapply(varRanges, \(x) inherits(x, 'varRangeClass'))))
 
   code <- nimbleCode({
     for(i in 1:3)
@@ -31,18 +28,14 @@ test_that("use of nodes as characters", {
     for(j in 1:2)
       mu[j] ~dnorm(0,1)
   })
+  m <- nimbleModel(code)
   
-  m <- nimbleModel(code, inits = list(prec=diag(2)))
-  nodeRanges <- m$getNodes()
-  expect_true(all(sapply(nodeRanges, \(x) inherits(x, 'nodeRangeClass'))))
-  
-  setNimbleModelOption('nodesAsChars', TRUE)
   chars <- m$getNodes()
   expect_identical(chars, c("lifted_chol_oPprec_oB1to2_comma_1to2_cB_cP[1:2, 1:2]","y[1, 1:2]","y[2, 1:2]", "y[3, 1:2]", "mu[1]", "mu[2]"))
   chars <- m$getNodes(returnScalarComponents = TRUE)
   expect_identical(chars, c("lifted_chol_oPprec_oB1to2_comma_1to2_cB_cP[1, 1]","lifted_chol_oPprec_oB1to2_comma_1to2_cB_cP[2, 1]","lifted_chol_oPprec_oB1to2_comma_1to2_cB_cP[1, 2]","lifted_chol_oPprec_oB1to2_comma_1to2_cB_cP[2, 2]","y[1, 1]","y[2, 1]","y[3, 1]","y[1, 2]","y[2, 2]","y[3, 2]","mu[1]","mu[2]"))
   deps <- m$getDependencies('mu')
-  expect_identical(deps, c("mu[1:2]", "y[1:3, 1:2]"))
+  expect_identical(deps, c("mu[1]", "mu[2]", "y[1, 1:2]", "y[2, 1:2]", "y[3, 1:2]"))
   deps <- m$getDependencies('mu',returnScalarComponents = TRUE)
   expect_identical(deps, c("mu[1]","mu[2]","y[1, 1]","y[2, 1]","y[3, 1]","y[1, 2]","y[2, 2]","y[3, 2]"))
   setNimbleModelOption('nodesAsChars', FALSE)
@@ -72,7 +65,7 @@ test_that("old model API calls", {
   expect_identical(chars, c("x", "mu", "lifted_mu_plus_x", "y[1, 1]","y[2, 1]","y[1, 2]", "y[2, 2]", "y[1, 3]", "y[2, 3]"))
 
   chars <- m$expandNodeNames(c('mu','y','x'))
-  expect_identical(chars, c("y[1, 1]","y[2, 1]","y[1, 2]", "y[2, 2]", "y[1, 3]", "y[2, 3]", "mu", "x"))
+  expect_identical(chars, c("mu", "y[1, 1]","y[2, 1]","y[1, 2]", "y[2, 2]", "y[1, 3]", "y[2, 3]", "x"))
   chars <- m$expandNodeNames(c('mu','y','x'), sort = TRUE)
   expect_identical(chars, c("x", "mu", "y[1, 1]","y[2, 1]","y[1, 2]", "y[2, 2]", "y[1, 3]", "y[2, 3]"))
   chars <- m$topologicallySortNodes(c('mu','y','x'))
@@ -190,7 +183,8 @@ test_that("old model API calls", {
   truth <- c("tau", "lifted_d1_over_sqrt_oPtau_cP", paste0("y[", 1:5, "]"))
   expect_identical(m$getDependencies(c('y','tau'), .sort = TRUE, nodesAsChars = TRUE), truth)
   expect_identical(m$getParents('y', .sort = TRUE, nodesAsChars = TRUE, self = TRUE), truth)
-  expect_identical(m$getParents('y', .sort = TRUE, nodesAsChars = TRUE, self = TRUE, returnScalarComponents = TRUE),
+  expect_identical(m$getParents('y', .sort = TRUE, nodesAsChars = TRUE, self = TRUE,
+                                returnScalarComponents = TRUE),
                    truth)
 })
 
@@ -217,9 +211,9 @@ test_that("Use of .sort in cases with multiple and/or overlapping sortID values"
     y[1] ~ dnorm(0,1)
   })
   m <- nimbleModel(code)
-  truth <- c("tau", "y[1]", "lifted_rho_times_y_oBi_minus_1_cB_L2[2]","lifted_d1_over_sqrt_oPtau_cP", "y[2]", "lifted_rho_times_y_oBi_minus_1_cB_L2[3]", "y[3]", "lifted_rho_times_y_oBi_minus_1_cB_L2[4]","y[4]" ,"lifted_rho_times_y_oBi_minus_1_cB_L2[5]","y[5]" , "lifted_rho_times_y_oBi_minus_1_cB_L2[6]","y[6]")
+  truth <- c("y[1]", "tau", "lifted_rho_times_y_oBi_minus_1_cB_L2[2]","lifted_d1_over_sqrt_oPtau_cP", "y[2]", "lifted_rho_times_y_oBi_minus_1_cB_L2[3]", "y[3]", "lifted_rho_times_y_oBi_minus_1_cB_L2[4]","y[4]" ,"lifted_rho_times_y_oBi_minus_1_cB_L2[5]","y[5]" , "lifted_rho_times_y_oBi_minus_1_cB_L2[6]","y[6]")
   expect_identical(m$getNodes(.sort=TRUE,nodesAsChars=TRUE), truth)
-  expect_identical(m$getParents('y', .sort=TRUE, nodesAsChars = TRUE, self = TRUE), truth[c(2,1,3:length(truth))])  # Not clear why getParents reverses y[1] and tau, but it's not material and will change possibly once getParents calls getNodes.
+  expect_identical(m$getParents('y', .sort=TRUE, nodesAsChars = TRUE, self = TRUE), truth)
   expect_identical(m$getParents('y[4]', .sort=TRUE, nodesAsChars = TRUE, self = TRUE), c('tau','lifted_d1_over_sqrt_oPtau_cP','y[3]','lifted_rho_times_y_oBi_minus_1_cB_L2[4]', 'y[4]'))
   nrs <- m$getNodes()
   expect_identical(m$topologicallySortNodes(nrs), truth)

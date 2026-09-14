@@ -61,7 +61,7 @@ test_that("avoid using indexing values from global", {
 
     p <- 3
     expect_error(getNodes(model, 'y[1:p]'), "must involve two positive")
-    expect_error(getDependencies(model$modelDef, 'y[1:p]'), "must involve two positive")
+    expect_error(getDependencies(model, 'y[1:p]'), "must involve two positive")
     
 })
    
