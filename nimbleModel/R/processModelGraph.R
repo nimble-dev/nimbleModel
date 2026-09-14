@@ -254,7 +254,7 @@ traverseGraph <- function(streamRules, declRules,
   if (inherits(nodes, "varRangeClass")) nodes <- list(nodes) # We use `lapply` on 'nodes' later.
 
   if(!is.null(omit))
-    omit <- model$getNodes(omit)
+    omit <- model$getNodes(omit, nodesAsChars = FALSE)
   
   results <- traverseGraphRecurse(streamRules, nodes, omit, down, follow, immediateOnly, model)
 
@@ -321,7 +321,7 @@ traverseGraph <- function(streamRules, declRules,
 traverseGraphRecurse <- function(rules, nodes, omit = NULL, down, follow = FALSE, immediateOnly = FALSE, model = NULL, firstPass = TRUE) {
   results <- flatten(lapply(nodes, function(node) applyRules(rules, node)))
   if(!is.null(omit)) {
-    results <- model$getNodes(results)
+    results <- model$getNodes(results, nodesAsChars = FALSE)
     results <- setdiff_nodes(results, omit)
     ## We presumably don't need to convert back to varRange(s) since the nodeRange has all that information.
   }
