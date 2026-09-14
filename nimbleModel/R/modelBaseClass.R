@@ -370,7 +370,8 @@ modelBase_nClass <- nClass(
     },
     # `self` arg masks the reference to the object.
     # TODO: perhaps we should rename the arg `includeSelf`, but that is not back compatible.
-    getDependencies = function(nodes, self = TRUE, determOnly = FALSE, stochOnly = FALSE,
+    getDependencies = function(nodes, omit = NULL, self = TRUE,
+                               determOnly = FALSE, stochOnly = FALSE,
                                includeData = TRUE, dataOnly = FALSE,
                                includePredictive = nimble::getNimbleOption('getDependenciesIncludesPredictiveNodes'),
                                predictiveOnly = FALSE, includeRHSonly = FALSE,
@@ -378,21 +379,21 @@ modelBase_nClass <- nClass(
                                nodesAsChars = getNimbleModelOption("nodesAsChars"),
                                returnScalarComponents = FALSE, .sort = FALSE) {
       nimbleModel::getDependencies(
-        thisModel, nodes, self,
+        thisModel, nodes, omit, self,
         determOnly, stochOnly, includeData, dataOnly,
         includePredictive, predictiveOnly, includeRHSonly,
         downstream, immediateOnly,
         nodesAsChars, returnScalarComponents, .sort
       )
     },
-    getParents = function(nodes, self = FALSE,
+    getParents = function(nodes, omit = NULL, self = FALSE,
                           determOnly = FALSE, stochOnly = FALSE,
                           includeData = TRUE, dataOnly = FALSE, includeRHSonly = FALSE,
                           upstream = FALSE, immediateOnly = FALSE,
                           nodesAsChars = getNimbleModelOption("nodesAsChars"),
                           returnScalarComponents = FALSE, .sort = FALSE) {
       nimbleModel::getParents(
-        thisModel, nodes, self,
+        thisModel, nodes, omit, self,
         determOnly, stochOnly, includeData, dataOnly, includeRHSonly,        
         upstream, immediateOnly,
         nodesAsChars, returnScalarComponents, .sort

@@ -237,7 +237,7 @@ setSortIDs <- function(calcRules) {
 # (`follow = TRUE`) or to stop at immediate parent or child
 # (`immediateOnly = TRUE`).
 traverseGraph <- function(streamRules, declRules,
-                          nodes, down, self = TRUE,
+                          nodes, omit = NULL, down, self = TRUE,
                           determOnly = FALSE, stochOnly = FALSE,
                           includeData = TRUE, dataOnly = FALSE,
                           includePredictive = TRUE, predictiveOnly = FALSE, includeRHSonly = FALSE,
@@ -253,7 +253,10 @@ traverseGraph <- function(streamRules, declRules,
 
   if (inherits(nodes, "varRangeClass")) nodes <- list(nodes) # We use `lapply` on 'nodes' later.
 
-  results <- traverseGraphRecurse(streamRules, nodes, down, follow, immediateOnly)
+  if(!is.null(omit))
+    omit <- model$getNodes(omit)
+  
+  results <- traverseGraphRecurse(streamRules, nodes, omit, down, follow, immediateOnly, model)
 
   results <- model$getNodes(results, determOnly = determOnly, stochOnly = stochOnly,
                             includeData = includeData, dataOnly = dataOnly,
@@ -315,8 +318,13 @@ traverseGraph <- function(streamRules, declRules,
   return(results)
 }
 
-traverseGraphRecurse <- function(rules, nodes, down, follow = FALSE, immediateOnly = FALSE, firstPass = TRUE) {
+traverseGraphRecurse <- function(rules, nodes, omit = NULL, down, follow = FALSE, immediateOnly = FALSE, model = NULL, firstPass = TRUE) {
   results <- flatten(lapply(nodes, function(node) applyRules(rules, node)))
+  if(!is.null(omit)) {
+    results <- model$getNodes(results)
+    results <- setdiff_nodes(results, omit)
+    ## We presumably don't need to convert back to varRange(s) since the nodeRange has all that information.
+  }
   if (immediateOnly) {
     return(results)
   }
@@ -326,18 +334,18 @@ traverseGraphRecurse <- function(rules, nodes, down, follow = FALSE, immediateOn
   if (!down && !firstPass && !follow) {
     # For upward traversal, check current rule to see if continue upwards, but always go up on first pass.
     # (Because we need to determine stochasticity of the next rule up, not stochasticity of starting rule.
-    stoch <- sapply(results, function(varRange) varRange$fromStochRule)
+    stoch <- sapply(results, function(x) if(inherits(x, 'nodeRangeClass')) x$decl$stoch else x$fromStochRule)
     results <- results[!stoch] # Stop here if upwards involves stochastic rule, excluding the upwards result.
   }
   propagators <- results
   if (!follow && down) {
     # For downward traversal, stop propagating at stochastic cases, but results included.
-    stoch <- sapply(propagators, function(varRange) varRange$fromStochRule)
+    stoch <- sapply(propagators, function(x) if(inherits(x, 'nodeRangeClass')) x$decl$stoch else x$fromStochRule)
     propagators <- propagators[!stoch]
   }
   # Continue traversing.
   if (length(propagators)) {
-    results <- c(results, traverseGraphRecurse(rules, propagators, down, follow, firstPass = FALSE))
+    results <- c(results, traverseGraphRecurse(rules, propagators, omit, down, follow, immediateOnly, model, firstPass = FALSE))
   } else {
     return(results)
   }

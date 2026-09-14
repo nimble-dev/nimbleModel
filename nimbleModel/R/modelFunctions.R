@@ -216,7 +216,7 @@ taggedClass <- R6Class(
   )
 )
 
-getDependencies <- function(model, nodes,
+getDependencies <- function(model, nodes, omit = NULL,
                             self = TRUE, determOnly = FALSE, stochOnly = FALSE,
                             includeData = TRUE, dataOnly = FALSE,
                             includePredictive = nimble::getNimbleOption('getDependenciesIncludesPredictiveNodes'),
@@ -225,7 +225,7 @@ getDependencies <- function(model, nodes,
                             nodesAsChars = getNimbleModelOption("nodesAsChars"),
                             returnScalarComponents = FALSE, .sort = FALSE) {
   traverseGraph(model$modelDef$downstreamRules, model$modelDef$declRules,
-    nodes = nodes,
+    nodes = nodes, omit = omit,
     down = TRUE, self = self,
     determOnly = determOnly, stochOnly = stochOnly,
     includeData = includeData, dataOnly = dataOnly, includePredictive = includePredictive,
@@ -236,14 +236,14 @@ getDependencies <- function(model, nodes,
   )
 }
 
-getParents <- function(model, nodes,
+getParents <- function(model, nodes, omit = NULL,
                        self = FALSE, determOnly = FALSE, stochOnly = FALSE,
                        includeData = TRUE, dataOnly = FALSE, includeRHSonly = FALSE,
                        upstream = FALSE, immediateOnly = FALSE,
                        nodesAsChars = getNimbleModelOption("nodesAsChars"),
                        returnScalarComponents = FALSE, .sort = FALSE) {
   traverseGraph(model$modelDef$upstreamRules, model$modelDef$declRules,
-    nodes = nodes,
+    nodes = nodes, omit = omit,
     down = FALSE, self = self,
     determOnly = determOnly, stochOnly = stochOnly,
     includeData = includeData, dataOnly = dataOnly, includePredictive = TRUE,
