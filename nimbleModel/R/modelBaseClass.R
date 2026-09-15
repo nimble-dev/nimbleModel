@@ -447,13 +447,13 @@ modelBase_nClass <- nClass(
     topologicallySortNodes = function(nodes) {
       nimbleModel::expandNodeNames(self, nodes, sort = TRUE, unique = TRUE)
     },
-    getConditionallyIndependentSets = function(nodes, givenNodes,
+    getConditionallyIndependentSets = function(nodes, givenNodes, omit = NULL,
                                                explore = c("both", "down", "up"),
                                                unknownAsGiven = TRUE, returnScalarComponents = FALSE,
                                                endAsGiven = FALSE,
                                                nodesAsChars = getNimbleModelOption("nodesAsChars")) {
       nimbleModel::getConditionallyIndependentSets(
-        self, nodes, givenNodes, explore, unknownAsGiven,
+        self, nodes, givenNodes, omit, explore, unknownAsGiven,
         returnScalarComponents, endAsGiven, nodesAsChars
       )
     },
