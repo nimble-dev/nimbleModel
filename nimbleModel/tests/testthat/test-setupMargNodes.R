@@ -18,8 +18,7 @@ test_that("getConditionallyIndependentSets works in model with a couple of sets"
   expect_identical(getConditionallyIndependentSets(m, 'y[2]', explore = "down"), list('y[2]'))
   expect_identical(getConditionallyIndependentSets(m, 'x[1:2]', explore = "up"), list(c('x[1]'), c('x[2]')))
   expect_true(nimble:::testConditionallyIndependentSets(m, getConditionallyIndependentSets(m)))
-  # expect_identical(getConditionallyIndependentSets(m, omit = 'y[2]'), list(c('x[1]', 'y[1]'), c('x[2]')))
-  # expect_identical(getConditionallyIndependentSets(m, omit = 5), list(c('x[1]', 'y[1]'), c('x[2]')))
+  expect_identical(getConditionallyIndependentSets(m, omit = 'y[2]'), list(c('x[1]', 'y[1]'), c('x[2]')))
   expect_identical(getConditionallyIndependentSets(m, 'x[1]'), list(c('x[1]')))
   expect_identical(getConditionallyIndependentSets(m, 'x[1]', unknownAsGiven=FALSE), list(c('x[1]', 'y[1]')))
 
@@ -240,7 +239,7 @@ test_that("getConditionallyIndependentSets works in model with diamond shape", {
 })
 
 test_that("getConditionallyIndependentSets works in double-state state-space model", {
-  # two stae-space chains of latent states with one data set that depends on both
+  # two state-space chains of latent states with one data set that depends on both
   mc <- nimbleCode({
     x[1] ~ dnorm(0, 1)
     w[1] ~ dnorm(0, 1)
@@ -254,8 +253,8 @@ test_that("getConditionallyIndependentSets works in double-state state-space mod
 
   expect_identical(getConditionallyIndependentSets(m),
                    list(c(paste0("x[", 2:4, "]"), paste0("w[", 2:4, "]"))))
-  # expect_identical(getConditionallyIndependentSets(m, omit = "w[2]"),
-  #                  list(c("x[2]", "x[3]", "w[3]", "x[4]", "w[4]")))
+  expect_identical(getConditionallyIndependentSets(m, omit = "w[2]"),
+                    list(c("x[2]", "x[3]", "x[4]", "w[3]", "w[4]")))
   expect_identical(getConditionallyIndependentSets(m, givenNodes = c("y", "w[3]"), unknownAsGiven=FALSE),
                    list(c("x[2]", "x[3]", "x[4]", "x[1]", "w[2]", "w[4]", "w[1]")))
   expect_identical(getConditionallyIndependentSets(m, givenNodes = c("y", "x[3]", "w[3]"), unknownAsGiven=FALSE),

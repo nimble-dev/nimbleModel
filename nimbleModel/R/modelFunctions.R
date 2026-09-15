@@ -216,7 +216,7 @@ taggedClass <- R6Class(
   )
 )
 
-getDependencies <- function(model, nodes,
+getDependencies <- function(model, nodes, omit = NULL,
                             self = TRUE, determOnly = FALSE, stochOnly = FALSE,
                             includeData = TRUE, dataOnly = FALSE,
                             includePredictive = nimble::getNimbleOption('getDependenciesIncludesPredictiveNodes'),
@@ -225,7 +225,7 @@ getDependencies <- function(model, nodes,
                             nodesAsChars = getNimbleModelOption("nodesAsChars"),
                             returnScalarComponents = FALSE, .sort = FALSE) {
   traverseGraph(model$modelDef$downstreamRules, model$modelDef$declRules,
-    nodes = nodes,
+    nodes = nodes, omit = omit,
     down = TRUE, self = self,
     determOnly = determOnly, stochOnly = stochOnly,
     includeData = includeData, dataOnly = dataOnly, includePredictive = includePredictive,
@@ -236,14 +236,14 @@ getDependencies <- function(model, nodes,
   )
 }
 
-getParents <- function(model, nodes,
+getParents <- function(model, nodes, omit = NULL,
                        self = FALSE, determOnly = FALSE, stochOnly = FALSE,
                        includeData = TRUE, dataOnly = FALSE, includeRHSonly = FALSE,
                        upstream = FALSE, immediateOnly = FALSE,
                        nodesAsChars = getNimbleModelOption("nodesAsChars"),
                        returnScalarComponents = FALSE, .sort = FALSE) {
   traverseGraph(model$modelDef$upstreamRules, model$modelDef$declRules,
-    nodes = nodes,
+    nodes = nodes, omit = omit,
     down = FALSE, self = self,
     determOnly = determOnly, stochOnly = stochOnly,
     includeData = includeData, dataOnly = dataOnly, includePredictive = TRUE,
@@ -356,7 +356,7 @@ setdiff_nodes <- function(nodeSet1, nodeSet2) {
 }
 
 #' @export
-getConditionallyIndependentSets <- function(model, nodes, givenNodes,
+getConditionallyIndependentSets <- function(model, nodes, givenNodes, omit = NULL,
                                             explore = c("both", "down", "up"),
                                             unknownAsGiven = TRUE, returnScalarComponents = FALSE,
                                             endAsGiven = FALSE,
@@ -428,10 +428,19 @@ getConditionallyIndependentSets <- function(model, nodes, givenNodes,
   if (unknownAsGiven) {
     givenNodes <- c(givenNodes, unknownNodes)
   } # else nodes <- c(nodes, unknownNodes)
-
+  
   stochDecl <- sapply(model$modelDef$declInfo, \(declInfo) declInfo$stoch)
   touched <- lapply(model$modelDef$declInfo[stochDecl], \(declInfo) taggedClass$new(declInfo$declRule))
   names(touched) <- sapply(model$modelDef$declInfo[stochDecl], \(declInfo) declInfo$declRule$ID)
+
+  if(!is.null(omit)) {
+    omit <- model$getNodes(omit, nodesAsChars = FALSE)
+    givenNodes <- setdiff_nodes(givenNodes, omit)
+    nodes <- setdiff_nodes(nodes, omit)
+    tmp <- sapply(omit, \(node) touched[[node$decl$declRule$ID]]$tag(node$getIDs()))
+  }
+
+  
   given <- lapply(model$modelDef$declInfo[stochDecl], \(declInfo) taggedClass$new(declInfo$declRule))
   names(given) <- names(touched)
   tmp <- sapply(givenNodes, \(node) given[[node$decl$declRule$ID]]$tag(node$getIDs()))
@@ -932,7 +941,11 @@ setupMargNodes <- function(model, paramNodes, randomEffectsNodes, calcNodes,
           nodes = randomEffectsNodes, givenNodes = givenNodes,
           unknownAsGiven = TRUE
         )
-      } else if (is.numeric(split)) { # TODO: check this makes sense with inputs being nodeRanges.
+      } else if (is.numeric(split)) {
+        # TODO: reconsider this - it relies on user knowing what the `randomEffectsNodes` will be
+        # even if the user provides them as character strings instead of a list of nodeRanges.
+        if(length(randomEffectsNodes) != length(split)) 
+          stop("when providing numeric vector for `split`, its length must match that of the `randomEffectsNodes`. This will usually mean that `randomEffectsNodes` should be provided by the user as a list of nodeRanges.")
         reSets <- split(randomEffectsNodes, split)
       } else {
         stop("setupMargNodes: Invalid value for `split`")

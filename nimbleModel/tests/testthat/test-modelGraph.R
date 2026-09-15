@@ -2605,3 +2605,56 @@ test_that("handling RHSonly with getParents", {
                      c("mu[2]","y[2]"))
     
 })
+
+test_that("using omit with getDependencies and getParents", {
+    setNimbleModelOption('nodesAsChars', TRUE)
+    
+    code <- nimbleCode({
+        y ~ dnorm(mu,1)
+        mu <- mu0+1
+        mu0 ~ dnorm(0,1)
+    })
+    m <- nimbleModel(code)
+    expect_identical(m$getDependencies('mu0',omit='mu'), "mu0")
+    expect_identical(m$getParents('y',omit='mu',self=TRUE), "y")
+
+    code <- nimbleCode({
+        z ~ dnorm(y,1)
+        y ~ dnorm(mu,1)
+        mu <- mu0+1
+        mu0~dnorm(0,1)
+    })
+    m <- nimbleModel(code)
+    expect_identical(m$getDependencies('mu0',omit='y'), c("mu0", "mu"))
+    expect_identical(m$getParents('y',omit='mu0'), "mu")
+    
+    
+    code <- nimbleCode({
+        w ~ dnorm(y,1)
+        z ~ dnorm(y+mu,1)
+        y ~ dnorm(mu+b,1)
+        mu <- mu0+1
+        b ~ dnorm(0,1)
+        mu0~dnorm(0,1)
+    })
+    m <- nimbleModel(code)
+    expect_identical(m$getDependencies('mu0',omit='y',downstream=TRUE),
+                     c("mu0","mu","lifted_y_plus_mu","lifted_mu_plus_b","z"))
+    expect_identical(m$getParents('z',omit='y',upstream=TRUE),
+                     c("lifted_y_plus_mu","mu","mu0"))
+    
+    setNimbleModelOption('nodesAsChars', FALSE)
+})
+
+test_that("getDependencies handles non-node-based query", {
+    code <- nimbleCode({
+        for(i in 1:4)
+            y[i] ~ dnorm(mu[i],1)
+        mu[1:4]~dmnorm(z[1:4],pr[1:4,1:4])
+    })
+    m=nimbleModel(code)
+    expect_identical(m$getDependencies('mu[2]', self = FALSE, nodesAsChars =TRUE),
+                     "y[2]")  # Not all of y is included.
+    expect_identical(m$getDependencies('mu[2]', nodesAsChars =TRUE),
+                     c("mu[1:4]", "y[2]")) # All of mu is included.
+})
