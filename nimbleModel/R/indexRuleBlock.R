@@ -44,11 +44,11 @@ indexRuleBlockClass <- R6Class(
       return(setupResults$fromMax - setupResults$fromMin + 1)
     },
     getIDs = function(indexRange) {
-      init <- setupResults$fromMin + setupResults$offset
+      init <- as.integer(setupResults$fromMin + setupResults$offset)
       switch(class(indexRange)[1],
-             indexRangeScalarClass = indexRange$value - init + 1,
+             indexRangeScalarClass = as.integer(indexRange$value) - init + 1L,
              indexRangeSequenceClass = (indexRange$start - init + 1):(indexRange$end - init + 1),
-             indexRangeMatrixClass = c(indexRange$values) - init + 1,
+             indexRangeMatrixClass = as.integer(c(indexRange$values)) - init + 1L,
              stop("invalid type of indexRange provided for creating IDs")
              )
     },

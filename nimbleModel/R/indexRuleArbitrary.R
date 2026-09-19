@@ -41,7 +41,7 @@ indexRuleArbitraryClass <- R6Class(
       if (any(NAs)) {
         values <- values[!NAs]
       }
-      return(values)
+      return(as.integer(values))
     },
     invertIDs = function(relativeNodeIDs) {
       unlist(setupResults$iRow2toIndices[relativeNodeIDs])

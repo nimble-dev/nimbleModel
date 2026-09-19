@@ -174,22 +174,22 @@ declRuleClass <- R6Class(
               offset <- offset * lens[loop_idx + 1]
               indices[[loop_idx]] <- (individualLoopIDs[[loop_idx]] - 1) * offset
             }
-            nodeIDs <- rowSums(do.call(expand.grid, rev(indices))) # Use `rev` to avoid need to sort.
+            nodeIDs <- as.integer(rowSums(do.call(expand.grid, rev(indices)))) # Use `rev` to avoid need to sort.
           } else {
             nodeIDs <- getOneLoopIDs(loopIndexingRange$indexRanges[[1]], indexingRules[[1]])
           }
         } else { # indexing range is non-separable: expand and then do arithmetic.
           inputIndices <- loopIndexingRange$extractIndexRange(seq_len(numLoops))$getValuesAsMatrix()
           indicesLast <- getOneLoopIDs(newIndexRange(inputIndices[, numLoops], sort = FALSE), indexingRules[[numLoops]])
-          indices <- matrix(0, nrow = length(indicesLast), ncol = numLoops)
+          indices <- matrix(0L, nrow = length(indicesLast), ncol = numLoops)
           indices[, numLoops] <- indicesLast
-          offset <- 1
-          lens <- sapply(indexingRules, \(x) x$getNumElements())
+          offset <- 1L
+          lens <- sapply(indexingRules, \(x) as.integer(x$getNumElements()))
           for (loop_idx in (numLoops - 1):1) {
             offset <- offset * lens[loop_idx + 1]
-            indices[, loop_idx] <- (getOneLoopIDs(newIndexRange(inputIndices[, loop_idx], sort = FALSE), indexingRules[[loop_idx]]) - 1) * offset
+            indices[, loop_idx] <- (getOneLoopIDs(newIndexRange(inputIndices[, loop_idx], sort = FALSE), indexingRules[[loop_idx]]) - 1L) * offset
           }
-          nodeIDs <- rowSums(indices)
+          nodeIDs <- as.integer(rowSums(indices))
         }
       } else { # Loop indexing is nonseparable. Fall back to expand and match, even if there are multiple (i.e., crossed) rules.
         fullIndices <- loopIndexingRule$apply(loopIndexingRule$varName)$extractIndexRange()$getValuesAsMatrix()
