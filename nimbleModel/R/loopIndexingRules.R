@@ -1,22 +1,25 @@
-# An originalIndexingRuleClass object represents the relationship
+# An loopIndexingRuleClass object represents the relationship
 # between the loop indexing and the indexing of a LHS variable,
 # such as giving the values of `i` when provided a varRange for `y` in
 # `for(i in 5:n) y[i-2] <- 1`, such that `y[7:9]` would give `i=9:11`.
 
 
-originalIndexingRuleClass <- R6Class(
-  classname = "originalIndexingRuleClass",
+loopIndexingRuleClass <- R6Class(
+  classname = "loopIndexingRuleClass",
   portable = FALSE,
   public = list(
     graphRule = NULL,
     indexSlotToSet = NULL,
     externalRule = NULL,
     internalRule = NULL,
+    decl = NULL,
     varName = character(),
     initialize = function(LHS,
                           context,
-                          constants = list()) {
+                          constants = list(),
+                          decl = NULL) {
       varName <<- getVarName(LHS)
+      decl <<- decl  
       if (length(context$indexVarNames)) {
         # Exclude indices not used in lifted expression, e.g., `i` in `y[i,j] ~ dnorm(mu[i], var = sigma2[j])`
         indexVarNames <- context$indexVarNames
@@ -26,10 +29,10 @@ originalIndexingRuleClass <- R6Class(
         } else {
           ""
         }
-        dummyLHS <- parse(text = paste0(varName, indexing))[[1]]
+        dummyLHS <- parse(text = paste0(".loop", indexing))[[1]]
         # Unused singleContexts will be removed in graphRuleClass$new().
       } else {
-        dummyLHS <- as.name(varName)
+        dummyLHS <- as.name(".loop")
       }
 
       graphRule <<- graphRuleClass$new(
@@ -39,7 +42,7 @@ originalIndexingRuleClass <- R6Class(
         constants
       )
 
-      # For use in apply_reverse; we want to produce nodeRanges, not varRanges.
+      # For use in `invert`; we want to produce nodeRanges, not varRanges.
       fullRule <- graphRuleClass$new(
         LHS,
         dummyLHS,
@@ -72,9 +75,6 @@ originalIndexingRuleClass <- R6Class(
       }
     },
 
-    # Produces a varRange, though it's not really a range for a variable
-    # but rather a range for the indices.
-    # (2023-06-10, commit 30ede6)
     # Do not remove duplicates because in generation of `calcRange`s there
     # can be cases where we need duplicated values in order to have correct
     # number of logProbs.
@@ -88,7 +88,8 @@ originalIndexingRuleClass <- R6Class(
     apply = function(fromVarRange) {
       graphRule$apply(fromVarRange, removeDuplicates = TRUE)
     },
-    apply_reverse = function(indexingRange, decl) {
+    # TODO: or we could name this loopIndexingToNodes or some such.
+    invert = function(indexingRange) {
       if (length(externalRule$indexRules)) {
         externalRange <- externalRule$apply(indexingRange)
         if (is.null(externalRange)) {
@@ -98,12 +99,41 @@ originalIndexingRuleClass <- R6Class(
         externalRange <- varRangeClass$new(list())
       }
       if (length(internalRule$indexRules)) {
-        internalRange <- internalRule$apply(externalRule$getFromRange()) # This needs to be instantiated anew to avoid having multiple references to the internalRange indexRanges.
+        # This needs to be instantiated anew to avoid having multiple references to the internalRange indexRanges.
+        internalRange <- internalRule$apply(externalRule$getFromRange()) 
       } else {
         internalRange <- varRangeClass$new(list())
       }
-
+      # Note that the varName is determined from self$varName (indexingRange has .loop as varName).
       return(nodeRangeClass$new(varName, externalRange, internalRange, indexSlotToSet, decl))
     }
   )
 )
+
+loopIndexingRangeClass <- R6Class(
+  "loopIndexingRangeClass",
+  portable = FALSE,
+  inherit = varRangeClass,
+  public = list(
+        initialize = function(indexInfo,
+                          rangeToIndexSlot = NULL,
+                          varName = ".loop",
+                          fromStochRule = NULL) {
+          super$initialize(indexInfo, rangeToIndexSlot, varName, fromStochRule)
+        },
+        toChar = function() {
+          dots <- sapply(indexRangeExprs, identical, quote(...))
+          if(all(dots))
+            return("nonseparable loop indexing")
+          text <- paste0("index ", seq_along(indexRangeExprs[!dots]), ": ")
+          text <- paste0(text, indexRangeExprs[!dots], collapse = ", ")
+          if(any(dots)) text <- paste0(text, ", plus nonseparable loop indexing")
+          return(text)
+        },
+        print = function() {
+          cat("looping with ", toChar(), ".\n", sep = "")
+        }
+  )
+)
+
+        

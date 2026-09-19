@@ -129,10 +129,10 @@ modelDeclClass <- R6Class(
     # Create declRule and symbolic RHS pieces.
     processDecl = function(nimFunNames, constants = list(), envir) {
       declRule <<- declRuleClass$new(self, 0, context, constants)
-      if (length(declRule$originalIndexingRule$graphRule$indexRules)) {
+      if (length(declRule$loopIndexingRule$graphRule$indexRules)) {
         if (!identical(
           declRule$externalRule$apply(declRule$varName)$extractIndexRange()$numElements,
-          declRule$originalIndexingRule$apply(declRule$varName)$extractIndexRange()$numElements
+          declRule$loopIndexingRule$apply(declRule$varName)$extractIndexRange()$numElements
         ) &&
           !any(sapply(indexExpr, checkForIndexedIntervals, context))) { # Non-constant indexing invalidates this check.
           stop("found duplicated node definitions in declaring `", safeDeparse(declRule$expr), "`.")

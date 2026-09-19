@@ -35,7 +35,8 @@ export(declRuleClass)
 export(rhsRuleClass)
 export(calcRuleClass)
 export(calcRangeClass)
-export(originalIndexingRuleClass)
+export(loopIndexingRuleClass)
+export(loopIndexingRangeClass)
 
 ## functions and other objects
 export(makeCalcRules)
