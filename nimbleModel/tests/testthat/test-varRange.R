@@ -232,4 +232,37 @@ test_that("toVarChars works correctly", {
     
 })
 
-                     
+test_that("varRange_isEqual", {
+    vr1 <- varRangeClass$new(list(newIndexRange(quote(3:5)),
+                                  newIndexRange(quote(c(2,4,5))),
+                                  newIndexRange(quote(1:3))), varName = 'y')
+    vr2 <- varRangeClass$new(list(newIndexRange(quote(c(2,4,5))),
+                                  newIndexRange(quote(1:3)),
+                                  newIndexRange(quote(3:5))), rangeToIndexSlot = list(2,3,1), varName = 'y')
+    expect_true(nimbleModel:::varRange_isEqual(vr1, vr2))
+                                                
+    vr1 <- varRangeClass$new(list(newIndexRange(quote(3:5)),
+                                  newIndexRange(quote(c(2,4,5))),
+                                  newIndexRange(quote(1:3))), varName = 'y')
+    vr2 <- varRangeClass$new(list(newIndexRange(quote(c(2,5,4))),
+                                  newIndexRange(quote(1:3)),
+                                  newIndexRange(quote(3:5))), rangeToIndexSlot = list(2,3,1), varName = 'y')
+    expect_true(nimbleModel:::varRange_isEqual(vr1, vr2))
+                                                 
+    vr1 <- varRangeClass$new(list(newIndexRange(quote(c(2,4,5))),
+                                  newIndexRange(matrix(c(2,4,1,5),ncol=2,byrow=TRUE)),
+                                  newIndexRange(quote(3:5))), rangeToIndexSlot = list(1, c(2,4), 3), varName = 'y')
+    vr2 <- varRangeClass$new(list(newIndexRange(matrix(c(4,2,5,1),ncol=2,byrow=TRUE)),
+                                  newIndexRange(quote(c(2,5,4))),
+                                  newIndexRange(quote(3:5))), rangeToIndexSlot = list(c(4,2),1, 3), varName = 'y')
+    expect_true(nimbleModel:::varRange_isEqual(vr1, vr2))
+
+    vr1 <- varRangeClass$new(list(newIndexRange(quote(c(2,4,5))),
+                                  newIndexRange(matrix(c(2,4,1,5),ncol=2,byrow=TRUE)),
+                                  newIndexRange(quote(3:5))), rangeToIndexSlot = list(1, c(2,4), 3), varName = 'y')
+    vr2 <- varRangeClass$new(list(newIndexRange(matrix(c(4,2,5,1),ncol=2,byrow=TRUE)),
+                                  newIndexRange(quote(c(2,5,4))),
+                                  newIndexRange(quote(3:5))), rangeToIndexSlot = list(c(2,4),1, 3), varName = 'y')
+    expect_false(nimbleModel:::varRange_isEqual(vr1, vr2))
+                              
+})
