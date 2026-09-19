@@ -30,6 +30,7 @@ Collate:
     indexConstraint.R
     getSymbolicParentNodes.R
     graphRules.R
+    loopIndexingRules.R
     MCMC_configuration.R
     MCMC_conjugacy.R
     MCMC_utils.R
@@ -41,7 +42,6 @@ Collate:
     model_utils.R
     nodeRules.R
     options.R       
-    originalIndexingRules.R
     processModelGraph.R
     rhsRules.R
     types_util.R

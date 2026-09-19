@@ -334,8 +334,8 @@ modelBase_nClass <- nClass(
         stop("getParamExpr: `", param, "` is not present in the parameterization")
       }
       if (length(expr) > 1) {
-        # Substitute original index values into the expression.
-        indexVarRange <- decl$declRule$originalIndexingRule$apply(nodeRange)
+        # Substitute looping index values into the expression.
+        indexVarRange <- decl$declRule$loopIndexingRule$apply(nodeRange)
         indexValues <- indexVarRange$indexRangeExprs
         names(indexValues) <- decl$context$indexVarNames
         expr <- eval(substitute(substitute(EXPR, indexValues), list(EXPR = expr)))
@@ -358,8 +358,8 @@ modelBase_nClass <- nClass(
           expr <- expr[!names(expr) %in% c("lower_", "upper_") &
             !grepl("^\\.", names(expr))]
         }
-        # Substitute original index values into the expression.
-        indexVarRange <- decl$declRule$originalIndexingRule$apply(nodeRange)
+        # Substitute loop index values into the expression.
+        indexVarRange <- decl$declRule$loopIndexingRule$apply(nodeRange)
         indexValues <- indexVarRange$indexRangeExprs
         names(indexValues) <- decl$context$indexVarNames
         expr <- eval(substitute(substitute(EXPR, indexValues), list(EXPR = expr)))

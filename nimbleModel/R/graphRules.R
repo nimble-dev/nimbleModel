@@ -525,11 +525,13 @@ applyGraphRule <- function(fromVarRange, rule, varName = NULL, removeDuplicates 
   }
 
   if (!length(indexRules)) {
-    return(
-      varRangeClass$new(ifelse(is.null(varName), rule$toVarName, varName),
-        fromStochRule = rule$stoch
-      )
-    )
+    if(rule$toVarName == ".loop") {
+      return(loopIndexingRangeClass$new(ifelse(is.null(varName), rule$toVarName, varName),
+                                        fromStochRule = NULL))
+    } else {
+      return(varRangeClass$new(ifelse(is.null(varName), rule$toVarName, varName),
+        fromStochRule = rule$stoch))
+    }
   }
 
   # Step 1: Apply indexRules one by one, getting inputs from multiple indexRanges if necessary.
@@ -701,14 +703,21 @@ applyGraphRule <- function(fromVarRange, rule, varName = NULL, removeDuplicates 
   # Remove duplicate columns (from cases where two indexRanges are used in a single rule).
   repeats <- duplicated(finalRangeToIndexSlot)
 
-  return(
-    varRangeClass$new(
+  if(rule$toVarName == ".loop") {
+    return(loopIndexingRangeClass$new(
       indexInfo = finalIndexRanges[!repeats],
       rangeToIndexSlot = finalRangeToIndexSlot[!repeats],
       varName = ifelse(is.null(varName), rule$toVarName, varName),
-      fromStochRule = rule$stoch
-    )
-  )
+      fromStochRule = NULL))
+    } else {
+      return(
+        varRangeClass$new(
+          indexInfo = finalIndexRanges[!repeats],
+          rangeToIndexSlot = finalRangeToIndexSlot[!repeats],
+          varName = ifelse(is.null(varName), rule$toVarName, varName),
+          fromStochRule = rule$stoch
+        ))
+    }
 }
 
 

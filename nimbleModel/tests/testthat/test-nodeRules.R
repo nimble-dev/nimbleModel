@@ -7,11 +7,11 @@ test_that("declRules are generated correctly", {
     modelDecl$processDecl(NULL, list(), .GlobalEnv) 
     expect_identical(modelDecl$stoch, TRUE)
     expect_equal(
-        modelDecl$declRule$originalIndexingRule$apply(
+        modelDecl$declRule$loopIndexingRule$apply(
                   varRangeClass$new(list(
                                     newIndexRange(quote(3:6))))),
-        varRangeClass$new(list(
-                          newIndexRange(quote(2:4))), varName = 'y')
+        loopIndexingRangeClass$new(list(
+                          newIndexRange(quote(2:4))))
     )
 })
 
@@ -373,7 +373,7 @@ test_that("calcRanges are generated correctly", {
    
     calcRange <- calcRule$makeCalcRange(varRangeClass$new(list(newIndexRange(quote(3:5)))))
     expect_equal(calcRange$indexingRange,
-                 varRangeClass$new(list(newIndexRange(quote(2:4))), varName = 'y'))
+                 loopIndexingRangeClass$new(list(newIndexRange(quote(2:4)))))
 
     ## Mismatched varNames
     expect_error(calcRule$makeCalcRange(varRangeClass$new(list(newIndexRange(quote(3:5))),
@@ -444,9 +444,9 @@ test_that("calcRanges are generated correctly", {
                                                   newIndexRange(quote(1:6)),
                                                   newIndexRange(2))))
     expect_equal(calcRange$indexingRange,
-                 varRangeClass$new(list(newIndexRange(matrix(c(2,7))),
+                 loopIndexingRangeClass$new(list(newIndexRange(matrix(c(2,7))),
                                         newIndexRange(quote(3:5)),
-                                        newIndexRange(quote(1:4))), varName = 'y'))
+                                        newIndexRange(quote(1:4)))))
     
 
     calcRange <- calcRule$makeCalcRange(varRangeClass$new(list(
@@ -462,8 +462,8 @@ test_that("calcRanges are generated correctly", {
                                                   newIndexRange(2))
                                               ))
     expect_equal(calcRange$indexingRange,
-                 varRangeClass$new(list(newIndexRange(matrix(c(2,8,1,2), ncol = 2)),
-                                        newIndexRange(quote(3:5))), rangeToIndexSlot = list(c(1,3), 2), varName = 'y'))
+                 loopIndexingRangeClass$new(list(newIndexRange(matrix(c(2,8,1,2), ncol = 2)),
+                                        newIndexRange(quote(3:5))), rangeToIndexSlot = list(c(1,3), 2)))
 
     calcRange <- calcRule$makeCalcRange(varRangeClass$new(list(
                                                   newIndexRange(quote(3:5)),
@@ -471,9 +471,9 @@ test_that("calcRanges are generated correctly", {
                                                   newIndexRange(quote(1:5))
                                               ), rangeToIndexSlot = list(1,c(2,4), 3)))
     expect_equal(calcRange$indexingRange,
-                 varRangeClass$new(list(newIndexRange(matrix(c(2,6))),
+                 loopIndexingRangeClass$new(list(newIndexRange(matrix(c(2,6))),
                                         newIndexRange(quote(3:5)),
-                                        newIndexRange(quote(1:4))), varName = 'y'))
+                                        newIndexRange(quote(1:4)))))
 
     ## j in 1:n[i] type case
     singleContext1 <-
@@ -495,8 +495,7 @@ test_that("calcRanges are generated correctly", {
                                                                newIndexRange(quote(1:3))
                                                            )))
     expect_equal(calcRange$indexingRange,
-                 varRangeClass$new(list(newIndexRange(matrix(c(1,2,2,2,1,1,2,3), ncol = 2))),
-                                   varName = 'y'))
+                 loopIndexingRangeClass$new(list(newIndexRange(matrix(c(1,2,2,2,1,1,2,3), ncol = 2)))))
 
     # multi sortID case
     code <- nimbleCode({

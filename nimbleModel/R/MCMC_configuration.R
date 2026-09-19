@@ -37,7 +37,7 @@ samplerConfClass <- R6Class(
     },
     toStr = function(displayControlDefaults = FALSE, displayNonScalars = FALSE, displayConjugateDependencies = FALSE) {
       tempList <- list()
-      tempList[[paste0(name, " sampler")]] <- paste0(target, collapse = ", ")
+      tempList[[paste0(name, " sampler")]] <- paste0(target$toNodeChars(), collapse = ", ")
       infoList <- c(tempList, control)
       mcmc_listContentsToStr(infoList, displayControlDefaults, displayNonScalars, displayConjugateDependencies)
     },
@@ -219,7 +219,7 @@ mcmcConfClass <- R6Class(
               dynamicallyIndexed = model$modelDef$varInfo[[target$varName]]$anyDynamicallyIndexed
             ))
           }
-          stop("Cannot assign conjugate sampler to non-conjugate node: `", target, "`")
+          stop("Cannot assign conjugate sampler to non-conjugate node: `", target$toNodeChars(), "`")
         }
 
         if (targetAsScalars) {

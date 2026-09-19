@@ -281,10 +281,7 @@ aggregate_nodes <- function(nodeSet) {
   newNodeSet <- lapply(seq_along(IDsByDecl), \(i) {
     if(sum(nms[i] == declIDs) > 1) {
       whichDecl <- match(nms[i], declIDs)
-      decl <- nodeSet[[whichDecl]]$decl
-      return(decl$declRule$originalIndexingRule$apply_reverse(
-        decl$declRule$getOriginalIndexing(IDsByDecl[[i]]), decl
-      ))
+      return(nodeSet[[whichDecl]]$decl$declRule$getNodesFromIDs(IDsByDecl[[i]]))
     } else return(nodeSet[[nms[i]]])
   })
   return(c(newNodeSet, RHSonly))
@@ -310,9 +307,7 @@ intersect_nodes <- function(nodeSet1, nodeSet2) {
       if (declIDs1[i] == declIDs2[j]) intersect(nodeIDs1[[i]], nodeIDs2[[j]]) else NULL
     })))
     if (length(keepNodeIDs)) {
-      newNodeSet1[[i]] <- nodeSet1[[i]]$decl$declRule$originalIndexingRule$apply_reverse(
-        nodeSet1[[i]]$decl$declRule$getOriginalIndexing(keepNodeIDs), nodeSet1[[i]]$decl
-      )
+      newNodeSet1[[i]] <- nodeSet1[[i]]$decl$declRule$getNodesFromIDs(keepNodeIDs)
     }
   }
   return(newNodeSet1[!sapply(newNodeSet1, is.null)])
@@ -347,9 +342,7 @@ setdiff_nodes <- function(nodeSet1, nodeSet2) {
   for (i in seq_along(nodeSet1)) {
     keepNodeIDs <- setdiff(nodeIDs1[[i]], excludeNodeIDs[[declIDs1[i]]])
     if (length(keepNodeIDs)) {
-      newNodeSet1[[i]] <- nodeSet1[[i]]$decl$declRule$originalIndexingRule$apply_reverse(
-        nodeSet1[[i]]$decl$declRule$getOriginalIndexing(keepNodeIDs), nodeSet1[[i]]$decl
-      )
+      newNodeSet1[[i]] <- nodeSet1[[i]]$decl$declRule$getNodesFromIDs(keepNodeIDs)
     }
   }
   return(c(newNodeSet1[!sapply(newNodeSet1, is.null)], RHSonly))
@@ -455,9 +448,7 @@ getConditionallyIndependentSets <- function(model, nodes, givenNodes, omit = NUL
     this_touched <- touched[[focalNodeRange$decl$declRule$ID]]$tagged[focalNodeIDs]
     while (!all(this_touched)) {
       focalNodeID <- focalNodeIDs[!this_touched][1]
-      currentNode <- focalNodeRange$decl$declRule$originalIndexingRule$apply_reverse( # indexing range to nodeRange
-        focalNodeRange$decl$declRule$getOriginalIndexing(focalNodeID), focalNodeRange$decl
-      ) # ID to indexing range
+      currentNode <- focalNodeRange$decl$declRule$getNodesFromIDs(focalNodeID)
       sets[[numSets]] <- getOneConditionallyIndependentSet(model, currentNode, focalNodeID, given, touched,
         startUp = startUp, startDown = startDown
       )
@@ -508,7 +499,7 @@ exploreDown <- function(ans, model, currentNodes, given, touched) {
           newLatentNodes <- child
         } else {
           newLatentIDs <- childIDs[chosen]
-          newLatentNodes <- child$decl$declRule$originalIndexingRule$apply_reverse(child$decl$declRule$getOriginalIndexing(newLatentIDs), child$decl)
+          newLatentNodes <- child$decl$declRule$getNodesFromIDs(newLatentIDs)
         }
         ans[[length(ans) + 1]] <- newLatentNodes
       } else {
@@ -520,7 +511,7 @@ exploreDown <- function(ans, model, currentNodes, given, touched) {
       } else {
         upIDsFromGiven <- childIDs[chosen]
         if (length(upIDsFromGiven)) {
-          upNodesFromGiven <- child$decl$declRule$originalIndexingRule$apply_reverse(child$decl$declRule$getOriginalIndexing(upIDsFromGiven), child$decl)
+          upNodesFromGiven <- child$decl$declRule$getNodesFromIDs(upIDsFromGiven)
         } else {
           upNodesFromGiven <- NULL
         }
@@ -552,7 +543,7 @@ exploreUp <- function(ans, model, currentNodes, given, touched) {
           newLatentNodes <- parent
         } else {
           newLatentIDs <- parentIDs[chosen]
-          newLatentNodes <- parent$decl$declRule$originalIndexingRule$apply_reverse(parent$decl$declRule$getOriginalIndexing(newLatentIDs), parent$decl)
+          newLatentNodes <- parent$decl$declRule$getNodesFromIDs(newLatentIDs)
         }
         ans[[length(ans) + 1]] <- newLatentNodes
         ans <- exploreUp(ans, model, newLatentNodes, given, touched)

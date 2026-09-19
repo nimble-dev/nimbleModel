@@ -34,6 +34,17 @@ indexRuleArbitraryClass <- R6Class(
     },
     getNumElements = function() {
       return(setupResults$unrolledSize)
+    },
+    getIDs = function(indexRange) {
+      values <- match(indexRange$getValuesAsMatrix(), unlist(setupResults$iRow2toIndices))
+      NAs <- is.na(values)
+      if (any(NAs)) {
+        values <- values[!NAs]
+      }
+      return(values)
+    },
+    invertIDs = function(relativeNodeIDs) {
+      unlist(setupResults$iRow2toIndices[relativeNodeIDs])
     }
   )
 )
