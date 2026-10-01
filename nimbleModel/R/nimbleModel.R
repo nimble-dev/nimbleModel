@@ -268,6 +268,8 @@ makeModel_nClass <- function(modelVarInfo,
   names(CpublicModelVars) <- modelVarInfo$vars |>
     lapply(\(x) x$name) |>
     unlist()
+  # These opDefs are in place but not actually used. They should start from custom_default
+  # and nCompiler needs to support custom opDefs for calls like obj$method(). 
   opDefs <- list(
     base_ping = nCompiler:::getOperatorDef("custom_call"),
     setup_auto_decl_mgmt = nCompiler:::getOperatorDef("custom_call"),

@@ -173,185 +173,185 @@ nl_removeNodeNamesNotInSymbolTable <- function(nodeNames, st) {
 
 nl_getVarNameFromNodeName <- function(nodeName) gsub("\\[.*", "", nodeName)
 
-expandMVNames <- function(mv, varNames) {
-  scipen <- options("scipen")[[1]]
-  options(scipen = 1000000)
-  on.exit(options(scipen = scipen))
-  sizeList <- mv$sizes
-  nodeNames <- NA
-  nodeIndex <- 0
-  for (i in seq_along(varNames)) {
-    baseName <- varNames[i]
-    dims <- mv$symTab$getSymbolObject(baseName)$size
-    if (length(dims) == 0) {
-      nodeNames[nodeIndex + 1] <- baseName
-      nodeIndex <- nodeIndex + 1
-    } else {
-      mins <- rep(1, length(dims))
-      indexStuff <- paste(mins, dims, sep = ":", collapse = ", ")
-      compactNodeNames <- paste0(baseName, "[", indexStuff, "]")
-      expandedNodeNames <- nl_expandNodeIndex(compactNodeNames)
-      nodeNames[nodeIndex + 1:length(expandedNodeNames)] <- expandedNodeNames
-      nodeIndex <- nodeIndex + length(expandedNodeNames)
-    }
-  }
-  return(nodeNames)
-}
+# expandMVNames <- function(mv, varNames) {
+#   scipen <- options("scipen")[[1]]
+#   options(scipen = 1000000)
+#   on.exit(options(scipen = scipen))
+#   sizeList <- mv$sizes
+#   nodeNames <- NA
+#   nodeIndex <- 0
+#   for (i in seq_along(varNames)) {
+#     baseName <- varNames[i]
+#     dims <- mv$symTab$getSymbolObject(baseName)$size
+#     if (length(dims) == 0) {
+#       nodeNames[nodeIndex + 1] <- baseName
+#       nodeIndex <- nodeIndex + 1
+#     } else {
+#       mins <- rep(1, length(dims))
+#       indexStuff <- paste(mins, dims, sep = ":", collapse = ", ")
+#       compactNodeNames <- paste0(baseName, "[", indexStuff, "]")
+#       expandedNodeNames <- nl_expandNodeIndex(compactNodeNames)
+#       nodeNames[nodeIndex + 1:length(expandedNodeNames)] <- expandedNodeNames
+#       nodeIndex <- nodeIndex + length(expandedNodeNames)
+#     }
+#   }
+#   return(nodeNames)
+# }
 
-as.matrix.modelValuesBaseClass <- function(x, varNames, ...) {
-  if (missing(varNames)) {
-    varNames <- x$varNames
-  }
-  if (!length(varNames)) {
-    return(NULL)
-  }
-  nrows <- getsize(x)
-  flatNames <- expandMVNames(x, varNames)
-  ans <- matrix(as.numeric(NA), nrow = nrows, ncol = length(flatNames))
-  colIndex <- 1
-  for (i in seq_along(varNames)) {
-    .Call(fastMatrixInsert, ans, modelValuesElement2Matrix(x, varNames[i]), as.integer(1), as.integer(colIndex))
-    colIndex <- colIndex + prod(x$sizes[[varNames[i]]])
-  }
-  colnames(ans) <- flatNames
-  return(ans)
-}
+# as.matrix.modelValuesBaseClass <- function(x, varNames, ...) {
+#   if (missing(varNames)) {
+#     varNames <- x$varNames
+#   }
+#   if (!length(varNames)) {
+#     return(NULL)
+#   }
+#   nrows <- getsize(x)
+#   flatNames <- expandMVNames(x, varNames)
+#   ans <- matrix(as.numeric(NA), nrow = nrows, ncol = length(flatNames))
+#   colIndex <- 1
+#   for (i in seq_along(varNames)) {
+#     .Call(fastMatrixInsert, ans, modelValuesElement2Matrix(x, varNames[i]), as.integer(1), as.integer(colIndex))
+#     colIndex <- colIndex + prod(x$sizes[[varNames[i]]])
+#   }
+#   colnames(ans) <- flatNames
+#   return(ans)
+# }
 
-as.matrix.CmodelValues <- function(x, varNames, ...) {
-  if (missing(varNames)) {
-    varNames <- x$varNames
-  }
-  if (!length(varNames)) {
-    return(NULL)
-  }
-  nrows <- getsize(x)
-  flatNames <- expandMVNames(x, varNames)
-  ans <- matrix(as.numeric(NA), nrow = nrows, ncol = length(flatNames))
-  colIndex <- 1
-  for (i in seq_along(varNames)) {
-    .Call(fastMatrixInsert, ans, modelValuesElement2Matrix(x, varNames[i]), as.integer(1), as.integer(colIndex))
-    colIndex <- colIndex + prod(x$sizes[[varNames[i]]])
-  }
-  colnames(ans) <- flatNames
-  return(ans)
-}
+# as.matrix.CmodelValues <- function(x, varNames, ...) {
+#   if (missing(varNames)) {
+#     varNames <- x$varNames
+#   }
+#   if (!length(varNames)) {
+#     return(NULL)
+#   }
+#   nrows <- getsize(x)
+#   flatNames <- expandMVNames(x, varNames)
+#   ans <- matrix(as.numeric(NA), nrow = nrows, ncol = length(flatNames))
+#   colIndex <- 1
+#   for (i in seq_along(varNames)) {
+#     .Call(fastMatrixInsert, ans, modelValuesElement2Matrix(x, varNames[i]), as.integer(1), as.integer(colIndex))
+#     colIndex <- colIndex + prod(x$sizes[[varNames[i]]])
+#   }
+#   colnames(ans) <- flatNames
+#   return(ans)
+# }
 
-as.list.modelValuesBaseClass <- function(x, varNames, iterationAsLastIndex = FALSE, ...) {
-  if (missing(varNames)) {
-    varNames <- x$varNames
-  }
-  nrows <- getsize(x)
-  results <- list()
-  for (v in varNames) {
-    samples <- x[[v]]
-    dims <- dimOrLength(samples[[1]])
-    matrixVersion <- do.call("c", lapply(samples, as.numeric))
-    ansDims <- c(dims, nrows)
-    results[[v]] <- array(matrixVersion, dim = ansDims)
-    if (!iterationAsLastIndex) {
-      nDim <- length(ansDims)
-      results[[v]] <- aperm(results[[v]], c(nDim, 1:(nDim - 1)))
-    }
-  }
-  results
-}
+# as.list.modelValuesBaseClass <- function(x, varNames, iterationAsLastIndex = FALSE, ...) {
+#   if (missing(varNames)) {
+#     varNames <- x$varNames
+#   }
+#   nrows <- getsize(x)
+#   results <- list()
+#   for (v in varNames) {
+#     samples <- x[[v]]
+#     dims <- dimOrLength(samples[[1]])
+#     matrixVersion <- do.call("c", lapply(samples, as.numeric))
+#     ansDims <- c(dims, nrows)
+#     results[[v]] <- array(matrixVersion, dim = ansDims)
+#     if (!iterationAsLastIndex) {
+#       nDim <- length(ansDims)
+#       results[[v]] <- aperm(results[[v]], c(nDim, 1:(nDim - 1)))
+#     }
+#   }
+#   results
+# }
 
-as.list.CmodelValues <- function(x, varNames, iterationAsLastIndex = FALSE, ...) {
-  if (missing(varNames)) {
-    varNames <- x$varNames
-  }
-  nrows <- getsize(x)
-  results <- list()
-  for (v in varNames) {
-    samples <- x[[v]]
-    dims <- dimOrLength(samples[[1]])
-    matrixVersion <- do.call("c", lapply(samples, as.numeric))
-    ansDims <- c(dims, nrows)
-    results[[v]] <- array(matrixVersion, dim = ansDims)
-    if (!iterationAsLastIndex) {
-      nDim <- length(ansDims)
-      results[[v]] <- aperm(results[[v]], c(nDim, 1:(nDim - 1)))
-    }
-  }
-  results
-}
+# as.list.CmodelValues <- function(x, varNames, iterationAsLastIndex = FALSE, ...) {
+#   if (missing(varNames)) {
+#     varNames <- x$varNames
+#   }
+#   nrows <- getsize(x)
+#   results <- list()
+#   for (v in varNames) {
+#     samples <- x[[v]]
+#     dims <- dimOrLength(samples[[1]])
+#     matrixVersion <- do.call("c", lapply(samples, as.numeric))
+#     ansDims <- c(dims, nrows)
+#     results[[v]] <- array(matrixVersion, dim = ansDims)
+#     if (!iterationAsLastIndex) {
+#       nDim <- length(ansDims)
+#       results[[v]] <- aperm(results[[v]], c(nDim, 1:(nDim - 1)))
+#     }
+#   }
+#   results
+# }
 
-modelValuesElement2Matrix <- function(mv, varName) {
-  if (length(varName) != 1) {
-    stop("modelValuesElement2Matrix is a call for a single variable. For multiple variables, use modelValues2Matrix")
-  }
-  matrix(as.numeric(unlist(mv[[varName]])), ncol = prod(mv$sizes[[varName]]), byrow = TRUE)
-}
+# modelValuesElement2Matrix <- function(mv, varName) {
+#   if (length(varName) != 1) {
+#     stop("modelValuesElement2Matrix is a call for a single variable. For multiple variables, use modelValues2Matrix")
+#   }
+#   matrix(as.numeric(unlist(mv[[varName]])), ncol = prod(mv$sizes[[varName]]), byrow = TRUE)
+# }
 
 
-Cmatrix2mvOneVar <- function(mat, mv, varName, k) {
-  ptr <- mv$componentExtptrs[[varName]]
-  if (inherits(ptr, "externalptr")) {
-    eval(call(".Call", nimbleUserNamespace$sessionSpecificDll$matrix2VecNimArr, ptr, mat, rowStart = as.integer(1), rowEnd = k))
-  } else {
-    stop("varName not found in modelValues")
-  }
-}
+# Cmatrix2mvOneVar <- function(mat, mv, varName, k) {
+#   ptr <- mv$componentExtptrs[[varName]]
+#   if (inherits(ptr, "externalptr")) {
+#     eval(call(".Call", nimbleUserNamespace$sessionSpecificDll$matrix2VecNimArr, ptr, mat, rowStart = as.integer(1), rowEnd = k))
+#   } else {
+#     stop("varName not found in modelValues")
+#   }
+# }
 
-#' Set values of one variable of a modelValues object from an R matrix
-#'
-#' Normally a modelValues object is accessed one "row" at a time.  This function allows all rows for one variable to set from a matrix with one dimension more than the variable to be set.
-#'
-#' @param mat Input matrix
-#'
-#' @param mv  modelValues object to be modified.
-#'
-#' @param varName Character string giving the name of the variable on \code{mv} to be set
-#'
-#' @param k Number of rows to use
-#'
-#' @export
-#' @details
-#' This function may be deprecated in the future when a more natural system for interacting with modelValues objects is developed.
-Rmatrix2mvOneVar <- function(mat, mv, varName, k) {
-  if (mv$symTab$symbols[[varName]][["type"]] == "double") {
-    storage.mode(mat) <- "double"
-    len <- ncol(mat)
-    .Call(matrix2ListDouble, mat, mv[[varName]], listStartIndex = as.integer(1), RnRows = k, Rlength = as.integer(mv$sizes[[varName]]))
-  }
-  if (mv$symTab$symbols[[varName]][["type"]] == "int") {
-    storage.mode(mat) <- "integer"
-    len <- ncol(mat)
-    .Call(matrix2ListInt, mat, mv[[varName]], listStartIndex = as.integer(1), RnRows = k, Rlength = as.integer(mv$sizes[[varName]]))
-  }
-}
+# #' Set values of one variable of a modelValues object from an R matrix
+# #'
+# #' Normally a modelValues object is accessed one "row" at a time.  This function allows all rows for one variable to set from a matrix with one dimension more than the variable to be set.
+# #'
+# #' @param mat Input matrix
+# #'
+# #' @param mv  modelValues object to be modified.
+# #'
+# #' @param varName Character string giving the name of the variable on \code{mv} to be set
+# #'
+# #' @param k Number of rows to use
+# #'
+# #' @export
+# #' @details
+# #' This function may be deprecated in the future when a more natural system for interacting with modelValues objects is developed.
+# Rmatrix2mvOneVar <- function(mat, mv, varName, k) {
+#   if (mv$symTab$symbols[[varName]][["type"]] == "double") {
+#     storage.mode(mat) <- "double"
+#     len <- ncol(mat)
+#     .Call(matrix2ListDouble, mat, mv[[varName]], listStartIndex = as.integer(1), RnRows = k, Rlength = as.integer(mv$sizes[[varName]]))
+#   }
+#   if (mv$symTab$symbols[[varName]][["type"]] == "int") {
+#     storage.mode(mat) <- "integer"
+#     len <- ncol(mat)
+#     .Call(matrix2ListInt, mat, mv[[varName]], listStartIndex = as.integer(1), RnRows = k, Rlength = as.integer(mv$sizes[[varName]]))
+#   }
+# }
 
-matrix2mv <- function(mat, mv) {
-  k <- nrow(mat)
-  if (mv$getSize() < k) {
-    mv$resize(k)
-  }
-  mvVarNames <- mv$varNames
-  mvSizes <- mv$sizes
-  colNames <- colnames(mat)
-  colNames <- removeIndexing(colNames)
-  uniqueColNames <- unique(colNames)
-  if (inherits(mv, "CmodelValues")) {
-    for (vN in uniqueColNames) {
-      totVals <- prod(mvSizes[[vN]])
-      varInds <- colNames == vN
-      if (totVals != sum(varInds)) {
-        stop("matrix2mv halted because dimensions of variables do not match")
-      }
-      subMatrix <- as.matrix(mat[, varInds, drop = FALSE])
-      Cmatrix2mvOneVar(subMatrix, mv, vN, k)
-    }
-  } else if (inherits(mv, "modelValuesBaseClass")) {
-    for (vN in uniqueColNames) {
-      totVals <- prod(mvSizes[[vN]])
-      varInds <- colNames == vN
-      if (totVals != sum(varInds)) {
-        stop("matrix2mv halted because dimensions of variables do not match")
-      }
-      subMatrix <- as.matrix(mat[, varInds, drop = FALSE])
-      Rmatrix2mvOneVar(subMatrix, mv, vN, k)
-    }
-  } else {
-    stop("argument mv is neither a CmodelValues or RmodelValues object")
-  }
-}
+# matrix2mv <- function(mat, mv) {
+#   k <- nrow(mat)
+#   if (mv$getSize() < k) {
+#     mv$resize(k)
+#   }
+#   mvVarNames <- mv$varNames
+#   mvSizes <- mv$sizes
+#   colNames <- colnames(mat)
+#   colNames <- removeIndexing(colNames)
+#   uniqueColNames <- unique(colNames)
+#   if (inherits(mv, "CmodelValues")) {
+#     for (vN in uniqueColNames) {
+#       totVals <- prod(mvSizes[[vN]])
+#       varInds <- colNames == vN
+#       if (totVals != sum(varInds)) {
+#         stop("matrix2mv halted because dimensions of variables do not match")
+#       }
+#       subMatrix <- as.matrix(mat[, varInds, drop = FALSE])
+#       Cmatrix2mvOneVar(subMatrix, mv, vN, k)
+#     }
+#   } else if (inherits(mv, "modelValuesBaseClass")) {
+#     for (vN in uniqueColNames) {
+#       totVals <- prod(mvSizes[[vN]])
+#       varInds <- colNames == vN
+#       if (totVals != sum(varInds)) {
+#         stop("matrix2mv halted because dimensions of variables do not match")
+#       }
+#       subMatrix <- as.matrix(mat[, varInds, drop = FALSE])
+#       Rmatrix2mvOneVar(subMatrix, mv, vN, k)
+#     }
+#   } else {
+#     stop("argument mv is neither a CmodelValues or RmodelValues object")
+#   }
+# }

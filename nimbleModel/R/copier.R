@@ -1,3 +1,20 @@
+# Classes and tools to support nimble2's values() and nimCopy(), both getting and setting.
+#
+# copier_nClass is just a data structure for one variable name and index information. It doesn't actually copy.
+#
+# multiCopier_nClass holds multiple copier_nClass's and does values() copying (for a model only).
+# It has a C++ layer that uses the flatViewGroup class to do the copying.
+#
+# multiCopierMV_nClass is like multiCopier_nClass but for modelValues objects, 
+# but is used only for nimCopy. 
+#
+# multiCopier_nClass and multiCopierMV_nClass share a C++ base class. 
+# The C++ step of nimCopy_ takes two multiCopier base classes and copies from one to the other.
+# 
+# An important aspect on the C++ side is avoiding repeated name-based lookups of variables
+# within the model or modelValues.
+
+
 #' @export
 copier_nClass <- nCompiler::nClass(
   classname = "copier_nClass",
@@ -50,7 +67,7 @@ multiCopier_nClass <- nCompiler::nClass(
         }
       )
     ),
-    # Note that this setValues works but it not actually used by nimble2 keyword processing
+    # Note that this setValues works but is not actually used by nimble2 keyword processing
     # which instead uses copiers->flatViewGroup.setValues_() which provides an operator=.
     # It is possible that this setValues() will be useful in other contexts, or if not that we
     # can eventually remove it to avoid confusion.
@@ -197,6 +214,8 @@ makeMultiCopier <- function(source, nodes,
     )
   multiCopier
 }
+
+# Uncompiled implementations of values(model, nodes) and `values<-`(model, nodes, value).
 
 #' @export
 values <- function(model, nodes) {

@@ -1,32 +1,34 @@
 #ifndef __MULTICOPIER_NC_BASE
 #define __MULTICOPIER_NC_BASE
 
-// Common base for every multiCopier flavor (model-backed, modelValues-backed,
-// ...). Holds the one piece of state every flavor needs -- a flattened view
-// over the selected variables/index-ranges -- plus a `setActiveRow` hook so
-// generic code (nimCopy_ below) can address a "current row" uniformly, even
-// for backends, like a model, that have no notion of rows at all.
+// multiCopier is used for nimble2's implementations of values() and nimCopy().
+// It represents access to a set of variables and index ranges for each variable.
+// It use's nCompiler's RuntimeFlatViewGroup for the actual copying (including indexing and striding).
 //
-// Flavor-specific setup (`init`) lives in each flavor's own base class
-// (e.g. multiCopier_model_nC_base, multiCopier_modelValues_nC_base) since the
-// source object each flavor reads from differs in kind, not just in type.
+// Here is the base class for model and modelValues versions of multiCopies
+// and the universal nimCopy_ implementation between any two multiCopiers.
+//
+// The trick is that we want to look up named variables only once, but hold 
+// access to each member variable (e.g. an Eigen::Tensor for a model or an 
+// nList<Eigen::Tensor<nDim, ScalarType > > for a modelValues), not the data
+// it points to. That way if the member variable is reset, we don't point to
+// stale data. For a model, we hold a reference to the Eigen::Tensor. For
+// a modelValues, it is harder: we hold the generic accessor object (accessor
+// of the generic interface scheme, not to be confused with ETaccessor for
+// type-flexible access to Eigen::Tensors).
+// A second trick is that we want to precompute and cache indexing and striding
+// info for each copiers, but we need to update the data pointer every time
+// in case it has changed. setActiveRow() does that, with the row concept
+// relevant only for modelValue.
+//
+// All copying machinery assumes that the sizes of variables, and the 
+// selection of indexed blocks of variables, will not change after initialization.
 class multiCopier_nC_base {
 public:
   RuntimeFlatViewGroup<double> flatViewGroup;
-
-  // No-op default: most backends (e.g. a model) have nothing to key by row.
-  // multiCopier_modelValues_nC_base shadows this with a real implementation.
-  // Not virtual: which flavor is in play is always known statically at the
-  // call site (see nimCopy_), so ordinary name lookup/shadowing is enough.
   void setActiveRow(int row) {}
 };
 
-// Copies flatViewGroup-to-flatViewGroup from src (at row srcRow) to dst (at
-// row dstRow), after pointing each one at its requested row first. SrcT/DstT
-// are resolved at compile time, so this one function works uninformed of
-// which concrete multiCopier flavor either side is -- setActiveRow is a
-// no-op for a flavor (e.g. model-backed) that doesn't have rows, and does
-// the real rebind for one (e.g. modelValues-backed) that does.
 template<typename SrcT, typename DstT>
 void nimCopy_(const std::shared_ptr<SrcT> &src, int srcRow,
               const std::shared_ptr<DstT> &dst, int dstRow) {

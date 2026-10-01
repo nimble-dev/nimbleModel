@@ -18,32 +18,78 @@ test_that("basic modelValues class works", {
   obj$set_sizeList(sizes)
   expect_equal(obj$get_sizeList(), sizes)
   obj$resize(3)
-  expect_equal(obj$mu |> as.list(), rep(list(numeric(2)), 3))
-  expect_equal(obj$cov |> as.list(), matrix(0, nrow = 3, ncol = 4) |> list() |> rep(3))
+  default_mu3 <- rep(list(numeric(2)), 3)
+  default_cov3 <- matrix(0, nrow = 3, ncol = 4) |> list() |> rep(3)
+  expect_equal(obj$mu |> as.list(), default_mu3)
+  expect_equal(obj$cov |> as.list(), default_cov3)
+
+  legacy_setting <- getNimbleModelOption("legacy_nimble")
+  on.exit(setNimbleModelOption("legacy_nimble", legacy_setting))
 
   # S3 interface, uncompiled
   expect_equal(length(obj), 3)
+  # Access for var and row
   expect_equal(obj["mu", 1], c(0, 0))
+  # Access all rows for one var
+  setNimbleModelOption("legacy_nimble", FALSE)
+  expect_equal(obj["mu"] |> as.list(), default_mu3)
+  # With legacy_nimble TRUE, `[.modelValues` returns a list instead of an nList
+  setNimbleModelOption("legacy_nimble", TRUE)
+  expect_equal(obj["mu"], default_mu3)
+  setNimbleModelOption("legacy_nimble", FALSE)
+  # Set all rows for one var
+  testList <- list(c(1, 2), c(3, 4))
+  cat("expected warning about wrong number of items to replace:\n")
+  expect_warning(obj["mu"] <- testList) # Warning for wrong length
+  test_muList <- list(c(1, 2), c(3, 4), c(5, 6))
+  obj["mu"] <- test_muList
+  expect_equal(obj["mu"] |> as.list(), test_muList)
+  obj["mu"] <- default_mu3
+  # Set for var and row
   obj["mu", 1] <- c(1, 2)
   expect_equal(obj["mu", 1], c(1, 2))
+
+  # Change length using `length<-`, checking for preserved values.
+  obj["mu"] <- test_muList
   length(obj) <- 2
   expect_equal(length(obj), 2)
-  obj["mu", 1] <- c(1, 2)
-  obj["mu", 2] <- c(3, 4)
-  list_exp <- list(mu = list(c(1,2), c(3, 4)), cov = matrix(0, nrow = 3, ncol = 4) |> list() |> rep(2))
-  expect_equal(as.list(obj), list_exp)
+  list_exp2 <- list(mu = test_muList[1:2], cov = default_cov3[1:2])
+  list_exp2 <- list_exp2[sort(names(list_exp2))]
+  expect_equal(as.list(obj), list_exp2)
+  length(obj) <- 3
+  list_exp3 <- list(mu = c(list_exp2$mu, default_mu3[3]), cov = c(list_exp2$cov, default_cov3[3]))
+  list_exp3 <- list_exp3[sort(names(list_exp3))]
+  expect_equal(as.list(obj), list_exp3)
 
-  # Make a holder class so we can test a compiled mv returned
-  # as a base class
+  # Change length using `resize`, checking for preserved values.
+  resize(obj, 2)
+  expect_equal(getsize(obj), 2)
+  expect_equal(obj$getSize(), 2)
+  expect_equal(as.list(obj), list_exp2)
+  resize(obj, 3)
+  expect_equal(as.list(obj), list_exp3)
+  expect_equal(obj$getSize(), 3)
 
+  # Test compiling as a type
+  # resize and getsize are supported "natively" by opDefs.
+  # single and double bracket operators for now are
+  # supported for nimble2 via its keyword processing system
   mvHolder <- nCompiler::nClass(
     Cpublic = list(
-      mv = "modelValuesBase_nClass"
+      mv = "modelValuesBase_nClass",
+      check1 = nFunction(
+        function(m = 'integerScalar') {
+          resize(mv, m)
+        }
+      ),
+      check2 = nFunction(
+        function() {
+          return(getsize(mv))
+          returnType(integerScalar())
+        }
+      )
     )
   )
-
-#  debug(nCompiler:::compile_generateCpp)
-#  debug(nCompiler:::process_inheritance)
   comp <- nCompiler::nCompile(mvClass, mvHolder)
   CmvClass <- comp$mvClass
   CmvHolder <- comp$mvHolder
@@ -55,20 +101,53 @@ test_that("basic modelValues class works", {
   obj$set_sizeList(sizes)
   expect_equal(obj$get_sizeList(), sizes)
   obj$resize(3)
-  expect_equal(obj$mu |> as.list(), rep(list(numeric(2)), 3))
-  expect_equal(obj$cov |> as.list(), matrix(0, nrow = 3, ncol = 4) |> list() |> rep(3))
+  default_mu3 <- rep(list(numeric(2)), 3)
+  default_cov3 <- matrix(0, nrow = 3, ncol = 4) |> list() |> rep(3)
+  expect_equal(obj$mu |> as.list(), default_mu3)
+  expect_equal(obj$cov |> as.list(), default_cov3)
 
   # S3 interface, compiled
   expect_equal(length(obj), 3)
+  # Access for var and row
   expect_equal(obj["mu", 1], c(0, 0))
+  setNimbleModelOption("legacy_nimble", FALSE)
+  expect_equal(obj["mu"] |> as.list(), default_mu3)
+  # With legacy_nimble TRUE, `[.modelValues` returns a list instead of an nList
+  setNimbleModelOption("legacy_nimble", TRUE)
+  expect_equal(obj["mu"], default_mu3)
+  setNimbleModelOption("legacy_nimble", FALSE)
+  # Set all rows for one var
+  testList <- list(c(1, 2), c(3, 4))
+  cat("expected warning about wrong number of items to replace:\n")
+  expect_warning(obj["mu"] <- testList) # Warning for wrong length
+  test_muList <- list(c(1, 2), c(3, 4), c(5, 6))
+  obj["mu"] <- test_muList
+  expect_equal(obj["mu"] |> as.list(), test_muList)
+  obj["mu"] <- default_mu3
+  # Set for var and row
   obj["mu", 1] <- c(1, 2)
   expect_equal(obj["mu", 1], c(1, 2))
+
+  # Change length using `length<-`, checking for preserved values.
+  obj["mu"] <- test_muList
   length(obj) <- 2
   expect_equal(length(obj), 2)
-  obj["mu", 1] <- c(1, 2)
-  obj["mu", 2] <- c(3, 4)
-  list_exp <- list(mu = list(c(1,2), c(3, 4)), cov = matrix(0, nrow = 3, ncol = 4) |> list() |> rep(2))
-  expect_equal(as.list(obj), list_exp[sort(names(list_exp)) ] )
+  list_exp2 <- list(mu = test_muList[1:2], cov = default_cov3[1:2])
+  list_exp2 <- list_exp2[sort(names(list_exp2))]
+  expect_equal(as.list(obj), list_exp2)
+  length(obj) <- 3
+  list_exp3 <- list(mu = c(list_exp2$mu, default_mu3[3]), cov = c(list_exp2$cov, default_cov3[3]))
+  list_exp3 <- list_exp3[sort(names(list_exp3))]
+  expect_equal(as.list(obj), list_exp3)
+
+  # Change length using `resize`, checking for preserved values.
+  resize(obj, 2)
+  expect_equal(getsize(obj), 2)
+  expect_equal(obj$getSize(), 2)
+  expect_equal(as.list(obj), list_exp2)
+  resize(obj, 3)
+  expect_equal(as.list(obj), list_exp3)
+  expect_equal(obj$getSize(), 3)
 
   # Accessed by base class pointer as a member of another class
   obj <- CmvClass$new()
@@ -84,21 +163,64 @@ test_that("basic modelValues class works", {
   nCompiler::method(obj, "set_sizeList")(sizes)
   expect_equal(nCompiler::method(obj, "get_sizeList")(), sizes)
   nCompiler::method(obj, "resize")(3)
-  expect_equal(nCompiler::value(obj, "mu") |> as.list(), rep(list(numeric(2)), 3))
-  expect_equal(nCompiler::value(obj, "cov") |> as.list(), matrix(0, nrow = 3, ncol = 4) |> list() |> rep(3))
+  expect_equal(nCompiler::value(obj, "mu") |> as.list(), default_mu3)
+  expect_equal(nCompiler::value(obj, "cov") |> as.list(), default_cov3)
 
   # In S3 interface use, normal syntax should work
   # because the S3 interface functions use value() and method()
   expect_equal(length(obj), 3)
+  # Access for var and row
   expect_equal(obj["mu", 1], c(0, 0))
+  # Access all rows for one var
+  setNimbleModelOption("legacy_nimble", FALSE)
+  expect_equal(obj["mu"] |> as.list(), default_mu3)
+  # With legacy_nimble TRUE, `[.modelValues` returns a list instead of an nList
+  setNimbleModelOption("legacy_nimble", TRUE)
+  expect_equal(obj["mu"], default_mu3)
+  setNimbleModelOption("legacy_nimble", FALSE)
+  # Set all rows for one var
+  testList <- list(c(1, 2), c(3, 4))
+  cat("expected warning about wrong number of items to replace:\n")
+  expect_warning(obj["mu"] <- testList) # Warning for wrong length
+  test_muList <- list(c(1, 2), c(3, 4), c(5, 6))
+  obj["mu"] <- test_muList
+  expect_equal(obj["mu"] |> as.list(), test_muList)
+  obj["mu"] <- default_mu3
+  # Set for var and row
   obj["mu", 1] <- c(1, 2)
   expect_equal(obj["mu", 1], c(1, 2))
+
+  # Change length using `length<-`, checking for preserved values.
+  obj["mu"] <- test_muList
   length(obj) <- 2
   expect_equal(length(obj), 2)
-  obj["mu", 1] <- c(1, 2)
-  obj["mu", 2] <- c(3, 4)
-  list_exp <- list(mu = list(c(1,2), c(3, 4)), cov = matrix(0, nrow = 3, ncol = 4) |> list() |> rep(2))
-  expect_equal(as.list(obj), list_exp[sort(names(list_exp))])
+  list_exp2 <- list(mu = test_muList[1:2], cov = default_cov3[1:2])
+  list_exp2 <- list_exp2[sort(names(list_exp2))]
+  expect_equal(as.list(obj), list_exp2)
+  length(obj) <- 3
+  list_exp3 <- list(mu = c(list_exp2$mu, default_mu3[3]), cov = c(list_exp2$cov, default_cov3[3]))
+  list_exp3 <- list_exp3[sort(names(list_exp3))]
+  expect_equal(as.list(obj), list_exp3)
+
+  # Change length using `resize`, checking for preserved values.
+  resize(obj, 2)
+  expect_equal(getsize(obj), 2)
+  expect_equal(obj$getSize(), 2)
+  expect_equal(as.list(obj), list_exp2)
+  resize(obj, 3)
+  expect_equal(as.list(obj), list_exp3)
+  expect_equal(obj$getSize(), 3)
+
+  # Change length using compiled `resize`, check with compiled getsize, checking for preserved values.
+  mvh$check1(2)
+  expect_equal(getsize(obj), 2)
+  expect_equal(obj$getSize(), 2)
+  expect_equal(mvh$check2(), 2)
+  expect_equal(as.list(obj), list_exp2)
+  mvh$check1(3)
+  expect_equal(as.list(obj), list_exp3)
+  expect_equal(obj$getSize(), 3)
+  expect_equal(mvh$check3(), 3)
 
   # We can create a new derived interface object with the same underlying C++ object
   # Then we have the active bindings
@@ -249,4 +371,79 @@ test_that("modelValues nClassBuilder types work in nCompiler", {
   obj$mvBase <- obj$mv
   expect_equal(obj$mvBase$getLength(), 2)
   rm(obj); gc()
+})
+
+test_that("modelValuesConf works", {
+  mvc <- modelValuesConf(vars = c('d1'),
+                         types = c('double'),
+                         sizes = list( d1 = 5 ))
+  mv <- mvc(2)
+  expect_equal(length(mv), 2)
+  expect_equal(mv["d1", 1], rep(0, 5))
+  mvcB <- modelValuesConf(vars = c('d1'),
+                          types = c('double'),
+                          sizes = list( d1 = 5 ))
+  mvB <- mvcB(2)
+  # two versions that should be identical end up so.
+  expect_identical(class(mv), class(mvB))
+
+  mvc <- modelValuesConf(vars = c('d1', 'd2', 'd3'),
+                         types = c('double', 'double', 'double'),
+                         sizes = list( d1 = 5, d2 = c(3, 5), d3 = c(3, 5, 7)))
+  mv <- mvc(3)
+  expect_identical(mv["d2", 2], matrix(0, nrow = 3, ncol = 5))
+  expect_identical(mv["d3", 3], array(0, dim = c(3, 5, 7)))
+  rm(mv); gc()
+})
+
+test_that("as.matrix(modelValues) and matrix2MV work", {
+  varInfo <- list(
+    vars = list(
+      eta = list(name = "eta", nDim = 0),
+      mu = list(name = "mu", nDim = 1),
+      cov = list(name = "cov", nDim = 2)
+    )
+  )
+#  debug(nimbleModel:::make_modelValues_nClass)
+  mvClass <- nimbleModel:::make_modelValues_nClass(varInfo)
+  obj <- mvClass$new()
+  sizes <- list(mu = 2, cov = c(3, 4))
+  obj$set_sizeList(sizes)
+
+  obj$resize(0)
+  obj$resize(3)
+  obj$mu[[2]] <- 5:6
+  obj$mu[[3]] <- 10:11
+  obj$cov[[2]] <- matrix(1:12, nrow = 3)
+  obj$cov[[3]] <- obj$cov[[2]] + 100
+  mat <- obj |> as.matrix()
+  obj2 <- mvClass$new()
+  debug(nimbleModel:::matrix2mv)
+  junk <- nimbleModel:::matrix2mv(mat, obj2)
+
+  make_mvBase <- nFunction(
+    function(x = "modelValuesBase_nClass") {
+      return(x)
+      returnType(modelValuesBase_nClass())
+    }
+  )
+
+  junk <- nCompiler::nCompile(mvClass, make_mvBase, returnList = TRUE)
+  Cobj <- junk$mvClass$new()
+  length(Cobj) <- 3
+  length(Cobj) <- 0
+  Cobj$set_sizeList(sizes)
+  length(Cobj) <- 3
+  Cobj$eta |> as.list()
+  Cobj$cov |> as.list()
+
+  interface_names(Cobj)
+  baseCobj <- junk$make_mvBase(Cobj)
+  interface_names(baseCobj)
+
+  debug(as.matrix.modelValues)
+  as.matrix(Cobj)
+
+  comp <- nCompiler::nCompile(mvClass, mvHolder)
+
 })

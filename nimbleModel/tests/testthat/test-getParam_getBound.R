@@ -3,7 +3,7 @@ library(testthat)
 
 cat("getParam and getBound need multivariate tests\n")
 
-test_that("basic getParam and getBound works", {
+test_that("basic getParam and getBound works from full interface", {
   # We need a vector node test, but at the time of this writing,
   # dmnorm is blocked by calc_dmnormAltParams
   # ddirch is blocked by needing handlers for rdirch

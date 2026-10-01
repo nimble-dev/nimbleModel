@@ -10,19 +10,20 @@
 
 class modelValuesBase_nClass : public interface_resolver< genericInterfaceC<modelValuesBase_nClass> >, public loadedObjectHookC<modelValuesBase_nClass> {
 public:
-      modelValuesBase_nClass (  ) ;
-    void  set_sizeList ( Rcpp::List sizeList ) ;
-    Rcpp::List  get_sizeList (  ) ;
-   virtual  void  resize ( int m ) ;
-   virtual  int  getLength (  ) ;
+      modelValuesBase_nClass (  )  ;
+    void  set_sizeList ( Rcpp::List sizeList )  ;
+    Rcpp::List  get_sizeList (  )  ;
+   virtual  void  resize ( int m )  ;
+   virtual  int  getLength (  )  ;
+   virtual  int  getSize (  )  ;
   Rcpp::List dot_sizeList;
   int dot_current_nRow;
 
 };
 
-    void  set_CnClass_env_modelValuesBase_nClass ( SEXP env ) ;
+    void  set_CnClass_env_modelValuesBase_nClass ( SEXP env )  ;
 
-    Rcpp::Environment  get_CnClass_env_modelValuesBase_nClass (  ) ;
+    Rcpp::Environment  get_CnClass_env_modelValuesBase_nClass (  )  ;
 
 #include <nimbleModel/predef/modelValuesClass_/modelValuesClass_.h>
 

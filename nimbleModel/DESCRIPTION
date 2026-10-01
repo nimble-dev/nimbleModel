@@ -41,6 +41,7 @@ Collate:
     modelValues.R
     model_utils.R
     nodeRules.R
+    opDefs.R
     options.R       
     originalIndexingRules.R
     processModelGraph.R
@@ -53,6 +54,7 @@ Collate:
     modelBaseClass.R
     instructions.R
     nimbleModel.R
+    zzz.R
 
     
     

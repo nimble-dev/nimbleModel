@@ -3,31 +3,23 @@
 
 #include <nimbleModel/predef/multiCopier_nC_base/multiCopier_nC_base.h>
 
-// Model-backed multiCopier setup: each copier's varName resolves directly
-// (via the model's own access()) to an ETaccessorBase for a live field, no
-// intermediate row concept.
+// model version of a multiCopier.
 //
-// A field's own storage (e.g. an Eigen::Tensor member) can be reallocated
-// in place -- resize_from_list() in modelClass_.h calls
-// ETA->template ref<n>().resize(...), which reallocates that Tensor's
-// internal buffer -- between the time this multiCopier is built and the
-// time its flatViewGroup is next used. ETaccessorBase::data() re-derefs the
-// live field on every call rather than caching a pointer at construction
-// time, so holding onto the accessors (moved, not just read from once) and
-// asking them again via setActiveRow is enough to track that: no need to
-// go back through the (slow) name-based access() scheme.
+// When an Eigen::Tensor is reallocated (e.g. resized), its allocated
+// memory (its data pointer) changes, but the Eigen::Tensor object
+// itself does not. So we hold a reference to the Eigen::Tensor
+// (via an ETaccessorBase that is an ETaccessor for that Tensor).
 class multiCopier_model_nC_base : public multiCopier_nC_base {
 public:
-  // One accessor per copier, parallel to (and in the same order as) the
-  // views held in flatViewGroup. Moved (not copied) from model->access() so
-  // that S<double>().data() can be re-read later to pick up any
-  // reallocation of the field's own storage.
+  // ETaccessors (for a non-scalar) hold a reference to an Eigen::Tensor.
+  // The allows us to check the data pointer on each use, in case the 
+  // Eigen::Tensor has been reallocated since the last call.
   std::vector<std::unique_ptr<ETaccessorBase>> accessors;
-  // Keeps the model itself alive for as long as accessors hold references
-  // into its fields (ETaccessorBase binds a bare reference to the field,
-  // not an owning pointer to the model).
+  // Hold a shared_ptr to the model to keep it alive.
+  // In normal nimble usage, this should not be necessary, but it is safer and cheap. 
   std::shared_ptr<genericInterfaceBaseC> modelKeepAlive;
 
+  // init sets the vectors of ETaccessors and RuntimeFlatView.
   template<typename T, typename M>
   void init(std::shared_ptr<T> copiers, std::shared_ptr<M> model) {
     flatViewGroup.clear();
@@ -41,15 +33,17 @@ public:
     }
   }
 
-  // Shadows multiCopier_nC_base's no-op. There is no "row" concept here --
-  // `row` is ignored -- but nimCopy_ calls setActiveRow(row) unconditionally
-  // on both its src and dst, so this is the natural place to re-sync
-  // flatViewGroup's data pointers with any reallocation that may have
-  // happened to the model's fields since the last use.
+  // RuntimeFlatViewGroup and RuntimeFlatView have a system of updating
+  // all the data pointers to be used (with the precomputed and cached 
+  // indexing and striding, which [along with the sizes of the variables themselves]
+  // are assumed to be constant after initialization).
+  // The system assumes the data pointers will always be provided in the same order,
+  // i.e. the order of the ETaccessors.
+  // The argument is ignored (it is used for rows of the modelValues case).
   void setActiveRow(int /*row*/) {
-    flatViewGroup.prepare_for_setData();
+    flatViewGroup.prepare_for_setData(); // reset counter to 0
     for (auto& acc : accessors)
-      flatViewGroup.setNextData(acc->template S<double>().data());
+      flatViewGroup.setNextData(acc->template S<double>().data()); // update each one's data pointer.
   }
 };
 #endif

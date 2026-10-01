@@ -28,32 +28,22 @@
 // name, but always a fresh read, so a reassignment is never missed.
 class multiCopier_modelValues_nC_base : public multiCopier_nC_base {
 public:
-  // One accessor per copier, parallel to (and in the same order as) the
-  // views held in flatViewGroup once built. This is the field's
-  // name-resolved accessor_base, NOT the nList it currently resolves to --
-  // see the class comment above for why the nList itself must not be cached.
+  // The accessor_base here is the base class for the generic interface scheme
+  // for name-based lookup. (This is not related to ETaccessors).
+  // E.g. for a variable "mu", we can cache the accessor for "mu" without
+  // repeating the name-based lookup, but that's as close as we can get.
+  // For safety we need to re-obtain the nList for "mu" on each copy usage.
   std::vector<std::shared_ptr<accessor_base>> fieldAccessors;
-  // Keeps modelValues itself alive (and is the intBasePtr argument to
-  // fieldAccessors[k]->getInterfacePtr()) for as long as fieldAccessors hold
-  // resolutions against it -- same reasoning as modelKeepAlive in
-  // multiCopier_model_nC_base.
+  // Ensure the modelValues stays alive. This shouldn't be needed in 
+  // nimble2's design but is here for safety and is cheap.
   std::shared_ptr<genericInterfaceBaseC> modelValuesKeepAlive;
-  // Saved index-block selections, one per copier, needed to (re)build a view
-  // the first time a row is actually available (see setActiveRow).
+  // Saved index-block information for deferring (lazy) setup of the RuntimeFlatViews.
   std::vector<std::vector<b__>> ssList;
-  // Whether flatViewGroup has been fully built (shape + data) yet.
   bool built = false;
 
-  // Resolves each copier's varName to its accessor_base, via modelValues's
-  // own (virtual) get_name2access(), so this works through a base
-  // modelValuesBase_nClass pointer -- no need for the caller to have the
-  // fully-derived generated modelValues type in hand.
-  //
-  // Deliberately does NOT touch flatViewGroup: at this point modelValues may
-  // have declared/initialized each nList but not yet resized it (a row count
-  // of 0 is possible), so there may be no row yet to read shape/data from.
-  // setActiveRow() must be called at least once, after rows exist, before
-  // flatViewGroup is used for anything (getValues/setValues/nimCopy_/etc.).
+  // When init is called, there is no guarantee that the variables will be
+  // initialized so we can't count on reading their sizes.
+  // Hence we defer that step until the first actual copy (via setActiveRow).
   template<typename T>
   void init(std::shared_ptr<T> copiers,
             std::shared_ptr<modelValuesBase_nClass> modelValues) {
@@ -72,8 +62,7 @@ public:
     }
   }
 
-  // Re-derives fieldAccessors[k]'s current nList from the live modelValues
-  // object -- see the class comment for why this must not be cached.
+  // Get an nList base class pointer from the accessor_base for the k-th variable.
   std::shared_ptr<nListBase_nClass> resolveRowSource(size_t k) {
     std::shared_ptr<genericInterfaceBaseC> ip =
       fieldAccessors[k]->getInterfacePtr(modelValuesKeepAlive.get());
@@ -84,36 +73,28 @@ public:
     return nlPtr;
   }
 
-  // Rebinds every view to row `newRow`. The first call also builds each
-  // view's shape (from that row's accessor); every later call assumes all
-  // rows of a variable share that shape (an invariant of
-  // modelValuesClass_::resize_one, which always resizes every row to the
-  // same dims) and only swaps the data pointer.
+  // On the first call, we assume we can obtain size information
+  // that will be constant thereafter (based on whichever row was chosen first!)
   void setActiveRow(int newRow) {
     if (!built) {
       flatViewGroup.clear();
       for (size_t k = 0; k < fieldAccessors.size(); ++k) {
         auto acc = resolveRowSource(k)->access_at(newRow);
+        // makeRuntimeFlatView does initialize the data pointer, so the
+        // prepare_for_setData and setNextData steps are not necessary.
         flatViewGroup.add(makeRuntimeFlatView<double>(acc, ssList[k]));
       }
       built = true;
     } else {
-      // TODO(perf): this is a hot path (called on every sampler iteration in
-      // MCMC). resolveRowSource()+access_at() each do a dynamic_cast plus
-      // access_at() builds a whole ETaccessorBase -- 2 heap allocations (the
-      // accessor object + its intDims_ vector, the latter never even read
-      // here) -- just to reach .data(). Once the shape is known (built ==
-      // true), all we actually need is the raw pointer, re-derived fresh
-      // (both the current nList and the current row's data are still
-      // re-read every call, since either can change underneath us -- see the
-      // class comment). A lightweight nListBase_nClass::data_ptr_at(int i)
-      // (contents_.at(i).data(), no ETaccessorBase involved) would let this
-      // branch skip the ETaccessorBase allocation. Deferred until this shows
-      // up as a real bottleneck; see conversation for the sizing.
-      flatViewGroup.prepare_for_setData();
+      // See comment in multiCopier_model_nC_base.
+      // Performance note for the modelValues case:
+      // the nListBase_nClass::access_at(row) allocates a new ETaccessor 
+      // every time. Future optimization could re-use a single ETaccessor,
+      // but that would take a small extension of ETaccessor.
+      flatViewGroup.prepare_for_setData(); // reset the counter.
       for (size_t k = 0; k < fieldAccessors.size(); ++k) {
-        auto acc = resolveRowSource(k)->access_at(newRow);
-        flatViewGroup.setNextData(acc->template S<double>().data());
+        auto acc = resolveRowSource(k)->access_at(newRow); // Get an ETaccessor.
+        flatViewGroup.setNextData(acc->template S<double>().data()); // reset the data pointer.
       }
     }
   }
