@@ -14,51 +14,56 @@ using namespace Rcpp;
 // [[Rcpp::depends(Rcereal)]]
 // [[Rcpp::depends(nimbleModel)]]
 
-    bool  declFunBase_nClass::ping (  ) {
+    bool  declFunBase_nClass::ping (  )  {
 RESET_EIGEN_ERRORS
 return(true);
 }
-    double  declFunBase_nClass::calculate_cpp ( std::shared_ptr<instr_nClass> instr ) {
+    double  declFunBase_nClass::calculate_cpp ( std::shared_ptr<instr_nClass> instr )  {
 RESET_EIGEN_ERRORS
 Rprintf("declFunBase_nClass virtual base calculate_cpp should never be called (something is wrong)\n");;
 return(0.0);
 }
-    double  declFunBase_nClass::calculateDiff_cpp ( std::shared_ptr<instr_nClass> instr ) {
+    double  declFunBase_nClass::calculateDiff_cpp ( std::shared_ptr<instr_nClass> instr )  {
 RESET_EIGEN_ERRORS
 Rprintf("declFunBase_nClass virtual base calculateDiff_cpp should never be called (something is wrong)\n");;
 return(0.0);
 }
-    double  declFunBase_nClass::getLogProb_cpp ( std::shared_ptr<instr_nClass> instr ) {
+    double  declFunBase_nClass::getLogProb_cpp ( std::shared_ptr<instr_nClass> instr )  {
 RESET_EIGEN_ERRORS
 Rprintf("declFunBase_nClass virtual base getLogProb_cpp should never be called (something is wrong)\n");;
 return(0.0);
 }
-    void  declFunBase_nClass::simulate_cpp ( std::shared_ptr<instr_nClass> instr ) {
+    void  declFunBase_nClass::simulate_cpp ( std::shared_ptr<instr_nClass> instr )  {
 RESET_EIGEN_ERRORS
 Rprintf("declFunBase_nClass virtual base simulate_cpp should never be called (something is wrong)\n");;
 }
-    std::unique_ptr<ETaccessorBase>  declFunBase_nClass::getParam_cpp ( std::shared_ptr<instr_nClass> instr, int paramID ) {
+    int  declFunBase_nClass::getParamID_cpp ( std::string param )  {
+RESET_EIGEN_ERRORS
+Rprintf("declFunBase_nClass virtual base getParamID_cpp should never be called (something is wrong)\n");;
+return(0.0);
+}
+    std::unique_ptr<ETaccessorBase>  declFunBase_nClass::getParam_cpp ( std::shared_ptr<instr_nClass> instr, int paramID )  {
 RESET_EIGEN_ERRORS
 Rprintf("declFunBase_nClass virtual base getParam_cpp should never be called (something is wrong)\n");;
 return(ETaccessPtr<true>(0.0));
 }
-    double  declFunBase_nClass::getBound_cpp ( std::shared_ptr<instr_nClass> instr, int boundID ) {
+    double  declFunBase_nClass::getBound_cpp ( std::shared_ptr<instr_nClass> instr, int boundID )  {
 RESET_EIGEN_ERRORS
 Rprintf("declFunBase_nClass virtual base getBound_cpp should never be called (something is wrong)\n");;
 return(0.0);
 }
-      declFunBase_nClass::declFunBase_nClass (  ) {
+      declFunBase_nClass::declFunBase_nClass (  )  {
 RESET_EIGEN_ERRORS
 }
 
 // [[Rcpp::export(name = "set_CnClass_env_declFunBase_nClass_new")]]
-    void  set_CnClass_env_declFunBase_nClass ( SEXP env ) {
+    void  set_CnClass_env_declFunBase_nClass ( SEXP env )  {
 RESET_EIGEN_ERRORS
 SET_CNCLASS_ENV(declFunBase_nClass, env);;
 }
 
 // [[Rcpp::export(name = "get_CnClass_env_declFunBase_nClass_new")]]
-    Rcpp::Environment  get_CnClass_env_declFunBase_nClass (  ) {
+    Rcpp::Environment  get_CnClass_env_declFunBase_nClass (  )  {
 RESET_EIGEN_ERRORS
 return GET_CNCLASS_ENV(declFunBase_nClass);;
 }
@@ -72,6 +77,7 @@ method("calculate_cpp", &declFunBase_nClass::calculate_cpp, args({{arg("instr",c
 method("calculateDiff_cpp", &declFunBase_nClass::calculateDiff_cpp, args({{arg("instr",copy)}})),
 method("getLogProb_cpp", &declFunBase_nClass::getLogProb_cpp, args({{arg("instr",copy)}})),
 method("simulate_cpp", &declFunBase_nClass::simulate_cpp, args({{arg("instr",copy)}})),
+method("getParamID_cpp", &declFunBase_nClass::getParamID_cpp, args({{arg("param",copy)}})),
 method("getBound_cpp", &declFunBase_nClass::getBound_cpp, args({{arg("instr",copy)},{arg("boundID",copy)}}))
 )
 )

@@ -11,6 +11,9 @@ declFunBase_nClass <- nClass(
     getLogProb = function(instr) {
       calc_op(instr, "getLogProb_one")
     },
+    getParamID = function(param) {
+      getParamID_one(param)
+    },
     calc_op = function(instr, fn) {
       if (instr$type == 0) {
         return(calc_0(instr, fn))
@@ -940,6 +943,20 @@ declFunBase_nClass <- nClass(
         virtual = TRUE,
         C_fun = function(instr = "instr_nClass") {
           cppLiteral('Rprintf("declFunBase_nClass virtual base simulate_cpp should never be called (something is wrong)\\n");')
+        }
+      )
+    ),
+    getParamID_cpp = nFunction(
+      name = "getParamID_cpp",
+      function(param) {
+        stop("Uncompiled version of getParamID_cpp should not be called.")
+      },
+      returnType = "integerScalar",
+      compileInfo = list(
+        virtual = TRUE,
+        C_fun = function(param = "characterScalar") {
+          cppLiteral('Rprintf("declFunBase_nClass virtual base getParamID_cpp should never be called (something is wrong)\\n");')
+          return(0)
         }
       )
     ),

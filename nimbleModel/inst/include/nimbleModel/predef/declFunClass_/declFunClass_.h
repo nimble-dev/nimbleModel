@@ -605,6 +605,10 @@ public:
         // Unpacks the first node from `instr`, warns (does not error) if `instr`
     // actually represents more than one node, and dispatches to the
     // per-distribution generated `getParam_one(idx, paramID)`.
+    int getParamID_cpp(std::string param) override {
+        RESET_EIGEN_ERRORS;
+        return static_cast<Derived*>(this)->getParamID_one(param);
+    }
     std::unique_ptr<ETaccessorBase> getParam_cpp(std::shared_ptr<instr_nClass> instr, int paramID) override {
         RESET_EIGEN_ERRORS;
         bool multiple = false;

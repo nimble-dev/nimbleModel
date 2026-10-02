@@ -31,14 +31,23 @@ test_that("basic getParam and getBound works from full interface", {
   m$calculate()
   cm$calculate()
 
-  vr <- varRangeClass$new('y[3]')
-  instrList <- makeInstrList(m, vr)
-  y3 <- instrList[[1]]
-  vr <- varRangeClass$new("v")
-  instrList <- makeInstrList(m, vr)
-  v <- instrList[[1]]
+  # Commented-out code constructed instrList objects manually
+  # Now that is supported (and tested) inside the functions
+  # vr <- varRangeClass$new('y[3]')
+  # instrList <- makeInstrList(m, vr)
+  # y3 <- instrList[[1]]
+  # vr <- varRangeClass$new("v")
+  # instrList <- makeInstrList(m, vr)
+  # v <- instrList[[1]]
+  y3 <- "y[3]"
+  v <- "v"
   for(case in c("comp", "uncomp")) {
     obj <- switch(case, comp = cm, uncomp = m)
+    
+    expect_equal(obj$getParamID(y3, "value"), 1)
+    expect_equal(obj$getParamID(y3, "sd"), 3)
+    expect_equal(obj$getParamID(v, "max"), 3)
+    
     expect_equal(obj$getParam(y3, "value"), y[3])
     expect_equal(obj$getParam(y3, "mean"), mu + 1)
     expect_equal(obj$getParam(y3, "sd"), 2*sd)

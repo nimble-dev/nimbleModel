@@ -390,43 +390,62 @@ modelBase_nClass <- nClass(
       }
       return(invisible(NULL))
     },
-    # `one_instr` is a single instr_nClass (not a list of them).
+    # `one_instr` is a single instr_nClass (if an instList is provided, the first one is used).
     # Within it, one node will be used (see declFunBase_nClass$first_idx).
     # `param` is an integer paramID or a character param name.
+    getParamID = function(one_instr, param) {
+      instrList <- makeInstrList(self, one_instr)
+      if (is.numeric(param)) {
+        paramID <- param
+      } else if (is.character(param)) {
+        if(isCompiled()) {
+          if (!instrList$isCompiled()) instr <- makeCompiledInstr(instrList[[1]])
+          paramID <- self$getParamID_impl(instr, param)
+        } else {
+          paramID <- declFunList[[instrList[[1]]$declID]]$getParamID(param)
+        }
+      } else {
+        stop("getParamID: argument `param` must be a character param name or (redundantly) a numeric paramID.")
+      }
+      return(paramID)
+    },
     getParam = function(one_instr, param) {
-      if (!inherits(one_instr, "instr_nClass")) {
-        stop("getParam: argument `one_instr` must be an instr_nClass object")
+      instrList <- makeInstrList(self, one_instr)
+      if (isCompiled()) {
+        if (!instrList$isCompiled()) instr <- makeCompiledInstr(instrList[[1]])
       }
       if (is.numeric(param)) {
         paramID <- param
       } else if (is.character(param)) {
-        paramID <- getParamID(
-          self$modelDef$declInfo[[one_instr$declID]]$distributionName,
-          param
-        )
+        paramID <- self$getParamID(instrList, param)
+        #getParamID(
+        #  self$modelDef$declInfo[[one_instr$declID]]$distributionName,
+        #  param
+        # )
+        # FIXME: Upon switching from the general function getParamID to the constructed method,
+        #  I am not sure that we return NA as a failure value.
         if (is.na(paramID)) stop("getParam: argument `param` is not a valid parameter name for this node.")
       } else {
         stop("getParam: argument `param` must be an integer paramID or a character param name.")
       }
       if (isCompiled()) {
-        if (!one_instr$isCompiled()) one_instr <- makeCompiledInstr(one_instr)
-        return(self$getParam_impl(one_instr, paramID))
+        # if (!instrList$isCompiled()) instr <- makeCompiledInstr(instrList[[1]])
+        return(self$getParam_impl(instr, paramID))
       }
-      declFunList[[one_instr$declID]]$getParam(one_instr, paramID)
+      declFunList[[instrList[[1]]$declID]]$getParam(instrList[[1]], paramID)
     },
     getBound = function(one_instr, bound) {
-      if (!inherits(one_instr, "instr_nClass")) {
-        stop("getBound: argument `one_instr` must be an instr_nClass object")
-      }
+      instrList <- makeInstrList(self, one_instr)
       if (!bound %in% c("lower", "upper")) {
         stop("getBound: 'bound' must be either 'lower' or 'upper'")
       }
       boundID <- if (bound == "lower") 0 else 1
       if (isCompiled()) {
-        if (!one_instr$isCompiled()) one_instr <- makeCompiledInstr(one_instr)
-        return(self$getBound_impl(one_instr, boundID))
+        if (!instrList$isCompiled()) instr <- makeCompiledInstr(instrList[[1]])
+        else instr <- instrList[[1]]
+        return(self$getBound_impl(instr, boundID))
       }
-      declFunList[[one_instr$declID]]$getBound(one_instr, boundID)
+      declFunList[[instrList[[1]]$declID]]$getBound(instrList[[1]], boundID)
     }
   ),
   Cpublic = list(
@@ -517,6 +536,21 @@ modelBase_nClass <- nClass(
         C_fun = function(instrList = "nList(instr_nClass)") {
           # NOTE: instrList input will be ordered.
           cppLiteral('Rprintf("modelBase_nClass simulate_impl (should not see this)\\n");')
+        },
+        virtual = TRUE
+      )
+    ),
+    getParamID_impl = nFunction(
+      name = "getParamID_impl",
+      function(node, param) {
+        cat("Uncompiled `getParamID_impl` should never be called.\n")
+        return(NULL)
+      },
+      # We must return a general object because it may have different nDim
+      returnType = "integer()",
+      compileInfo = list(
+        C_fun = function(node = "instr_nClass", param = "string()") {
+          cppLiteral('Rprintf("modelBase_nClass getParamID_impl (should not see this)\\n"); return 0;')
         },
         virtual = TRUE
       )

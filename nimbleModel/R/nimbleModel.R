@@ -83,7 +83,7 @@ make_modelClass_from_nimbleModel <- function(modelDef, data, inits, name = NULL)
       lapply(\(x) all.vars(body(x))) |>
       unlist() |>
       unique() |>
-      setdiff(c("idx", "paramID_", "boundID_", "LocalNewLogProb_", "LocalAns_", "model")) %||% character()
+      setdiff(c("idx", "paramID_", "boundID_", "LocalNewLogProb_", "LocalAns_", "model", "param_name_")) %||% character()
     declVarInfo <- modelVarInfo$vars[declVars]
     declID <- as.numeric(declInfo$declRule$ID) # Formerly `sourceLineNumber`, which may not be unique.
     declFun_membername <- declFunNames[i]
@@ -269,7 +269,7 @@ makeModel_nClass <- function(modelVarInfo,
     lapply(\(x) x$name) |>
     unlist()
   # These opDefs are in place but not actually used. They should start from custom_default
-  # and nCompiler needs to support custom opDefs for calls like obj$method(). 
+  # and nCompiler needs to support custom opDefs for calls like obj$method().
   opDefs <- list(
     base_ping = nCompiler:::getOperatorDef("custom_call"),
     setup_auto_decl_mgmt = nCompiler:::getOperatorDef("custom_call"),
@@ -595,6 +595,7 @@ make_decl_methods_from_declInfo <- function(declInfo) {
     # Dummy version of getParam_one:
     getParamMethods <- list(getParam_one = make_getParam_one_nFxn())
     getBoundMethods <- list(getBound_one = make_getBound_one_nFxn())
+    getParamIDMethod <- make_getParamID_method()
   }
   if (type == "stoch") {
     logProbExpr <- declInfo$genLogProbExpr()
@@ -631,8 +632,61 @@ make_decl_methods_from_declInfo <- function(declInfo) {
     ))
     getParamMethods <- make_getParam_methods(declInfo, LHSrep, RHSrep)
     getBoundMethods <- make_getBound_methods(declInfo, LHSrep, RHSrep)
+    getParamIDMethod <- make_getParamID_method(declInfo)
   }
-  c(methodList, getParamMethods, getBoundMethods)
+  c(methodList, getParamMethods, getBoundMethods, getParamIDMethod)
+}
+
+make_getParamID_method <- function(declInfo) {
+  if(missing(declInfo)) {
+    return(
+      list(getParamID_one = nCompiler::nFunction(
+        name = "getParamID_one",
+        fun = function(param_name_) {
+          stop("getParamID is not valid for a deterministic node.")
+        },
+        returnType = "integer()",
+        argTypes = list(param_name_ = "string()"),
+        compileInfo = list(
+          C_fun = function(param_name_) {
+            nCpp("Rcpp::stop(\"getParamID is not valid for a deterministic node.\")")
+          }
+        )
+      ))
+    )
+  }
+  distName <- declInfo$distributionName
+  paramIDs <- getDistributionInfo(distName)$paramIDs
+  paramNames <- names(paramIDs)
+  if (!length(paramIDs)) {
+    fun <- function(param_name_) {
+      return(0)
+    }
+  } else {
+    if_then_lines <- lapply(
+      seq_along(paramNames),
+      function(i) {
+        bquote(if (param_name_ == .(paramNames[i])) return(.(as.numeric(paramIDs[i]))))
+      }
+    )
+    fun_body <- quote({})
+    for(i in seq_along(if_then_lines)) {
+      fun_body[[i + 1]] <- if_then_lines[[i]]
+    }
+    fun_body[[length(if_then_lines) + 2]] <- quote(return(0))
+    fun <- bquote(
+      function(param_name_) 
+        .(fun_body)
+    ) |> eval()
+    attr(fun, "srcref") <- NULL
+  }
+  nFxn <- nCompiler::nFunction(
+    name = "getParamID_one",
+    fun = fun,
+    returnType = "integer()",
+    argTypes = list(param_name_ = "characterScalar()")
+  )
+  list(getParamID_one = nFxn)
 }
 
 make_getParam_methods <- function(declInfo, LHSrep, RHSrep) {

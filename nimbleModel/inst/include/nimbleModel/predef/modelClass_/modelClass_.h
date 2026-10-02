@@ -37,6 +37,10 @@ public:
 
     // `node` is a single instr_nClass (not a list): identifies one declaration
     // (via declID) and (per declFunClass_::first_idx_) one node within it.
+    int getParamID_impl(std::shared_ptr<instr_nClass> node, std::string param) override {
+        return declFunPtrs[node->declID - 1]->getParamID_cpp(param);
+    }
+    
     SEXP getParam_impl(std::shared_ptr<instr_nClass> node, int paramID) override {
         return declFunPtrs[node->declID - 1]->getParam_cpp(node, paramID)->get();
     }
