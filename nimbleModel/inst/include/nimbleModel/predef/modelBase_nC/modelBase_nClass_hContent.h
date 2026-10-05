@@ -21,7 +21,7 @@ public:
    virtual  double  getLogProb_impl ( std::shared_ptr<nList_instr_nClass> instrList )  ;
    virtual  void  simulate_impl ( std::shared_ptr<nList_instr_nClass> instrList )  ;
    virtual  int  getParamID_impl ( std::shared_ptr<instr_nClass> node, std::string param )  ;
-   virtual  SEXP  getParam_impl ( std::shared_ptr<instr_nClass> node, int paramID )  ;
+   virtual  std::unique_ptr<ETaccessorBase>  getParam_impl ( std::shared_ptr<instr_nClass> node, int paramID )  ;
    virtual  double  getBound_impl ( std::shared_ptr<instr_nClass> node, int boundID )  ;
       modelBase_nClass (  )  ;
 

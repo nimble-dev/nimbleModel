@@ -13,6 +13,7 @@ using namespace Rcpp;
 // [[Rcpp::depends(nCompiler)]]
 // [[Rcpp::depends(Rcereal)]]
 // [[Rcpp::depends(nimbleModel)]]
+
     bool  modelBase_nClass::ping (  )  {
 RESET_EIGEN_ERRORS
 return(true);
@@ -54,9 +55,9 @@ Rprintf("modelBase_nClass simulate_impl (should not see this)\n");;
 RESET_EIGEN_ERRORS
 Rprintf("modelBase_nClass getParamID_impl (should not see this)\n"); return 0;;
 }
-    SEXP  modelBase_nClass::getParam_impl ( std::shared_ptr<instr_nClass> node, int paramID )  {
+    std::unique_ptr<ETaccessorBase>  modelBase_nClass::getParam_impl ( std::shared_ptr<instr_nClass> node, int paramID )  {
 RESET_EIGEN_ERRORS
-Rprintf("modelBase_nClass getParam_impl (should not see this)\n"); return R_NilValue;;
+Rprintf("modelBase_nClass getParam_impl (should not see this)\n"); return nullptr;;
 }
     double  modelBase_nClass::getBound_impl ( std::shared_ptr<instr_nClass> node, int boundID )  {
 RESET_EIGEN_ERRORS

@@ -41,8 +41,8 @@ public:
         return declFunPtrs[node->declID - 1]->getParamID_cpp(param);
     }
     
-    SEXP getParam_impl(std::shared_ptr<instr_nClass> node, int paramID) override {
-        return declFunPtrs[node->declID - 1]->getParam_cpp(node, paramID)->get();
+    std::unique_ptr<ETaccessorBase> getParam_impl(std::shared_ptr<instr_nClass> node, int paramID) override {
+        return declFunPtrs[node->declID - 1]->getParam_cpp(node, paramID); //->get();
     }
 
     double getBound_impl(std::shared_ptr<instr_nClass> node, int boundID) override {

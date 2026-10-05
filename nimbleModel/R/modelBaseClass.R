@@ -562,10 +562,10 @@ modelBase_nClass <- nClass(
         return(NULL)
       },
       # We must return a general object because it may have different nDim
-      returnType = "SEXP",
+      returnType = "ETaccessor()",
       compileInfo = list(
         C_fun = function(node = "instr_nClass", paramID = "integerScalar") {
-          cppLiteral('Rprintf("modelBase_nClass getParam_impl (should not see this)\\n"); return R_NilValue;')
+          cppLiteral('Rprintf("modelBase_nClass getParam_impl (should not see this)\\n"); return nullptr;')
         },
         virtual = TRUE
       )
