@@ -21,7 +21,6 @@ this->dot_sizeList = Rcpp::List();;
 }
     void  modelValuesBase_nClass::set_sizeList ( Rcpp::List sizeList )  {
 RESET_EIGEN_ERRORS
-dot_sizeList = sizeList;
 (this)->dot_sizeList = sizeList;
 }
     Rcpp::List  modelValuesBase_nClass::get_sizeList (  )  {

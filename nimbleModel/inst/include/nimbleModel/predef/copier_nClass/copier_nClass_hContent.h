@@ -12,17 +12,18 @@
 
 class copier_nClass : public interface_resolver< genericInterfaceC<copier_nClass>, copier_nC_base >, public loadedObjectHookC<copier_nClass> {
 public:
-      copier_nClass (  ) ;
+  static const char* nc_class_key() {return "copier_nClass";}
+      copier_nClass (  )  ;
   std::string varName;
   std::shared_ptr<nList_I1> indsList;
 
 };
 
-    SEXP  new_copier_nClass (  ) ;
+    SEXP  new_copier_nClass (  )  ;
 
-    void  set_CnClass_env_copier_nClass ( SEXP env ) ;
+    void  set_CnClass_env_copier_nClass ( SEXP env )  ;
 
-    Rcpp::Environment  get_CnClass_env_copier_nClass (  ) ;
+    Rcpp::Environment  get_CnClass_env_copier_nClass (  )  ;
 
 
 #endif

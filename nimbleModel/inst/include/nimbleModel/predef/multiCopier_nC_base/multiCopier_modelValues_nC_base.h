@@ -66,8 +66,9 @@ public:
   std::shared_ptr<nListBase_nClass> resolveRowSource(size_t k) {
     std::shared_ptr<genericInterfaceBaseC> ip =
       fieldAccessors[k]->getInterfacePtr(modelValuesKeepAlive.get());
+    // The modelValues object may have been created by a different DLL (see nc_shared_ptr_cast in nCompiler).
     std::shared_ptr<nListBase_nClass> nlPtr =
-      std::dynamic_pointer_cast<nListBase_nClass>(ip);
+      nc_shared_ptr_cast<nListBase_nClass>(ip);
     if (!nlPtr)
       Rcpp::stop("multiCopier (modelValues): variable is not an nList.");
     return nlPtr;

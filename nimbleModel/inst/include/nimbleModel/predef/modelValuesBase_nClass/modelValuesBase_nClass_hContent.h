@@ -10,6 +10,7 @@
 
 class modelValuesBase_nClass : public interface_resolver< genericInterfaceC<modelValuesBase_nClass> >, public loadedObjectHookC<modelValuesBase_nClass> {
 public:
+  static const char* nc_class_key() {return "modelValuesBase_nClass";}
       modelValuesBase_nClass (  )  ;
     void  set_sizeList ( Rcpp::List sizeList )  ;
     Rcpp::List  get_sizeList (  )  ;

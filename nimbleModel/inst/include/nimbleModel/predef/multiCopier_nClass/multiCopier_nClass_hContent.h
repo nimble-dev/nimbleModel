@@ -13,19 +13,19 @@
 
 class multiCopier_nClass : public interface_resolver< genericInterfaceC<multiCopier_nClass>, multiCopier_model_nC_base >, public loadedObjectHookC<multiCopier_nClass> {
 public:
-    void  init ( std::shared_ptr<modelBase_nClass> model ) ;
-    Eigen::Tensor<double, 1>  getValues (  ) ;
-    void  setValues ( Eigen::Tensor<double, 1> v ) ;
-      multiCopier_nClass (  ) ;
+  static const char* nc_class_key() {return "multiCopier_nClass";}
+    void  init ( std::shared_ptr<modelBase_nClass> model )  ;
+    Eigen::Tensor<double, 1>  getValues (  )  ;
+    void  setValues ( Eigen::Tensor<double, 1> v )  ;
+      multiCopier_nClass (  )  ;
   std::shared_ptr<nList_copier_nClass> copiers;
 
 };
 
-    SEXP  new_multiCopier_nClass (  ) ;
+    SEXP  new_multiCopier_nClass (  )  ;
 
-    void  set_CnClass_env_multiCopier_nClass ( SEXP env ) ;
+    void  set_CnClass_env_multiCopier_nClass ( SEXP env )  ;
 
-    Rcpp::Environment  get_CnClass_env_multiCopier_nClass (  ) ;
-
+    Rcpp::Environment  get_CnClass_env_multiCopier_nClass (  )  ;
 
 #endif

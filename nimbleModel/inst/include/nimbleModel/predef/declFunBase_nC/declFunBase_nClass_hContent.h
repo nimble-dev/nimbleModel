@@ -11,6 +11,7 @@
 
 class declFunBase_nClass : public interface_resolver< genericInterfaceC<declFunBase_nClass> >, public loadedObjectHookC<declFunBase_nClass> {
 public:
+  static const char* nc_class_key() {return "declFunBase_nClass";}
    virtual  bool  ping (  )  ;
    virtual  double  calculate_cpp ( std::shared_ptr<instr_nClass> instr )  ;
    virtual  double  calculateDiff_cpp ( std::shared_ptr<instr_nClass> instr )  ;

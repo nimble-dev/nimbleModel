@@ -13,25 +13,25 @@ using namespace Rcpp;
 // [[Rcpp::depends(nCompiler)]]
 // [[Rcpp::depends(Rcereal)]]
 
-      instr_nClass::instr_nClass (  ) {
+      instr_nClass::instr_nClass (  )  {
 RESET_EIGEN_ERRORS
 values = nClass_builder<nList_I1>()();
 }
 
 // [[Rcpp::export(name = "instr_nClass_new")]]
-    SEXP  new_instr_nClass (  ) {
+    SEXP  new_instr_nClass (  )  {
 RESET_EIGEN_ERRORS
 return CREATE_NEW_NCOMP_OBJECT(instr_nClass);;
 }
 
 // [[Rcpp::export(name = "set_CnClass_env_instr_nClass_new")]]
-    void  set_CnClass_env_instr_nClass ( SEXP env ) {
+    void  set_CnClass_env_instr_nClass ( SEXP env )  {
 RESET_EIGEN_ERRORS
 SET_CNCLASS_ENV(instr_nClass, env);;
 }
 
 // [[Rcpp::export(name = "get_CnClass_env_instr_nClass_new")]]
-    Rcpp::Environment  get_CnClass_env_instr_nClass (  ) {
+    Rcpp::Environment  get_CnClass_env_instr_nClass (  )  {
 RESET_EIGEN_ERRORS
 return GET_CNCLASS_ENV(instr_nClass);;
 }

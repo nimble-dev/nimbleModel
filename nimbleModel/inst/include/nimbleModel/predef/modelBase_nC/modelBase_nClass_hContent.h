@@ -13,6 +13,7 @@
 
 class modelBase_nClass : public interface_resolver< genericInterfaceC<modelBase_nClass> >, public loadedObjectHookC<modelBase_nClass> {
 public:
+  static const char* nc_class_key() {return "modelBase_nClass";}
    virtual  bool  ping (  )  ;
     std::shared_ptr<nList_instr_nClass>  makeCompiledInstrList ( SEXP input )  ;
     std::shared_ptr<instr_nClass>  makeCompiledInstr ( SEXP input )  ;
