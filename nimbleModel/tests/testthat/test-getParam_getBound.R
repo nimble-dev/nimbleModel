@@ -43,11 +43,11 @@ test_that("basic getParam and getBound works from full interface", {
   v <- "v"
   for(case in c("comp", "uncomp")) {
     obj <- switch(case, comp = cm, uncomp = m)
-    
+
     expect_equal(obj$getParamID(y3, "value"), 1)
     expect_equal(obj$getParamID(y3, "sd"), 3)
     expect_equal(obj$getParamID(v, "max"), 3)
-    
+
     expect_equal(obj$getParam(y3, "value"), y[3])
     expect_equal(obj$getParam(y3, "mean"), mu + 1)
     expect_equal(obj$getParam(y3, "sd"), 2*sd)
@@ -62,4 +62,5 @@ test_that("basic getParam and getBound works from full interface", {
     expect_equal(obj$getBound(v, "lower"), mu  + 1)
     expect_equal(obj$getBound(v, "upper"), mu  + 5)
   }
+  rm(m, cm); gc()
 })

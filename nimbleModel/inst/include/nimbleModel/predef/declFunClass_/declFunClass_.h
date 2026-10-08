@@ -629,7 +629,7 @@ public:
     }
     Eigen::Tensor<int, 1> first_idx_(std::shared_ptr<instr_nClass> instr, bool &multiple) {
         int nDim = instr->nDim;
-        switch (instr->type) {
+        switch (instr->instr_type) {
         case 0: {
             // Dummy/unindexed node: `calc_0_` passes `instr->lens` through as a
             // placeholder idx that generated code for an unindexed decl ignores.
@@ -768,7 +768,7 @@ public:
     }
 
     // simulate
-    void  simulate_cpp ( std::shared_ptr<instr_nClass> instr ) {
+    void  simulate_cpp ( std::shared_ptr<instr_nClass> instr ) override {
         RESET_EIGEN_ERRORS;
         int instr_type = instr->instr_type;
         if(instr_type == 0) return sim_0_(instr);

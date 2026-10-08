@@ -780,7 +780,7 @@ declFunBase_nClass <- nClass(
     },
     first_idx = function(instr) {
       multiple <- FALSE
-      idx <- switch(as.character(instr$type),
+      idx <- switch(as.character(instr$instr_type),
         "0" = {
           multiple <- FALSE
           instr$lens
@@ -860,7 +860,7 @@ declFunBase_nClass <- nClass(
           multiple <- prod(instr$lens[1:5]) > 1
           first_idx_generic(instr, 5)
         },
-        stop("getParam: unrecognized instr type ", instr$type)
+        stop("getParam: unrecognized instr type ", instr$instr_type)
       )
       list(idx = idx, multiple = multiple)
     },

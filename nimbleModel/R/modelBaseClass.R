@@ -495,7 +495,7 @@ modelBase_nClass <- nClass(
       }
       instrList <- makeInstrList(self, instr)
       if (isCompiled()) {
-        if (inherits(instrList, "Rlist_Rinstr") || !instrList$isCompiled()) {
+        if (inherits(instrList, "Rlist_Rinstr") || !nCompiler:::isCompiled(instrList)) {
           instrList <- makeCompiledInstrList(instrList)
         }
         return(self[[fn_cpp]](instrList))
@@ -527,7 +527,7 @@ modelBase_nClass <- nClass(
         return(invisible(NULL))
       }
       if (isCompiled()) {
-        if (inherits(instrList, "Rlist_Rinstr") || !instrList$isCompiled()) {
+        if (inherits(instrList, "Rlist_Rinstr") || !nCompiler:::isCompiled(instrList)) {
           instrList <- makeCompiledInstrList(instrList)
         }
         self$simulate_impl(instrList)
@@ -547,7 +547,7 @@ modelBase_nClass <- nClass(
         paramID <- param
       } else if (is.character(param)) {
         if(isCompiled()) {
-          if (!instrList$isCompiled()) instr <- makeCompiledInstr(instrList[[1]])
+          if (!nCompiler:::isCompiled(instrList)) instr <- makeCompiledInstr(instrList[[1]])
           paramID <- self$getParamID_impl(instr, param)
         } else {
           paramID <- declFunList[[instrList[[1]]$declID]]$getParamID(param)
@@ -560,7 +560,7 @@ modelBase_nClass <- nClass(
     getParam = function(one_instr, param) {
       instrList <- makeInstrList(self, one_instr)
       if (isCompiled()) {
-        if (!instrList$isCompiled()) instr <- makeCompiledInstr(instrList[[1]])
+        if (!nCompiler:::isCompiled(instrList)) instr <- makeCompiledInstr(instrList[[1]])
       }
       if (is.numeric(param)) {
         paramID <- param
@@ -577,7 +577,7 @@ modelBase_nClass <- nClass(
         stop("getParam: argument `param` must be an integer paramID or a character param name.")
       }
       if (isCompiled()) {
-        # if (!instrList$isCompiled()) instr <- makeCompiledInstr(instrList[[1]])
+        # if (!nCompiler:::isCompiled(instrList)) instr <- makeCompiledInstr(instrList[[1]])
         return(self$getParam_impl(instr, paramID))
       }
       declFunList[[instrList[[1]]$declID]]$getParam(instrList[[1]], paramID)
@@ -589,7 +589,7 @@ modelBase_nClass <- nClass(
       }
       boundID <- if (bound == "lower") 0 else 1
       if (isCompiled()) {
-        if (!instrList$isCompiled()) instr <- makeCompiledInstr(instrList[[1]])
+        if (!nCompiler:::isCompiled(instrList)) instr <- makeCompiledInstr(instrList[[1]])
         else instr <- instrList[[1]]
         return(self$getBound_impl(instr, boundID))
       }
