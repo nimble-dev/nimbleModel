@@ -192,7 +192,7 @@ test_that("checkIndexConstraints", {
     )
 
 
-    expResult <- c(rep(FALSE,4),TRUE,rep(FALSE,6),TRUE)
+    expResult <- c(FALSE, TRUE, rep(FALSE, 9), TRUE)
 
     ## Two input ranges on the matrix constraint; ranges are crossed and result duplicated.
     expect_identical(
@@ -219,7 +219,7 @@ test_that("checkIndexConstraints", {
                                                               rangeToIndexSlot <- list(c(1,3),2,4),
                                                               varName = 'x'),
                                             constraints),
-        list(c(TRUE,FALSE), expResult, expResult)
+        list(c(FALSE,TRUE), expResult, expResult)
     )
     ## Input multi-slot range covers two constraints, but only one of the slots in the matrix constraint.
     expect_error(
@@ -232,7 +232,7 @@ test_that("checkIndexConstraints", {
     )
 
     ## Input multi-slot range covers only one constraint (and an unconstrained slot).
-    expResult <- c(FALSE,FALSE,TRUE,rep(FALSE,5))
+    expResult <- c(FALSE,TRUE,rep(FALSE,6))
     expect_identical(
         nimbleModel:::checkIndexConstraints(varRangeClass$new(list(newIndexRange(2),
                                                                    newIndexRange(matrix(c(2,9,4,2,5,5,6,7), ncol = 2, byrow = TRUE)),

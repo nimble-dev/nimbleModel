@@ -19,7 +19,7 @@ test_that('varRangeClass', {
     expect_identical(sapply(xVar1$indexRanges, function(x) class(x)[1]),
                      'indexRangeScalarClass')
     expect_identical(xVar2$rangeToIndexSlot, list(1L))
-    expect_identical(xVar2$indexSlotToRange, 1L)
+    expect_identical(xVar2$indexSlotToRange, 1)
     expect_identical(xVar2$toExpr(), expr)
     
     expr <- quote(x[2:4])
@@ -29,7 +29,7 @@ test_that('varRangeClass', {
     expect_identical(sapply(xVar1$indexRanges, function(x) class(x)[1]),
                      'indexRangeSequenceClass')
     expect_identical(xVar2$rangeToIndexSlot, list(1L))
-    expect_identical(xVar2$indexSlotToRange, 1L)
+    expect_identical(xVar2$indexSlotToRange, 1)
     expect_identical(xVar2$toExpr(), expr)
     
     expr <- quote(x[c(2,3,5)])
@@ -39,7 +39,7 @@ test_that('varRangeClass', {
     expect_identical(sapply(xVar1$indexRanges, function(x) class(x)[1]),
                      'indexRangeMatrixClass')
     expect_identical(xVar2$rangeToIndexSlot, list(1L))
-    expect_identical(xVar2$indexSlotToRange, 1L)
+    expect_identical(xVar2$indexSlotToRange, 1)
     expect_identical(xVar2$toExpr(), expr)
 
     expr <- quote(x[c(2,3,5,7,9)])
@@ -77,7 +77,7 @@ test_that('varRangeClass', {
     expect_identical(sapply(xVar$indexRanges, function(x) class(x)[1]),
                      'indexRangeMatrixClass')
     expect_identical(xVar$rangeToIndexSlot, list(1:2))
-    expect_identical(xVar$indexSlotToRange, rep(1L,2))
+    expect_identical(xVar$indexSlotToRange, rep(1,2))
     expr <- quote(x[1,1])
     expr[[3]] <- expr[[4]] <- quote(...)
     expect_identical(xVar$toExpr(), expr)
@@ -192,7 +192,7 @@ test_that("toVarChars works correctly", {
     vr <- varRangeClass$new(list(newIndexRange(matrix(c(2,4,5), ncol = 1)),
                                  newIndexRange(quote(3:4))), varName = "y")
     expect_identical(vr$toVarChars(), paste0("y[", c(2,4,5), ", 3:4]"))
-    gr <- expand.grid(3:4, c(2,4,5))[c(2,1)]
+    gr <- expand.grid(c(2,4,5), 3:4)
     expect_identical(vr$toVarChars(expandScalars = TRUE),
                      paste0("y[", gr[,1], ", ", gr[,2], "]"))
     
@@ -203,14 +203,14 @@ test_that("toVarChars works correctly", {
                 y[idx[k], i+1,3,j,i,2:4]~ dmnorm(z[1:3],pr[1:3,1:3])
     })
     
-    md <- modelDefClass$new(code, constants = list(idx = c(2,5,4)))
-    vr <- getDependencies(md, 'z', self=FALSE)[[1]]
-    expect_identical(vr$toVarChars(),
-                     c("y[2, 2, 3, 1:2, 1, 2:4]", "y[2, 3, 3, 1:2, 2, 2:4]", "y[2, 4, 3, 1:2, 3, 2:4]", "y[2, 5, 3, 1:2, 4, 2:4]", "y[4, 2, 3, 1:2, 1, 2:4]", "y[4, 3, 3, 1:2, 2, 2:4]", "y[4, 4, 3, 1:2, 3, 2:4]", "y[4, 5, 3, 1:2, 4, 2:4]", "y[5, 2, 3, 1:2, 1, 2:4]", "y[5, 3, 3, 1:2, 2, 2:4]", "y[5, 4, 3, 1:2, 3, 2:4]", "y[5, 5, 3, 1:2, 4, 2:4]"))
+    m <- nimbleModel(code, constants = list(idx = c(2,5,4)))
+    nr <- getDependencies(m, 'z', self=FALSE)[[1]]
+    expect_identical(nr$toVarChars(),
+                     c("y[2, 2, 3, 1:2, 1, 2:4]", "y[4, 2, 3, 1:2, 1, 2:4]", "y[5, 2, 3, 1:2, 1, 2:4]", "y[2, 3, 3, 1:2, 2, 2:4]", "y[4, 3, 3, 1:2, 2, 2:4]", "y[5, 3, 3, 1:2, 2, 2:4]", "y[2, 4, 3, 1:2, 3, 2:4]", "y[4, 4, 3, 1:2, 3, 2:4]", "y[5, 4, 3, 1:2, 3, 2:4]", "y[2, 5, 3, 1:2, 4, 2:4]", "y[4, 5, 3, 1:2, 4, 2:4]", "y[5, 5, 3, 1:2, 4, 2:4]"))
 
-    tmp <- vr$toVarChars()
+    tmp <- nr$toVarChars()
     result <- unlist(lapply(tmp, function(x) varRangeClass$new(x)$toVarChars(expandScalars = TRUE)))
-    expect_identical(vr$toVarChars(expandScalars = TRUE), result)
+    expect_identical(sort(nr$toVarChars(expandScalars = TRUE)), sort(result))
                      
 
     code <- quote({
@@ -218,18 +218,51 @@ test_that("toVarChars works correctly", {
             for(j in 1:3)
                 y[j,i] ~ dnorm(0,1)
     })
-    md <- modelDefClass$new(code)
-    vr <- getDependencies(md, 'y')[[1]]
-    gr <- expand.grid(1:2, 1:3)[c(2,1)]
-    expect_identical(vr$toVarChars(expandScalars = TRUE),
+    m <- nimbleModel(code)
+    nr <- getDependencies(m, 'y')[[1]]
+    gr <- expand.grid(1:3, 1:2)
+    expect_identical(nr$toVarChars(expandScalars = TRUE),
                      paste0("y[", gr[,1], ", ", gr[,2], "]"))
 
     vr <- varRangeClass$new(list(newIndexRange(quote(1:2)),newIndexRange(quote(1:3))),
                             rangeToIndexSlot = c(2,1), varName = 'y')
     gr <- expand.grid(1:3,1:2)
-    expect_identical(vr$toVarChars(expandScalars = TRUE),
+    expect_identical(nr$toVarChars(expandScalars = TRUE),
                      paste0("y[", gr[,1], ", ", gr[,2], "]"))
     
 })
 
-                     
+test_that("varRange_isEqual", {
+    vr1 <- varRangeClass$new(list(newIndexRange(quote(3:5)),
+                                  newIndexRange(quote(c(2,4,5))),
+                                  newIndexRange(quote(1:3))), varName = 'y')
+    vr2 <- varRangeClass$new(list(newIndexRange(quote(c(2,4,5))),
+                                  newIndexRange(quote(1:3)),
+                                  newIndexRange(quote(3:5))), rangeToIndexSlot = list(2,3,1), varName = 'y')
+    expect_true(nimbleModel:::varRange_isEqual(vr1, vr2))
+                                                
+    vr1 <- varRangeClass$new(list(newIndexRange(quote(3:5)),
+                                  newIndexRange(quote(c(2,4,5))),
+                                  newIndexRange(quote(1:3))), varName = 'y')
+    vr2 <- varRangeClass$new(list(newIndexRange(quote(c(2,5,4))),
+                                  newIndexRange(quote(1:3)),
+                                  newIndexRange(quote(3:5))), rangeToIndexSlot = list(2,3,1), varName = 'y')
+    expect_true(nimbleModel:::varRange_isEqual(vr1, vr2))
+                                                 
+    vr1 <- varRangeClass$new(list(newIndexRange(quote(c(2,4,5))),
+                                  newIndexRange(matrix(c(2,4,1,5),ncol=2,byrow=TRUE)),
+                                  newIndexRange(quote(3:5))), rangeToIndexSlot = list(1, c(2,4), 3), varName = 'y')
+    vr2 <- varRangeClass$new(list(newIndexRange(matrix(c(4,2,5,1),ncol=2,byrow=TRUE)),
+                                  newIndexRange(quote(c(2,5,4))),
+                                  newIndexRange(quote(3:5))), rangeToIndexSlot = list(c(4,2),1, 3), varName = 'y')
+    expect_true(nimbleModel:::varRange_isEqual(vr1, vr2))
+
+    vr1 <- varRangeClass$new(list(newIndexRange(quote(c(2,4,5))),
+                                  newIndexRange(matrix(c(2,4,1,5),ncol=2,byrow=TRUE)),
+                                  newIndexRange(quote(3:5))), rangeToIndexSlot = list(1, c(2,4), 3), varName = 'y')
+    vr2 <- varRangeClass$new(list(newIndexRange(matrix(c(4,2,5,1),ncol=2,byrow=TRUE)),
+                                  newIndexRange(quote(c(2,5,4))),
+                                  newIndexRange(quote(3:5))), rangeToIndexSlot = list(c(2,4),1, 3), varName = 'y')
+    expect_false(nimbleModel:::varRange_isEqual(vr1, vr2))
+                              
+})

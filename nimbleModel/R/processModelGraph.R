@@ -1,10 +1,8 @@
 # Various functions used in creating various kinds of rules and determining graph structure.
 
-
 # Split up original RHS rules from declarations to get `rhsOnlyRules` using `exclude()`,
 # to extract parts of rhs that don't appear in LHS.
 
-# CHECK: Not clear we need to generate RHSonlyRules
 # There may be some non-uniqueness if we don't combine the results of
 # running `exclude` on a rhsRule applied to another rhsRule.
 makeRHSonlyRules <- function(rhsOriginalRules, declRules, constants = list()) {
@@ -238,94 +236,95 @@ setSortIDs <- function(calcRules) {
 # By default stops at stochastic nodes, unless requested to go through
 # (`follow = TRUE`) or to stop at immediate parent or child
 # (`immediateOnly = TRUE`).
-# Result is a set of varRanges (not nodeRanges), so users may need to
-# pass result through `getNodes`.
 traverseGraph <- function(streamRules, declRules,
-                          nodes, down, self = TRUE,
-                          follow = FALSE, immediateOnly = FALSE) {
+                          nodes, omit = NULL, down, self = TRUE,
+                          determOnly = FALSE, stochOnly = FALSE,
+                          includeData = TRUE, dataOnly = FALSE,
+                          includePredictive = TRUE, predictiveOnly = FALSE, includeRHSonly = FALSE,
+                          follow = FALSE, immediateOnly = FALSE,
+                          nodesAsChars = getNimbleModelOption("nodesAsChars"),
+                          returnScalarComponents = FALSE, .sort = FALSE,
+                          model = NULL) {
+  # A single varRange can have elements that don't share a sortID when converted to calcRange representation,
+  # so we can't sort varRanges.
+  if (.sort && !nodesAsChars) {
+    warning("`.sort=TRUE` is provided only for back compatibility and requires the use of character representations of nodes")
+  }
+
   if (inherits(nodes, "varRangeClass")) nodes <- list(nodes) # We use `lapply` on 'nodes' later.
 
-  results <- traverseGraphRecurse(streamRules, nodes, down, follow, immediateOnly)
+  if(!is.null(omit))
+    omit <- model$getNodes(omit, nodesAsChars = FALSE)
+  
+  results <- traverseGraphRecurse(streamRules, nodes, omit, down, follow, immediateOnly, model)
 
-  # Need to handle "self" for three cases: (a) when an input node is a full variable,
-  # (b) character expression for a range, or (c) an actual varRange or nodeRange.
-
-  varNames <- unlist(lapply(nodes, getVarName))
-  vars <- nodes == varNames
-  selfRangeFromVars <- flatten(lapply(
-    nodes[vars],
-    function(varName) {
-      lapply(
-        declRules[[varName]]$rules,
-        function(declRule) declRule$fullRange
-      )
-    }
-  ))
-
-  # CHECK: can we just create the varRange from the char string and not use `declRule$apply`
-  # to make sure we have decl-specific varRanges?
-  charRanges <- is.character(nodes) & !vars
-  selfRangeFromCharRanges <- flatten(lapply(
-    nodes[charRanges],
-    function(node) {
-      lapply(
-        declRules[[getVarName(node)]]$rules,
-        function(declRule) {
-          tmp <- declRule$apply(node)
-          if (is.null(tmp)) NULL else tmp$toVarRange()
-        }
-      )
-    }
-  ))
-  if (identical(selfRangeFromCharRanges, list(NULL))) {
-    selfRangeFromCharRanges <- NULL
-  }
-  selfRangeFromNodes <- lapply(
-    nodes[!vars & !charRanges],
-    function(node) {
-      if (inherits(node, "nodeRangeClass")) {
-        return(node$toVarRange())
-      } else {
-        return(node)
-      }
-    }
-  )
-  selfRanges <- c(selfRangeFromNodes, selfRangeFromVars, selfRangeFromCharRanges)
-
-  if (length(results)) {
-    # Exclude self (add back below if needed).
-    # This helps avoid duplication, though that might be handled fully by removeDuplicateVarRanges.
-    for (i in seq_along(selfRanges)) {
-      resultsNames <- unlist(lapply(results, function(x) x$varName))
-      wh <- which(resultsNames == selfRanges[[i]]$varName)
-      if (length(wh)) {
-        newResults <- list()
-        for (idx in wh) {
-          newResults <- c(
-            newResults,
-            lapply(
-              exclude(results[[idx]], selfRanges[[i]]),
-              function(rule) rule$fullRange
-            )
-          )
-        }
-        results <- c(results[-wh], newResults)
-      }
-    }
-  }
+  results <- model$getNodes(results, determOnly = determOnly, stochOnly = stochOnly,
+                            includeData = includeData, dataOnly = dataOnly,
+                            includePredictive = includePredictive, predictiveOnly = predictiveOnly,
+                            includeRHSonly = includeRHSonly, nodesAsChars = FALSE)
 
   if (self) {
-    results <- c(selfRanges, results)
+    results <- aggregate_nodes(c(model$getNodes(nodes, nodesAsChars = FALSE), results))
+  } else {
+    results <- setdiff_nodes(aggregate_nodes(results), model$getNodes(nodes, nodesAsChars = FALSE))
   }
-
+  
   if (!length(results)) {
     return(NULL)
   }
-  return(removeDuplicateVarRanges(results))
+
+  if (.sort) {
+    # TODO: what happens here if have RHSonly?
+    # Ordering is only relevant at calcRange stage and a single nodeRange can contain
+    # elements with various sortIDs, so we convert to nodeChars first and then get their
+    # sortID by creating a temporary calcRange for each.
+    nodeChars <- unlist(lapply(results, \(nr) nr$toNodeChars()))
+    calcRanges <- lapply(nodeChars, function(node) {
+      calcRange <- flatten(lapply(model$modelDef$calcRules[[getVarName(node)]]$rules, function(rule) {
+        rule$makeCalcRange(rule$apply(node))
+      }))
+      if(length(calcRange) > 1) stop("unexpected multiple calcRange results from single nodeRange")
+      if(length(calcRange) == 1) calcRange <- calcRange[[1]]
+      return(calcRange)
+    })
+    if (length(nodeChars) != length(calcRanges)) {
+      stop("unexpected mismatch between node character representation and calcRanges in `getNodes` sorting")
+    }
+    ord <- order(sapply(calcRanges, \(x) {
+      if(inherits(x,'calcRangeClass')) {
+        return(x$sortID)
+      } else {
+        return(-Inf) # This handles RHSonly.
+      }
+    }))
+    results <- nodeChars[ord]
+    if (returnScalarComponents) {
+      results <- unlist(lapply(results, \(x) varRangeClass$new(x)$toVarChars(expandScalars = TRUE)))
+    }
+    names(results) <- NULL
+  } else {
+    if (nodesAsChars) {
+      if(returnScalarComponents) {
+        return(unlist(lapply(results, \(x) x$toVarChars(expandScalars = TRUE))))
+      } else {
+        return(unlist(lapply(results, \(x) x$toNodeChars())))
+      }
+    } else {
+      if (returnScalarComponents) { # TODO: put into new messaging system
+        warning("one must request result as characters via `nodesAsChars` in order to use `returnScalarComponents`")
+      }
+    }
+  }
+  return(results)
 }
 
-traverseGraphRecurse <- function(rules, nodes, down, follow = FALSE, immediateOnly = FALSE, firstPass = TRUE) {
+traverseGraphRecurse <- function(rules, nodes, omit = NULL, down, follow = FALSE, immediateOnly = FALSE, model = NULL, firstPass = TRUE) {
   results <- flatten(lapply(nodes, function(node) applyRules(rules, node)))
+  if(!is.null(omit)) {
+    results <- model$getNodes(results, nodesAsChars = FALSE)
+    results <- setdiff_nodes(results, omit)
+    ## We presumably don't need to convert back to varRange(s) since the nodeRange has all that information.
+  }
   if (immediateOnly) {
     return(results)
   }
@@ -335,18 +334,18 @@ traverseGraphRecurse <- function(rules, nodes, down, follow = FALSE, immediateOn
   if (!down && !firstPass && !follow) {
     # For upward traversal, check current rule to see if continue upwards, but always go up on first pass.
     # (Because we need to determine stochasticity of the next rule up, not stochasticity of starting rule.
-    stoch <- sapply(results, function(varRange) varRange$fromStochRule)
+    stoch <- sapply(results, function(x) if(inherits(x, 'nodeRangeClass')) x$decl$stoch else x$fromStochRule)
     results <- results[!stoch] # Stop here if upwards involves stochastic rule, excluding the upwards result.
   }
   propagators <- results
   if (!follow && down) {
     # For downward traversal, stop propagating at stochastic cases, but results included.
-    stoch <- sapply(propagators, function(varRange) varRange$fromStochRule)
+    stoch <- sapply(propagators, function(x) if(inherits(x, 'nodeRangeClass')) x$decl$stoch else x$fromStochRule)
     propagators <- propagators[!stoch]
   }
   # Continue traversing.
   if (length(propagators)) {
-    results <- c(results, traverseGraphRecurse(rules, propagators, down, follow, firstPass = FALSE))
+    results <- c(results, traverseGraphRecurse(rules, propagators, omit, down, follow, immediateOnly, model, firstPass = FALSE))
   } else {
     return(results)
   }

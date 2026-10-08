@@ -192,7 +192,8 @@ modelDefClass <- R6Class(
           declInfo[[iAns]] <<- modelDeclClass$new(
             code[[i]],
             contexts[[contextID]],
-            lineNumber
+            lineNumber,
+            warnNonConstantBlocks = TRUE
           )
         }
         if (code[[i]][[1]] == "for") {
@@ -740,31 +741,29 @@ modelDefClass <- R6Class(
         anyStoch <- varInfo[[lhsVar]]$anyStoch
         if (anyStoch) lhsLogProbVar <- makeLogProbName(lhsVar)
         if (varInfo[[lhsVar]]$nDim > 0) {
-          newMinMax <- decl$declRule$fullRange$getMinMax()
-          # Force overwrite of placeholder max based on LHS info.
-          varInfo[[lhsVar]]$maxs[varInfo[[lhsVar]]$maxs == .Machine$integer.max] <<- 0
-          # Check for overlap in all dimensions, indicating duplicate declaration.
-          if (sum(varInfo[[lhsVar]]$maxs)) { # On repeated declaration for a variable.
-            overlap <- !(varInfo[[lhsVar]]$maxs < newMinMax[, 1] |
-              varInfo[[lhsVar]]$mins > newMinMax[, 2])
-            if (all(overlap)) {
-              stop("Indexing for declarations for variable `", lhsVar, "` overlaps.")
+          if (!is.null(decl$declRule$fullRange)) { # NULL can occur with backwards indexing.
+            newMinMax <- decl$declRule$fullRange$getMinMax()
+            # Force overwrite of placeholder max based on LHS info.
+            varInfo[[lhsVar]]$maxs[varInfo[[lhsVar]]$maxs == .Machine$integer.max] <<- 0
+            varInfo[[lhsVar]]$mins <<- pmin(varInfo[[lhsVar]]$mins, newMinMax[, 1])
+            varInfo[[lhsVar]]$maxs <<- pmax(varInfo[[lhsVar]]$maxs, newMinMax[, 2])
+            if (anyStoch) {
+              logProbVarInfo[[lhsLogProbVar]]$mins <<- pmin(logProbVarInfo[[lhsLogProbVar]]$mins, newMinMax[, 1])
+              logProbVarInfo[[lhsLogProbVar]]$maxs <<- pmax(logProbVarInfo[[lhsLogProbVar]]$maxs, newMinMax[, 2])
             }
-          }
-          varInfo[[lhsVar]]$mins <<- pmin(varInfo[[lhsVar]]$mins, newMinMax[, 1])
-          varInfo[[lhsVar]]$maxs <<- pmax(varInfo[[lhsVar]]$maxs, newMinMax[, 2])
-          if (anyStoch) {
-            logProbVarInfo[[lhsLogProbVar]]$mins <<- pmin(logProbVarInfo[[lhsLogProbVar]]$mins, newMinMax[, 1])
-            logProbVarInfo[[lhsLogProbVar]]$maxs <<- pmax(logProbVarInfo[[lhsLogProbVar]]$maxs, newMinMax[, 2])
           }
         }
       }
+      LHSvars <- names(varInfo)
       for (iDI in seq_along(declInfo)) { # Do RHS after all LHS so that check for overlap only concerns LHS
         decl <- declInfo[[iDI]]
         for (iRHR in seq_along(decl$rhsOriginalRules)) {
           rhsRule <- decl$rhsOriginalRules[[iRHR]]
           rhsVar <- rhsRule$varName
-          if (!(rhsVar %in% names(varInfo))) {
+          # Corner case would be having the dynamically indexed RHS var also defined elsewhere on RHS.
+          # We do not address that so will fail below if dimensions are not specified.
+          bothLHSandRHS <- rhsVar %in% LHSvars
+          if (!bothLHSandRHS) {
             tmp <- stripIndexWrapping(decl$symbolicParentNodes[[iRHR]])
             nDim <- if (length(tmp) == 1) 0 else length(tmp) - 2
             varInfo[[rhsVar]] <<- varInfoClass$new(
@@ -777,12 +776,32 @@ modelDefClass <- R6Class(
           }
           if (varInfo[[rhsVar]]$nDim) {
             newMinMax <- rhsRule$fullRange$getMinMax()
+            intmax <- newMinMax[, 2] == .Machine$integer.max
+            if (bothLHSandRHS && any(intmax)) { # Use dim from LHS.
+              newMinMax[intmax, 2] <- 0
+            }
             varInfo[[rhsVar]]$mins <<- pmin(varInfo[[rhsVar]]$mins, newMinMax[, 1])
             varInfo[[rhsVar]]$maxs <<- pmax(varInfo[[rhsVar]]$maxs, newMinMax[, 2])
           }
         }
       }
 
+      # Find non-scalar constants on RHS.
+      # These should only be indexing variables as others will have RHS rules.
+      constantVars <- unique(unlist(sapply(declInfo, \(x) all.vars(x$code))))
+      constantVars <- constantVars[constantVars %in% names(constants)]
+      constantVars <- constantVars[!constantVars %in% names(varInfo)]
+      for (constantVar in constantVars) {
+        dims <- dimOrLength(constants[[constantVar]])
+        nDim <- length(dims)
+        varInfo[[constantVar]] <<- varInfoClass$new(
+          varName = constantVar,
+          mins = rep(1, nDim),
+          maxs = dims,
+          nDim = nDim,
+          anyStoch = FALSE
+        )
+      }
 
       # Now use `dimensionsList`, to check / update varInfo.
       for (i in seq_along(dimensionsList)) {
@@ -792,7 +811,7 @@ modelDefClass <- R6Class(
           stop("inconsistent dimensions for variable `", dimVarName, "`.")
         }
         if (any(dimensionsList[[dimVarName]] < varInfo[[dimVarName]]$maxs &
-          varInfo[[dimVarName]]$maxs < Inf)) { # .Machine$integer.max))
+          varInfo[[dimVarName]]$maxs < .Machine$integer.max)) { # Had changed to `< Inf` but that causes problems with dyn idx case.
           stop("dimensions specified are smaller than model specification for variable `", dimVarName, "`.")
         }
         varInfo[[dimVarName]]$maxs <<- dimensionsList[[dimVarName]]
@@ -811,7 +830,7 @@ modelDefClass <- R6Class(
         stop(
           "indexing error found for model variable(s): `",
           paste0(names(varInfo)[problemVars], collapse = "`, `"),
-          "`. Please check that variables used for indexing are properly defined in the relevant for loop(s)."
+          "`. Please check that variables used for indexing are properly defined in the relevant for loop(s). Also note that backwards indexing (e.g., `for(i in 5:1)`) is generally not supported."
         )
       }
 
@@ -823,6 +842,15 @@ modelDefClass <- R6Class(
         stop(
           "index value of zero or less found for model variable(s): `",
           paste0(names(varInfo)[problemVars], collapse = "`, `"), "`."
+        )
+      }
+
+      missingMaxs <- sapply(varInfo, function(x) any(x$maxs == .Machine$integer.max))
+      if (any(missingMaxs)) {
+        problemVars <- which(missingMaxs)
+        stop(
+          "no maximum dimension available for model variable(s): `",
+          paste0(names(varInfo)[problemVars], collapse = "`, `"), "`. If you have dynamic indexing of that variable, you need to specify the dimension for the variable via `dimensions`."
         )
       }
 
@@ -947,6 +975,23 @@ modelDefClass <- R6Class(
       calcRules <<- newVarRules(allCalcRules)
       declRules <<- newVarRules(declRules)
 
+      for (var in names(declRules)) {
+        numRules <- length(declRules[[var]]$rules)
+        if (numRules > 1) {
+          for (i in 2:numRules) {
+            for (j in 1:(i - 1)) {
+              if (!is.null(declRules[[var]]$rules[[i]]$apply(declRules[[var]]$rules[[j]]$apply()))) {
+                stop(
+                  "found multiple node definitions in declaring `",
+                  safeDeparse(declRules$y$rules[[i]]$expr), "` and `",
+                  safeDeparse(declRules$y$rules[[j]]$expr)
+                )
+              }
+            }
+          }
+        }
+      }
+
       invisible(NULL)
     },
     makeVarNames = function() {
@@ -978,44 +1023,6 @@ modelDefClass <- R6Class(
   )
 )
 
-
-# Core graph and node querying functions in the model API.
-# These are standalone functions for now, but may become
-# part of model class. That said, more naturally part of modelDef class.
-
-# TODO: move these functions into a new stand-alone code file for user-facing functions?
-
-# Note: `getDependencies` and `getParents` cannot handle `stochOnly` or `determOnly`
-# because a given varRange result for getParents could be partially stochastic and
-# partially deterministic. Instead a user would pass the result through `getNodes()`.
-# Similarly, filtering by RHSonly will be done in `getNodes()`.
-
-# Note: data-related flags not handled as that relates to flags on a model
-# and not part of modelDef.
-
-# TODO: these should presumably take the model not modelDef as the first arg.
-# Once we integrate modelClass with modelBase_nClass, we should be able to
-# pass `self` from the getDeps and getParents methods to these functions.
-
-getDependencies <- function(modelDef, nodes,
-                            self = TRUE,
-                            downstream = FALSE, immediateOnly = FALSE) {
-  traverseGraph(modelDef$downstreamRules, modelDef$declRules,
-    nodes = nodes,
-    down = TRUE, self = self,
-    follow = downstream, immediateOnly = immediateOnly
-  )
-}
-
-getParents <- function(modelDef, nodes,
-                       self = FALSE,
-                       upstream = FALSE, immediateOnly = FALSE) {
-  traverseGraph(modelDef$upstreamRules, modelDef$declRules,
-    nodes = nodes,
-    down = FALSE, self = self,
-    follow = upstream, immediateOnly = immediateOnly
-  )
-}
 
 
 # Evaluates `if` statements in model code to generate actual model code

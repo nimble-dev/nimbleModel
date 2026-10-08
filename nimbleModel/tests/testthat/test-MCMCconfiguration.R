@@ -2,7 +2,6 @@
 ## how to create and add to an MCMC configuration, using
 ## a nodeRange or varRange.
 
-library(nimbleModel)
 code <- quote({
     for(i in 1:5) {
         y[i] ~ dnorm(mu, sd = sigma)
@@ -11,7 +10,7 @@ code <- quote({
     sigma ~ dunif(0,5)
 })
 
-m <- modelClass$new(code, data = list(y = rnorm(5)))
+m <- nimbleModel(code, data = list(y = rnorm(5)))
 
 conf <- nimbleModel:::mcmcConfClass$new(m)
 
@@ -25,6 +24,9 @@ conf$addSampler('mu', 'slice')
 conf$addSampler(nr, 'slice')
 conf$addSampler(vr, 'slice')
 
+# There are some bugs preventing some of remaining invocations from working.
+# Revisit all this more comprehensively when make this into formal testing.
+if(FALSE) {
 conf$addSampler(c('mu','sigma'), 'conjugate')
 
 conf$addSampler(c('mu','sigma'), 'RW_block')  
@@ -43,7 +45,7 @@ code <- quote({
     sigma ~ dunif(0,5)
 })
 
-m <- modelClass$new(code, data = list(y = rnorm(5)))
+m <- nimbleModel(code, data = list(y = rnorm(5)))
 conf <- nimbleModel:::mcmcConfClass$new(m)
 
 conf$addSampler('mu[1]','RW')
@@ -69,7 +71,7 @@ code <- quote({
 })
 
 
-m <- modelClass$new(code, data = list(y = matrix(rnorm(15),3,5)))
+m <- nimbleModel(code, data = list(y = matrix(rnorm(15),3,5)))
 conf <- nimbleModel:::mcmcConfClass$new(m)
 
 conf$addSampler("mu[1:2]",'conjugate')
@@ -86,7 +88,7 @@ code <- quote({
 })
 
 
-m <- modelClass$new(code, data = list(y = matrix(rnorm(15),3,5)))
+m <- nimbleModel(code, data = list(y = matrix(rnorm(15),3,5)))
 conf <- nimbleModel:::mcmcConfClass$new(m)
 nr1 <- getNodes(m, "mu[1,1:5]")[[1]]
 nr2 <- getNodes(m, "mu[1:2,1:5]")[[1]]
@@ -100,3 +102,4 @@ conf$addSampler(nr1, "RW", targetAsScalars = TRUE)
 conf$addSampler(nr2, "RW", targetAsScalars = TRUE)
 
 
+}

@@ -9,11 +9,13 @@
     processBackwardsModelIndexRanges = TRUE,
     disallowMultivariateArgumentExpressions = TRUE,
     legacy_nimble = FALSE, # TRUE means stricter use of original nimble behavior in some cases.
+    nodesAsChars = FALSE,
     verbose = TRUE
   )
 )
 
 # sets a single option
+#' @export
 setNimbleModelOption <- function(name, value) {
   assign(name, value, envir = .nimbleModelOptions)
   invisible(value)

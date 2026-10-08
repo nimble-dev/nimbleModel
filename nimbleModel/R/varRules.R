@@ -27,7 +27,7 @@ varRulesClass <- R6Class(
 
 # Take a flat list of rules and divide up into one `varRules` per variable.
 newVarRules <- function(items, varNames = NULL, type = NULL) {
-  if (!all(sapply(items, function(x) inherits(x, "nodeRuleClass") || is(x, "graphRuleClass")))) {
+  if (!all(sapply(items, function(x) inherits(x, "nodeRuleClass") || inherits(x, "graphRuleClass")))) {
     stop("all elements of `items` must be `nodeRule`s or `graphRule`s.")
   }
   if (is.null(varNames)) {

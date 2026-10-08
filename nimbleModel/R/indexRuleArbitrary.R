@@ -22,13 +22,29 @@ indexRuleArbitraryClass <- R6Class(
       if (!inherits(indexRange, "indexRangeClass")) {
         stop("an index rule must be applied to an `indexRange`.")
       }
-      indexRuleArbitrary_applyMatrix(indexRange$getValuesAsMatrix(), setupResults, collapse = collapse)
+      indexRuleArbitrary_applyMatrix(indexRange$getValuesAsMatrix(), setupResults,
+        collapse = collapse
+      )
     },
     getMax = function() {
       sapply(
         setupResults$fromInfo,
         function(fromInfo) fromInfo$offset + fromInfo$size
       )
+    },
+    getNumElements = function() {
+      return(setupResults$unrolledSize)
+    },
+    getIDs = function(indexRange) {
+      values <- match(indexRange$getValuesAsMatrix(), unlist(setupResults$iRow2toIndices))
+      NAs <- is.na(values)
+      if (any(NAs)) {
+        values <- values[!NAs]
+      }
+      return(values)
+    },
+    invertIDs = function(relativeNodeIDs) {
+      unlist(setupResults$iRow2toIndices[relativeNodeIDs])
     }
   )
 )

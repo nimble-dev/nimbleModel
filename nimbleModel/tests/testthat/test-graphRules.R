@@ -1337,7 +1337,7 @@ test_that("graphRules correctly handles ragged indexing", {
                               constants = list(n = n))
    expect_identical(sapply(rule$indexRules, function(ir) class(ir)[1]),
                     c('indexRuleArbitraryClass', 'indexRuleBlockClass'))
-   expect_identical(rule$indexSets$toIndexSlotToSet, c(2, 1, 1))
+   expect_identical(rule$indexSets$toIndexSlotToSet, c(2L, 1L, 1L))
 
    expect_equal(
        applyGraphRule(
@@ -1355,7 +1355,7 @@ test_that("graphRules correctly handles ragged indexing", {
                               constants = list(n = n, mi = mi))
    expect_identical(sapply(rule$indexRules, function(ir) class(ir)[1]),
                     'indexRuleArbitraryClass')
-   expect_identical(rule$indexSets$toIndexSlotToSet, rep(1,3))
+   expect_identical(rule$indexSets$toIndexSlotToSet, rep(1L,3))
    
    expect_equal(
        applyGraphRule(
@@ -1372,7 +1372,7 @@ test_that("graphRules correctly handles ragged indexing", {
                               constants = list(n = n, mj = mj))
    expect_identical(sapply(rule$indexRules, function(ir) class(ir)[1]),
                     'indexRuleArbitraryClass')
-   expect_identical(rule$indexSets$toIndexSlotToSet, rep(1,3))
+   expect_identical(rule$indexSets$toIndexSlotToSet, rep(1L,3))
    
    expect_equal(
        applyGraphRule(
@@ -1389,7 +1389,7 @@ test_that("graphRules correctly handles ragged indexing", {
                               constants = list(n = n, mij = mij))
    expect_identical(sapply(rule$indexRules, function(ir) class(ir)[1]),
                     'indexRuleArbitraryClass')
-   expect_identical(rule$indexSets$toIndexSlotToSet, rep(1,3))
+   expect_identical(rule$indexSets$toIndexSlotToSet, rep(1L,3))
 
    expect_equal(
        applyGraphRule(

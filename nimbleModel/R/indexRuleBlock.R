@@ -39,6 +39,25 @@ indexRuleBlockClass <- R6Class(
     },
     getMax = function() {
       return(setupResults$fromMax)
+    },
+    getNumElements = function() {
+      return(setupResults$fromMax - setupResults$fromMin + 1)
+    },
+    getIDs = function(indexRange) {
+      init <- setupResults$fromMin + setupResults$offset
+      switch(class(indexRange)[1],
+             indexRangeScalarClass = indexRange$value - init + 1,
+             indexRangeSequenceClass = (indexRange$start - init + 1):(indexRange$end - init + 1),
+             indexRangeMatrixClass = c(indexRange$values) - init + 1,
+             stop("invalid type of indexRange provided for creating IDs")
+             )
+    },
+    invertIDs = function(relativeNodeIDs) {
+      if (setupResults$fromMin + setupResults$offset != 1) {
+        return(relativeNodeIDs + (setupResults$fromMin + setupResults$offset - 1))
+      } else {
+        return(relativeNodeIDs)
+      }
     }
   )
 )

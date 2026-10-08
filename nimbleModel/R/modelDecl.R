@@ -34,7 +34,8 @@ modelDeclClass <- R6Class(
                           context,
                           sourceLineNumber,
                           truncated = FALSE,
-                          boundExprs = NULL) {
+                          boundExprs = NULL,
+                          warnNonConstantBlocks = FALSE) {
       context <<- context
       sourceLineNumber <<- sourceLineNumber
       code <<- code
@@ -69,8 +70,8 @@ modelDeclClass <- R6Class(
           targetVarExpr <- targetExpr[[2]]
           targetNodeExpr <<- targetExpr
           indexedBlocks <- sapply(indexExpr, checkForIndexedIntervals, context)
-          if (any(indexedBlocks)) {
-            stop("Non-constant indexing found in `", safeDeparse(indexExpr[[which(indexedBlocks)[1]]]), "` in `", safeDeparse(targetNodeExpr), "`. Block indices must be constant.")
+          if (any(indexedBlocks) && warnNonConstantBlocks) {
+            messageIfVerbose("Non-constant indexing found in `", safeDeparse(indexExpr[[which(indexedBlocks)[1]]]), "` in `", safeDeparse(targetNodeExpr), "`. Graph queries will incorrectly show elements of multivariate nodes as individual nodes but other functionality should operate correctly.")
           }
         } else {
           # There is a transformation, possibly with a subscript.
@@ -128,6 +129,15 @@ modelDeclClass <- R6Class(
     # Create declRule and symbolic RHS pieces.
     processDecl = function(nimFunNames, constants = list(), envir) {
       declRule <<- declRuleClass$new(self, 0, context, constants)
+      if (length(declRule$loopIndexingRule$graphRule$indexRules)) {
+        if (!identical(
+          declRule$externalRule$apply(declRule$varName)$extractIndexRange()$numElements,
+          declRule$loopIndexingRule$apply(declRule$varName)$extractIndexRange()$numElements
+        ) &&
+          !any(sapply(indexExpr, checkForIndexedIntervals, context))) { # Non-constant indexing invalidates this check.
+          stop("found duplicated node definitions in declaring `", safeDeparse(declRule$expr), "`.")
+        }
+      }
       makeSymbolicParentNodes(nimFunNames, constants, envir)
       invisible(NULL)
     },
@@ -339,6 +349,13 @@ modelDeclClass <- R6Class(
                 # This index should be constant for all instances of this nodeFunction.
                 logProbIndexValue <- as.numeric(min(eval(origIndex))) # eval() should not cause an error...
                 logProbExpr[[i]] <- logProbIndexValue
+              }
+            }
+            if (is.c(origIndex)) { # Handles new cases like `y[c(2,3,5)] ~ dmnorm(...)`.
+              if (origIndex[[1]] == "nimC") {
+                logProbExpr[[i]] <- origIndex[[2]]
+              } else {
+                stop("unexpected input in `", safeDeparse(origIndex), "`.")
               }
             }
           }

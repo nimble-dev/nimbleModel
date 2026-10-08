@@ -62,12 +62,11 @@ varRangeClass <- R6Class(
           indexRangeExprs <<- as.list(indexInfo[-c(1, 2)])
           indexRanges <<- lapply(indexRangeExprs, newIndexRange)
 
-          # Truncate indexRangeExprs for matrices for nicer printing.
-          if (length(indexRanges) == 1 && inherits(indexRanges[[1]], "indexRangeMatrixClass")) {
-            indexRangeExprs <<- indexRanges[[1]]$toExpr()
-          } else if (any(unlist(lapply(indexRanges, function(x) inherits(x, "indexRangeMatrixClass"))))) {
+          # Shorten expression for matrix values for nicer printing (and less storage).
+          if (any(unlist(lapply(indexRanges, function(x) inherits(x, "indexRangeMatrixClass"))))) {
             indexRangeExprs <<- lapply(indexRanges, function(x) x$toExpr())
           }
+            
           rangeToIndexSlot <<- as.list(seq_along(indexRanges))
         }
         if (is.null(varName)) {
@@ -131,7 +130,8 @@ varRangeClass <- R6Class(
 
     # Extract one or more columns of a varRange.
     # If multiple columns, result is expanded as a matrix of indices.
-    extractIndexRange = function(indices, returnUsedRanges = FALSE) {
+    extractIndexRange = function(indices = NULL, returnUsedRanges = FALSE) {
+      if (is.null(indices)) indices <- seq_along(indexSlotToRange)
       usedIndices <- unlist(lapply(rangeToIndexSlot, function(x) x[x %in% indices]))
       usedIndicesBool <- lapply(rangeToIndexSlot, function(x) x %in% indices)
       usedRanges <- which(unlist(lapply(usedIndicesBool, any)))
@@ -176,12 +176,6 @@ varRangeClass <- R6Class(
       return(result)
     },
 
-    # TODO: remove this
-    # isEmpty = function() {
-    #     return(any(sapply(self$indexRanges,
-    #                       function(x) is(x, "indexRangeEmptyClass"))))
-    # },
-
     isNone = function() { # No indexing case.
       return(!length(indexRanges))
     },
@@ -206,7 +200,7 @@ varRangeClass <- R6Class(
           do.call("call",
             c(
               list("[", nm),
-              indexRangeExprs[indexSlotToRange]
+              if (is.list(indexRangeExprs)) indexRangeExprs[indexSlotToRange] else indexRangeExprs
             ),
             quote = TRUE
           )
@@ -240,15 +234,13 @@ varRangeClass <- R6Class(
         } else {
           externalMatrix <- crossIndexRanges(indexRanges)$values
         } # not ordered
-        tmp <- t(apply(externalMatrix, 1, as.character))
-        if (ncol(externalMatrix) == 1) {
-          tmp <- t(tmp)
-        }
         indicesList <- list()
         indices <- unlist(rangeToIndexSlot)
         for (i in seq_along(indices)) {
-          indicesList[[indices[i]]] <- tmp[, i]
+          indicesList[[indices[i]]] <- externalMatrix[, i]
         }
+        ord <- do.call(order, indicesList[sort(sapply(rangeToIndexSlot, \(x) x[1]), decreasing = TRUE)]) # Enforce column-major, but using only first index in nonseparable cases).
+        indicesList <- lapply(indicesList, \(x) x[ord])
         return(paste0(varName, "[", do.call(pasteIndices, indicesList), "]"))
       }
 
@@ -272,12 +264,8 @@ varRangeClass <- R6Class(
         } else {
           externalMatrix <- crossIndexRanges(indexRanges[boolMatrixIndexRanges])$values
         } # not ordered
-        tmp <- t(apply(externalMatrix, 1, as.character))
-        if (ncol(externalMatrix) == 1) {
-          tmp <- t(tmp)
-        }
         for (i in seq_along(matrixIndices)) {
-          indicesList[[matrixIndices[i]]] <- tmp[, i]
+          indicesList[[matrixIndices[i]]] <- externalMatrix[, i]
         }
       }
       return(paste0(varName, "[", do.call(pasteIndices, indicesList), "]"))
@@ -343,17 +331,27 @@ varRangeClass <- R6Class(
   )
 )
 
-# This now catches cases where the order of the indexRanges
-# is permuted consistent with `rangeToIndexSlot` and `indexSlotToRange`.
-# TODO: check testing and perhaps add more testing.
+order_by_column <- function(mat) {
+  ord <- do.call(order, lapply(seq_len(ncol(mat)), \(i) mat[,i]))
+  mat[ord,]
+}
+
 varRange_isEqual <- function(vr1, vr2) {
-  if (length(vr1$indexRanges) != length(vr2$indexRanges)) {
-    return(FALSE)
+  if(!length(vr1$indexSlotToRange) && !length(vr2$indexSlotToRange) &&
+       vr1$varName == vr2$varName)
+    return(TRUE)
+  if(identical(length(vr1$indexSlotToRange), length(vr2$indexSlotToRange))) {
+    ir1 <- vr1$extractIndexRange()
+    ir2 <- vr2$extractIndexRange()
+    if(identical(ir1$numColumns, ir2$numColumns) && identical(ir1$numElements, ir2$numElements)) {
+      inds1 <- ir1$values
+      inds2 <- ir2$values
+      if(ir1$numColumns == 1) 
+        return(identical(sort(inds1),sort(inds2)))
+      return(identical(order_by_column(inds1), order_by_column(inds2)))
+    }
   }
-  # mtch <- match(vr1$indexSlotToRange, vr2$indexSlotToRange)
-  crossref <- unique(cbind(vr1$indexSlotToRange, vr2$indexSlotToRange))
-  return(nrow(crossref) == length(vr1$indexRanges) &&
-    isTRUE(all.equal(vr1$indexRanges[crossref[, 1]], vr2$indexRanges[crossref[, 2]])))
+  return(FALSE)
 }
 
 getVarName <- function(x) {

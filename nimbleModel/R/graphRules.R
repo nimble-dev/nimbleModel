@@ -98,6 +98,7 @@ graphRuleClass <- R6Class(
       applyGraphRule(fromVarRange, self, removeDuplicates = removeDuplicates)
     },
     getFromRange = function() {
+      # Returns maximal extent; so for y[2:5], it returns 1:5; same for y[c(2,5)].
       if (!length(indexSets$fromIndexSlotToSet)) { # no indexing
         varRange <- varRangeClass$new(fromVarName)
       } else {
@@ -113,7 +114,9 @@ graphRuleClass <- R6Class(
             class(x)[1] %in% c("indexRuleBlockClass", "indexRuleArbitraryClass")
           }))
           for (set in sets) {
-            maxes[indexSets$fromIndexSlotToSet == set] <- indexRules[[set]]$getMax()
+            if (any(indexSets$fromIndexSlotToSet == set)) { # Avoid assignment that converts `maxes` to a list when indexRule not used.
+              maxes[indexSets$fromIndexSlotToSet == set] <- indexRules[[set]]$getMax()
+            }
           }
         }
 
@@ -122,7 +125,7 @@ graphRuleClass <- R6Class(
             seq_along(maxes),
             function(i) {
               newIndexRange(
-                substitute(1:MAX, list(MAX = maxes[i]))
+                substitute(1:MAX, list(MAX = maxes[[i]]))
               )
             }
           ),
@@ -522,11 +525,13 @@ applyGraphRule <- function(fromVarRange, rule, varName = NULL, removeDuplicates 
   }
 
   if (!length(indexRules)) {
-    return(
-      varRangeClass$new(ifelse(is.null(varName), rule$toVarName, varName),
-        fromStochRule = rule$stoch
-      )
-    )
+    if(rule$toVarName == ".loop") {
+      return(loopIndexingRangeClass$new(ifelse(is.null(varName), rule$toVarName, varName),
+                                        fromStochRule = NULL))
+    } else {
+      return(varRangeClass$new(ifelse(is.null(varName), rule$toVarName, varName),
+        fromStochRule = rule$stoch))
+    }
   }
 
   # Step 1: Apply indexRules one by one, getting inputs from multiple indexRanges if necessary.
@@ -698,14 +703,21 @@ applyGraphRule <- function(fromVarRange, rule, varName = NULL, removeDuplicates 
   # Remove duplicate columns (from cases where two indexRanges are used in a single rule).
   repeats <- duplicated(finalRangeToIndexSlot)
 
-  return(
-    varRangeClass$new(
+  if(rule$toVarName == ".loop") {
+    return(loopIndexingRangeClass$new(
       indexInfo = finalIndexRanges[!repeats],
       rangeToIndexSlot = finalRangeToIndexSlot[!repeats],
       varName = ifelse(is.null(varName), rule$toVarName, varName),
-      fromStochRule = rule$stoch
-    )
-  )
+      fromStochRule = NULL))
+    } else {
+      return(
+        varRangeClass$new(
+          indexInfo = finalIndexRanges[!repeats],
+          rangeToIndexSlot = finalRangeToIndexSlot[!repeats],
+          varName = ifelse(is.null(varName), rule$toVarName, varName),
+          fromStochRule = rule$stoch
+        ))
+    }
 }
 
 

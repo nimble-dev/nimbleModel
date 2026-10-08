@@ -30,7 +30,9 @@ test_that("avoid using indexing values from global", {
     })
     k <- c(1,2,4)
     
-    expect_message(modelDef <- modelDefClass$new(code),
+    expect_message(modelDef <- modelDefClass$new(code, inits = list(k=k), dimensions = list(mu=5)),
+                 "Detected use of non-constant indices")
+    expect_message(modelDef <- modelDefClass$new(code, data = list(k=k), dimensions = list(mu=5)),
                  "Detected use of non-constant indices")
 
     code <- quote({
@@ -55,12 +57,11 @@ test_that("avoid using indexing values from global", {
         for(i in 1:5)
             y[i] ~ dnorm(mu, 1)
     })
-    
-    modelDef <- modelDefClass$new(code)
+    model <- nimbleModel(code)
 
     p <- 3
-    expect_error(getNodes(modelDef, 'y[1:p]'), "must involve two positive")
-    expect_error(getDependencies(modelDef, 'y[1:p]'), "must involve two positive")
+    expect_error(getNodes(model, 'y[1:p]'), "must involve two positive")
+    expect_error(getDependencies(model, 'y[1:p]'), "must involve two positive")
     
 })
    

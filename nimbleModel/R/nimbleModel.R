@@ -62,6 +62,9 @@ nimbleModel <- function(code,
     dimensions = dimensions, inits = inits,
     data = data, userEnv = userEnv
   )
+  # TODO: we would need to modify this if constant vars are not put into varInfo.
+  inits <- c(inits, constants[names(constants) %in% modelDef$varNames])
+
   # At this point, data will have been removed from constants.
   specificModelClass <- make_modelClass_from_nimbleModel(modelDef, data, inits, name)
   if (compile) specificModelClass <- nCompile(specificModelClass)
@@ -114,7 +117,7 @@ nm_addModelDollarSign <- function(expr, exceptionNames = character(0)) {
   if (is.numeric(expr)) {
     return(expr)
   }
-  if (is(expr, "srcref")) {
+  if (inherits(expr, "srcref")) {
     return(expr)
   }
   if (is.name(expr)) {
@@ -488,6 +491,9 @@ make_stoch_sim_line <- function(LHSrep, RHSrep) {
 }
 
 make_stoch_calc_line <- function(LHSrep, RHSrep, logProbExprRep, diff = FALSE) {
+  BUGSdistName <- nCompiler:::safeDeparse(RHSrep[[1]])
+  distInfo <- getDistributionInfo(BUGSdistName)
+  RHSrep[[1]] <- as.name(distInfo$densityName)
   lenRHS <- length(RHSrep)
   if (length(RHSrep) > 1) {
     RHSrep[3:(lenRHS + 1)] <- RHSrep[2:lenRHS]
@@ -577,12 +583,12 @@ make_decl_methods_from_declInfo <- function(declInfo) {
           make_decl_method_nFxn("sim_one", NULL),
         calc_one = (function(idx) {
           DETERMCALC
-          return(invisible(0))
+          return(0)
         }) |>
           make_decl_method_nFxn("calc_one"),
         calcDiff_one = (function(idx) {
           calc_one(idx)
-          return(invisible(0))
+          return(0)
         }) |>
           make_decl_method_nFxn("calcDiff_one"),
         getLogProb_one = (function(idx) {
@@ -608,14 +614,14 @@ make_decl_methods_from_declInfo <- function(declInfo) {
           make_decl_method_nFxn("sim_one", NULL),
         calc_one = (function(idx) {
           STOCHCALC
-          return(invisible(LOGPROB))
+          return(LOGPROB)
         }) |>
           make_decl_method_nFxn("calc_one"),
         calcDiff_one = (function(idx) {
           STOCHCALC_DIFF
           LocalAns_ <- LocalNewLogProb_ - LOGPROB
           LOGPROB <- LocalNewLogProb_
-          return(invisible(LocalAns_))
+          return(LocalAns_)
         }) |>
           make_decl_method_nFxn("calcDiff_one"),
         getLogProb_one = (function(idx) {

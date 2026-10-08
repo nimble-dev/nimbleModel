@@ -28,7 +28,7 @@ intToNumeric <- function(x) {
 # This needs to be a function as we can't initialize a subclass from
 # the constructor of the base class, and we want to be able to
 # dispatch `indexRange` creation based on form of input expression or value.
-newIndexRange <- function(expr) {
+newIndexRange <- function(expr, sort = TRUE) {
   # Note that we do various checking and  conversion to numeric here,
   # as calls to class-specific `initialize` will be done repeatedly and
   # with only internal values (which should be guaranteed valid).
@@ -59,7 +59,7 @@ newIndexRange <- function(expr) {
       vals <- vals[!is.na(mat)]
       if (isTRUE(all(vals >= 1)) && isTRUE(all(vals < Inf)) && identical(vals, round(vals))) {
         dimnames(mat) <- NULL
-        return(indexRangeMatrixClass$new(mat))
+        return(indexRangeMatrixClass$new(mat, sort = sort))
       } else {
         stop("newIndexRange: an indexRange matrix must involve positive, integer-valued indices.")
       }
@@ -89,6 +89,10 @@ newIndexRange <- function(expr) {
 }
 
 ### `indexRange` base class and subclasses ###
+
+# The getItem and getNext functionality was originally set up thinking
+# we would use it for iterating when using declaration functions.
+# The functionality is unused but is left in case it becomes useful.
 
 indexRangeClass <- R6Class(
   classname = "indexRangeClass",
@@ -256,7 +260,7 @@ indexRangeMatrixClass <- R6Class(
     numColumns = numeric(),
     initialize = function(values, sort = TRUE) {
       if (sort) {
-        ord <- do.call(order, lapply(seq_len(ncol(values)), function(i) values[, i]))
+        ord <- do.call(order, lapply(rev(seq_len(ncol(values))), function(i) values[, i]))
         values <<- values[ord, , drop = FALSE]
       } else {
         values <<- values

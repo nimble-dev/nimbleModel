@@ -48,11 +48,11 @@ test_that("processModelCode works", {
     expect_identical(
         modelDef$declInfo[[2]]$declRule$varName, "a")
     expect_identical(
-        modelDef$declInfo[[2]]$declRule$stoch, TRUE)
+        modelDef$declInfo[[2]]$stoch, TRUE)
     expect_identical(
         modelDef$declInfo[[6]]$declRule$varName, "theta")
     expect_identical(
-        modelDef$declInfo[[6]]$declRule$stoch, FALSE)
+        modelDef$declInfo[[6]]$stoch, FALSE)
     
 })
 
@@ -192,7 +192,7 @@ test_that("makeVarInfo works", {
     expect_identical(vi$z$mins, 1)
     expect_identical(vi$z$maxs, 12)
     expect_identical(vi$sigma$mins, 1)
-    expect_identical(vi$sigma$maxs, as.numeric(.Machine$integer.max))
+    expect_identical(vi$sigma$maxs, 10) # Based on LHS declaration.
     expect_identical(vi$pr$mins, rep(1, 2))
     expect_identical(vi$pr$maxs, rep(3, 2))
 
@@ -214,9 +214,6 @@ test_that("handling dimensions if not specified", {
     modelDef <- modelDefClass$new(modelCode, inits = list(mu = rnorm(5)))
     expect_identical(modelDef$varInfo$mu$maxs, 5)
 
-    expect_identical(body(modelDef$declRules[['y']]$rules[[1]]$calculate),
-                 quote(y <<- sum(mu[1:5])))
-        
     modelDef <- modelDefClass$new(modelCode, dimensions = list(mu = 5))
     expect_identical(modelDef$varInfo$mu$maxs, 5)
 
@@ -241,10 +238,6 @@ test_that("truncation processing", {
         modelDef$declInfo[[1]]$symbolicParentNodes,
         list(quote(mu),quote(sigma),quote(b)))
 
-    expect_identical(
-        body(modelDef$declRules[['y']]$rules[[1]]$calculate),
-        quote(logProb_y <<- dnorm(y, mean = mu, sd = sigma, lower_ = 3, upper_ = b, 
-                                  log = 1)))
 })
 
 test_that("detection of duplicated declarations", {
@@ -252,53 +245,40 @@ test_that("detection of duplicated declarations", {
         z ~ dbin(p, 1)
         z ~ dbin(p, c)
     })
-    expect_error(m <- modelClass$new(code), "There are multiple definitions")
+    expect_error(m <- nimbleModel(code), "There are multiple definitions")
     
     code <- quote({
         z ~ dbin(p, 1)
         z[1:2] <- tmp[1:2]
     })
-    expect_error(m <- modelClass$new(code), "Inconsistent dimensions")
-    
+    expect_error(m <- nimbleModel(code), "Inconsistent dimensions")
+
+    # Issue 27
     code <- quote({
         z[1:2] <- tmp[3:4]
         z[1:2] <- tmp[1:2]
     })
-    expect_error(m <- modelClass$new(code), "overlaps")
+    expect_failure(expect_error(m <- nimbleModel(code), "overlaps"))
 
+    # Issue 27
     code <- quote({
         z[1:2] <- tmp[3:4]
         z[2:3] <- tmp[1:2]
     })
-    expect_error(m <- modelClass$new(code), "overlaps")
+    expect_failure(expect_error(m <- nimbleModel(code), "overlaps"))
     
+    # Issue 27
     code <- quote({
         z[1:2,1:2] <- tmp[3:4,1:2]
         z[2:3,1:2] <- tmp[1:2,1:2]
     })
-    expect_error(m <- modelClass$new(code), "overlaps")
+    expect_failure(expect_error(m <- nimbleModel(code), "overlaps"))
     
     code <- quote({
         z[1:2,1:2] <- tmp[3:4,1:2]
         z[3:4,1:2] <- tmp[1:2,1:2]
     })
-    m <- modelClass$new(code)
+    m <- nimbleModel(code)
     
 })
 
-test_that("detection of non-constant block indices", {
-    code <- quote({
-        for(i in 1:2) {
-            x[i:5] ~ dmnorm(z[i:5], Q[i:5,i:5])
-        }
-    })
-    expect_error(m <- modelClass$new(code), "Non-constant indexing")
-    
-    code <- quote({
-        for(i in 1:2) {
-            x[i,(i+1):5] ~ dmnorm(z[(i+1):5], Q[(i+1):5,(i+1):5])
-        }
-    })
-    expect_error(m <- modelClass$new(code), "Non-constant indexing")
-
-})

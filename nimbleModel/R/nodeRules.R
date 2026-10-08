@@ -132,17 +132,161 @@ declRuleClass <- R6Class(
   portable = FALSE,
   inherit = nodeRuleClass,
   public = list(
-    originalIndexingRule = NULL, # Determines original indexing (based on context).
+    loopIndexingRule = NULL, # Determines loop indexing (based on context).
     decl = NULL, # Full declInfo; nodeRuleClass$expr is just LHS.
     initialize = function(decl, ID, context = modelContextClass$new(), constants = list()) {
       decl <<- decl
       super$initialize(decl$code[[2]], ID, context = context, constants = constants)
 
       # `expr` in is parent class.
-      originalIndexingRule <<- originalIndexingRuleClass$new(expr, context, constants)
+      loopIndexingRule <<- loopIndexingRuleClass$new(expr, context, constants, decl)
+
+      # We rely on assuming canonical ordering of standard non-separable rules when working with nodeIDs.
+      if (length(loopIndexingRule$graphRule$indexRules) == length(loopIndexingRule$graphRule$indexSets$toIndexSlotToSet) &&
+        !identical(loopIndexingRule$graphRule$indexSets$toIndexSlotToSet, seq_along(loopIndexingRule$graphRule$indexRules))) {
+        stop("loopIndexingRules are not in canonical order")
+      }
+    },
+    getNodesFromIDs = function(IDs) {
+        loopIndexingRule$invert(getLoopIndexingFromIDs(IDs)) 
+    }, 
+    getIDsFromLoopIndexing = function(loopIndexingRange) { # Could be named loopIndexingToIDs or some such.
+      if (!length(loopIndexingRange$indexRanges)) { # scalar case
+        return(1)
+      }
+      indexingRules <- loopIndexingRule$graphRule$indexRules
+      numLoops <- length(loopIndexingRule$graphRule$indexSets$toIndexSlotToSet)
+      if (!inherits(loopIndexingRange, "loopIndexingRangeClass")) {
+        stop("`loopIndexingRange` must be a loopIndexingRange")
+      }
+      # Loop indexing is separable so can determine IDs by arithmetic.
+      if (length(indexingRules) == numLoops) {
+        if (length(loopIndexingRange$indexRanges) == length(indexingRules)) { # loopIndexingRange is separable as well.
+          if (numLoops > 1) {
+            indices <- list(length = numLoops)
+            # Put in order of loop index slots.
+            loopIndexingRangeRanges <- loopIndexingRange$indexRanges[loopIndexingRange$indexSlotToRange]
+            individualLoopIDs <- lapply(seq_len(numLoops), \(i) getOneLoopIDs(loopIndexingRangeRanges[[i]], indexingRules[[i]]))
+            indices[[numLoops]] <- individualLoopIDs[[numLoops]]
+            offset <- 1
+            lens <- sapply(indexingRules, \(x) x$getNumElements())
+            for (loop_idx in (numLoops - 1):1) {
+              offset <- offset * lens[loop_idx + 1]
+              indices[[loop_idx]] <- (individualLoopIDs[[loop_idx]] - 1) * offset
+            }
+            nodeIDs <- rowSums(do.call(expand.grid, rev(indices))) # Use `rev` to avoid need to sort.
+          } else {
+            nodeIDs <- getOneLoopIDs(loopIndexingRange$indexRanges[[1]], indexingRules[[1]])
+          }
+        } else { # indexing range is non-separable: expand and then do arithmetic.
+          inputIndices <- loopIndexingRange$extractIndexRange(seq_len(numLoops))$getValuesAsMatrix()
+          indicesLast <- getOneLoopIDs(newIndexRange(inputIndices[, numLoops], sort = FALSE), indexingRules[[numLoops]])
+          indices <- matrix(0, nrow = length(indicesLast), ncol = numLoops)
+          indices[, numLoops] <- indicesLast
+          offset <- 1
+          lens <- sapply(indexingRules, \(x) x$getNumElements())
+          for (loop_idx in (numLoops - 1):1) {
+            offset <- offset * lens[loop_idx + 1]
+            indices[, loop_idx] <- (getOneLoopIDs(newIndexRange(inputIndices[, loop_idx], sort = FALSE), indexingRules[[loop_idx]]) - 1) * offset
+          }
+          nodeIDs <- rowSums(indices)
+        }
+      } else { # Loop indexing is nonseparable. Fall back to expand and match, even if there are multiple (i.e., crossed) rules.
+        fullIndices <- loopIndexingRule$apply(loopIndexingRule$varName)$extractIndexRange()$getValuesAsMatrix()
+        inputIndices <- loopIndexingRange$extractIndexRange()$getValuesAsMatrix()
+        nodeIDs <- match(
+          do.call(interaction, as.data.frame(inputIndices)),
+          do.call(interaction, as.data.frame(fullIndices))
+        )
+      }
+      return(nodeIDs)
+    },
+    getLoopIndexingFromIDs = function(nodeIDs) { 
+      indexingRules <- loopIndexingRule$graphRule$indexRules
+      if (!length(indexingRules)) { # scalar case
+        if (nodeIDs == 1) {
+          return(loopIndexingRangeClass$new(list()))
+        } else {
+          return(NULL)
+        }
+      }
+      numLoops <- length(loopIndexingRule$graphRule$indexSets$toIndexSlotToSet)
+      if (length(indexingRules) == numLoops) { # Loop indexing is separable.
+        # Can we shortcircuit if nodeIDs is all possible ones?
+        # Or if only one nodeID
+        if (numLoops == 1) {
+          indices <- getOneLoopIndices(nodeIDs, indexingRules[[1]])
+          indexRange <- newIndexRange(indices)
+          if (inherits(indexRange, "indexRangeMatrixClass")) {
+            indexRange <- indexRange$toSequence() # TODO: does this handle sorting? Should we see if we can do it more quickly?
+          }
+          return(loopIndexingRangeClass$new(list(indexRange)))
+        } else {
+          lens <- sapply(indexingRules, \(x) x$getNumElements())
+          cumLens <- rev(cumprod(rev(lens)))
+          indices <- matrix(0, nrow = length(nodeIDs), ncol = numLoops)
+          for (loop_idx in 1:(numLoops - 1)) {
+            indices[, loop_idx] <- ((nodeIDs - 1) %/% cumLens[loop_idx + 1]) + 1
+            nodeIDs <- nodeIDs - (indices[, loop_idx] - 1) * cumLens[loop_idx + 1]
+          }
+          indices[, numLoops] <- nodeIDs
+
+          # Check for crossed ranges before converting back to actual indexing (to deal with non-sequential cases).
+          uniqValues <- lapply(seq_len(numLoops), \(i) {
+            uniq <- sort(unique(indices[, i]))
+            if (all(diff(uniq) == 1)) {
+              rg <- range(uniq)
+              uniq <- rg[1]:rg[2]
+            }
+            return(uniq)
+          })
+          lens <- sapply(uniqValues, length)
+          if (nrow(indices) == prod(lens)) { # Check for and simplify crossed ranges.
+            gr <- do.call(expand.grid, lapply(rev(uniqValues), as.numeric)) # TODO: ideally avoid need for `as.numeric`.
+            colnames(gr) <- NULL
+            if (identical(c(indices[, numLoops:1]), as.numeric(unlist(gr)))) {
+              uniqIndices <- lapply(seq_along(uniqValues), \(i) getOneLoopIndices(uniqValues[[i]], indexingRules[[i]]))
+              indexRanges <- lapply(seq_len(numLoops), \(i) {
+                if (length(uniqIndices[[i]]) > 1 && all(diff(uniqIndices[[i]]) == 1)) {
+                  rg <- range(uniqIndices[[i]])
+                  return(newIndexRange(substitute(MIN:MAX, list(MIN = rg[1], MAX = rg[2]))))
+                } else {
+                  return(newIndexRange(uniqIndices[[i]]))
+                }
+              })
+              return(loopIndexingRangeClass$new(indexRanges))
+            }
+          } else {
+            for (i in seq_len(numLoops)) {
+              indices[, i] <- getOneLoopIndices(indices[, i], indexingRules[[i]])
+            }
+          }
+        }
+      } else { # Loop indexing is nonseparable. Fall back to expand and select, even if there are multiple (i.e., crossed) rules.
+        fullIndices <- loopIndexingRule$apply(loopIndexingRule$varName)$extractIndexRange()$getValuesAsMatrix()
+        indices <- fullIndices[nodeIDs, ]
+      }
+      return(loopIndexingRangeClass$new(list(newIndexRange(indices))))
     }
   )
 )
+
+# Note that these functions do not deal with validity of IDs or loop indexing.
+# Invalid values are filtered out when going to back to nodeRanges, so we do
+# not need to do that filtering here.
+
+# Convert from loop indexing to ID indexing (locally within a given separable loop set)
+# (accounting for offset or non-sequential indexing).
+getOneLoopIDs <- function(indexRange, indexingRule) {
+  indexingRule$getIDs(indexRange)
+}
+
+# Convert from ID indexing (locally within a given separable loop set) to the
+# actual loop indexing (accounting for offset or non-sequential indexing).
+getOneLoopIndices <- function(relativeNodeIDs, indexingRule) {
+  indexingRule$invertIDs(relativeNodeIDs)
+}
+
 
 # Class for representing sets of nodes from a single declaration that
 # can be calculated together (same `sortID`).
@@ -191,13 +335,28 @@ calcRuleClass <- R6Class(
         stop("`inputRange` variable name does not match the `calcRule` variable name.")
       }
 
-      # Need original indexing because nodeFunctions will use that indexing
+      # Need loop indexing because nodeFunctions will use that indexing
       # (e.g. `y[i+1]` needs value of `i`).
-      indexingRange <- declRule$originalIndexingRule$apply(inputRange)
+      indexingRange <- declRule$loopIndexingRule$apply(inputRange)  
       if (is.null(indexingRange)) {
         return(NULL)
       }
-      result <- calcRangeClass$new(varName, indexingRange, as.numeric(declRule$ID), sortID, multiSortIDindex)
+
+      # Multiple sortID case from sequential dependence.
+      if (length(sortID) > 1) {
+        newSortID <- sortID[inputRange$indexRanges[[inputRange$indexSlotToRange[multiSortIDindex]]]$getValuesAsMatrix()]
+      } else {
+        newSortID <- sortID
+      }
+      # Indexing ordering in loops may differ from that in ranges, so map the index corresponding to the multiple sortID values
+      # to the loop index.
+      if (is.null(multiSortIDindex)) {
+        newMultiSortIDindex <- NULL
+      } else {
+        newMultiSortIDindex <- declRule$loopIndexingRule$graphRule$indexSets$fromIndexSlotToSet[multiSortIDindex]
+      }
+
+      result <- calcRangeClass$new(varName, indexingRange, as.numeric(declRule$ID), newSortID, newMultiSortIDindex)
       return(result)
     },
     isOfType = function(type) {
@@ -253,15 +412,16 @@ calcRuleClass <- R6Class(
 
     # Used recursively to determine if a rule has stochastic dependents.
     # Terminates if no children or if stochastic dependent found.
-    setStochDep = function(calcRules) {
+    setStochDep = function(calcRules, alreadySeen = character(0)) {
       if (!is.na(stochDep)) {
         return(stochDep)
       }
       if (!length(children)) {
         return(unset("stochDep"))
       }
+      toCheck <- children[!children %in% alreadySeen] # Avoid infinite recursion in cylic cases.
       # First check if any children are stochastic.
-      stoch <- sapply(children, function(idx) {
+      stoch <- sapply(toCheck, function(idx) {
         calcRules[[idx]]$declRule$decl$stoch
       })
       if (any(stoch)) {
@@ -271,7 +431,7 @@ calcRuleClass <- R6Class(
         while (idx <= length(stoch)) {
           # Walk down the tree as needed, avoiding infinitely looping over calcRule itself.
           # Can stop when find first stochastic dependent.
-          if (children[idx] != ID && calcRules[[children[idx]]]$setStochDep(calcRules)) {
+          if (toCheck[idx] != ID && calcRules[[toCheck[idx]]]$setStochDep(calcRules, c(alreadySeen, toCheck))) {
             return(set("stochDep"))
           }
           idx <- idx + 1
@@ -282,15 +442,16 @@ calcRuleClass <- R6Class(
 
     # Used recursively to determine if a rule has stochastic parents.
     # Terminates if no parents or if stochastic parent found.
-    setStochParent = function(calcRules) {
+    setStochParent = function(calcRules, alreadySeen = character(0)) {
       if (!is.na(stochParent)) {
         return(stochParent)
       }
       if (!length(parents)) {
         return(unset("stochParent"))
       }
+      toCheck <- parents[!parents %in% alreadySeen] # Avoid infinite recursion in cylic cases.
       # First check if any parents are stochastic.
-      stoch <- sapply(parents, function(idx) {
+      stoch <- sapply(toCheck, function(idx) {
         calcRules[[idx]]$declRule$decl$stoch
       })
       if (any(stoch)) {
@@ -300,7 +461,7 @@ calcRuleClass <- R6Class(
         while (idx <= length(stoch)) {
           # Walk up the tree as needed, avoiding infinitely looping over calcRule itself.
           # Can stop when find first stochastic parent.
-          if (parents[idx] != ID && calcRules[[parents[idx]]]$setStochParent(calcRules)) {
+          if (toCheck[idx] != ID && calcRules[[toCheck[idx]]]$setStochParent(calcRules, c(alreadySeen, toCheck))) {
             return(set("stochParent"))
           }
           idx <- idx + 1
@@ -347,25 +508,49 @@ calcRuleClass <- R6Class(
   )
 )
 
-# calcRanges manage the calculation for one or more nodes, handling the indexing, and
-# calling out to the declFun `calculate` function.
+# calcRanges manage the calculation information for one or more nodes, handling the indexing
 calcRangeClass <- R6Class(
   classname = "calcRangeClass",
   portable = FALSE,
   public = list(
     varName = NULL,
-    indexingRange = NULL,
+    indexingRange = NULL,   # a loopIndexingRangeClass
     sortID = NULL,
-    calcFun = NULL,
     multiSortIDindex = NULL,
     declID = NULL,
     initialize = function(varName, indexingRange, declID, sortID, multiSortIDindex) {
       varName <<- varName
       indexingRange <<- indexingRange
-      calcFun <<- calcFun # note that calcFun itself is not vectorized
       sortID <<- sortID
       declID <<- declID
       multiSortIDindex <<- multiSortIDindex
+    },
+    makeScalarInstrInfoLists = function() {
+      # This is used to split the calcRange when there are multiple sortID values.
+      # To avoid overhead (0.5 ms per call) in making many calcRangeClass objects,
+      # we simply produce a list of lists where each list item is in the form also
+      # produced by `range2instr()` (i.e., basically an instr_nClass object in R list form).
+
+      # Need original indexing because nodeFunctions will use that indexing
+      # (e.g. `y[i+1]` needs value of `i`).
+      if (length(multiSortIDindex) != 1) {
+        stop("attempting to split calcRange that has multiple indexing")
+      }
+      indices <- c(indexingRange$indexRanges[[indexingRange$indexSlotToRange[multiSortIDindex]]]$getValuesAsMatrix())
+      if (length(indices) != length(sortID)) {
+        stop("mismatch between indexing values and node-based sortIDs")
+      }
+
+      results <- lapply(seq_along(indices), \(i) {
+        tmp <- list(
+          dims = 1, index_types = 2, lens = 1, nDim = 1, slots = 1, sortID = sortID[i],
+          declID = declID, instr_type = 2, values = list(indices[i])
+        )
+        class(tmp) <- "Rinstr"
+        return(tmp)
+      })
+      class(results) <- "Rlist_Rinstr" # For ease of determining the type of the object in `makeInstrList`.
+      return(results)
     }
   )
 )
@@ -388,6 +573,7 @@ nodeRangeClass <- R6Class(
     boolExternalIndexRanges = NULL,
     numExternalIndexRanges = NULL,
     nodeChars = NULL,
+    nodeIDs = NULL,
     initialize = function(varName,
                           externalRange,
                           internalRange,
@@ -402,23 +588,29 @@ nodeRangeClass <- R6Class(
         if (sum(scalars)) {
           internalRange$indexRanges <- c(internalRange$indexRanges, externalRange$indexRanges[scalars])
           externalRange$indexRanges <- externalRange$indexRanges[!scalars]
-          indexSlotToSet[indexSlotToSet != 0][unlist(externalRange$rangeToIndexSlot[scalars])] <- -1
           externalRange$indexSlotToRange <- externalRange$indexSlotToRange[!externalRange$indexSlotToRange %in% which(scalars)]
-          for (idx in which(scalars)) {
-            externalRange$indexSlotToRange[externalRange$indexSlotToRange > idx] <-
-              externalRange$indexSlotToRange[externalRange$indexSlotToRange > idx] - 1
+          for (i in seq_along(externalRange$indexSlotToRange)) {
+            externalRange$indexSlotToRange[i] <- externalRange$indexSlotToRange[i] -
+              sum(externalRange$indexSlotToRange[i] > which(scalars))
           }
+          # for (idx in which(scalars)) {
+          #   externalRange$indexSlotToRange[externalRange$indexSlotToRange > idx] <-
+          #    externalRange$indexSlotToRange[externalRange$indexSlotToRange > idx] - 1
+          # }
+          indexSlotToSet[indexSlotToSet != 0][unlist(externalRange$rangeToIndexSlot[scalars])] <- -1
         }
       } else {
         scalars <- logical(0)
       }
 
       # CHECK: could consider converting 1-row indexRangeMatrix to set of scalars.
-
+      numNewInternalRanges <- sum(scalars)
       numExternalIndexRanges <<- length(externalRange$indexRanges)
+      numInternalIndexRanges <<- length(internalRange$indexRanges)
+
       boolExternalIndexRanges <<- c(
         rep(TRUE, numExternalIndexRanges),
-        rep(FALSE, length(internalRange$indexRanges))
+        rep(FALSE, numInternalIndexRanges)
       )
       decl <<- decl # pointer to governing declaration
 
@@ -431,12 +623,10 @@ nodeRangeClass <- R6Class(
       # from rangeToIndexSlot.
 
       indexSlotToRange <<- rep(0L, length(indexSlotToSet))
-
       indexSlotToRange[indexSlotToSet > 0] <<- externalRange$indexSlotToRange
-      indexSlotToRange[indexSlotToSet == 0] <<- internalRange$indexSlotToRange +
-        numExternalIndexRanges # Original internal indexRanges.
-      indexSlotToRange[indexSlotToSet < 0] <<- seq_len(sum(scalars)) + numExternalIndexRanges +
-        sum(indexSlotToSet == 0) # New internal indexRanges are at the end.
+      indexSlotToRange[indexSlotToSet == 0] <<- internalRange$indexSlotToRange + numExternalIndexRanges
+      indexSlotToRange[indexSlotToSet < 0] <<- seq_len(numNewInternalRanges) + numExternalIndexRanges +
+        numInternalIndexRanges - numNewInternalRanges
 
       if (length(indexSlotToRange)) {
         rangeToIndexSlot <<- lapply(
@@ -453,11 +643,15 @@ nodeRangeClass <- R6Class(
         varName = varName
       )
     },
-    toVarRange = function() {
-      varRangeClass$new(indexRanges, rangeToIndexSlot = rangeToIndexSlot, varName = varName, fromStochRule = decl$stoch)
+    getIDs = function() {
+      if (is.null(nodeIDs)) {
+        nodeIDs <<- decl$declRule$getIDsFromLoopIndexing(decl$declRule$loopIndexingRule$apply(self))
+      }
+      return(nodeIDs)
     },
-
-    # FIX: for a scalar node this seems to return a name object not a char.
+    toVarRange = function(fromStochRule = decl$stoch) {
+      varRangeClass$new(indexRanges, rangeToIndexSlot = rangeToIndexSlot, varName = varName, fromStochRule = fromStochRule)
+    },
     toChar = function() {
       if (is.null(varName)) {
         nm <- as.name("no_name")
@@ -473,7 +667,7 @@ nodeRangeClass <- R6Class(
 
       indexVars <- paste0("idx", seq_len(sum(boolExternalIndexRanges & !multiSlot)))
       exprs[boolExternalIndexRanges & !multiSlot] <- lapply(indexVars, as.name)
-      forText <- paste(indexVars, "in", sv)
+      forText <- paste0("`", indexVars, "`", " in ", sv)
       result <- safeDeparse(do.call("call",
         c(
           list("[", nm),
@@ -488,6 +682,8 @@ nodeRangeClass <- R6Class(
           forText <- "`"
         }
         result <- paste0("`", result, forText)
+      } else {
+        result <- paste0("`", result, "`")
       }
       return(result)
     },
@@ -533,7 +729,7 @@ nodeRangeClass <- R6Class(
       }
     },
     print = function() {
-      cat("node range for ", toChar(), ".\n", sep = "")
+      cat("node range for ", toChar(), "\n", sep = "")
     }
   )
 )
@@ -601,7 +797,7 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
   if (length(nonIdenticalIndexSlots) == 1) {
     # Handle simple cases where need only fracture one index
     LHS <- LHSrange$indexRanges[[LHSrange$indexSlotToRange[nonIdenticalIndexSlots]]]
-    frac <- fracturingRange$indexRanges[[LHSrange$indexSlotToRange[nonIdenticalIndexSlots]]]
+    frac <- fracturingRange$indexRanges[[fracturingRange$indexSlotToRange[nonIdenticalIndexSlots]]]
 
     focalContext <- sapply(names(singleContexts), function(nm) {
       nm %in% all.vars(expr[[2 + nonIdenticalIndexSlots]])
@@ -616,7 +812,7 @@ fracture <- function(LHSrule, fracturingRange, currentID = 0, parentRule = NULL,
     # expression, contexts, and constants from the LHS rule.
 
     # If matrix involved, we need to create resulting rules as indexRuleArbitraryClass.
-    if (inherits(LHS, "indexRangeMatrixClass") || is(frac, "indexRangeMatrixClass")) {
+    if (inherits(LHS, "indexRangeMatrixClass") || inherits(frac, "indexRangeMatrixClass")) {
       # `as.numeric` prevents some indexRanges from having ints when generally have doubles.
       valsLHS <- switch(class(LHS)[1],
         indexRangeMatrixClass = LHS$values,
@@ -942,7 +1138,7 @@ exclude <- function(focalRule, excludingRule, constants = list()) {
       nm %in% all.vars(expr[[2 + nonIdenticalIndices]])
     })
 
-    if (inherits(RHS, "indexRangeMatrixClass") || is(int, "indexRangeMatrixClass")) {
+    if (inherits(RHS, "indexRangeMatrixClass") || inherits(int, "indexRangeMatrixClass")) {
       # Handle any matrix cases by expanding elements.
       valsRHS <- switch(class(RHS)[1],
         indexRangeMatrixClass = RHS$values,

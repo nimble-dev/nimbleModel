@@ -28,7 +28,7 @@ samplerConfClass <- R6Class(
       if (name == "crossLevel") {
         control <<- c(
           control,
-          list(dependent_nodes = getNodes(model, getDependencies(model$modelDef, target, self = FALSE), stochOnly = TRUE))
+          list(dependent_nodes = getNodes(model, getDependencies(model, target, self = FALSE, nodesAsChars = FALSE), stochOnly = TRUE, nodesAsChars = FALSE))
         )
       } # special case for printing dependents of crossLevel sampler (only)
     },
@@ -37,7 +37,7 @@ samplerConfClass <- R6Class(
     },
     toStr = function(displayControlDefaults = FALSE, displayNonScalars = FALSE, displayConjugateDependencies = FALSE) {
       tempList <- list()
-      tempList[[paste0(name, " sampler")]] <- paste0(target, collapse = ", ")
+      tempList[[paste0(name, " sampler")]] <- paste0(target$toNodeChars(), collapse = ", ")
       infoList <- c(tempList, control)
       mcmc_listContentsToStr(infoList, displayControlDefaults, displayNonScalars, displayConjugateDependencies)
     },
@@ -69,8 +69,8 @@ mcmcConfClass <- R6Class(
       # Splitting into top and latent nodes results in homogeneous nodeRanges in terms of children (and parents,
       # though that is not relevant here) of a given nodeRange.
       nodeRanges <- c(
-        getNodes(model, nodes = nodes, stochOnly = TRUE, includeData = FALSE, topOnly = TRUE),
-        getNodes(model, nodes = nodes, stochOnly = TRUE, includeData = FALSE, latentOnly = TRUE)
+        getNodes(model, nodes = nodes, stochOnly = TRUE, includeData = FALSE, topOnly = TRUE, nodesAsChars = FALSE),
+        getNodes(model, nodes = nodes, stochOnly = TRUE, includeData = FALSE, latentOnly = TRUE, nodesAsChars = FALSE)
       )
 
       # FIX: could pre-allocate samplers rather than having `addOneSampler` grow the list of confs.
@@ -93,7 +93,7 @@ mcmcConfClass <- R6Class(
       for (i in seq_along(control)) controlDefaultsArg[[names(control)[i]]] <- control[[i]]
 
       if (useConjugacy) {
-        conjugacyResult <- nimbleModel:::conjugacyRelationshipsObject$checkConjugacy(model, nodeRange)
+        conjugacyResult <- conjugacyRelationshipsObject$checkConjugacy(model, nodeRange)
         if (length(conjugacyResult)) {
           addConjugateSampler(
             conjugacyResult = conjugacyResult,
@@ -205,6 +205,10 @@ mcmcConfClass <- R6Class(
       }
       if (is.character(type)) {
         if (type == "conjugate") {
+          if (inherits(target, "varRangeClass") && !inherits(target, "nodeRangeClass")) {
+            target <- getNodes(model, target)
+            if (length(target) == 1) target <- target[[1]]
+          }
           if (is.list(target) || !inherits(target, "nodeRangeClass")) {
             stop("Can only assign conjugate sampler to a single nodeRange")
           }
@@ -215,7 +219,7 @@ mcmcConfClass <- R6Class(
               dynamicallyIndexed = model$modelDef$varInfo[[target$varName]]$anyDynamicallyIndexed
             ))
           }
-          stop("Cannot assign conjugate sampler to non-conjugate node: `", target, "`")
+          stop("Cannot assign conjugate sampler to non-conjugate node: `", target$toNodeChars(), "`")
         }
 
         if (targetAsScalars) {
@@ -224,7 +228,7 @@ mcmcConfClass <- R6Class(
           }
 
           # For efficiency, first see if can be treated as a single nodeRange.
-          targetNodes <- getNodes(model, target)
+          targetNodes <- getNodes(model, target, nodesAsChars = FALSE)
           # Otherwise, expand (inefficiently).
           if (length(targetNodes) > 1 || model$isMultivariate(targetNodes[[1]])) {
             target <- lapply(target$toVarChars(expandScalars = TRUE), function(x) varRangeClass$new(x))

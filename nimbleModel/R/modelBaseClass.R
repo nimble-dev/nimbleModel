@@ -2,6 +2,7 @@
 modelBase_nClass <- nClass(
   classname = "modelBase_nClass",
   Rpublic = list(
+    thisModel = NULL,
     modelDef = NULL,
     dataRules = NULL,
     nondataRules = NULL,
@@ -15,6 +16,8 @@ modelBase_nClass <- nClass(
       super$initialize(...)
 
       CppObj_provided <- "CppObj" %in% ...names()
+      # To do, replace this hack with a method get_self().
+      self$thisModel <- self   # A hack needed because we use `self` as method argument name below.
 
       if (isCompiled()) {
         # self$setup_decl_mgmt_from_names(declFunNames)
@@ -133,13 +136,12 @@ modelBase_nClass <- nClass(
           dataRule$rule$apply(dataRule$varName)
         })
       }))
-      self$predictiveRules <- excludeFromPredictiveRules(modelDef, dataRanges, candidateRules)
+      self$predictiveRules <- excludeFromPredictiveRules(self, dataRanges, candidateRules)
 
       # nonpredictive rules
       candidateRules <- unlist(lapply(modelDef$calcRules, function(oneVarRules) {
-        stoch <- sapply(oneVarRules$rules, function(rule) rule$declRule$decl$stoch)
-        return(oneVarRules$rules[stoch])
-      })) # `unlist` removes length-0 entries.
+        return(oneVarRules$rules)
+      }))
       candidateRules <- newVarRules(candidateRules)
 
       for (oneVarPredictiveRules in predictiveRules) {
@@ -279,6 +281,65 @@ modelBase_nClass <- nClass(
       result[!RHSonly] <- sapply(nodeRanges[!RHSonly], function(x) x$decl$truncated)
       return(result)
     },
+    isData = function(nodeRanges, reduceToScalar = FALSE) {
+      # Returns list or vector of boolean indicators of being data, at the node level.
+      # Handles either character string input, as in nimble, or list of node/varRanges.
+      # As with nimble, if any element of a multivariate node is data, then the whole node is flagged as data.
+      returnList <- FALSE
+      if (inherits(nodeRanges, "varRangeClass")) {
+        nodeRanges <- list(nodeRanges)
+      }
+      if (is.list(nodeRanges)) {
+        returnList <- TRUE
+        nodeRanges <- flatten(lapply(nodeRanges, \(x)
+        if (inherits(x, "varRangeClass")) getNodes(x, includeRHSonly = TRUE) else x))
+      }
+      if (is.character(nodeRanges)) {
+        nodeRanges <- getNodes(nodeRanges, includeRHSonly = TRUE, nodesAsChars = FALSE)
+      }
+      if (!(is.list(nodeRanges) && all(sapply(nodeRanges, inherits, "nodeRangeClass")))) {
+        stop("isData: argument must be a character vector, a `nodeRange` or `varRange` or list of `nodeRange`s")
+      }
+
+      allElements <- lapply(nodeRanges, \(v) v$toNodeChars())
+
+      dataElements <- lapply(allElements, \(listItem)
+      unlist(lapply(listItem, \(x) {
+        if (getVarName(x) %in% names(dataRules)) {
+          unlist(lapply(
+            dataRules[[getVarName(x)]]$apply(x),
+            \(v) if (is.null(v)) v else x
+          )) # Use `x` not `v` as any data elements mean whole node is data by old nimble handling.
+        } else {
+          NULL
+        }
+      })))
+
+      isData <- lapply(seq_along(allElements), \(i) {
+        result <- rep(FALSE, length(allElements[[i]]))
+        names(result) <- allElements[[i]]
+        result[allElements[[i]] %in% dataElements[[i]]] <- TRUE
+        if (returnList && reduceToScalar) {
+          numData <- sum(result)
+          if (numData == length(result)) result <- TRUE
+          if (numData == 0) result <- FALSE
+        }
+        return(result)
+      })
+      if (length(isData) == 1) {
+        isData <- isData[[1]]
+      }
+
+      if (!returnList) {
+        isData <- unlist(isData)
+        if (reduceToScalar) {
+          numData <- sum(isData)
+          if (numData == length(isData)) isData <- TRUE
+          if (numData == 0) isData <- FALSE
+        }
+      }
+      return(isData)
+    },
 
     # Returns the expr corresponding to 'param' in the distribution of `nodeRange`.
     getParamExpr = function(nodeRange, param) {
@@ -295,8 +356,8 @@ modelBase_nClass <- nClass(
         stop("getParamExpr: `", param, "` is not present in the parameterization")
       }
       if (length(expr) > 1) {
-        # Substitute original index values into the expression.
-        indexVarRange <- decl$declRule$originalIndexingRule$apply(nodeRange)
+        # Substitute looping index values into the expression.
+        indexVarRange <- decl$declRule$loopIndexingRule$apply(nodeRange)
         indexValues <- indexVarRange$indexRangeExprs
         names(indexValues) <- decl$context$indexVarNames
         expr <- eval(substitute(substitute(EXPR, indexValues), list(EXPR = expr)))
@@ -319,8 +380,8 @@ modelBase_nClass <- nClass(
           expr <- expr[!names(expr) %in% c("lower_", "upper_") &
             !grepl("^\\.", names(expr))]
         }
-        # Substitute original index values into the expression.
-        indexVarRange <- decl$declRule$originalIndexingRule$apply(nodeRange)
+        # Substitute loop index values into the expression.
+        indexVarRange <- decl$declRule$loopIndexingRule$apply(nodeRange)
         indexValues <- indexVarRange$indexRangeExprs
         names(indexValues) <- decl$context$indexVarNames
         expr <- eval(substitute(substitute(EXPR, indexValues), list(EXPR = expr)))
@@ -329,23 +390,103 @@ modelBase_nClass <- nClass(
         return(expr)
       }
     },
-    getDependencies = function(nodes, self = TRUE, downstream = FALSE, immediateOnly = FALSE) {
-      nimbleModel::getDependencies(modelDef, nodes, self, downstream, immediateOnly)
-    },
-    getParents = function(nodes, self = TRUE, upstream = FALSE, immediateOnly = FALSE) {
-      nimbleModel::getParents(modelDef, nodes, self, upstream, immediateOnly)
-    },
-    # TODO: not working because `nimbleModel::getNodes` needs the model not just modelDef.
-    # Once we integrate modelClass with modelBase_nClass, we should be able to pass `self`.
-    getNodes = function(nodes = NULL, stochOnly = FALSE, determOnly = FALSE,
-                        includeData = TRUE, dataOnly = FALSE,
-                        includePredictive = TRUE, predictiveOnly = FALSE,
-                        includeRHSonly = FALSE,
-                        topOnly = FALSE, latentOnly = FALSE, endOnly = FALSE) {
-      nimbleModel::getNodes(
-        self, nodes, stochOnly, determOnly, includeData, dataOnly,
+    # `self` arg masks the reference to the object.
+    # TODO: perhaps we should rename the arg `includeSelf`, but that is not back compatible.
+    getDependencies = function(nodes, omit = NULL, self = TRUE,
+                               determOnly = FALSE, stochOnly = FALSE,
+                               includeData = TRUE, dataOnly = FALSE,
+                               includePredictive = nimble::getNimbleOption('getDependenciesIncludesPredictiveNodes'),
+                               predictiveOnly = FALSE, includeRHSonly = FALSE,
+                               downstream = FALSE, immediateOnly = FALSE,
+                               nodesAsChars = getNimbleModelOption("nodesAsChars"),
+                               returnScalarComponents = FALSE, .sort = FALSE) {
+      nimbleModel::getDependencies(
+        thisModel, nodes, omit, self,
+        determOnly, stochOnly, includeData, dataOnly,
         includePredictive, predictiveOnly, includeRHSonly,
-        topOnly, latentOnly, endOnly
+        downstream, immediateOnly,
+        nodesAsChars, returnScalarComponents, .sort
+      )
+    },
+    getParents = function(nodes, omit = NULL, self = FALSE,
+                          determOnly = FALSE, stochOnly = FALSE,
+                          includeData = TRUE, dataOnly = FALSE, includeRHSonly = FALSE,
+                          upstream = FALSE, immediateOnly = FALSE,
+                          nodesAsChars = getNimbleModelOption("nodesAsChars"),
+                          returnScalarComponents = FALSE, .sort = FALSE) {
+      nimbleModel::getParents(
+        thisModel, nodes, omit, self,
+        determOnly, stochOnly, includeData, dataOnly, includeRHSonly,        
+        upstream, immediateOnly,
+        nodesAsChars, returnScalarComponents, .sort
+      )
+    },
+    getNodes = function(nodes, determOnly = FALSE, stochOnly = FALSE,
+                        includeData = TRUE, dataOnly = FALSE,
+                        includeRHSonly = FALSE,
+                        topOnly = FALSE, latentOnly = FALSE, endOnly = FALSE,
+                        includePredictive = TRUE, predictiveOnly = FALSE,
+                        nodesAsChars = getNimbleModelOption("nodesAsChars"),
+                        returnScalarComponents = FALSE,
+                        .sort = FALSE) {
+      if (!missing(nodes)) {
+        nimbleModel::getNodes(
+          self, nodes, determOnly, stochOnly, includeData, dataOnly,
+          includeRHSonly,
+          topOnly, latentOnly, endOnly,
+          includePredictive, predictiveOnly,
+          nodesAsChars, returnScalarComponents, .sort
+        )
+      } else {
+        nimbleModel::getNodes(
+          self,
+          determOnly = determOnly, stochOnly = stochOnly,
+          includeData = includeData, dataOnly = dataOnly,
+          includeRHSonly = includeRHSonly,
+          topOnly = topOnly, latentOnly = latentOnly, endOnly = endOnly,
+          includePredictive = includePredictive, predictiveOnly = predictiveOnly,
+          nodesAsChars = nodesAsChars, returnScalarComponents = returnScalarComponents,
+          .sort = .sort
+        )
+      }
+    },
+    getNodeNames = function(determOnly = FALSE, stochOnly = FALSE,
+                            includeData = TRUE, dataOnly = FALSE, includeRHSonly = FALSE,
+                            topOnly = FALSE, latentOnly = FALSE, endOnly = FALSE,
+                            includePredictive = TRUE, predictiveOnly = FALSE,
+                            returnType = "names",
+                            returnScalarComponents = FALSE) {
+      nimbleModel::getNodeNames(
+        self, determOnly, stochOnly, includeData, dataOnly,
+        includeRHSonly, topOnly, latentOnly, endOnly,
+        includePredictive, predictiveOnly, returnType, returnScalarComponents
+      )
+    },
+    expandNodeNames = function(nodes, returnScalarComponents = FALSE,
+                               returnType = "names", sort = FALSE, unique = TRUE) {
+      nimbleModel::expandNodeNames(self, nodes, returnScalarComponents, "names", sort, unique)
+    },
+    topologicallySortNodes = function(nodes) {
+      nimbleModel::expandNodeNames(self, nodes, sort = TRUE, unique = TRUE)
+    },
+    getConditionallyIndependentSets = function(nodes, givenNodes, omit = NULL,
+                                               explore = c("both", "down", "up"),
+                                               unknownAsGiven = TRUE, returnScalarComponents = FALSE,
+                                               endAsGiven = FALSE,
+                                               nodesAsChars = getNimbleModelOption("nodesAsChars")) {
+      nimbleModel::getConditionallyIndependentSets(
+        self, nodes, givenNodes, omit, explore, unknownAsGiven,
+        returnScalarComponents, endAsGiven, nodesAsChars
+      )
+    },
+    setupMargNodes = function(paramNodes, randomEffectsNodes, calcNodes,
+                              calcNodesOther,
+                              split = TRUE,
+                              check = TRUE,
+                              allowDiscreteLatent = FALSE) {
+      nimbleModel::setupMargNodes(self, paramNodes, randomEffectsNodes, calcNodes,
+        calcNodesOther,
+        split = TRUE, check = TRUE, allowDiscreteLatent = FALSE
       )
     },
     calc_op = function(instr, fn, fn_cpp) {
@@ -354,7 +495,9 @@ modelBase_nClass <- nClass(
       }
       instrList <- makeInstrList(self, instr)
       if (isCompiled()) {
-        if (!instrList$isCompiled()) instrList <- makeCompiledInstrList(instrList)
+        if (inherits(instrList, "Rlist_Rinstr") || !instrList$isCompiled()) {
+          instrList <- makeCompiledInstrList(instrList)
+        }
         return(self[[fn_cpp]](instrList))
       }
       logProb <- 0
@@ -375,13 +518,18 @@ modelBase_nClass <- nClass(
       logProb <- calc_op(instr, "getLogProb", "getLogProb_impl")
       return(logProb)
     },
-    simulate = function(instr) {
+    simulate = function(instr, includeData = FALSE) {
       if (missing(instr)) {
         instr <- getVarNames()
       }
-      instrList <- makeInstrList(self, instr)
+      instrList <- makeInstrList(self, instr, includeData = includeData)
+      if (is.null(instrList)) {
+        return(invisible(NULL))
+      }
       if (isCompiled()) {
-        if (!instrList$isCompiled()) instrList <- makeCompiledInstrList(instrList)
+        if (inherits(instrList, "Rlist_Rinstr") || !instrList$isCompiled()) {
+          instrList <- makeCompiledInstrList(instrList)
+        }
         self$simulate_impl(instrList)
       } else {
         for (i in 1:length(instrList)) {
