@@ -1,7 +1,7 @@
 #ifndef __MULTICOPIER_MODELVALUES_NC_BASE
 #define __MULTICOPIER_MODELVALUES_NC_BASE
 
-#include <nimbleModel/predef/multiCopier_nC_base/multiCopier_nC_base.h>
+#include <nimbleModel/predef/mCopy_nC_base/mCopy_nC_base.h>
 
 // modelValues-backed multiCopier setup: each copier's varName resolves to an
 // nList (one element per row) rather than directly to a value, so getting an
@@ -34,7 +34,7 @@ public:
   // repeating the name-based lookup, but that's as close as we can get.
   // For safety we need to re-obtain the nList for "mu" on each copy usage.
   std::vector<std::shared_ptr<accessor_base>> fieldAccessors;
-  // Ensure the modelValues stays alive. This shouldn't be needed in 
+  // Ensure the modelValues stays alive. This shouldn't be needed in
   // nimble2's design but is here for safety and is cheap.
   std::shared_ptr<genericInterfaceBaseC> modelValuesKeepAlive;
   // Saved index-block information for deferring (lazy) setup of the RuntimeFlatViews.
@@ -46,7 +46,7 @@ public:
   // Hence we defer that step until the first actual copy (via setActiveRow).
   template<typename T>
   void init(std::shared_ptr<T> copiers,
-            std::shared_ptr<modelValuesBase_nClass> modelValues) {
+            std::shared_ptr<MVBase_nC> modelValues) {
     flatViewGroup.clear();
     fieldAccessors.clear();
     ssList.clear();
@@ -89,7 +89,7 @@ public:
     } else {
       // See comment in multiCopier_model_nC_base.
       // Performance note for the modelValues case:
-      // the nListBase_nClass::access_at(row) allocates a new ETaccessor 
+      // the nListBase_nClass::access_at(row) allocates a new ETaccessor
       // every time. Future optimization could re-use a single ETaccessor,
       // but that would take a small extension of ETaccessor.
       flatViewGroup.prepare_for_setData(); // reset the counter.

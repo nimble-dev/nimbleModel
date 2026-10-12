@@ -10,7 +10,7 @@ modelValuesBase_nClass <- nCompiler::nClass(
         # Compiled constructor will be called automatically (even without this full interface).
         # Uncompiled matching steps are done by direct call.
         if (!isCompiled()) {
-          modelValuesBase_nClass()
+          MVBase_nC()
         }
         # Initialize for anything with this full interface (uncompiled for full-interface compiled).
         self$dot_sizeList <- self$defaultSizes
@@ -20,7 +20,7 @@ modelValuesBase_nClass <- nCompiler::nClass(
   Cpublic = list(
     dot_sizeList = "RcppList",
     dot_current_nRow = "integerScalar",
-    modelValuesBase_nClass = nCompiler::nFunction(
+    MVBase_nC = nCompiler::nFunction(
       function() {
         self$dot_current_nRow <<- 0
         self$dot_sizeList <<- list()
@@ -82,9 +82,9 @@ modelValuesBase_nClass <- nCompiler::nClass(
   ),
   predefined = quote(system.file(file.path("include", "nimbleModel", "predef"),
     package = "nimbleModel"
-  ) |> file.path("modelValuesBase_nClass")),
+  ) |> file.path("MVBase_nC")),
   compileInfo = list(
-    cpp_classname = "modelValuesBase_nClass",
+    cpp_classname = "MVBase_nC",
     interface = "full",
     createFromR = FALSE,
     exportName = "modelValuesBase_nClass_new",
@@ -139,6 +139,10 @@ make_modelValues_nClass <- function(varInfo,
   }
   # All cases get the same classname so that they share the same S3 dispatch for `[`, `[<-`, etc.
   classname <- cpp_classname
+  # TODO: Sort varInfo$vars (as make_modelValues_hashID does) before generating the class.
+  #   The hash is order-robust but Cpublic is built in the given order, so when equivalent
+  #   classes are deduped by classID, the member order (interface_names, as.list) comes
+  #   from whichever generator was registered first.
   e <- environment()
   CpublicVars <- varInfo$vars |>
     lapply(\(x) {
@@ -462,9 +466,10 @@ as.list.modelValues <- function(x, varNames, stack = TRUE, flatten = FALSE, iter
       }
       if(stack) {
         res <- simplify2array(res, higher = !flatten)
-        dims <- dim(res)
-        nDim <- length(dims)
+        if(is.null(dim(res))) # scalar var: simplify2array returns a plain vector
+          dim(res) <- c(1, length(res))
         if(!iterationAsLastIndex) {
+          nDim <- length(dim(res))
           res <- aperm(res, c(nDim, 1:(nDim-1)))
           if(flatten) {
             colnames(res) <- this_colnames
@@ -581,6 +586,7 @@ matrix2mv <- function(mat, mv) {
   colNames <- colnames(mat)
   colNamesVars <- colNames |> (\(x) sub('\\[.*', '', x))()
   uniqueColNameVars <- colNamesVars |> unique()
+  length(mv) <- k
   for(vN in uniqueColNameVars){
     varInds <- colNamesVars == vN
     numCols <- sum(varInds)
@@ -594,18 +600,22 @@ matrix2mv <- function(mat, mv) {
     if(length(theseSizes) > 1) {
       res <- apply(mat[, varInds, drop = FALSE], 1, \(x) {
         dim(x) <- theseSizes
+        names(x) <- NULL
         x
       },
       simplify = FALSE)
     } else {
       res <- apply(mat[, varInds, drop = FALSE], 1, \(x) {
+        names(x) <- NULL
         x
       },
       simplify = FALSE)
     }
     # We must use value() in case mv is a base class or generic interface.
-    nCompiler::value(mv, vN) <- res
-    # mv[[vN]] <- res
+    if(nCompiler::isCompiled(mv))
+      nCompiler::value(mv, vN) <- res
+    else
+      mv[[vN]][] <- res
   }
   mv
 }

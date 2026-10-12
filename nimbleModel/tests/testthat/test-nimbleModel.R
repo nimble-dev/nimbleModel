@@ -422,8 +422,8 @@ test_that("three index slots (plus different index variable ordering)", {
                 for(k in 1:3)
                    y[k,j,i] ~ dnorm(0,1)  # This changes order of use of indices to [idx[3],idx[2],idx[1]].
     })
-    data <- list(y = array(rnorm(60),c(3,4,5)))
-    mclass <- nimbleModel(code, data = data, returnClass = TRUE)
+    inits <- list(y = array(rnorm(60),c(3,4,5)))
+    mclass <- nimbleModel(code, inits = inits, returnClass = TRUE)
     m <- mclass$new()
     cmclass <- nCompile(mclass)
     cm <- cmclass$new()

@@ -83,8 +83,9 @@ multiCopier_nClass <- nCompiler::nClass(
       )
     )
   ),
-  predefined = quote(system.file(file.path("include", "nimbleModel", "predef"), package = "nimbleModel") |> file.path("multiCopier_nClass")),
+  predefined = quote(system.file(file.path("include", "nimbleModel", "predef"), package = "nimbleModel") |> file.path("mCopy_nC")),
   compileInfo = list(
+    cpp_classname = "mCopy_nC",
     interface = "full",
     createFromR = TRUE,
     exportName = "multiCopier_nClass_new",
@@ -170,8 +171,9 @@ multiCopierMV_nClass <- nCompiler::nClass(
       )
     )
   ),
-  predefined = quote(system.file(file.path("include", "nimbleModel", "predef"), package = "nimbleModel") |> file.path("multiCopierMV_nClass")),
+  predefined = quote(system.file(file.path("include", "nimbleModel", "predef"), package = "nimbleModel") |> file.path("mCopyMV_nC")),
   compileInfo = list(
+    cpp_classaname = "mCopyMV_nC",
     interface = "full",
     createFromR = TRUE,
     exportName = "multiCopierMV_nClass_new",

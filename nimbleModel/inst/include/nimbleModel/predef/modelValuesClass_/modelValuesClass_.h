@@ -1,7 +1,7 @@
 #ifndef __MODELVALUESCLASS__
 #define __MODELVALUESCLASS__
 
-class modelValuesClass_ : public modelValuesBase_nClass {
+class modelValuesClass_ : public MVBase_nC {
 public:
   int stuff;
   // resize_one could move to the base class
