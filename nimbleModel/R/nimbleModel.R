@@ -636,15 +636,33 @@ make_decl_methods_from_declInfo <- function(declInfo) {
         STOCHCALC_DIFF = make_stoch_calc_line(LHSrep, RHSrep, logProbExprRep, diff = TRUE)
       )
     ))
-    getParamMethods <- make_getParam_methods(declInfo, LHSrep, RHSrep)
-    getBoundMethods <- make_getBound_methods(declInfo, LHSrep, RHSrep)
-    getParamIDMethod <- make_getParamID_method(declInfo)
+    altParamExprs <- declInfo$altParamExprs
+    if (length(altParamExprs)) {
+      altParamExprsRep <- lapply(
+        altParamExprs,
+        function(expr) eval(substitute(substitute(e, replacements), list(e = expr)))
+      )
+    } else {
+      altParamExprsRep <- list()
+    }
+    getParamMethods <- make_getParam_methods(declInfo$distributionName, LHSrep, RHSrep, altParamExprsRep)
+    boundExprs <- declInfo$boundExprs
+    if (length(boundExprs)) {
+      boundExprsRep <- lapply(
+        boundExprs,
+        function(expr) eval(substitute(substitute(e, replacements), list(e = expr)))
+      )
+    } else {
+      boundExprsRep <- list()
+    }
+    getBoundMethods <- make_getBound_methods(declInfo$distributionName, LHSrep, RHSrep, boundExprsRep)
+    getParamIDMethod <- make_getParamID_method(declInfo$distributionName)
   }
   c(methodList, getParamMethods, getBoundMethods, getParamIDMethod)
 }
 
-make_getParamID_method <- function(declInfo) {
-  if(missing(declInfo)) {
+make_getParamID_method <- function(distName) {
+  if(missing(distName)) {
     return(
       list(getParamID_one = nCompiler::nFunction(
         name = "getParamID_one",
@@ -661,7 +679,6 @@ make_getParamID_method <- function(declInfo) {
       ))
     )
   }
-  distName <- declInfo$distributionName
   paramIDs <- getDistributionInfo(distName)$paramIDs
   paramNames <- names(paramIDs)
   if (!length(paramIDs)) {
@@ -695,11 +712,12 @@ make_getParamID_method <- function(declInfo) {
   list(getParamID_one = nFxn)
 }
 
-make_getParam_methods <- function(declInfo, LHSrep, RHSrep) {
-  distName <- declInfo$distributionName
+make_getParam_methods <- function(distName, LHSrep, RHSrep, altParamExprsRep) {
   reqdExprs <- if (length(RHSrep) > 1) as.list(RHSrep)[-1] else list()
   if (length(reqdExprs) > 0) names(reqdExprs) <- names(RHSrep)[-1]
-  allParamExprs <- c(list(value = LHSrep), reqdExprs, declInfo$altParamExprs)
+  allParamExprs <- c(list(value = LHSrep), reqdExprs, altParamExprsRep)
+  paramNamesToUse <- getParamNames(distName)
+  allParamExprs <- allParamExprs[ names(allParamExprs) %in% paramNamesToUse]
   paramNames <- names(allParamExprs)
   paramIDs <- as.integer(getParamID(distName, paramNames))
   sort_order <- order(paramIDs)
@@ -707,7 +725,6 @@ make_getParam_methods <- function(declInfo, LHSrep, RHSrep) {
   paramIDs <- paramIDs[sort_order]
   allParamExprs <- allParamExprs[sort_order]
   nDims <- as.integer(getDimension(distName, paramNames))
-
   getParamOne <- make_getParam_one_nFxn(paramIDs, allParamExprs, isRef, computeMethodNames)
   list(getParam_one = getParamOne)
 }
@@ -769,10 +786,8 @@ make_getParam_one_nFxn <- function(paramIDs = integer(0), exprs = list(),
   )
 }
 
-make_getBound_methods <- function(declInfo, LHSrep, RHSrep) {
-  distName <- declInfo$distributionName
-  boundExprs <- declInfo$boundExprs
-  getBoundOne <- make_getBound_one_nFxn(boundExprs)
+make_getBound_methods <- function(distName, LHSrep, RHSrep, boundExprsRep) {
+  getBoundOne <- make_getBound_one_nFxn(boundExprsRep)
   list(getBound_one = getBoundOne)
 }
 
