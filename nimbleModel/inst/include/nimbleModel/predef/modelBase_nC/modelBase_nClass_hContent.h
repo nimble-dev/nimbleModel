@@ -6,26 +6,31 @@
 #define R_NO_REMAP
 #endif
 #include <Rinternals.h>
+#include "modelBase_nClass_c_.h"
 #include "declFunBase_nClass_c_.h"
 #include "instr_nClass_c_.h"
 #include "nList_instr_nClass_c_.h"
 
 class modelBase_nClass : public interface_resolver< genericInterfaceC<modelBase_nClass> >, public loadedObjectHookC<modelBase_nClass> {
 public:
-   virtual  bool  ping (  ) ;
-    std::shared_ptr<nList_instr_nClass>  makeCompiledInstrList ( SEXP input ) ;
-   virtual  double  calculate_impl ( std::shared_ptr<nList_instr_nClass> instrList ) ;
-   virtual  double  calculateDiff_impl ( std::shared_ptr<nList_instr_nClass> instrList ) ;
-   virtual  double  getLogProb_impl ( std::shared_ptr<nList_instr_nClass> instrList ) ;
-   virtual  void  simulate_impl ( std::shared_ptr<nList_instr_nClass> instrList ) ;
-      modelBase_nClass (  ) ;
-  double declFunList;
-  Rcpp::List declFunNameToIndex;
+  static const char* nc_class_key() {return "modelBase_nClass";}
+   virtual  bool  ping (  )  ;
+    std::shared_ptr<nList_instr_nClass>  makeCompiledInstrList ( SEXP input )  ;
+    std::shared_ptr<instr_nClass>  makeCompiledInstr ( SEXP input )  ;
+   virtual  double  calculate_impl ( std::shared_ptr<nList_instr_nClass> instrList )  ;
+   virtual  double  calculateDiff_impl ( std::shared_ptr<nList_instr_nClass> instrList )  ;
+   virtual  double  getLogProb_impl ( std::shared_ptr<nList_instr_nClass> instrList )  ;
+   virtual  void  simulate_impl ( std::shared_ptr<nList_instr_nClass> instrList )  ;
+   virtual  int  getParamID_impl ( std::shared_ptr<instr_nClass> node, std::string param )  ;
+   virtual  std::unique_ptr<ETaccessorBase>  getParam_impl ( std::shared_ptr<instr_nClass> node, int paramID )  ;
+   virtual  double  getBound_impl ( std::shared_ptr<instr_nClass> node, int boundID )  ;
+      modelBase_nClass (  )  ;
+
 };
 
-    void  set_CnClass_env_modelBase_nClass ( SEXP env ) ;
+    void  set_CnClass_env_modelBase_nClass ( SEXP env )  ;
 
-    Rcpp::Environment  get_CnClass_env_modelBase_nClass (  ) ;
+    Rcpp::Environment  get_CnClass_env_modelBase_nClass (  )  ;
 
 #include <nimbleModel/predef/modelClass_/modelClass_.h>
 

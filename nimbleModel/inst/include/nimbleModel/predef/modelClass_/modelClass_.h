@@ -35,6 +35,20 @@ public:
         return(logProb);
     }
 
+    // `node` is a single instr_nClass (not a list): identifies one declaration
+    // (via declID) and (per declFunClass_::first_idx_) one node within it.
+    int getParamID_impl(std::shared_ptr<instr_nClass> node, std::string param) override {
+        return declFunPtrs[node->declID - 1]->getParamID_cpp(param);
+    }
+    
+    std::unique_ptr<ETaccessorBase> getParam_impl(std::shared_ptr<instr_nClass> node, int paramID) override {
+        return declFunPtrs[node->declID - 1]->getParam_cpp(node, paramID); //->get();
+    }
+
+    double getBound_impl(std::shared_ptr<instr_nClass> node, int boundID) override {
+        return declFunPtrs[node->declID - 1]->getBound_cpp(node, boundID);
+    }
+
     void simulate_impl(std::shared_ptr<nList_instr_nClass> instrList) {
         const auto& instrVec = instrList->contents();
         for (const auto& instr : instrVec) {

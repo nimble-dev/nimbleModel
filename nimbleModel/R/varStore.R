@@ -49,18 +49,22 @@ varStoreClass <- R6Class(
 
 # helper functions
 
-# FIXME: remove when we pull this in from current nimble
-dimOrLength <- function(obj, scalarize = FALSE) {
-  if (scalarize) {
-    if (length(obj) == 1) {
-      return(numeric(0))
-    }
-  }
-  if (is.null(dim(obj))) {
-    return(length(obj))
-  }
-  return(dim(obj))
-}
+# This is replaced in all_utils.R
+# The only difference is that uses integer(0) as a default
+# for scalarize = TRUE.
+# 
+# # FIXME: remove when we pull this in from current nimble
+# dimOrLength <- function(obj, scalarize = FALSE) {
+#   if (scalarize) {
+#     if (length(obj) == 1) {
+#       return(numeric(0))
+#     }
+#   }
+#   if (is.null(dim(obj))) {
+#     return(length(obj))
+#   }
+#   return(dim(obj))
+# }
 
 getLength <- function(index) {
   # find the number of values represented by a single index

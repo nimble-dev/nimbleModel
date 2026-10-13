@@ -14,65 +14,86 @@ using namespace Rcpp;
 // [[Rcpp::depends(Rcereal)]]
 // [[Rcpp::depends(nimbleModel)]]
 
-    bool  modelBase_nClass::ping (  ) {
+    bool  modelBase_nClass::ping (  )  {
 RESET_EIGEN_ERRORS
 return(true);
 }
-    std::shared_ptr<nList_instr_nClass>  modelBase_nClass::makeCompiledInstrList ( SEXP input ) {
+    std::shared_ptr<nList_instr_nClass>  modelBase_nClass::makeCompiledInstrList ( SEXP input )  {
 RESET_EIGEN_ERRORS
 std::shared_ptr<nList_instr_nClass> ans;
 ans = nClass_builder<nList_instr_nClass>()();
 ans->set_all_values(input);;
 return(ans);
 }
-    double  modelBase_nClass::calculate_impl ( std::shared_ptr<nList_instr_nClass> instrList ) {
+    std::shared_ptr<instr_nClass>  modelBase_nClass::makeCompiledInstr ( SEXP input )  {
+RESET_EIGEN_ERRORS
+std::shared_ptr<instr_nClass> ans;
+ans = nClass_builder<instr_nClass>()();
+ans->set_all_values(input);;
+return(ans);
+}
+    double  modelBase_nClass::calculate_impl ( std::shared_ptr<nList_instr_nClass> instrList )  {
 RESET_EIGEN_ERRORS
 Rprintf("modelBase_nClass calculate_impl (should not see this)\n");;
 return(0.0);
 }
-    double  modelBase_nClass::calculateDiff_impl ( std::shared_ptr<nList_instr_nClass> instrList ) {
+    double  modelBase_nClass::calculateDiff_impl ( std::shared_ptr<nList_instr_nClass> instrList )  {
 RESET_EIGEN_ERRORS
 Rprintf("modelBase_nClass calculateDiff_impl (should not see this)\n");;
 return(0.0);
 }
-    double  modelBase_nClass::getLogProb_impl ( std::shared_ptr<nList_instr_nClass> instrList ) {
+    double  modelBase_nClass::getLogProb_impl ( std::shared_ptr<nList_instr_nClass> instrList )  {
 RESET_EIGEN_ERRORS
 Rprintf("modelBase_nClass getLogProb_impl (should not see this)\n");;
 return(0.0);
 }
-    void  modelBase_nClass::simulate_impl ( std::shared_ptr<nList_instr_nClass> instrList ) {
+    void  modelBase_nClass::simulate_impl ( std::shared_ptr<nList_instr_nClass> instrList )  {
 RESET_EIGEN_ERRORS
 Rprintf("modelBase_nClass simulate_impl (should not see this)\n");;
 }
-      modelBase_nClass::modelBase_nClass (  ) {
+    int  modelBase_nClass::getParamID_impl ( std::shared_ptr<instr_nClass> node, std::string param )  {
+RESET_EIGEN_ERRORS
+Rprintf("modelBase_nClass getParamID_impl (should not see this)\n"); return 0;;
+}
+    std::unique_ptr<ETaccessorBase>  modelBase_nClass::getParam_impl ( std::shared_ptr<instr_nClass> node, int paramID )  {
+RESET_EIGEN_ERRORS
+Rprintf("modelBase_nClass getParam_impl (should not see this)\n"); return nullptr;;
+}
+    double  modelBase_nClass::getBound_impl ( std::shared_ptr<instr_nClass> node, int boundID )  {
+RESET_EIGEN_ERRORS
+Rprintf("modelBase_nClass getBound_impl (should not see this)\n");;
+return(0.0);
+}
+      modelBase_nClass::modelBase_nClass (  )  {
 RESET_EIGEN_ERRORS
 }
 
 // [[Rcpp::export(name = "set_CnClass_env_modelBase_nClass_new")]]
-    void  set_CnClass_env_modelBase_nClass ( SEXP env ) {
+    void  set_CnClass_env_modelBase_nClass ( SEXP env )  {
 RESET_EIGEN_ERRORS
 SET_CNCLASS_ENV(modelBase_nClass, env);;
 }
 
 // [[Rcpp::export(name = "get_CnClass_env_modelBase_nClass_new")]]
-    Rcpp::Environment  get_CnClass_env_modelBase_nClass (  ) {
+    Rcpp::Environment  get_CnClass_env_modelBase_nClass (  )  {
 RESET_EIGEN_ERRORS
 return GET_CNCLASS_ENV(modelBase_nClass);;
 }
 
 NCOMPILER_INTERFACE(
 modelBase_nClass,
-NCOMPILER_FIELDS(
-field("declFunList", &modelBase_nClass::declFunList),
-field("declFunNameToIndex", &modelBase_nClass::declFunNameToIndex)
-),
+NCOMPILER_FIELDS(),
 NCOMPILER_METHODS(
 method("ping", &modelBase_nClass::ping, args({{}})),
 method("makeCompiledInstrList", &modelBase_nClass::makeCompiledInstrList, args({{arg("input",copy)}})),
+method("makeCompiledInstr", &modelBase_nClass::makeCompiledInstr, args({{arg("input",copy)}})),
 method("calculate_impl", &modelBase_nClass::calculate_impl, args({{arg("instrList",copy)}})),
 method("calculateDiff_impl", &modelBase_nClass::calculateDiff_impl, args({{arg("instrList",copy)}})),
 method("getLogProb_impl", &modelBase_nClass::getLogProb_impl, args({{arg("instrList",copy)}})),
-method("simulate_impl", &modelBase_nClass::simulate_impl, args({{arg("instrList",copy)}}))
+method("simulate_impl", &modelBase_nClass::simulate_impl, args({{arg("instrList",copy)}})),
+method("getParamID_impl", &modelBase_nClass::getParamID_impl, args({{arg("node",copy)},{arg("param",copy)}})),
+method("getParam_impl", &modelBase_nClass::getParam_impl, args({{arg("node",copy)},{arg("paramID",copy)}})),
+method("getBound_impl", &modelBase_nClass::getBound_impl, args({{arg("node",copy)},{arg("boundID",copy)}}))
 )
 )
 #endif

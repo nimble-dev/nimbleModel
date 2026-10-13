@@ -435,7 +435,7 @@ test_that("setupMargNodes finds correct randomEffectsNodes based on calcNodes in
   m <- nimbleModel(code, data = list(y = c(1, 2)))
   # new warning in 1.4.2 and here because randomEffectsNodes now includes s[1:2]
   # add expect_warning()
-  SMN <- setupMargNodes(m, calcNodes = c("r", "s"))  
+  SMN <- setupMargNodes(m, calcNodes = c("r", "s"))
   expect_identical(unlist(lapply(SMN$randomEffectsNodes, \(x) x$toNodeChars())), c("r[1]","r[2]","s[1]","s[2]"))
   expect_identical(SMN$paramNodes[[1]]$toNodeChars(), c("p[1]","p[2]"))
 })
@@ -454,11 +454,11 @@ test_that("regression tests that `getConditionallyIndependentSets` works with tr
     })
     m <- nimbleModel(code, data = list(y = rnorm(5)))
     given <- c('tau','tau2',paste0('y[', 1:5, ']'))
-    
+
     ## Correct
     latents <- c('b1','b2',paste0('mu[', 1:5, ']'),paste0('mu2[', 1:5, ']'))
     expect_length(getConditionallyIndependentSets(m, nodes = latents, givenNodes = given, unknownAsGiven = TRUE), 1)
-    
+
     ## In issue 1564, incorrect with different order for the latents: `mu2[1]` split out into its own set
     latents <- c(paste0('mu[', 1:5, ']'),paste0('mu2[', 1:5, ']'),'b1','b2')
     expect_length(getConditionallyIndependentSets(m, nodes = latents, givenNodes = given, unknownAsGiven = TRUE), 1)
@@ -480,18 +480,18 @@ test_that("`setupMargNodes` handling of missing/extra latents", {
     expect_identical(result$paramNodes[[1]]$toNodeChars(), c("mu"))
 
     ## `b[2]` won't be marginalized over, and its dependent `y`s are not in calcNodes.
-    ## Could be user error, but we simply accept the user choices. 
+    ## Could be user error, but we simply accept the user choices.
     expect_silent(result <- setupMargNodes(m, randomEffectsNodes = 'b[1]'))
     expect_identical(result$randomEffectsNodes[[1]]$toNodeChars(), c("b[1]"))
     expect_identical(result$paramNodes[[1]]$toNodeChars(), c("mu"))
-    
+
     ## This gives a warning.
     ## `b[2]` now in `paramNodes`, presumably since its `y`s are in calcNodes.
     expect_message(result <- setupMargNodes(m, randomEffectsNodes = 'b[1]', calcNodes = c('b[1]','y')),
                    "they should be included")
     expect_identical(result$randomEffectsNodes[[1]]$toNodeChars(), c("b[1]"))
     expect_identical(unlist(lapply(result$paramNodes, \(x) x$toNodeChars())), c("mu", "b[2]"))
- 
+
     expect_message(result <- setupMargNodes(m, randomEffectsNodes = 'b'), "they are not needed for the provided")
     expect_identical(result$randomEffectsNodes[[1]]$toNodeChars(), c("b[1]", "b[2]"))
     expect_identical(result$paramNodes[[1]]$toNodeChars(), c("mu"))
@@ -516,64 +516,64 @@ test_that("getConditionallyIndependentSets works with grouped data", {
         mu0 ~ dnorm(0,1)
     })
     m <- nimbleModel(code, data=list(y=rnorm(10)), constants = list(k=c(rep(1,5),rep(2,5))))
-    
+
     expect_identical(getConditionallyIndependentSets(m, givenNodes = m$getNodes(c('mu0','sigma','y')),
                                                      nodes=m$getNodes('mu')),
                                         list('mu[1]','mu[2]')) # {mu[1]},  {mu[2]}
-    
+
     expect_identical(getConditionallyIndependentSets(m, givenNodes = m$getNodes(c('mu0','y')),
                                                      nodes=m$getNodes(c('sigma','mu'))),
                                         list(c("sigma","mu[1]","mu[2]"))) # {sigma,mu[1:2]}
-    
+
     expect_identical(getConditionallyIndependentSets(m, givenNodes = m$getNodes(c('mu0','sigma')),
                                                      nodes=m$getNodes(c('y','mu'))),
                      list(c(paste0("y[",1:5,"]"), "mu[1]"),
                           c(paste0("y[",6:10,"]"), "mu[2]")))            # {mu[1],y[1],y[2:5]}, {mu[2],y[6],y[7:10]}
-    
+
     expect_identical(getConditionallyIndependentSets(m, givenNodes = m$getNodes(c('mu0','sigma')),
                                                      nodes=m$getNodes(c('mu','y'))),
                      list(c("mu[1]", paste0("y[",1:5,"]")),
                           c("mu[2]", paste0("y[",6:10,"]"))))  # {mu[1],y[1:5]}, {mu[2],y[6:10]}
-    
+
     expect_identical(getConditionallyIndependentSets(m, givenNodes = m$getNodes(c('mu0','sigma')),
                                                      nodes=m$getNodes(c('mu'))),
                                         list('mu[1]','mu[2]')) # unknownAsGiven = T; {mu[1]},{mu[2]}
-    
+
     expect_identical(getConditionallyIndependentSets(m, givenNodes = m$getNodes(c('mu0','sigma')),
                                                      nodes=m$getNodes(c('mu')),unknownAsGiven=FALSE),
                      list(c("mu[1]", paste0("y[",1:5,"]")),
                           c("mu[2]", paste0("y[",6:10,"]")))) # {mu[1],y[1:5]}, {mu[2],y[6:10]}
-    
-    
+
+
     expect_identical(getConditionallyIndependentSets(m, givenNodes = c('mu0','sigma'),
                                                      nodes=c('mu','y')),
                                                             list(c("mu[1]", paste0("y[",1:5,"]")),
                           c("mu[2]", paste0("y[",6:10,"]"))))  # {mu[1],y[1:5]}, {mu[2],y[6:10]}
-    
+
     expect_identical(getConditionallyIndependentSets(m, givenNodes = c('mu0','sigma'),
                                                      nodes=c('mu','y'), returnScalarComponents=TRUE, nodesAsChars=TRUE),list(c("mu[1]", paste0("y[",1:5,"]")),
                           c("mu[2]", paste0("y[",6:10,"]"))))
-                     
+
                                         #  {"mu[1]" "y[1]"  "y[2]"  "y[3]"  "y[4]"  "y[5]"}  {"mu[2]" "y[6]"  "y[7]"  "y[8]"  "y[9]"  "y[10]"}
-    
+
     expect_identical(getConditionallyIndependentSets(m, givenNodes = c('mu0','sigma')), list())
 
     expect_identical(getConditionallyIndependentSets(m, givenNodes = c('mu0','sigma'), unknownAsGiven = FALSE), list())
-    
+
     expect_identical(getConditionallyIndependentSets(m, nodes='mu'), list('mu[1]','mu[2]'))  # {mu[1]}, {mu[2]}
-    
+
     expect_identical(getConditionallyIndependentSets(m, givenNodes = c('mu0','sigma','y')), list('mu[1]','mu[2]'))  # {mu[1]}, {mu[2]}
-    
+
     expect_identical(getConditionallyIndependentSets(m), list('mu[1]','mu[2]'))  # {mu[1]}, {mu[2]}
-    
-    
+
+
     result <- getConditionallyIndependentSets(m, givenNodes = m$getNodes(c('mu0','sigma')),
                                               nodes=m$getNodes(c('y','mu')))
     expect_identical(result,
                                  list(c(paste0("y[",1:5,"]"), "mu[1]"),
-                                      c(paste0("y[",6:10,"]"), "mu[2]")))  
+                                      c(paste0("y[",6:10,"]"), "mu[2]")))
                                         # {mu[1],y[1],y[2:5]}, {mu[2],y[6],y[7:10]}
- 
+
     # Now with intermediate deterministic nodes.
     code <- nimbleCode({
         for(i in 1:2)
@@ -590,52 +590,52 @@ test_that("getConditionallyIndependentSets works with grouped data", {
     expect_identical(getConditionallyIndependentSets(m, givenNodes = m$getNodes(c('mu0','sigma','y')),
                                                      nodes=m$getNodes('mu')),
                                         list('mu[1]','mu[2]')) # {mu[1]},  {mu[2]}
-    
+
     expect_identical(getConditionallyIndependentSets(m, givenNodes = m$getNodes(c('mu0','y')),
                                                      nodes=m$getNodes(c('sigma','mu'))),
                                         list(c("sigma", "mu[1]","mu[2]"))) # {sigma,mu[1:2]}
-    
+
     expect_identical(getConditionallyIndependentSets(m, givenNodes = m$getNodes(c('mu0','sigma')),
                                                      nodes=m$getNodes(c('y','mu'))),
                      list(c(paste0("y[",1:5,"]"), "mu[1]"),
                           c(paste0("y[",6:10,"]"), "mu[2]")))            # {mu[1],y[1],y[2:5]}, {mu[2],y[6],y[7:10]}
-    
+
     expect_identical(getConditionallyIndependentSets(m, givenNodes = m$getNodes(c('mu0','sigma')),
                                                      nodes=m$getNodes(c('mu','y'))),
                      list(c("mu[1]", paste0("y[",1:5,"]")),
                           c("mu[2]", paste0("y[",6:10,"]"))))  # {mu[1],y[1:5]}, {mu[2],y[6:10]}
-    
+
     expect_identical(getConditionallyIndependentSets(m, givenNodes = m$getNodes(c('mu0','sigma')),
                                                      nodes=m$getNodes(c('mu'))),
                                         list('mu[1]','mu[2]')) # unknownAsGiven = T; {mu[1]},{mu[2]}
-    
+
     expect_identical(getConditionallyIndependentSets(m, givenNodes = m$getNodes(c('mu0','sigma')),
                                                      nodes=m$getNodes(c('mu')),unknownAsGiven=FALSE),
                      list(c("mu[1]", paste0("y[",1:5,"]")),
                           c("mu[2]", paste0("y[",6:10,"]")))) # {mu[1],y[1:5]}, {mu[2],y[6:10]}
-    
-    
+
+
     expect_identical(getConditionallyIndependentSets(m, givenNodes = c('mu0','sigma'),
                                                      nodes=c('mu','y')),
                                                             list(c("mu[1]", paste0("y[",1:5,"]")),
                           c("mu[2]", paste0("y[",6:10,"]"))))  # {mu[1],y[1:5]}, {mu[2],y[6:10]}
-    
+
     expect_identical(getConditionallyIndependentSets(m, givenNodes = c('mu0','sigma'),
                                                      nodes=c('mu','y'), returnScalarComponents=TRUE, nodesAsChars=TRUE),list(c("mu[1]", paste0("y[",1:5,"]")),
                           c("mu[2]", paste0("y[",6:10,"]"))))
-                     
+
                                         #  {"mu[1]" "y[1]"  "y[2]"  "y[3]"  "y[4]"  "y[5]"}  {"mu[2]" "y[6]"  "y[7]"  "y[8]"  "y[9]"  "y[10]"}
-    
+
     expect_identical(getConditionallyIndependentSets(m, givenNodes = c('mu0','sigma')), list())
 
     expect_identical(getConditionallyIndependentSets(m, givenNodes = c('mu0','sigma'), unknownAsGiven = FALSE), list())
-    
+
     expect_identical(getConditionallyIndependentSets(m, nodes='mu'), list('mu[1]','mu[2]'))  # {mu[1]}, {mu[2]}
-    
+
     expect_identical(getConditionallyIndependentSets(m, givenNodes = c('mu0','sigma','y')), list('mu[1]','mu[2]'))  # {mu[1]}, {mu[2]}
-    
+
     expect_identical(getConditionallyIndependentSets(m), list('mu[1]','mu[2]'))  # {mu[1]}, {mu[2]}
-    
+
     # What happens if provide deterministic nodes?
     expect_identical(getConditionallyIndependentSets(m, givenNodes = c('mu0','sigma','y'),
                                     nodes=c('mn','mu')), list('mu[1]','mu[2]'))  # {mu[1]},  {mu[2]}
@@ -658,7 +658,7 @@ test_that("SSM case" , {
     })
     n <- 10
     m <- nimbleModel(code, data=list(y=rnorm(n)), constants = list(n=n))
-    
+
     expect_identical(getConditionallyIndependentSets(m, givenNodes = c('tau','sigma','y'),
                                                      nodes=c('mu')),
                      list(paste0("mu[", c(2:10,1), "]")))
@@ -674,13 +674,13 @@ test_that("SSM case" , {
     })
     n <- 10
     m <- nimbleModel(code, data=list(y=rnorm(n)), constants = list(n=n))
-    
+
     expect_identical(getConditionallyIndependentSets(m, givenNodes = c('tau','sigma','y'),
                                                      nodes=c('mu')),
                      list(paste0("mu[", 1:11, "]")))
 })
 
-    
+
 setNimbleModelOption('nodesAsChars', FALSE)
 
 test_that("{aggregate,intersect,setdiff}_nodes", {
@@ -694,10 +694,10 @@ test_that("{aggregate,intersect,setdiff}_nodes", {
         mu0 ~ dnorm(0,1)
     })
     m <- nimbleModel(code, data=list(y=rnorm(10)), constants = list(k=c(rep(1,5),rep(2,5))))
-    
+
     set1 <- m$getNodes(c('mu','y','sigma'))
     set2 <- m$getNodes(c('y[1:3]','mu0','y[5:6]','mu[1]'))
-    
+
     expect_identical(sapply(intersect_nodes(set1,set2), \(x) x$toNodeChars()),
                             list('mu[1]',paste0("y[", c(1,2,3,5,6), "]")))
     expect_identical(sapply(setdiff_nodes(set1,set2), \(x) x$toNodeChars()),
@@ -709,21 +709,21 @@ test_that("{aggregate,intersect,setdiff}_nodes", {
                             paste0("y[", 1:8, "]"))
     expect_identical(aggregate_nodes(m$getNodes(c('y[1:6]','y[8]', 'y[6:7]')))[[1]]$toNodeChars(),
                             paste0("y[", 1:8, "]"))
-    
+
     code <- nimbleCode({
         for(i in 1:3)
             y[i,1:2] ~ dmnorm(mu[1:2],pr[1:2,1:2])
     })
     m <- nimbleModel(code)
-    
-    set <- m$getNodes(c('y[1,1:2]','y[3,1:2]')) 
+
+    set <- m$getNodes(c('y[1,1:2]','y[3,1:2]'))
     expect_identical(aggregate_nodes(set)[[1]]$toNodeChars(),
                                         c("y[1, 1:2]", "y[3, 1:2]")) # node range for `y[idx1, 1:2]`, for `idx1` in c(1, 3)
-    set <- m$getNodes(c('y[1,1:2]','y[2,1:2]')) 
+    set <- m$getNodes(c('y[1,1:2]','y[2,1:2]'))
     expect_identical(aggregate_nodes(set)[[1]]$toNodeChars(),
                                         c("y[1, 1:2]", "y[2, 1:2]")) # node range for `y[idx1, 1:2]`, for `idx1` in 1:2
-    
-    set <- m$getNodes(c('y[1,1:2]','y')) 
+
+    set <- m$getNodes(c('y[1,1:2]','y'))
     expect_identical(aggregate_nodes(set)[[1]]$toNodeChars(),
                                         c("y[1, 1:2]", "y[2, 1:2]", "y[3, 1:2]")) # node range for `y[idx1, 1:2]`, for `idx1` in 1:2
 
