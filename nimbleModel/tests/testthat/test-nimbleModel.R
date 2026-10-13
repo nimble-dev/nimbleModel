@@ -683,7 +683,6 @@ test_that("non-sequential indexing cases", {
   expect_identical(nr$numExternalIndexRanges, 0L)
   expect_identical(nr$toChar(), "`y[c(2, 3, 5)]`")
 
-  # Cannot compile. Hard to disentangle C++ compilation error, seemingly related to Eigen / Eigen Tensors.
   code <- nimbleCode({
       y[c(2,3,5)] <- x[1:3] + 1
   })
@@ -692,12 +691,12 @@ test_that("non-sequential indexing cases", {
   m <- mclass$new()
   m$calculate()
   expect_identical(m$y, c(NA,2,3,NA,4))
-  expect_error({
-      cmclass <- nCompile(mclass)
-      cm <- cmclass$new()
-      cm$calculate()
-      expect_identical(cm$y, c(NA,2,3,NA,4))
-  })
+  cmclass <- nCompile(mclass)
+  cm <- cmclass$new()
+  # cm$y <- rep(NA, 5)  # Otherwise, y[1],y[4] end up being 5e-310.
+  cm$calculate()
+  # TODO: NAs not being represented correctly.
+  expect_identical(cm$y[c(2,3,5)], c(2,3,4))
   
 })
 
