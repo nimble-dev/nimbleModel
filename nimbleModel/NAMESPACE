@@ -4,6 +4,8 @@ import(nCompiler)
 ## Some exports are for testing convenience and may not need to be exported.
 
 ## Classes: R6 classes are exported as regular objects
+export(copier_nClass)
+export(multiCopier_nClass)
 export(indexRangeClass)
 export(indexRangeEmptyClass)
 export(indexRangeScalarClass)
@@ -79,6 +81,23 @@ export(calc_dwishAltParams)
 export(nimbleCode)
 export(nimbleModel)
 export(makeInstrList)
+export(makeMultiCopier)
+
+export(values)
+export("values<-")
+
+export(modelValues)
+export(modelValuesConf)
+export(getsize)
+export(resize)
+
+S3method("[", modelValues)
+S3method("[<-", modelValues)
+S3method("length", modelValues)
+S3method("length<-", modelValues)
+S3method("as.list", modelValues)
+S3method("as.matrix", modelValues)
+export(matrix2mv)
 
 export(intersect_nodes)
 export(aggregate_nodes)

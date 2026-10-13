@@ -86,7 +86,7 @@ make_modelClass_from_nimbleModel <- function(modelDef, data, inits, name = NULL)
       lapply(\(x) all.vars(body(x))) |>
       unlist() |>
       unique() |>
-      setdiff(c("idx", "LocalNewLogProb_", "LocalAns_", "model")) %||% character()
+      setdiff(c("idx", "paramID_", "boundID_", "LocalNewLogProb_", "LocalAns_", "model", "param_name_")) %||% character()
     declVarInfo <- modelVarInfo$vars[declVars]
     declID <- as.numeric(declInfo$declRule$ID) # Formerly `sourceLineNumber`, which may not be unique.
     declFun_membername <- declFunNames[i]
@@ -210,7 +210,8 @@ make_declFun_nClass <- function(varInfo = list(),
       Cpublic = CPUBLIC,
       compileInfo = list(
         createFromR = FALSE, # Without a default constructor (which we've disabled here), createFromR is impossible
-        nClass_inherit = list(base = BASECLASS)
+        nClass_inherit = list(base = BASECLASS),
+        interfaceExclude = "getParam_one"
       ) # Ideally this line would be obtained from a base nClass, but we insert it directly for now
     ),
     list(
@@ -270,6 +271,8 @@ makeModel_nClass <- function(modelVarInfo,
   names(CpublicModelVars) <- modelVarInfo$vars |>
     lapply(\(x) x$name) |>
     unlist()
+  # These opDefs are in place but not actually used. They should start from custom_default
+  # and nCompiler needs to support custom opDefs for calls like obj$method().
   opDefs <- list(
     base_ping = nCompiler:::getOperatorDef("custom_call"),
     setup_auto_decl_mgmt = nCompiler:::getOperatorDef("custom_call"),
@@ -388,7 +391,7 @@ makeModel_nClass <- function(modelVarInfo,
   # We also place the list itself in the class so that we can look up for uncompiled execution
   # the objects that need to be created in initialize.
   # If we someday make type declarations and initializations more automatic, we can avoid this duplication.
-  ans <- substitute(
+  generator_code <- substitute(
     nClass(
       classname = CLASSNAME,
       inherit = modelBase_nClass,
@@ -411,7 +414,11 @@ makeModel_nClass <- function(modelVarInfo,
         defaultInits = inits,
         defaultData = data,
         modelDef = modelDef,
-        CpublicDeclFuns = CpublicDeclFuns
+        CpublicDeclFuns = CpublicDeclFuns,
+        initialize = function(...) {
+          if (isTRUE(.GlobalEnv$.debugModelInit)) browser()
+          super$initialize(..., .initialize = TRUE)
+        }
       ),
       # A concatenation of lists
       CPUBLIC = c(CpublicDeclFuns, Cpublic_setup_decl_mgmt, CpublicModelVars, CpublicCtor, CpublicMethods),
@@ -419,7 +426,10 @@ makeModel_nClass <- function(modelVarInfo,
       BASECLASS = baseclass
     )
   )
-  eval(ans)
+  model_generator <- eval(generator_code)
+  model_generator$set("public", "NCgenerator", model_generator)
+  env$model_generator <- model_generator
+  model_generator
 }
 
 # Get varInfo from new nimbleModel
@@ -588,6 +598,10 @@ make_decl_methods_from_declInfo <- function(declInfo) {
       ),
       list(DETERMCALC = make_determ_calc_line(LHSrep, RHSrep))
     ))
+    # Dummy version of getParam_one:
+    getParamMethods <- list(getParam_one = make_getParam_one_nFxn())
+    getBoundMethods <- list(getBound_one = make_getBound_one_nFxn())
+    getParamIDMethod <- make_getParamID_method()
   }
   if (type == "stoch") {
     logProbExpr <- declInfo$genLogProbExpr()
@@ -622,8 +636,207 @@ make_decl_methods_from_declInfo <- function(declInfo) {
         STOCHCALC_DIFF = make_stoch_calc_line(LHSrep, RHSrep, logProbExprRep, diff = TRUE)
       )
     ))
+    altParamExprs <- declInfo$altParamExprs
+    if (length(altParamExprs)) {
+      altParamExprsRep <- lapply(
+        altParamExprs,
+        function(expr) eval(substitute(substitute(e, replacements), list(e = expr)))
+      )
+    } else {
+      altParamExprsRep <- list()
+    }
+    getParamMethods <- make_getParam_methods(declInfo$distributionName, LHSrep, RHSrep, altParamExprsRep)
+    boundExprs <- declInfo$boundExprs
+    if (length(boundExprs)) {
+      boundExprsRep <- lapply(
+        boundExprs,
+        function(expr) eval(substitute(substitute(e, replacements), list(e = expr)))
+      )
+    } else {
+      boundExprsRep <- list()
+    }
+    getBoundMethods <- make_getBound_methods(declInfo$distributionName, LHSrep, RHSrep, boundExprsRep)
+    getParamIDMethod <- make_getParamID_method(declInfo$distributionName)
   }
-  methodList
+  c(methodList, getParamMethods, getBoundMethods, getParamIDMethod)
+}
+
+make_getParamID_method <- function(distName) {
+  if(missing(distName)) {
+    return(
+      list(getParamID_one = nCompiler::nFunction(
+        name = "getParamID_one",
+        fun = function(param_name_) {
+          stop("getParamID is not valid for a deterministic node.")
+        },
+        returnType = "integer()",
+        argTypes = list(param_name_ = "string()"),
+        compileInfo = list(
+          C_fun = function(param_name_) {
+            nCpp("Rcpp::stop(\"getParamID is not valid for a deterministic node.\")")
+          }
+        )
+      ))
+    )
+  }
+  paramIDs <- getDistributionInfo(distName)$paramIDs
+  paramNames <- names(paramIDs)
+  if (!length(paramIDs)) {
+    fun <- function(param_name_) {
+      return(0)
+    }
+  } else {
+    if_then_lines <- lapply(
+      seq_along(paramNames),
+      function(i) {
+        bquote(if (param_name_ == .(paramNames[i])) return(.(as.numeric(paramIDs[i]))))
+      }
+    )
+    fun_body <- quote({})
+    for(i in seq_along(if_then_lines)) {
+      fun_body[[i + 1]] <- if_then_lines[[i]]
+    }
+    fun_body[[length(if_then_lines) + 2]] <- quote(return(0))
+    fun <- bquote(
+      function(param_name_) 
+        .(fun_body)
+    ) |> eval()
+    attr(fun, "srcref") <- NULL
+  }
+  nFxn <- nCompiler::nFunction(
+    name = "getParamID_one",
+    fun = fun,
+    returnType = "integer()",
+    argTypes = list(param_name_ = "characterScalar()")
+  )
+  list(getParamID_one = nFxn)
+}
+
+make_getParam_methods <- function(distName, LHSrep, RHSrep, altParamExprsRep) {
+  reqdExprs <- if (length(RHSrep) > 1) as.list(RHSrep)[-1] else list()
+  if (length(reqdExprs) > 0) names(reqdExprs) <- names(RHSrep)[-1]
+  allParamExprs <- c(list(value = LHSrep), reqdExprs, altParamExprsRep)
+  paramNamesToUse <- getParamNames(distName)
+  allParamExprs <- allParamExprs[ names(allParamExprs) %in% paramNamesToUse]
+  paramNames <- names(allParamExprs)
+  paramIDs <- as.integer(getParamID(distName, paramNames))
+  sort_order <- order(paramIDs)
+  paramNames <- paramNames[sort_order]
+  paramIDs <- paramIDs[sort_order]
+  allParamExprs <- allParamExprs[sort_order]
+  nDims <- as.integer(getDimension(distName, paramNames))
+  getParamOne <- make_getParam_one_nFxn(paramIDs, allParamExprs, isRef, computeMethodNames)
+  list(getParam_one = getParamOne)
+}
+
+make_getParam_one_nFxn <- function(paramIDs = integer(0), exprs = list(),
+                                   isRefFlags = logical(0), computeMethodNames = character(0)) {
+  if (!length(paramIDs)) {
+    Cfun <- function(idx, paramID_) {
+      return(ETaccess(0, copy = TRUE))
+    }
+    Rfun <- function(idx, paramID_) {
+      return(0)
+    }
+  } else {
+    case_lines <- lapply(
+      exprs,
+      function(expr) {
+        # LocalAns_ is already filtered out of all.vars results
+        # to determine model variables, so use that name here too.
+        bquote(LocalAns_ <- ETaccess(.(expr), copy = TRUE))
+      }
+    )
+
+
+    switch_line <- bquote(nSwitch(paramID_, .(paramIDs)))
+    switch_line[3 + (1:(length(case_lines)))] <- case_lines
+
+    Cfun <- bquote(
+      function(idx, paramID_) {
+        .(switch_line)
+        return(LocalAns_)
+      }
+    ) |> eval()
+
+    R_case_lines <- lapply(
+      exprs,
+      function(expr) {
+        # LocalAns_ is already filtered out of all.vars results
+        # to determine model variables, so use that name here too.
+        bquote(LocalAns_ <- .(expr))
+      }
+    )
+    R_switch_line <- bquote(nSwitch(paramID_, .(paramIDs)))
+    R_switch_line[3 + (1:(length(R_case_lines)))] <- R_case_lines
+    Rfun <- bquote(
+      function(idx, paramID_) {
+        .(R_switch_line)
+        return(LocalAns_)
+      }
+    ) |> eval()
+    body(Rfun) <- nm_addModelDollarSign(body(Rfun), exceptionNames = c("idx", "paramID_", "LocalAns_"))
+  }
+  nFunction(
+    name = "getParam_one",
+    Rfun,
+    compileInfo = list(C_fun = Cfun),
+    returnType = "ETaccessor()",
+    argTypes = list(idx = "integerVector", paramID_ = "integerScalar")
+  )
+}
+
+make_getBound_methods <- function(distName, LHSrep, RHSrep, boundExprsRep) {
+  getBoundOne <- make_getBound_one_nFxn(boundExprsRep)
+  list(getBound_one = getBoundOne)
+}
+
+make_getBound_one_nFxn <- function(boundExprs = list()) {
+  if (!length(boundExprs)) {
+    Rfun <- function(idx, boundID_) {
+      return(NA)
+    }
+    Cfun <- function(idx, boundID_) {
+      return(0)
+    }
+  } else {
+    init_line <- quote(LocalAns_ <- 0) # avoid Windows compile warning of possibly uninitialized return value.
+    case_lines <- lapply(
+      boundExprs,
+      function(expr) {
+        # LocalAns_ is already filtered out of all.vars results
+        # to determine model variables, so use that name here too.
+        bquote(LocalAns_ <- .(expr))
+      }
+    )
+
+
+    switch_line <- bquote(nSwitch(boundID_, 0:1))
+    switch_line[3 + (1:(length(case_lines)))] <- case_lines
+
+    Rfun <- bquote(
+      function(idx, boundID_) {
+        .(init_line)
+        .(switch_line)
+        return(LocalAns_)
+      }
+    ) |> eval()
+    Cfun <- bquote(
+      function(idx, boundID_) {
+        .(init_line)
+        .(switch_line)
+        return(LocalAns_)
+      }
+    ) |> eval()
+    body(Rfun) <- nm_addModelDollarSign(body(Rfun), exceptionNames = c("idx", "boundID_", "LocalAns_"))
+  }
+  nFunction(
+    name = "getBound_one",
+    Rfun,
+    compileInfo = list(C_fun = Cfun),
+    returnType = "numericScalar",
+    argTypes = list(idx = "integerVector", boundID_ = "integerScalar")
+  )
 }
 
 #' @export

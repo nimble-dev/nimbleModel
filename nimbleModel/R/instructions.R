@@ -238,7 +238,7 @@ instr_nClass <- nClass(
         self$nDim <- instr$nDim %||% 0L
         self$dims <- instr$dims %||% integer()
         self$slots <- instr$slots %||% integer()
-        self$values <- nList(integerVector)$new()
+        self$values <- nList(integerVector())$new()
         self$values$setLength(length(self$dims))
         if (self$nDim) {
           for (i in 1:length(self$dims)) {
@@ -257,13 +257,13 @@ instr_nClass <- nClass(
     nDim = "integerScalar",
     dims = "integerVector",
     slots = "integerVector",
-    values = "nList(integerVector)",
+    values = "nCompiler:::nList(integerVector())",
     instr_type = "integerScalar",
     sortID = "integerVector",
     declID = "integerScalar",
     instr_nClass = nFunction(
       function() {
-        values <- nList(integerVector)$new()
+        values <- nList(integerVector())$new()
       },
       compileInfo = list(constructor = TRUE)
     )
@@ -273,7 +273,7 @@ instr_nClass <- nClass(
     interface = "full",
     createFromR = TRUE,
     exportName = "instr_nClass_new",
-    needed_units = list("nList(integerVector)"),
+    needed_units = list("nCompiler:::nList(integerVector())"),
     packageNames = c(uncompiled = "instr_nClass_R", compiled = "instr_nClass")
   )
 )

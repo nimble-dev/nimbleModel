@@ -8,23 +8,25 @@ modelBase_nClass <- nClass(
     nondataRules = NULL,
     predictiveRules = NULL,
     nonpredictiveRules = NULL,
-    initialize = function(sizes = list(), inits = list(), data = list(), ...) {
+    declFunList = NULL,
+    initialize = function(sizes = list(), inits = list(), data = list(), ..., .initialize = FALSE) {
       # It is not very easy to set debug onto the initialize function, so
       # here is a magic flag.
       if (isTRUE(.GlobalEnv$.debugModelInit)) browser()
       super$initialize(...)
 
+      CppObj_provided <- "CppObj" %in% ...names()
+      # To do, replace this hack with a method get_self().
       self$thisModel <- self   # A hack needed because we use `self` as method argument name below.
 
-      # TODO: is there a better way to populate declFunNameToIndex in Cpublic?
-      declFunNameToIndex <- self$declFunNameToIndex_
-
-      declFunNames <- names(declFunNameToIndex)
       if (isCompiled()) {
         # self$setup_decl_mgmt_from_names(declFunNames)
         # setting up the canonically indexed vector of node functions
         # now happens in the C++ constructor.
       } else {
+        # This assumes there is a derived class.
+        declFunNameToIndex <- self$declFunNameToIndex_
+        declFunNames <- names(declFunNameToIndex)
         self$declFunList <- list()
         length(self$declFunList) <- length(declFunNames)
         names(self$declFunList) <- declFunNames
@@ -36,6 +38,39 @@ modelBase_nClass <- nClass(
       }
 
       # TODO: create a merge_and_set function that handles all three of the following.
+      if (isTRUE(.initialize)) {
+        # This assumes there is a derived object with defaultSizes, defaultInits, and defaultData.
+
+        # TODO: do we want to handle data differently?
+        # TODO: need to work through not setting as 'data' if values are NA;
+        #   check back against how dataRules work in nimbleModel work.
+        # # this and the next line used inits. was that a typo? I think so.
+        allData <- self$defaultData
+        if (!missing(data)) {
+          for (nm in names(data)) {
+            allData[[nm]] <- data[[nm]]
+          }
+        }
+
+        if (!CppObj_provided) {
+          self$reset(sizes = sizes, inits = inits, allData = allData)
+        }
+
+        dataVarIndices <- names(modelDef$constants) %in% modelDef$varNames & !names(modelDef$constants) %in% names(allData) # don't overwrite anything in 'allData'
+        # TODO: revise messaging below using new nimbleModel messaging system.
+        if (sum(names(modelDef$constants) %in% names(allData))) {
+          messageIfVerbose("  [Note] Found the same variable(s) in both 'data' and 'constants'; using variable(s) from 'data'.\n")
+        }
+        if (sum(dataVarIndices)) {
+          allData <- c(allData, modelDef$constants[dataVarIndices])
+          messageIfVerbose("  [Note] Adding '", paste(names(modelDef$constants)[dataVarIndices], collapse = ", "), "' as data for building model.")
+        }
+        # To-do: possibly build these elsewhere, or make them lazy build-on-demand.
+        makeDataRules(allData)
+        makePredictiveRules()
+      }
+    },
+    reset = function(sizes = list(), inits = list(), data = list(), allData = NULL) {
       allSizes <- self$defaultSizes
       if (!missing(sizes)) {
         for (nm in names(sizes)) {
@@ -58,28 +93,15 @@ modelBase_nClass <- nClass(
         allInits <- self$defaultInits
       } else if (length(inits)) set_from_list(inits)
 
-      # TODO: do we want to handle data differently?
-      # TODO: need to work through not setting as 'data' if values are NA;
-      #   check back against how dataRules work in nimbleModel work.
-      allData <- self$defaultData
-      if (!missing(data)) {
-        for (nm in names(data)) {
-          allData[[nm]] <- data[[nm]]
+      if (is.null(allData)) {
+        allData <- self$defaultData
+        if (!missing(data)) { # this and the next line used inits. was that a typo? I think so.
+          for (nm in names(data)) {
+            allData[[nm]] <- data[[nm]]
+          }
         }
       }
       if (length(allData)) set_from_list(allData)
-
-      dataVarIndices <- names(modelDef$constants) %in% modelDef$varNames & !names(modelDef$constants) %in% names(allData) # don't overwrite anything in 'allData'
-      # TODO: revise messaging below using new nimbleModel messaging system.
-      if (sum(names(modelDef$constants) %in% names(allData))) {
-        messageIfVerbose("  [Note] Found the same variable(s) in both 'data' and 'constants'; using variable(s) from 'data'.\n")
-      }
-      if (sum(dataVarIndices)) {
-        allData <- c(allData, modelDef$constants[dataVarIndices])
-        messageIfVerbose("  [Note] Adding '", paste(names(modelDef$constants)[dataVarIndices], collapse = ", "), "' as data for building model.")
-      }
-      makeDataRules(allData)
-      makePredictiveRules()
     },
     makeDataRules = function(data) {
       nms <- names(data)
@@ -473,7 +495,7 @@ modelBase_nClass <- nClass(
       }
       instrList <- makeInstrList(self, instr)
       if (isCompiled()) {
-        if (inherits(instrList, "Rlist_Rinstr") || !instrList$isCompiled()) {
+        if (inherits(instrList, "Rlist_Rinstr") || !nCompiler:::isCompiled(instrList)) {
           instrList <- makeCompiledInstrList(instrList)
         }
         return(self[[fn_cpp]](instrList))
@@ -505,7 +527,7 @@ modelBase_nClass <- nClass(
         return(invisible(NULL))
       }
       if (isCompiled()) {
-        if (inherits(instrList, "Rlist_Rinstr") || !instrList$isCompiled()) {
+        if (inherits(instrList, "Rlist_Rinstr") || !nCompiler:::isCompiled(instrList)) {
           instrList <- makeCompiledInstrList(instrList)
         }
         self$simulate_impl(instrList)
@@ -515,12 +537,66 @@ modelBase_nClass <- nClass(
         }
       }
       return(invisible(NULL))
+    },
+    # `one_instr` is a single instr_nClass (if an instList is provided, the first one is used).
+    # Within it, one node will be used (see declFunBase_nClass$first_idx).
+    # `param` is an integer paramID or a character param name.
+    getParamID = function(one_instr, param) {
+      instrList <- makeInstrList(self, one_instr)
+      if (is.numeric(param)) {
+        paramID <- param
+      } else if (is.character(param)) {
+        if(isCompiled()) {
+          if (!nCompiler:::isCompiled(instrList)) instr <- makeCompiledInstr(instrList[[1]])
+          paramID <- self$getParamID_impl(instr, param)
+        } else {
+          paramID <- declFunList[[instrList[[1]]$declID]]$getParamID(param)
+        }
+      } else {
+        stop("getParamID: argument `param` must be a character param name or (redundantly) a numeric paramID.")
+      }
+      return(paramID)
+    },
+    getParam = function(one_instr, param) {
+      instrList <- makeInstrList(self, one_instr)
+      if (isCompiled()) {
+        if (!nCompiler:::isCompiled(instrList)) instr <- makeCompiledInstr(instrList[[1]])
+      }
+      if (is.numeric(param)) {
+        paramID <- param
+      } else if (is.character(param)) {
+        paramID <- self$getParamID(instrList, param)
+        #getParamID(
+        #  self$modelDef$declInfo[[one_instr$declID]]$distributionName,
+        #  param
+        # )
+        # FIXME: Upon switching from the general function getParamID to the constructed method,
+        #  I am not sure that we return NA as a failure value.
+        if (is.na(paramID)) stop("getParam: argument `param` is not a valid parameter name for this node.")
+      } else {
+        stop("getParam: argument `param` must be an integer paramID or a character param name.")
+      }
+      if (isCompiled()) {
+        # if (!nCompiler:::isCompiled(instrList)) instr <- makeCompiledInstr(instrList[[1]])
+        return(self$getParam_impl(instr, paramID))
+      }
+      declFunList[[instrList[[1]]$declID]]$getParam(instrList[[1]], paramID)
+    },
+    getBound = function(one_instr, bound) {
+      instrList <- makeInstrList(self, one_instr)
+      if (!bound %in% c("lower", "upper")) {
+        stop("getBound: 'bound' must be either 'lower' or 'upper'")
+      }
+      boundID <- if (bound == "lower") 0 else 1
+      if (isCompiled()) {
+        if (!nCompiler:::isCompiled(instrList)) instr <- makeCompiledInstr(instrList[[1]])
+        else instr <- instrList[[1]]
+        return(self$getBound_impl(instr, boundID))
+      }
+      declFunList[[instrList[[1]]$declID]]$getBound(instrList[[1]], boundID)
     }
   ),
   Cpublic = list(
-    # TODO: using 'RcppObject' was resulting in a symbolTBD error - probably nCompiler issue 186.
-    declFunList = "numericScalar", # 'RcppObject',  # This won't actually be used in C++, but needs to be in Cpublic for accessibility.
-    declFunNameToIndex = "RcppList", # Not sure what type this should be for use in C++.
     ping = nFunction(
       name = "ping",
       function() {
@@ -537,6 +613,17 @@ modelBase_nClass <- nClass(
         return(ans)
       },
       returnType = "nList(instr_nClass)"
+    ),
+    # Like `makeCompiledInstrList` but for a single instr_nClass (used by
+    # `getParam`, which takes one node rather than a list of them).
+    makeCompiledInstr = nFunction(
+      name = "makeCompiledInstr",
+      function(input = "SEXP") {
+        ans <- instr_nClass$new()
+        cppLiteral("ans->set_all_values(input);")
+        return(ans)
+      },
+      returnType = "instr_nClass"
     ),
     calculate_impl = nFunction(
       name = "calculate_impl",
@@ -597,6 +684,52 @@ modelBase_nClass <- nClass(
         C_fun = function(instrList = "nList(instr_nClass)") {
           # NOTE: instrList input will be ordered.
           cppLiteral('Rprintf("modelBase_nClass simulate_impl (should not see this)\\n");')
+        },
+        virtual = TRUE
+      )
+    ),
+    getParamID_impl = nFunction(
+      name = "getParamID_impl",
+      function(node, param) {
+        cat("Uncompiled `getParamID_impl` should never be called.\n")
+        return(NULL)
+      },
+      # We must return a general object because it may have different nDim
+      returnType = "integer()",
+      compileInfo = list(
+        C_fun = function(node = "instr_nClass", param = "string()") {
+          cppLiteral('Rprintf("modelBase_nClass getParamID_impl (should not see this)\\n"); return 0;')
+        },
+        virtual = TRUE
+      )
+    ),
+    getParam_impl = nFunction(
+      name = "getParam_impl",
+      function(node, paramID) {
+        cat("Uncompiled `getParam_impl` should never be called.\n")
+        return(NULL)
+      },
+      # We must return a general object because it may have different nDim
+      returnType = "ETaccessor()",
+      compileInfo = list(
+        C_fun = function(node = "instr_nClass", paramID = "integerScalar") {
+          cppLiteral('Rprintf("modelBase_nClass getParam_impl (should not see this)\\n"); return nullptr;')
+        },
+        virtual = TRUE
+      )
+    ),
+    getBound_impl = nFunction(
+      name = "getBound_impl",
+      function(node, boundID) {
+        cat("Uncompiled `getBound_impl` should never be called.\n")
+        return(0)
+      },
+      # We must return a general object because it may have different nDim
+      returnType = "numericScalar",
+      compileInfo = list(
+        C_fun = function(node = "instr_nClass", boundID = "integerScalar") {
+          cppLiteral('Rprintf("modelBase_nClass getBound_impl (should not see this)\\n");')
+          return(0)
         },
         virtual = TRUE
       )

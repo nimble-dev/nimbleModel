@@ -978,6 +978,13 @@ getParamID <- function(dist, params = NULL, valueOnly = is.null(params) &&
   return(out)
 }
 
+# This is taken from nimble's distribution system.
+# It is worth revisiting whether this is needed as is.
+# In nimble it is used only a few places, none of which
+# seem immediately necessary. One option would be to 
+# modify this to return the list with the scalar type 
+# *and* the nDim, which is right there but is not returned 
+# by this function.
 #' @rdname distributionInfo
 #' @export
 getType <- function(dist, params = NULL, valueOnly = is.null(params) &&
@@ -1081,7 +1088,7 @@ scalar_distribution_bool <- unlist(lapply(nms, function(x) all(unlist(lapply(get
 scalar_distribution_dFuns <- BUGSdistToRdist(nms[scalar_distribution_bool], dIncluded = TRUE)
 scalar_distribution_rFuns <- gsub("^d", "r", scalar_distribution_dFuns)
 
-scalar_pqAvail_bool <- nimble:::getAllDistributionsInfo("pqAvail")[nms] & scalar_distribution_bool
+scalar_pqAvail_bool <- getAllDistributionsInfo("pqAvail")[nms] & scalar_distribution_bool
 scalar_pqAvail_dFuns <- BUGSdistToRdist(nms[scalar_pqAvail_bool], dIncluded = TRUE)
 scalar_distribution_pFuns <- gsub("^d", "p", scalar_pqAvail_dFuns)
 scalar_distribution_qFuns <- gsub("^d", "q", scalar_pqAvail_dFuns)

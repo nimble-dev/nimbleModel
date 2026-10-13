@@ -8,6 +8,7 @@
     # but this has .GlobalEnv as a parent.
     processBackwardsModelIndexRanges = TRUE,
     disallowMultivariateArgumentExpressions = TRUE,
+    legacy_nimble = FALSE, # TRUE means stricter use of original nimble behavior in some cases.
     nodesAsChars = FALSE,
     verbose = TRUE
   )

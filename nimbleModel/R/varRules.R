@@ -61,7 +61,7 @@ newVarRules <- function(items, varNames = NULL, type = NULL) {
 applyRules <- function(rules, node) {
   varName <- getVarName(node)
   if (varName %in% names(rules)) {
-    if (!inherits(node, "VarRangeClass") && is.character(node) &&
+    if (!inherits(node, "varRangeClass") && is.character(node) &&
       length(grep("[", node, fixed = TRUE))) {
       # Avoid repeatedly creating a new varRange for `node` in `graphRule$apply`.
       # Can't be done if no indexing.

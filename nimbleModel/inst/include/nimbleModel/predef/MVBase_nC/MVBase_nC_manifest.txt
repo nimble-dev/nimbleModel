@@ -1,0 +1,6 @@
+list(saved_at = structure(1791834500.24101, class = c("POSIXct", 
+"POSIXt")), packet_name = "MVBase_nC", elements = c("preamble", 
+"cppContent", "hContent", "filebase", "post_cpp_compiler", "copyFiles"
+), files = list(preamble = "MVBase_nC_preamble.cpp", cppContent = "MVBase_nC_cppContent.cpp", 
+    hContent = "MVBase_nC_hContent.h", filebase = "MVBase_nC_filebase.txt", 
+    post_cpp_compiler = "MVBase_nC_post_cpp_compiler.txt", copyFiles = "MVBase_nC_copyFiles.txt"))
