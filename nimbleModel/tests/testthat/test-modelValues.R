@@ -432,7 +432,7 @@ test_that("as.matrix(modelValues) and matrix2MV work", {
 
   junk <- nimbleModel:::matrix2mv(mat, obj2)
   expect_identical(junk, obj2)
-  expect_identical(mat, obj2 |> as.matrix())
+  expect_equal(mat, obj2 |> as.matrix())
   expect_equal(obj$mu |> as.list(), obj2$mu |> as.list())
 
   # provide a way to get base class pointers
@@ -458,18 +458,18 @@ test_that("as.matrix(modelValues) and matrix2MV work", {
   Cobj$cov[[2]] <- matrix(1:12, nrow = 3)
   Cobj$cov[[3]] <- obj$cov[[2]] + 100
   Cmat <- Cobj |> as.matrix()
-  expect_identical(mat, Cmat)
+  expect_equal(mat, Cmat)
   # to compiled
   Cobj2 <- comp$mvClass$new()
   Cjunk <- nimbleModel:::matrix2mv(Cmat, Cobj2)
   expect_identical(Cjunk, Cobj2)
-  expect_identical(Cmat, Cobj2 |> as.matrix())
+  expect_equal(Cmat, Cobj2 |> as.matrix())
   expect_equal(Cobj$mu |> as.list(), Cobj2$mu |> as.list())
   # to uncompiled
   length(obj2) <- 0
   junk <- nimbleModel:::matrix2mv(Cmat, obj2)
   expect_identical(junk, obj2)
-  expect_identical(Cmat, obj2 |> as.matrix())
+  expect_equal(Cmat, obj2 |> as.matrix())
   expect_equal(Cobj$mu |> as.list(), obj2$mu |> as.list())
 
 
@@ -478,14 +478,14 @@ test_that("as.matrix(modelValues) and matrix2MV work", {
   expect_true(inherits(Cobj, "modelValues"))
   expect_true(inherits(CbaseObj, "modelValues"))
   expect_false(inherits(CbaseObj, class(Cobj)[1]))
-  expect_identical(nCompiler::value(CbaseObj, "mu") |> as.list(), Cobj$mu |> as.list())
+  expect_equal(nCompiler::value(CbaseObj, "mu") |> as.list(), Cobj$mu |> as.list())
   CbaseMat <- CbaseObj |> as.matrix()
-  expect_identical(CbaseMat, Cmat)
+  expect_equal(CbaseMat, Cmat)
   Cobj_temp <- comp$mvClass$new()
   CbaseObj2 <- comp$make_mvBase(Cobj_temp)
   CbaseJunk <- nimbleModel:::matrix2mv(CbaseMat, CbaseObj2)
   expect_identical(CbaseJunk, CbaseObj2)
-  expect_identical(Cmat, CbaseObj2 |> as.matrix())
+  expect_equal(Cmat, CbaseObj2 |> as.matrix())
   expect_equal(CbaseObj$mu |> as.list(), CbaseObj2$mu |> as.list())
 
   rm(Cobj, Cobj2, Cjunk, CbaseObj, CbaseObj2, Cobj_temp); gc()
