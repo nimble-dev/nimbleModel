@@ -31,9 +31,9 @@ is.vectorized <- function(node) {
 
 is.c <- function(node) {
   if (is.character(node)) {
-    return(grepl("^nC", node))
+    return(grepl("^(nC|nimC)", node))
   } else {
-    return("nC" %in% all.names(node))
+    return("nC" %in% all.names(node) || "nimC" %in% all.names(node))
   }
 }
 

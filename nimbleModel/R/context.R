@@ -207,7 +207,7 @@ expandContextAndReplacements <- function(allReplacements, allReplacementNameExpr
 
   innerLoopCode <- context$embedCodeInForLoop(innerLoopCode, useContext)
   # This is a hacky way to deal with `nC`, which is not in `constantsCopy`.
-  if (length(innerLoopCode[[3]]) > 1 && innerLoopCode[[3]][[1]] == "nC") {
+  if (length(innerLoopCode[[3]]) > 1 && innerLoopCode[[3]][[1]] %in% c("nC","nimC")) {
     innerLoopCode[[3]][[1]] <- quote(c)
   }
 
@@ -266,7 +266,7 @@ determineContextSize <- function(context, useContext = rep(TRUE, length(context$
   innerLoopCode <- context$embedCodeInForLoop(innerLoopCode, useContext)
 
   # This is a hacky way to deal with `nC`, which is not in `evalEnv`.
-  if (length(innerLoopCode[[3]]) > 1 && innerLoopCode[[3]][[1]] == "nC") {
+  if (length(innerLoopCode[[3]]) > 1 && innerLoopCode[[3]][[1]] %in% c("nC","nimC")) {
     innerLoopCode[[3]][[1]] <- quote(c)
   }
 

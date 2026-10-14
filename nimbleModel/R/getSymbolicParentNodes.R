@@ -143,7 +143,7 @@ nimbleOrRfunctionNames <- c(
   # distribution functions
   paste0(c("d", "r", "q", "p"), "t"),
   paste0(c("d", "r", "q", "p"), "exp"),
-  "nC", "nRep", "nSeq",
+  "nimC", "nC", "nimRep", "nRep", "nimSeq", "nSeq",
   "diag",
   "length"
 )
