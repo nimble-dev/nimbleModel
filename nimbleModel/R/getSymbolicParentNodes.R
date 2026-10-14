@@ -89,7 +89,7 @@ nimblePreevaluationFunctionNames <- c(
   # distribution functions
   paste0(c("d", "q", "p"), "t"),
   paste0(c("d", "q", "p"), "exp"),
-  "nimC", "nimRep", "nimSeq", "diag",
+  "nC", "nRep", "nSeq", "diag",
   "nimNumeric", "nimMatrix", "nimArray",
   "length"
 )
@@ -99,7 +99,7 @@ nimbleOrRfunctionNames <- c(
   "+", "-", "/", "*",
   "exp", "log",
   "pow", "^",
-  "%%", "%*%",
+  "%%", "%*%", "nMul",
   "t",
   "equals", "nimEquals",
   "inprod",
@@ -143,7 +143,7 @@ nimbleOrRfunctionNames <- c(
   # distribution functions
   paste0(c("d", "r", "q", "p"), "t"),
   paste0(c("d", "r", "q", "p"), "exp"),
-  "nimC", "nimRep", "nimSeq",
+  "nimC", "nC", "nimRep", "nRep", "nimSeq", "nSeq",
   "diag",
   "length"
 )

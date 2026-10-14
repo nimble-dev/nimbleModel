@@ -184,12 +184,6 @@ is.rcf <- function(x, inputIsName = FALSE, where = -1) {
 nimbleUniqueID <- labelFunctionCreator("UID")
 nimbleModelID <- labelFunctionCreator("MID")
 
-
-# temporary, as we have some tests of use of `c()` in indexing
-nimC <- function(...) {
-  c(...)
-}
-
 evalNumeric <- function(expr) {
   if (length(expr) == 1) {
     return(expr)

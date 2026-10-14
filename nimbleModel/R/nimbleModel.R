@@ -551,6 +551,7 @@ make_decl_method_nFxn <- function(f, name, returnType = "numericScalar") {
     argTypes = list(idx = "integerVector"),
     returnType = T(returnType),
     compileInfo = list(C_fun = Cfun),
+    control = list(changeKeywords = TRUE)
   )
   nFxn
 }
