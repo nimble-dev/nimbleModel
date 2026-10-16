@@ -395,7 +395,7 @@ modelBase_nClass <- nClass(
     getDependencies = function(nodes, omit = NULL, self = TRUE,
                                determOnly = FALSE, stochOnly = FALSE,
                                includeData = TRUE, dataOnly = FALSE,
-                               includePredictive = nimble::getNimbleOption('getDependenciesIncludesPredictiveNodes'),
+                               includePredictive = getNimbleModelOption('getDependenciesIncludesPredictiveNodes'),
                                predictiveOnly = FALSE, includeRHSonly = FALSE,
                                downstream = FALSE, immediateOnly = FALSE,
                                nodesAsChars = getNimbleModelOption("nodesAsChars"),

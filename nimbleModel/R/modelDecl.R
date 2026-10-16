@@ -102,7 +102,7 @@ modelDeclClass <- R6Class(
       if (!stoch) {
         return(NULL)
       }
-      types <- nimble:::distributions[[distributionName]]$types
+      types <- nimbleModel:::distributions[[distributionName]]$types
       if (is.null(types)) {
         return(NULL)
       }

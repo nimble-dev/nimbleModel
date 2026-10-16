@@ -497,12 +497,12 @@ test_that("`setupMargNodes` handling of missing/extra latents", {
     expect_identical(result$paramNodes[[1]]$toNodeChars(), c("mu"))
 
     # TODO: presumably rework how this option is handled in nimble 2.
-    nimble::nimbleOptions(includeUnneededLatents = TRUE)
+    nimbleModelOptions(includeUnneededLatents = TRUE)
     expect_message(result <- setupMargNodes(m, randomEffectsNodes = 'b'), "they are not needed for the provided")
     expect_identical(result$randomEffectsNodes[[1]]$toNodeChars(), c("b[1]", "b[2]", "b[3]"))
     expect_identical(result$paramNodes[[1]]$toNodeChars(), c("mu"))
     ## Note `b[3]` is not in `calcNodes` because `predictiveNodes` are excluded.
-    nimble::nimbleOptions(includeUnneededLatents = FALSE)
+    nimbleModelOptions(includeUnneededLatents = FALSE)
 })
 
 test_that("getConditionallyIndependentSets works with grouped data", {

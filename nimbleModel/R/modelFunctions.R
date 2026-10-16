@@ -219,7 +219,7 @@ taggedClass <- R6Class(
 getDependencies <- function(model, nodes, omit = NULL,
                             self = TRUE, determOnly = FALSE, stochOnly = FALSE,
                             includeData = TRUE, dataOnly = FALSE,
-                            includePredictive = nimble::getNimbleOption('getDependenciesIncludesPredictiveNodes'),
+                            includePredictive = getNimbleModelOption('getDependenciesIncludesPredictiveNodes'),
                             predictiveOnly = FALSE, includeRHSonly = FALSE,
                             downstream = FALSE, immediateOnly = FALSE,
                             nodesAsChars = getNimbleModelOption("nodesAsChars"),
@@ -722,7 +722,7 @@ setupMargNodes <- function(model, paramNodes, randomEffectsNodes, calcNodes,
       if (length(reCheck)) {
         errorNodes <- head(reCheck, n = 4)
         if (length(reCheck) > 4) moreText <- ", .." else moreText <- ""
-        extraMsg <- if (isTRUE(nimble::getNimbleOption("includeUnneededLatents"))) "" else "            They will be omitted, but one can force inclusion with\n            `nimbleOptions(includeUnneededLatents=TRUE)`.\n"
+        extraMsg <- if (isTRUE(getNimbleModelOption("includeUnneededLatents"))) "" else "            They will be omitted, but one can force inclusion with\n            `nimbleOptions(includeUnneededLatents=TRUE)`.\n"
         messageIfVerbose(
           "  [Warning] There are some `randomEffectsNodes` provided that look like\n",
           "            they are not needed for the provided (or default) `paramNodes`:\n",
@@ -731,7 +731,7 @@ setupMargNodes <- function(model, paramNodes, randomEffectsNodes, calcNodes,
           "            (potentially in the control list) for the algorithm or as\n",
           "            an argument to `setupMargNodes`."
         )
-        if (!isTRUE(nimble::getNimbleOption("includeUnneededLatents"))) {
+        if (!isTRUE(getNimbleModelOption("includeUnneededLatents"))) {
           randomEffectsNodes <- setdiff_nodes(randomEffectsNodes, reCheck)
         }
       }
