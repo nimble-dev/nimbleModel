@@ -163,11 +163,12 @@ messageIfVerbose <- function(...) {
 
 
 # Temporarily here as need for initial testing of processing.
+# Mis-named now as it also allows for nFunctions.
 is.rcf <- function(x, inputIsName = FALSE, where = -1) {
   if (inputIsName) {
     x <- get(x, pos = where)
   }
-  if (inherits(x, "nfMethodRC")) {
+  if (inherits(x, "nfMethodRC") || inherits(x, "nFunction")) {
     return(TRUE)
   }
   if (is.function(x)) {
@@ -184,12 +185,6 @@ is.rcf <- function(x, inputIsName = FALSE, where = -1) {
 nimbleUniqueID <- labelFunctionCreator("UID")
 nimbleModelID <- labelFunctionCreator("MID")
 
-
-# temporary, as we have some tests of use of `c()` in indexing
-nimC <- function(...) {
-  c(...)
-}
-
 evalNumeric <- function(expr) {
   if (length(expr) == 1) {
     return(expr)
@@ -202,3 +197,14 @@ evalNumeric <- function(expr) {
   }
   return(expr)
 }
+
+# Placeholders while we sort out packaging.
+
+nC <- function(...) {
+  c(...)
+}
+
+nMul <- function(x, y) {
+  x %*% y
+}  
+

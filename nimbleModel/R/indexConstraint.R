@@ -149,7 +149,7 @@ newIndexConstraint_fromSimple <- function(expr, slot, constants) {
       slot
     ))
   } else { # various other cases such as `x[2]`, `x[k+1]`, `x[c(2,3,5)]`, `x[c(2,3,k)]`.
-    if (expr[[1]] == "nimC") {
+    if (expr[[1]] == "nC") {
       expr[[1]] <- quote(c)
     }
     result <- eval(expr, envir = constants)
