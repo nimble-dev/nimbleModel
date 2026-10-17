@@ -35,10 +35,10 @@ modelDefClass <- R6Class(
 
       modelCode <<- codeProcessIfThenElse(code, constants, userEnv)
 
-      # Disable keyword name transformations until we determine what happens here vs in nimble2.
+      # Switch keyword name transformations as a test while we determine what happens here vs in nimble2.
       # We need to not use nimble anymore.
       #
-      # modelCode <<- nimble:::nf_changeNimKeywords(modelCode) # Formerly in `assignBUGScode`.
+      modelCode <<- nCompiler:::nf_changeKeywords(modelCode) # Formerly in `assignBUGScode`.
 
       # TODO: add this later.
       # setModelValuesClassName()
