@@ -1,7 +1,7 @@
 # This needs to be sourced after `nimbleFunction` is defined, so can't be done in `distributions_inputList.R`.
-calc_dmnormAltParams <- nimble::nimbleFunction(
+calc_dmnormAltParams <- nCompiler::nFunction(
   name = "calc_dmnormAltParams",
-  run = function(cholesky = double(2), prec_param = double(), return_prec = double()) {
+  fun = function(cholesky = double(2), prec_param = double(), return_prec = double()) {
     if (prec_param == return_prec) {
       ans <- t(cholesky) %*% cholesky
     } else {
@@ -16,9 +16,9 @@ calc_dmnormAltParams <- nimble::nimbleFunction(
   }
 )
 
-calc_dwishAltParams <- nimble::nimbleFunction(
+calc_dwishAltParams <- nCompiler::nFunction(
   name = "calc_dwishAltParams",
-  run = function(cholesky = double(2), scale_param = double(), return_scale = double()) {
+  fun = function(cholesky = double(2), scale_param = double(), return_scale = double()) {
     if (scale_param == return_scale) {
       ans <- t(cholesky) %*% cholesky
     } else {
@@ -32,3 +32,4 @@ calc_dwishAltParams <- nimble::nimbleFunction(
     return(ans)
   }
 )
+
