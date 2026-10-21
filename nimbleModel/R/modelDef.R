@@ -38,7 +38,7 @@ modelDefClass <- R6Class(
       # Switch keyword name transformations as a test while we determine what happens here vs in nimble2.
       # We need to not use nimble anymore.
       #
-      modelCode <<- nCompiler:::nf_changeKeywords(modelCode) # Formerly in `assignBUGScode`.
+      modelCode <<- nCompiler:::nf_changeKeywords(modelCode, nmKeywords) # Formerly in `assignBUGScode`.
 
       # TODO: add this later.
       # setModelValuesClassName()

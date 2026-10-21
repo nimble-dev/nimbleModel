@@ -29,7 +29,9 @@ copier_nClass <- nCompiler::nClass(
     exportName = "copier_nClass_new",
     needed_units = list("nCompiler:::nList(integerVector())"),
     packageNames = c(uncompiled = "copier_nClass_R", compiled = "copier_nClass"),
-    nClass_inherit = list("copier_nC_base")
+    nClass_inherit = list("copier_nC_base"),
+    depends = "nimbleModel",
+    Hincludes = "<nimbleModel/predef/copier_nC_base/copier_nC_base.h>"
   )
 )
 
@@ -92,6 +94,8 @@ multiCopier_nClass <- nCompiler::nClass(
     needed_units = list("nCompiler:::nList(copier_nClass())", "modelBase_nClass()"),
     packageNames = c(uncompiled = "multiCopier_nClass_R", compiled = "multiCopier_nClass"),
     nClass_inherit = list("multiCopier_model_nC_base"),
+    depends = "nimbleModel",
+    Hincludes = "<nimbleModel/predef/mCopy_nC_base/mCopy_model_nC_base.h>",
     opDefs = list(
       getOrSetValues = list(
         labelAbstractTypes = list(
@@ -179,7 +183,9 @@ multiCopierMV_nClass <- nCompiler::nClass(
     exportName = "multiCopierMV_nClass_new",
     needed_units = list("nCompiler:::nList(copier_nClass())", "modelValuesBase_nClass()"),
     packageNames = c(uncompiled = "multiCopierMV_nClass_R", compiled = "multiCopierMV_nClass"),
-    nClass_inherit = list("multiCopier_modelValues_nC_base")
+    nClass_inherit = list("multiCopier_modelValues_nC_base"),
+    depends = "nimbleModel",
+    Hincludes = "<nimbleModel/predef/mCopy_nC_base/mCopy_MV_nC_base.h>"
   )
 )
 

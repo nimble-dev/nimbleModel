@@ -1,3 +1,6 @@
+nmKeywords <- list(copy = "nmCopy"
+                  )
+
 # It's unclear what this should return since in nimble one gets a model object
 # but with nCompiler, we need a modelClass to compile and then we can create an instance.
 # If we create an instance as the output here, one can't then compile that with an algorithm via `nCompile`.

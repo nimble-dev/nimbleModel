@@ -89,6 +89,8 @@ modelValuesBase_nClass <- nCompiler::nClass(
     createFromR = FALSE,
     exportName = "modelValuesBase_nClass_new",
     packageNames = c(uncompiled = "modeValuesBase_nClass_R", compiled = "modelValuesBase_nClass"),
+    depends = "nimbleModel",
+    HpostCode = "#include <nimbleModel/predef/modelValuesClass_/modelValuesClass_.h>",
     overloadDefs = list(
       resize = list(
         labelAbstractTypes = list(

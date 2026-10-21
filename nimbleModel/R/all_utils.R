@@ -198,13 +198,10 @@ evalNumeric <- function(expr) {
   return(expr)
 }
 
-# Placeholders while we sort out packaging.
+#' @importFrom nCompiler nC
+#' @export
+nCompiler::nC
 
-nC <- function(...) {
-  c(...)
-}
-
-nMul <- function(x, y) {
-  x %*% y
-}  
-
+#' @importFrom nCompiler nMul
+#' @export
+nCompiler::nMul
