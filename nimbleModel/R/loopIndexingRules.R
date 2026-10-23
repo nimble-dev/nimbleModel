@@ -19,7 +19,7 @@ loopIndexingRuleClass <- R6Class(
                           constants = list(),
                           decl = NULL) {
       varName <<- getVarName(LHS)
-      decl <<- decl  
+      decl <<- decl
       if (length(context$indexVarNames)) {
         # Exclude indices not used in lifted expression, e.g., `i` in `y[i,j] ~ dnorm(mu[i], var = sigma2[j])`
         indexVarNames <- context$indexVarNames
@@ -100,7 +100,7 @@ loopIndexingRuleClass <- R6Class(
       }
       if (length(internalRule$indexRules)) {
         # This needs to be instantiated anew to avoid having multiple references to the internalRange indexRanges.
-        internalRange <- internalRule$apply(externalRule$getFromRange()) 
+        internalRange <- internalRule$apply(externalRule$getFromRange())
       } else {
         internalRange <- varRangeClass$new(list())
       }
@@ -115,25 +115,24 @@ loopIndexingRangeClass <- R6Class(
   portable = FALSE,
   inherit = varRangeClass,
   public = list(
-        initialize = function(indexInfo,
+    initialize = function(indexInfo,
                           rangeToIndexSlot = NULL,
                           varName = ".loop",
                           fromStochRule = NULL) {
-          super$initialize(indexInfo, rangeToIndexSlot, varName, fromStochRule)
-        },
-        toChar = function() {
-          dots <- sapply(indexRangeExprs, identical, quote(...))
-          if(all(dots))
-            return("nonseparable loop indexing")
-          text <- paste0("index ", seq_along(indexRangeExprs[!dots]), ": ")
-          text <- paste0(text, indexRangeExprs[!dots], collapse = ", ")
-          if(any(dots)) text <- paste0(text, ", plus nonseparable loop indexing")
-          return(text)
-        },
-        print = function() {
-          cat("looping with ", toChar(), ".\n", sep = "")
-        }
+      super$initialize(indexInfo, rangeToIndexSlot, varName, fromStochRule)
+    },
+    toChar = function() {
+      dots <- sapply(indexRangeExprs, identical, quote(...))
+      if (all(dots)) {
+        return("nonseparable loop indexing")
+      }
+      text <- paste0("index ", seq_along(indexRangeExprs[!dots]), ": ")
+      text <- paste0(text, indexRangeExprs[!dots], collapse = ", ")
+      if (any(dots)) text <- paste0(text, ", plus nonseparable loop indexing")
+      return(text)
+    },
+    print = function() {
+      cat("looping with ", toChar(), ".\n", sep = "")
+    }
   )
 )
-
-        

@@ -52,7 +52,7 @@ varStoreClass <- R6Class(
 # This is replaced in all_utils.R
 # The only difference is that uses integer(0) as a default
 # for scalarize = TRUE.
-# 
+#
 # # FIXME: remove when we pull this in from current nimble
 # dimOrLength <- function(obj, scalarize = FALSE) {
 #   if (scalarize) {

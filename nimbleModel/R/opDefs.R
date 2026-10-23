@@ -2,7 +2,7 @@ nimbleModel_error_LAT <- function(code, symTab, auxEnv, info) {
   # LATenv <- nCompiler:::labelAbstractTypesEnv
   stop(exprClassProcessingErrorMsg(
     code,
-    'resize is not supported for the given argument type.'
+    "resize is not supported for the given argument type."
   ), call. = FALSE)
   stop("resize is not supported for the given argument type.")
 }

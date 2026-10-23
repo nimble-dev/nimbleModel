@@ -32,4 +32,3 @@ calc_dwishAltParams <- nCompiler::nFunction(
     return(ans)
   }
 )
-
