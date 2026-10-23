@@ -1,7 +1,7 @@
-list(saved_at = structure(1791315387.89179, class = c("POSIXct", 
+list(saved_at = structure(1792534353.3121, class = c("POSIXct", 
 "POSIXt")), packet_name = "modelBase_nClass", elements = c("preamble", 
-"cppContent", "hContent", "filebase", "post_cpp_compiler", "copyFiles"
-), files = list(preamble = "modelBase_nClass_preamble.cpp", cppContent = "modelBase_nClass_cppContent.cpp", 
-    hContent = "modelBase_nClass_hContent.h", filebase = "modelBase_nClass_filebase.txt", 
-    post_cpp_compiler = "modelBase_nClass_post_cpp_compiler.txt", 
-    copyFiles = "modelBase_nClass_copyFiles.txt"))
+"cppContent", "hContent", "filebase", "post_cpp_compiler", "copyFiles", 
+"depends"), files = list(preamble = "modelBase_nClass_preamble.cpp", 
+    cppContent = "modelBase_nClass_cppContent.cpp", hContent = "modelBase_nClass_hContent.h", 
+    filebase = "modelBase_nClass_filebase.txt", post_cpp_compiler = "modelBase_nClass_post_cpp_compiler.txt", 
+    copyFiles = "modelBase_nClass_copyFiles.txt", depends = "modelBase_nClass_depends.txt"))

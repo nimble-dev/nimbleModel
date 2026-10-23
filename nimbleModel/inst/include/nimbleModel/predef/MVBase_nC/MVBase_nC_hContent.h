@@ -26,6 +26,6 @@ public:
 
     Rcpp::Environment  get_CnClass_env_MVBase_nC (  )  ;
 
-#include <nimbleModel/predef/modelValuesClass_/modelValuesClass_.h>
 
+#include <nimbleModel/predef/modelValuesClass_/modelValuesClass_.h>
 #endif

@@ -999,6 +999,8 @@ declFunBase_nClass <- nClass(
     exportName = "declFunBase_nClass_new",
     interfaceExclude = "getParam_cpp",
     needed_units = list("instr_nClass"),
-    packageNames = c(uncompiled = "declFunBase_nClass_R", compiled = "declFunBase_nClass")
+    packageNames = c(uncompiled = "declFunBase_nClass_R", compiled = "declFunBase_nClass"),
+    depends = "nimbleModel",
+    HpostCode = "#include <nimbleModel/predef/declFunClass_/declFunClass_.h>"
   )
 )

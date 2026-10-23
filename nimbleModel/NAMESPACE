@@ -3,6 +3,11 @@ import(R6)
 import(nCompiler)
 ## Some exports are for testing convenience and may not need to be exported.
 
+importFrom(nCompiler, nC)
+export(nC)
+importFrom(nCompiler, nMul)
+export(nMul)
+
 ## Classes: R6 classes are exported as regular objects
 export(copier_nClass)
 export(multiCopier_nClass)

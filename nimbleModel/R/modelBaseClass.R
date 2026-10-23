@@ -395,7 +395,7 @@ modelBase_nClass <- nClass(
     getDependencies = function(nodes, omit = NULL, self = TRUE,
                                determOnly = FALSE, stochOnly = FALSE,
                                includeData = TRUE, dataOnly = FALSE,
-                               includePredictive = nimble::getNimbleOption('getDependenciesIncludesPredictiveNodes'),
+                               includePredictive = getNimbleModelOption('getDependenciesIncludesPredictiveNodes'),
                                predictiveOnly = FALSE, includeRHSonly = FALSE,
                                downstream = FALSE, immediateOnly = FALSE,
                                nodesAsChars = getNimbleModelOption("nodesAsChars"),
@@ -743,7 +743,9 @@ modelBase_nClass <- nClass(
     Hincludes = c('"declFunBase_nClass_c_.h"', '"instr_nClass_c_.h"'),
     needed_units = list("declFunBase_nClass", "instr_nClass", "nList(instr_nClass)"),
     exportName = "modelBase_nClass_new",
-    packageNames = c(uncompiled = "modelBase_nClass_R", compiled = "modelBase_nClass")
+    packageNames = c(uncompiled = "modelBase_nClass_R", compiled = "modelBase_nClass"),
+    depends = "nimbleModel",
+    HpostCode = "#include <nimbleModel/predef/modelClass_/modelClass_.h>"
   )
 )
 

@@ -7,9 +7,9 @@
 #endif
 #include <Rinternals.h>
 #include "modelBase_nClass_c_.h"
-#include "declFunBase_nClass_c_.h"
-#include "instr_nClass_c_.h"
 #include "nList_instr_nClass_c_.h"
+#include "instr_nClass_c_.h"
+#include "declFunBase_nClass_c_.h"
 
 class modelBase_nClass : public interface_resolver< genericInterfaceC<modelBase_nClass> >, public loadedObjectHookC<modelBase_nClass> {
 public:
@@ -32,6 +32,6 @@ public:
 
     Rcpp::Environment  get_CnClass_env_modelBase_nClass (  )  ;
 
-#include <nimbleModel/predef/modelClass_/modelClass_.h>
 
+#include <nimbleModel/predef/modelClass_/modelClass_.h>
 #endif
