@@ -21,7 +21,9 @@ test_that("basic modelValues class works", {
   expect_equal(obj$get_sizeList(), sizes)
   obj$resize(3)
   default_mu3 <- rep(list(numeric(2)), 3)
-  default_cov3 <- matrix(0, nrow = 3, ncol = 4) |> list() |> rep(3)
+  default_cov3 <- matrix(0, nrow = 3, ncol = 4) |>
+    list() |>
+    rep(3)
   expect_equal(obj$mu |> as.list(), default_mu3)
   expect_equal(obj$cov |> as.list(), default_cov3)
 
@@ -58,22 +60,22 @@ test_that("basic modelValues class works", {
   list_exp2 <- list(mu = test_muList[1:2], cov = default_cov3[1:2])
   list_exp2_stacked <- lapply(list_exp2, simplify2array)
   # list_exp2 <- list_exp2[sort(names(list_exp2))]
-  expect_equal(as.list(obj, stack=FALSE), list_exp2)
+  expect_equal(as.list(obj, stack = FALSE), list_exp2)
   expect_equal(as.list(obj, iterationAsLastIndex = TRUE), list_exp2_stacked)
   length(obj) <- 3
   list_exp3 <- list(mu = c(list_exp2$mu, default_mu3[3]), cov = c(list_exp2$cov, default_cov3[3]))
   list_exp3_stacked <- lapply(list_exp3, simplify2array)
-  #list_exp3 <- list_exp3[sort(names(list_exp3))]
-  expect_equal(as.list(obj, stack=FALSE), list_exp3)
+  # list_exp3 <- list_exp3[sort(names(list_exp3))]
+  expect_equal(as.list(obj, stack = FALSE), list_exp3)
   expect_equal(as.list(obj, iterationAsLastIndex = TRUE), list_exp3_stacked)
 
   # Change length using `resize`, checking for preserved values.
   resize(obj, 2)
   expect_equal(getsize(obj), 2)
   expect_equal(obj$getSize(), 2)
-  expect_equal(as.list(obj, stack=FALSE), list_exp2)
+  expect_equal(as.list(obj, stack = FALSE), list_exp2)
   resize(obj, 3)
-  expect_equal(as.list(obj, stack=FALSE), list_exp3)
+  expect_equal(as.list(obj, stack = FALSE), list_exp3)
   expect_equal(obj$getSize(), 3)
 
   # Test compiling as a type
@@ -84,7 +86,7 @@ test_that("basic modelValues class works", {
     Cpublic = list(
       mv = "nimbleModel:::modelValuesBase_nClass()",
       check1 = nCompiler::nFunction(
-        function(m = 'integerScalar') {
+        function(m = "integerScalar") {
           resize(mv, m)
         }
       ),
@@ -108,7 +110,9 @@ test_that("basic modelValues class works", {
   expect_equal(obj$get_sizeList(), sizes)
   obj$resize(3)
   default_mu3 <- rep(list(numeric(2)), 3)
-  default_cov3 <- matrix(0, nrow = 3, ncol = 4) |> list() |> rep(3)
+  default_cov3 <- matrix(0, nrow = 3, ncol = 4) |>
+    list() |>
+    rep(3)
   expect_equal(obj$mu |> as.list(), default_mu3)
   expect_equal(obj$cov |> as.list(), default_cov3)
 
@@ -141,20 +145,20 @@ test_that("basic modelValues class works", {
   list_exp2 <- list(mu = test_muList[1:2], cov = default_cov3[1:2])
   list_exp2_stacked <- lapply(list_exp2, simplify2array)
   # list_exp2 <- list_exp2[sort(names(list_exp2))]
-  expect_equal(as.list(obj, stack=FALSE), list_exp2)
+  expect_equal(as.list(obj, stack = FALSE), list_exp2)
   expect_equal(as.list(obj, iterationAsLastIndex = TRUE), list_exp2_stacked)
   length(obj) <- 3
   list_exp3 <- list(mu = c(list_exp2$mu, default_mu3[3]), cov = c(list_exp2$cov, default_cov3[3]))
-  #list_exp3 <- list_exp3[sort(names(list_exp3))]
-  expect_equal(as.list(obj, stack=FALSE), list_exp3)
+  # list_exp3 <- list_exp3[sort(names(list_exp3))]
+  expect_equal(as.list(obj, stack = FALSE), list_exp3)
 
   # Change length using `resize`, checking for preserved values.
   resize(obj, 2)
   expect_equal(getsize(obj), 2)
   expect_equal(obj$getSize(), 2)
-  expect_equal(as.list(obj, stack=FALSE), list_exp2)
+  expect_equal(as.list(obj, stack = FALSE), list_exp2)
   resize(obj, 3)
-  expect_equal(as.list(obj, stack=FALSE), list_exp3)
+  expect_equal(as.list(obj, stack = FALSE), list_exp3)
   expect_equal(obj$getSize(), 3)
 
   # Accessed by base class pointer as a member of another class
@@ -203,20 +207,20 @@ test_that("basic modelValues class works", {
   length(obj) <- 2
   expect_equal(length(obj), 2)
   list_exp2 <- list(mu = test_muList[1:2], cov = default_cov3[1:2])
-  #list_exp2 <- list_exp2[sort(names(list_exp2))]
-  expect_equal(as.list(obj, stack=FALSE), list_exp2)
+  # list_exp2 <- list_exp2[sort(names(list_exp2))]
+  expect_equal(as.list(obj, stack = FALSE), list_exp2)
   length(obj) <- 3
   list_exp3 <- list(mu = c(list_exp2$mu, default_mu3[3]), cov = c(list_exp2$cov, default_cov3[3]))
   # list_exp3 <- list_exp3[sort(names(list_exp3))]
-  expect_equal(as.list(obj, stack=FALSE), list_exp3)
+  expect_equal(as.list(obj, stack = FALSE), list_exp3)
 
   # Change length using `resize`, checking for preserved values.
   resize(obj, 2)
   expect_equal(getsize(obj), 2)
   expect_equal(obj$getSize(), 2)
-  expect_equal(as.list(obj, stack=FALSE), list_exp2)
+  expect_equal(as.list(obj, stack = FALSE), list_exp2)
   resize(obj, 3)
-  expect_equal(as.list(obj, stack=FALSE), list_exp3)
+  expect_equal(as.list(obj, stack = FALSE), list_exp3)
   expect_equal(obj$getSize(), 3)
 
   # Change length using compiled `resize`, check with compiled getsize, checking for preserved values.
@@ -224,9 +228,9 @@ test_that("basic modelValues class works", {
   expect_equal(getsize(obj), 2)
   expect_equal(obj$getSize(), 2)
   expect_equal(mvh$check2(), 2)
-  expect_equal(as.list(obj, stack=FALSE), list_exp2)
+  expect_equal(as.list(obj, stack = FALSE), list_exp2)
   mvh$check1(3)
-  expect_equal(as.list(obj, stack=FALSE), list_exp3)
+  expect_equal(as.list(obj, stack = FALSE), list_exp3)
   expect_equal(obj$getSize(), 3)
   expect_equal(mvh$check2(), 3)
 
@@ -237,7 +241,8 @@ test_that("basic modelValues class works", {
   expect_equal(obj_restored[["mu"]][[2]], c(3, 4))
   expect_equal(obj_restored$get_sizeList()$cov, c(3, 4))
 
-  rm(obj, mvh, obj_restored); gc()
+  rm(obj, mvh, obj_restored)
+  gc()
 })
 
 test_that("modelValues hashedID works and is invariant to equivalent cases", {
@@ -291,7 +296,7 @@ test_that("modelValues nClassBuilder types work in nCompiler", {
   )
 
   # example
-  #nCompiler:::type2symbol("nCompiler:::nList('integerScalar()')") |>
+  # nCompiler:::type2symbol("nCompiler:::nList('integerScalar()')") |>
   #  nCompiler:::resolveOneTBDsymbol()
 
   sym <- nCompiler:::type2symbol("nimbleModel:::modelValues(varInfo)") |>
@@ -329,14 +334,14 @@ test_that("modelValues nClassBuilder types work in nCompiler", {
   expect_equal(obj$mv$get_sizeList(), sizes_alt)
 
   obj$mv$resize(3)
-  expect_equal(obj$mv$cov |> as.list(), rep( list(matrix(0, nrow = 2, ncol = 1)), 3))
-  expect_equal(nCompiler::value(obj$mv, "cov") |> as.list(), rep( list(matrix(0, nrow = 2, ncol = 1)), 3))
+  expect_equal(obj$mv$cov |> as.list(), rep(list(matrix(0, nrow = 2, ncol = 1)), 3))
+  expect_equal(nCompiler::value(obj$mv, "cov") |> as.list(), rep(list(matrix(0, nrow = 2, ncol = 1)), 3))
   expect_equal(obj$mv$getLength(), 3)
   expect_equal(obj$mvBase$getLength(), 3)
 
   obj$mvBase$resize(4)
-  expect_equal(obj$mv$cov |> as.list(), rep( list(matrix(0, nrow = 2, ncol = 1)), 4))
-  expect_equal(nCompiler::value(obj$mv, "cov") |> as.list(), rep( list(matrix(0, nrow = 2, ncol = 1)), 4))
+  expect_equal(obj$mv$cov |> as.list(), rep(list(matrix(0, nrow = 2, ncol = 1)), 4))
+  expect_equal(nCompiler::value(obj$mv, "cov") |> as.list(), rep(list(matrix(0, nrow = 2, ncol = 1)), 4))
   expect_equal(obj$mv$getLength(), 4)
   expect_equal(obj$mvBase$getLength(), 4)
 
@@ -354,7 +359,7 @@ test_that("modelValues nClassBuilder types work in nCompiler", {
 
   expect_true(obj$mv$isCompiled())
   expect_false(obj_unc$isCompiled())
-  mu_exp <- rep(list(c(0,0,0)), 5)
+  mu_exp <- rep(list(c(0, 0, 0)), 5)
   mu_exp[[3]] <- 1:3
   expect_equal(obj_unc$mu |> as.list(), mu_exp)
   expect_equal(obj$mv$mu |> as.list(), mu_exp)
@@ -378,30 +383,38 @@ test_that("modelValues nClassBuilder types work in nCompiler", {
   # and they will point at the same thing again.
   obj$mvBase <- obj$mv
   expect_equal(obj$mvBase$getLength(), 2)
-  rm(obj); gc()
+  rm(obj)
+  gc()
 })
 
 test_that("modelValuesConf works", {
-  mvc <- modelValuesConf(vars = c('d1'),
-                         types = c('double'),
-                         sizes = list( d1 = 5 ))
+  mvc <- modelValuesConf(
+    vars = c("d1"),
+    types = c("double"),
+    sizes = list(d1 = 5)
+  )
   mv <- mvc(2)
   expect_equal(length(mv), 2)
   expect_equal(mv["d1", 1], rep(0, 5))
-  mvcB <- modelValuesConf(vars = c('d1'),
-                          types = c('double'),
-                          sizes = list( d1 = 5 ))
+  mvcB <- modelValuesConf(
+    vars = c("d1"),
+    types = c("double"),
+    sizes = list(d1 = 5)
+  )
   mvB <- mvcB(2)
   # two versions that should be identical end up so.
   expect_identical(class(mv), class(mvB))
 
-  mvc <- modelValuesConf(vars = c('d1', 'd2', 'd3'),
-                         types = c('double', 'double', 'double'),
-                         sizes = list( d1 = 5, d2 = c(3, 5), d3 = c(3, 5, 7)))
+  mvc <- modelValuesConf(
+    vars = c("d1", "d2", "d3"),
+    types = c("double", "double", "double"),
+    sizes = list(d1 = 5, d2 = c(3, 5), d3 = c(3, 5, 7))
+  )
   mv <- mvc(3)
   expect_identical(mv["d2", 2], matrix(0, nrow = 3, ncol = 5))
   expect_identical(mv["d3", 3], array(0, dim = c(3, 5, 7)))
-  rm(mv); gc()
+  rm(mv)
+  gc()
 })
 
 test_that("as.matrix(modelValues) and matrix2MV work", {
@@ -488,5 +501,6 @@ test_that("as.matrix(modelValues) and matrix2MV work", {
   expect_equal(Cmat, CbaseObj2 |> as.matrix())
   expect_equal(CbaseObj$mu |> as.list(), CbaseObj2$mu |> as.list())
 
-  rm(Cobj, Cobj2, Cjunk, CbaseObj, CbaseObj2, Cobj_temp); gc()
+  rm(Cobj, Cobj2, Cjunk, CbaseObj, CbaseObj2, Cobj_temp)
+  gc()
 })

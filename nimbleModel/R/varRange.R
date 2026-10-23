@@ -66,7 +66,7 @@ varRangeClass <- R6Class(
           if (any(unlist(lapply(indexRanges, function(x) inherits(x, "indexRangeMatrixClass"))))) {
             indexRangeExprs <<- lapply(indexRanges, function(x) x$toExpr())
           }
-            
+
           rangeToIndexSlot <<- as.list(seq_along(indexRanges))
         }
         if (is.null(varName)) {
@@ -175,7 +175,6 @@ varRangeClass <- R6Class(
       }
       return(result)
     },
-
     isNone = function() { # No indexing case.
       return(!length(indexRanges))
     },
@@ -332,22 +331,24 @@ varRangeClass <- R6Class(
 )
 
 order_by_column <- function(mat) {
-  ord <- do.call(order, lapply(seq_len(ncol(mat)), \(i) mat[,i]))
-  mat[ord,]
+  ord <- do.call(order, lapply(seq_len(ncol(mat)), \(i) mat[, i]))
+  mat[ord, ]
 }
 
 varRange_isEqual <- function(vr1, vr2) {
-  if(!length(vr1$indexSlotToRange) && !length(vr2$indexSlotToRange) &&
-       vr1$varName == vr2$varName)
+  if (!length(vr1$indexSlotToRange) && !length(vr2$indexSlotToRange) &&
+    vr1$varName == vr2$varName) {
     return(TRUE)
-  if(identical(length(vr1$indexSlotToRange), length(vr2$indexSlotToRange))) {
+  }
+  if (identical(length(vr1$indexSlotToRange), length(vr2$indexSlotToRange))) {
     ir1 <- vr1$extractIndexRange()
     ir2 <- vr2$extractIndexRange()
-    if(identical(ir1$numColumns, ir2$numColumns) && identical(ir1$numElements, ir2$numElements)) {
+    if (identical(ir1$numColumns, ir2$numColumns) && identical(ir1$numElements, ir2$numElements)) {
       inds1 <- ir1$values
       inds2 <- ir2$values
-      if(ir1$numColumns == 1) 
-        return(identical(sort(inds1),sort(inds2)))
+      if (ir1$numColumns == 1) {
+        return(identical(sort(inds1), sort(inds2)))
+      }
       return(identical(order_by_column(inds1), order_by_column(inds2)))
     }
   }

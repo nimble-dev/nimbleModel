@@ -5,12 +5,12 @@
 # multiCopier_nClass holds multiple copier_nClass's and does values() copying (for a model only).
 # It has a C++ layer that uses the flatViewGroup class to do the copying.
 #
-# multiCopierMV_nClass is like multiCopier_nClass but for modelValues objects, 
-# but is used only for nimCopy. 
+# multiCopierMV_nClass is like multiCopier_nClass but for modelValues objects,
+# but is used only for nimCopy.
 #
-# multiCopier_nClass and multiCopierMV_nClass share a C++ base class. 
+# multiCopier_nClass and multiCopierMV_nClass share a C++ base class.
 # The C++ step of nimCopy_ takes two multiCopier base classes and copies from one to the other.
-# 
+#
 # An important aspect on the C++ side is avoiding repeated name-based lookups of variables
 # within the model or modelValues.
 

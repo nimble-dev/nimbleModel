@@ -253,22 +253,25 @@ traverseGraph <- function(streamRules, declRules,
 
   if (inherits(nodes, "varRangeClass")) nodes <- list(nodes) # We use `lapply` on 'nodes' later.
 
-  if(!is.null(omit))
+  if (!is.null(omit)) {
     omit <- model$getNodes(omit, nodesAsChars = FALSE)
-  
+  }
+
   results <- traverseGraphRecurse(streamRules, nodes, omit, down, follow, immediateOnly, model)
 
-  results <- model$getNodes(results, determOnly = determOnly, stochOnly = stochOnly,
-                            includeData = includeData, dataOnly = dataOnly,
-                            includePredictive = includePredictive, predictiveOnly = predictiveOnly,
-                            includeRHSonly = includeRHSonly, nodesAsChars = FALSE)
+  results <- model$getNodes(results,
+    determOnly = determOnly, stochOnly = stochOnly,
+    includeData = includeData, dataOnly = dataOnly,
+    includePredictive = includePredictive, predictiveOnly = predictiveOnly,
+    includeRHSonly = includeRHSonly, nodesAsChars = FALSE
+  )
 
   if (self) {
     results <- aggregate_nodes(c(model$getNodes(nodes, nodesAsChars = FALSE), results))
   } else {
     results <- setdiff_nodes(aggregate_nodes(results), model$getNodes(nodes, nodesAsChars = FALSE))
   }
-  
+
   if (!length(results)) {
     return(NULL)
   }
@@ -283,15 +286,15 @@ traverseGraph <- function(streamRules, declRules,
       calcRange <- flatten(lapply(model$modelDef$calcRules[[getVarName(node)]]$rules, function(rule) {
         rule$makeCalcRange(rule$apply(node))
       }))
-      if(length(calcRange) > 1) stop("unexpected multiple calcRange results from single nodeRange")
-      if(length(calcRange) == 1) calcRange <- calcRange[[1]]
+      if (length(calcRange) > 1) stop("unexpected multiple calcRange results from single nodeRange")
+      if (length(calcRange) == 1) calcRange <- calcRange[[1]]
       return(calcRange)
     })
     if (length(nodeChars) != length(calcRanges)) {
       stop("unexpected mismatch between node character representation and calcRanges in `getNodes` sorting")
     }
     ord <- order(sapply(calcRanges, \(x) {
-      if(inherits(x,'calcRangeClass')) {
+      if (inherits(x, "calcRangeClass")) {
         return(x$sortID)
       } else {
         return(-Inf) # This handles RHSonly.
@@ -304,7 +307,7 @@ traverseGraph <- function(streamRules, declRules,
     names(results) <- NULL
   } else {
     if (nodesAsChars) {
-      if(returnScalarComponents) {
+      if (returnScalarComponents) {
         return(unlist(lapply(results, \(x) x$toVarChars(expandScalars = TRUE))))
       } else {
         return(unlist(lapply(results, \(x) x$toNodeChars())))
@@ -320,7 +323,7 @@ traverseGraph <- function(streamRules, declRules,
 
 traverseGraphRecurse <- function(rules, nodes, omit = NULL, down, follow = FALSE, immediateOnly = FALSE, model = NULL, firstPass = TRUE) {
   results <- flatten(lapply(nodes, function(node) applyRules(rules, node)))
-  if(!is.null(omit)) {
+  if (!is.null(omit)) {
     results <- model$getNodes(results, nodesAsChars = FALSE)
     results <- setdiff_nodes(results, omit)
     ## We presumably don't need to convert back to varRange(s) since the nodeRange has all that information.
@@ -334,13 +337,13 @@ traverseGraphRecurse <- function(rules, nodes, omit = NULL, down, follow = FALSE
   if (!down && !firstPass && !follow) {
     # For upward traversal, check current rule to see if continue upwards, but always go up on first pass.
     # (Because we need to determine stochasticity of the next rule up, not stochasticity of starting rule.
-    stoch <- sapply(results, function(x) if(inherits(x, 'nodeRangeClass')) x$decl$stoch else x$fromStochRule)
+    stoch <- sapply(results, function(x) if (inherits(x, "nodeRangeClass")) x$decl$stoch else x$fromStochRule)
     results <- results[!stoch] # Stop here if upwards involves stochastic rule, excluding the upwards result.
   }
   propagators <- results
   if (!follow && down) {
     # For downward traversal, stop propagating at stochastic cases, but results included.
-    stoch <- sapply(propagators, function(x) if(inherits(x, 'nodeRangeClass')) x$decl$stoch else x$fromStochRule)
+    stoch <- sapply(propagators, function(x) if (inherits(x, "nodeRangeClass")) x$decl$stoch else x$fromStochRule)
     propagators <- propagators[!stoch]
   }
   # Continue traversing.

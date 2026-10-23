@@ -1028,7 +1028,6 @@ modelDefClass <- R6Class(
 )
 
 
-
 # Evaluates `if` statements in model code to generate actual model code
 # without any `if` statements. Condition of if statement can use variables
 # from the user's environment or from constants.

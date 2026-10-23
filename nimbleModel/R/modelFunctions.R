@@ -87,8 +87,9 @@ getNodes <- function(model, nodes,
     }
   }
 
-  if(.aggregate)
+  if (.aggregate) {
     result <- aggregate_nodes(result)
+  }
 
   if (.sort) {
     # Ordering is only relevant at calcRange stage and a single nodeRange can contain
@@ -162,7 +163,8 @@ expandNodeNames <- function(model, nodes, returnScalarComponents = FALSE,
   result <- getNodes(model, nodes,
     includeRHSonly = TRUE, nodesAsChars = TRUE,
     returnScalarComponents = returnScalarComponents,
-    .sort = sort, .aggregate = unique)
+    .sort = sort, .aggregate = unique
+  )
   return(result)
 }
 
@@ -219,7 +221,7 @@ taggedClass <- R6Class(
 getDependencies <- function(model, nodes, omit = NULL,
                             self = TRUE, determOnly = FALSE, stochOnly = FALSE,
                             includeData = TRUE, dataOnly = FALSE,
-                            includePredictive = getNimbleModelOption('getDependenciesIncludesPredictiveNodes'),
+                            includePredictive = getNimbleModelOption("getDependenciesIncludesPredictiveNodes"),
                             predictiveOnly = FALSE, includeRHSonly = FALSE,
                             downstream = FALSE, immediateOnly = FALSE,
                             nodesAsChars = getNimbleModelOption("nodesAsChars"),
@@ -255,7 +257,6 @@ getParents <- function(model, nodes, omit = NULL,
 }
 
 
-
 # This may not optimally aggregate in cases without contiguity - e.g., 2:4 + 6:8 will become a matrix, even though
 # it may be more efficient to leave it as two nodeRanges.
 #' @export
@@ -276,13 +277,15 @@ aggregate_nodes <- function(nodeSet) {
   names(nodeSet) <- declIDs
   nodeIDs <- lapply(nodeSet, \(x) x$getIDs())
   IDsByDecl <- lapply(split(nodeIDs, declIDs), \(x) unique(nimbleModel:::flatten(x)))
-  IDsByDecl <- IDsByDecl[unique(declIDs)]  # Try to keep in order provided.
+  IDsByDecl <- IDsByDecl[unique(declIDs)] # Try to keep in order provided.
   nms <- names(IDsByDecl)
   newNodeSet <- lapply(seq_along(IDsByDecl), \(i) {
-    if(sum(nms[i] == declIDs) > 1) {
+    if (sum(nms[i] == declIDs) > 1) {
       whichDecl <- match(nms[i], declIDs)
       return(nodeSet[[whichDecl]]$decl$declRule$getNodesFromIDs(IDsByDecl[[i]]))
-    } else return(nodeSet[[nms[i]]])
+    } else {
+      return(nodeSet[[nms[i]]])
+    }
   })
   return(c(newNodeSet, RHSonly))
 }
@@ -421,19 +424,19 @@ getConditionallyIndependentSets <- function(model, nodes, givenNodes, omit = NUL
   if (unknownAsGiven) {
     givenNodes <- c(givenNodes, unknownNodes)
   } # else nodes <- c(nodes, unknownNodes)
-  
+
   stochDecl <- sapply(model$modelDef$declInfo, \(declInfo) declInfo$stoch)
   touched <- lapply(model$modelDef$declInfo[stochDecl], \(declInfo) taggedClass$new(declInfo$declRule))
   names(touched) <- sapply(model$modelDef$declInfo[stochDecl], \(declInfo) declInfo$declRule$ID)
 
-  if(!is.null(omit)) {
+  if (!is.null(omit)) {
     omit <- model$getNodes(omit, nodesAsChars = FALSE)
     givenNodes <- setdiff_nodes(givenNodes, omit)
     nodes <- setdiff_nodes(nodes, omit)
     tmp <- sapply(omit, \(node) touched[[node$decl$declRule$ID]]$tag(node$getIDs()))
   }
 
-  
+
   given <- lapply(model$modelDef$declInfo[stochDecl], \(declInfo) taggedClass$new(declInfo$declRule))
   names(given) <- names(touched)
   tmp <- sapply(givenNodes, \(node) given[[node$decl$declRule$ID]]$tag(node$getIDs()))
@@ -935,8 +938,9 @@ setupMargNodes <- function(model, paramNodes, randomEffectsNodes, calcNodes,
       } else if (is.numeric(split)) {
         # TODO: reconsider this - it relies on user knowing what the `randomEffectsNodes` will be
         # even if the user provides them as character strings instead of a list of nodeRanges.
-        if(length(randomEffectsNodes) != length(split)) 
+        if (length(randomEffectsNodes) != length(split)) {
           stop("when providing numeric vector for `split`, its length must match that of the `randomEffectsNodes`. This will usually mean that `randomEffectsNodes` should be provided by the user as a list of nodeRanges.")
+        }
         reSets <- split(randomEffectsNodes, split)
       } else {
         stop("setupMargNodes: Invalid value for `split`")

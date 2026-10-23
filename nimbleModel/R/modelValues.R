@@ -98,7 +98,7 @@ modelValuesBase_nClass <- nCompiler::nClass(
           recurse = TRUE,
           returnType = "void()"
         ),
-        eigenImpl = list(handler = 'PtrMethod', methodName = "resize")
+        eigenImpl = list(handler = "PtrMethod", methodName = "resize")
       ),
       getsize = list(
         labelAbstractTypes = list(
@@ -106,7 +106,7 @@ modelValuesBase_nClass <- nCompiler::nClass(
           recurse = TRUE,
           returnType = "integerScalar()"
         ),
-        eigenImpl = list(handler = 'PtrMethod', methodName = "getLength")
+        eigenImpl = list(handler = "PtrMethod", methodName = "getLength")
       )
       # In a future it could be nice to support `[` and `[[` by overloaded opDefs.
       # However at the moment we are targeting nimble2 support and will achieve that
@@ -116,21 +116,21 @@ modelValuesBase_nClass <- nCompiler::nClass(
 )
 
 modelValues_resize <- function(self, m, sizeList, v) {
-#  for (v in names(sizeList)) {
-    this_sizeList <- sizeList[[v]]
-    # This next check is an uncompiled safety fallback.
-    # However, the sizeList entry for a scalar should be length 1, not empty.
-    if (length(this_sizeList) == 0) this_sizeList <- 1
-    old_m <- length(self[[v]])
-    length(self[[v]]) <- m # This invokes nList resizing.
-    if(m > old_m) {
-      if (length(this_sizeList) == 1) {
-        for (i in (old_m+1):m) self[[v]][[i]] <- numeric(length = this_sizeList)
-      } else {
-        for (i in (old_m+1):m) self[[v]][[i]] <- array(0, dim = this_sizeList)
-      }
+  #  for (v in names(sizeList)) {
+  this_sizeList <- sizeList[[v]]
+  # This next check is an uncompiled safety fallback.
+  # However, the sizeList entry for a scalar should be length 1, not empty.
+  if (length(this_sizeList) == 0) this_sizeList <- 1
+  old_m <- length(self[[v]])
+  length(self[[v]]) <- m # This invokes nList resizing.
+  if (m > old_m) {
+    if (length(this_sizeList) == 1) {
+      for (i in (old_m + 1):m) self[[v]][[i]] <- numeric(length = this_sizeList)
+    } else {
+      for (i in (old_m + 1):m) self[[v]][[i]] <- array(0, dim = this_sizeList)
     }
-#  }
+  }
+  #  }
 }
 
 make_modelValues_nClass <- function(varInfo,
@@ -188,7 +188,8 @@ make_modelValues_nClass <- function(varInfo,
     lapply(\(x) {
       substitute(
         modelValues_resize(self, m, dot_sizeList, v = V),
-        list(V = x$name))
+        list(V = x$name)
+      )
     })
   r_resize_body <- as.call(c(as.name("{"), r_resize_lines, list(quote(self$dot_current_nRow <- m))))
   r_resize_fun <- function(m) {}
@@ -301,7 +302,7 @@ modelValues <- function(varInfo, .ID = FALSE, env = parent.frame(), ...) {
   # But even for legacy mode, when called from modelValueConf, we want to use non-legacy case,
   # so legacy_nimble=FALSE over-rides and gives non-legacy behavior.
   legacy_nimble <- legacy_nimble && !isFALSE(dotsArgs$legacy_nimble)
-  if(!legacy_nimble) {
+  if (!legacy_nimble) {
     if (inherits(varInfo, "modelBase_nClass")) {
       varInfo <- get_varInfo_from_nimbleModel(varInfo$modelDef)
     } else if (inherits(varInfo, "modelDefClass")) {
@@ -318,19 +319,18 @@ modelValues <- function(varInfo, .ID = FALSE, env = parent.frame(), ...) {
   # legacy nimble from here down.
   # call could be for prototype modelValues(conf, m), so check for named args in ...
   # or grab ordered args from varInfo and .ID
-  if("conf" %in% names(dotsArgs)) {
+  if ("conf" %in% names(dotsArgs)) {
     conf <- dotsArgs$conf
     confNamed <- TRUE
   } else {
     conf <- varInfo
     confNamed <- FALSE
   }
-  if("m" %in% names(dotsArgs)) {
+  if ("m" %in% names(dotsArgs)) {
     m <- dotsArgs$m
   } else {
-    m <- if(confNamed) varInfo else .ID
+    m <- if (confNamed) varInfo else .ID
   }
-
 }
 class(modelValues) <- c("function", "nClassBuilder")
 
@@ -352,20 +352,22 @@ class(modelValues) <- c("function", "nClassBuilder")
 #' See the \href{https://r-nimble.org/manual/cha-welcome-nimble.html}{User Manual} or \code{help(modelValuesBaseClass)} and \code{help(modelValues)} for information
 #'
 #' @examples
-#'	#Custom modelValues object:
-#' mvConf <- modelValuesConf(vars = c('x', 'y'),
-#' 				types = c('double', 'int'),
-#'				sizes = list(x = 3, y = c(2,2)))
+#' # Custom modelValues object:
+#' mvConf <- modelValuesConf(
+#'   vars = c("x", "y"),
+#'   types = c("double", "int"),
+#'   sizes = list(x = 3, y = c(2, 2))
+#' )
 #' custom_mv <- modelValues(mvConf, m = 2)
-#' custom_mv['y',]
+#' custom_mv["y", ]
 modelValuesConf <- function(symTab, className, vars, types, sizes,
-                            modelDef = NA, where = globalenv() ) {
-  #if(missing(className)) className <- 'modelValuesConf' ## uniqueID will be appended
-  if(!missing(className)) stop("modelValuesConf no longer supports the className argument.")
-  if(!missing(symTab)) stop("modelValuesConf no longer supports the symTab argument.")
+                            modelDef = NA, where = globalenv()) {
+  # if(missing(className)) className <- 'modelValuesConf' ## uniqueID will be appended
+  if (!missing(className)) stop("modelValuesConf no longer supports the className argument.")
+  if (!missing(symTab)) stop("modelValuesConf no longer supports the symTab argument.")
   varsList <- vector("list", length(vars))
   names(varsList) <- vars
-  for(i in seq_along(vars)) {
+  for (i in seq_along(vars)) {
     varsList[[i]] <- list(name = vars[i], nDim = length(sizes[[i]]))
   }
   sizes <- sizes[vars]
@@ -392,30 +394,32 @@ modelValuesConf <- function(symTab, className, vars, types, sizes,
 #' @method `[` modelValues
 `[.modelValues` <- function(x, var, ind) {
   # nimble attempts to handle missing var (i) by using all vars, but the behavior is unused and broken.
-  if(missing(var)) stop("Bracket access of a modelValues object requires a variable in the brackets.")
+  if (missing(var)) stop("Bracket access of a modelValues object requires a variable in the brackets.")
   # nimble code appears to handle multiple variables but it is untested and broken.
   # It must have been a draft that was not determined be important and not cleaned up.
-  if(length(var) != 1) stop("Bracket access of a modelValues object handles only variable at a time.")
-  if(missing(ind)) ind <- 1:length(x)
+  if (length(var) != 1) stop("Bracket access of a modelValues object handles only variable at a time.")
+  if (missing(ind)) ind <- 1:length(x)
   if (x$isCompiled()) {
-    if(length(ind) == 1)
+    if (length(ind) == 1) {
       nCompiler::value(x, var)[[ind]]
-    else {
+    } else {
       res <- nCompiler::value(x, var)[ind] # nimble returns a list here when nimble2 returns an nList
-      if(isTRUE(getNimbleModelOption("legacy_nimble")))
+      if (isTRUE(getNimbleModelOption("legacy_nimble"))) {
         as.list(res)
-      else
+      } else {
         res
+      }
     }
   } else {
-    if(length(ind) == 1)
+    if (length(ind) == 1) {
       x[[var]][[ind]]
-    else {
+    } else {
       res <- x[[var]][ind]
-      if(isTRUE(getNimbleModelOption("legacy_nimble")))
+      if (isTRUE(getNimbleModelOption("legacy_nimble"))) {
         as.list(res)
-      else
+      } else {
         res
+      }
     }
   }
 }
@@ -423,19 +427,21 @@ modelValuesConf <- function(symTab, className, vars, types, sizes,
 #' @exportS3Method
 #' @method `[<-` modelValues
 `[<-.modelValues` <- function(x, var, ind, value) {
-  if(missing(var)) stop("Bracket access of a modelValues object requires a variable in the brackets.")
-  if(length(var) != 1) stop("Bracket access of a modelValues object handles only variable at a time.")
-  if(missing(ind)) ind <- 1:length(x)
+  if (missing(var)) stop("Bracket access of a modelValues object requires a variable in the brackets.")
+  if (length(var) != 1) stop("Bracket access of a modelValues object handles only variable at a time.")
+  if (missing(ind)) ind <- 1:length(x)
   if (x$isCompiled()) {
-    if(length(ind) == 1)
+    if (length(ind) == 1) {
       nCompiler::value(x, var)[[ind]] <- value
-    else
-      nCompiler::value(x, var)[ind] <- value # value could be an nList or a list.
+    } else {
+      nCompiler::value(x, var)[ind] <- value
+    } # value could be an nList or a list.
   } else {
-    if(length(ind) == 1)
+    if (length(ind) == 1) {
       x[[var]][[ind]] <- value
-    else
+    } else {
       x[[var]][ind] <- value
+    }
   }
   x
 }
@@ -456,35 +462,37 @@ modelValues_varNames <- function(x) {
 #' @exportS3Method
 #' @method as.list modelValues
 as.list.modelValues <- function(x, varNames, stack = TRUE, flatten = FALSE, iterationAsLastIndex = FALSE, ...) {
-  if (missing(varNames))
+  if (missing(varNames)) {
     varNames <- modelValues_varNames(x)
+  }
   if (length(varNames)) {
     ans <- vector("list", length(varNames)) |> setNames(varNames)
-    for(var in varNames) {
+    for (var in varNames) {
       res <- as.list(nCompiler::value(x, var)) # converts nList to list; compiled or uncompiled.
-      if(flatten) {
+      if (flatten) {
         rawDims <- dimOrLength(res[[1]])
         this_colnames <- dims_2_colnames(rawDims, var = var)
       }
-      if(stack) {
+      if (stack) {
         res <- simplify2array(res, higher = !flatten)
-        if(is.null(dim(res))) # scalar var: simplify2array returns a plain vector
+        if (is.null(dim(res))) { # scalar var: simplify2array returns a plain vector
           dim(res) <- c(1, length(res))
-        if(!iterationAsLastIndex) {
+        }
+        if (!iterationAsLastIndex) {
           nDim <- length(dim(res))
-          res <- aperm(res, c(nDim, 1:(nDim-1)))
-          if(flatten) {
+          res <- aperm(res, c(nDim, 1:(nDim - 1)))
+          if (flatten) {
             colnames(res) <- this_colnames
             names(dimnames(res)) <- c("iteration", "element")
           }
         } else {
-          if(flatten) {
+          if (flatten) {
             rownames(res) <- this_colnames
             names(dimnames(res)) <- c("element", "iteration")
           }
         }
       } else {
-        if(flatten) {
+        if (flatten) {
           res <- lapply(res, \(x) {
             dim(x) <- c(1, length(x))
             names(x) <- this_colnames
@@ -566,14 +574,18 @@ as.matrix.modelValues <- function(x) {
   # Sorting is not necessary after updating nCompiler to guarantee order matches definition.
   # varNames <- sort(varNames) # could be different from interface_names than definition order
   matrices <- list()
-  for(vn in varNames) {
+  for (vn in varNames) {
     this_list <- nCompiler::value(x, vn)
-    if(length(this_list) == 0) next
+    if (length(this_list) == 0) next
     dim_x <- dimOrLength(this_list[[1]])
     tot_len <- prod(dim_x)
     this_colnames <- dims_2_colnames(dim_x, var = vn)
     # Possibly add check that all elements have the same dim
-    this_matrix <- this_list |> lapply(\(x) {dim(x) <- c(1, tot_len); x}) |>
+    this_matrix <- this_list |>
+      lapply(\(x) {
+        dim(x) <- c(1, tot_len)
+        x
+      }) |>
       (\(x) do.call("rbind", x))()
     colnames(this_matrix) <- this_colnames
     matrices[[vn]] <- this_matrix
@@ -586,38 +598,42 @@ matrix2mv <- function(mat, mv) {
   # inverse of as.matrix.modelValues
   k <- nrow(mat)
   colNames <- colnames(mat)
-  colNamesVars <- colNames |> (\(x) sub('\\[.*', '', x))()
+  colNamesVars <- colNames |> (\(x) sub("\\[.*", "", x))()
   uniqueColNameVars <- colNamesVars |> unique()
   length(mv) <- k
-  for(vN in uniqueColNameVars){
+  for (vN in uniqueColNameVars) {
     varInds <- colNamesVars == vN
     numCols <- sum(varInds)
     theseColNames <- colNames[varInds]
     idxPart <- sub("^[^[]*", "", theseColNames) # remove the variable name in case it includes any digits.
-    allInds <- lapply(regmatches(idxPart, gregexpr("[0-9]+", idxPart)), as.numeric) 
+    allInds <- lapply(regmatches(idxPart, gregexpr("[0-9]+", idxPart)), as.numeric)
     theseSizes <- do.call("rbind", allInds) |> apply(2, max)
 
-    if(numCols != prod(theseSizes))
+    if (numCols != prod(theseSizes)) {
       stop(paste0("matrix2mv had a problem with the dimensions of ", vN))
-    if(length(theseSizes) > 1) {
+    }
+    if (length(theseSizes) > 1) {
       res <- apply(mat[, varInds, drop = FALSE], 1, \(x) {
         dim(x) <- theseSizes
         names(x) <- NULL
         x
       },
-      simplify = FALSE)
+      simplify = FALSE
+      )
     } else {
       res <- apply(mat[, varInds, drop = FALSE], 1, \(x) {
         names(x) <- NULL
         x
       },
-      simplify = FALSE)
+      simplify = FALSE
+      )
     }
     # We must use value() in case mv is a base class or generic interface.
-    if(nCompiler::isCompiled(mv))
+    if (nCompiler::isCompiled(mv)) {
       nCompiler::value(mv, vN) <- res
-    else
+    } else {
       mv[[vN]][] <- res
+    }
   }
   mv
 }
@@ -630,9 +646,11 @@ matrix2mv <- function(mat, mv) {
 #' @param k				number of rows that modelValues is set to
 #' @export
 #' @examples
-#' mvConf <- modelValuesConf(vars = c('a', 'b'),
-#'              types = c('double', 'double'),
-#'              sizes = list(a = 1, b = c(2,2) ) )
+#' mvConf <- modelValuesConf(
+#'   vars = c("a", "b"),
+#'   types = c("double", "double"),
+#'   sizes = list(a = 1, b = c(2, 2))
+#' )
 #' mv <- modelValues(mvConf)
 #' as.matrix(mv)
 #' resize(mv, 3)
@@ -640,7 +658,7 @@ matrix2mv <- function(mat, mv) {
 #'
 #' @export
 resize <- function(container, k) {
-    container$resize( as.integer(k) )
+  container$resize(as.integer(k))
 }
 
 #' Returns number of rows of modelValues
@@ -652,10 +670,10 @@ resize <- function(container, k) {
 #' @export
 #'
 #' @examples
-#'	mvConf <- modelValuesConf(vars = 'a', types = 'double', sizes = list(a = 1) )
-#'	mv <- modelValues(mvConf)
-#'  resize(mv, 10)
-#'	getsize(mv)
+#' mvConf <- modelValuesConf(vars = "a", types = "double", sizes = list(a = 1))
+#' mv <- modelValues(mvConf)
+#' resize(mv, 10)
+#' getsize(mv)
 getsize <- function(container) {
-    container$getSize()
+  container$getSize()
 }

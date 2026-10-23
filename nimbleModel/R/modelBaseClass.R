@@ -17,7 +17,7 @@ modelBase_nClass <- nClass(
 
       CppObj_provided <- "CppObj" %in% ...names()
       # To do, replace this hack with a method get_self().
-      self$thisModel <- self   # A hack needed because we use `self` as method argument name below.
+      self$thisModel <- self # A hack needed because we use `self` as method argument name below.
 
       if (isCompiled()) {
         # self$setup_decl_mgmt_from_names(declFunNames)
@@ -395,7 +395,7 @@ modelBase_nClass <- nClass(
     getDependencies = function(nodes, omit = NULL, self = TRUE,
                                determOnly = FALSE, stochOnly = FALSE,
                                includeData = TRUE, dataOnly = FALSE,
-                               includePredictive = getNimbleModelOption('getDependenciesIncludesPredictiveNodes'),
+                               includePredictive = getNimbleModelOption("getDependenciesIncludesPredictiveNodes"),
                                predictiveOnly = FALSE, includeRHSonly = FALSE,
                                downstream = FALSE, immediateOnly = FALSE,
                                nodesAsChars = getNimbleModelOption("nodesAsChars"),
@@ -416,7 +416,7 @@ modelBase_nClass <- nClass(
                           returnScalarComponents = FALSE, .sort = FALSE) {
       nimbleModel::getParents(
         thisModel, nodes, omit, self,
-        determOnly, stochOnly, includeData, dataOnly, includeRHSonly,        
+        determOnly, stochOnly, includeData, dataOnly, includeRHSonly,
         upstream, immediateOnly,
         nodesAsChars, returnScalarComponents, .sort
       )
@@ -546,7 +546,7 @@ modelBase_nClass <- nClass(
       if (is.numeric(param)) {
         paramID <- param
       } else if (is.character(param)) {
-        if(isCompiled()) {
+        if (isCompiled()) {
           if (!nCompiler:::isCompiled(instrList)) instr <- makeCompiledInstr(instrList[[1]])
           paramID <- self$getParamID_impl(instr, param)
         } else {
@@ -566,7 +566,7 @@ modelBase_nClass <- nClass(
         paramID <- param
       } else if (is.character(param)) {
         paramID <- self$getParamID(instrList, param)
-        #getParamID(
+        # getParamID(
         #  self$modelDef$declInfo[[one_instr$declID]]$distributionName,
         #  param
         # )
@@ -589,8 +589,11 @@ modelBase_nClass <- nClass(
       }
       boundID <- if (bound == "lower") 0 else 1
       if (isCompiled()) {
-        if (!nCompiler:::isCompiled(instrList)) instr <- makeCompiledInstr(instrList[[1]])
-        else instr <- instrList[[1]]
+        if (!nCompiler:::isCompiled(instrList)) {
+          instr <- makeCompiledInstr(instrList[[1]])
+        } else {
+          instr <- instrList[[1]]
+        }
         return(self$getBound_impl(instr, boundID))
       }
       declFunList[[instrList[[1]]$declID]]$getBound(instrList[[1]], boundID)

@@ -148,8 +148,8 @@ declRuleClass <- R6Class(
       }
     },
     getNodesFromIDs = function(IDs) {
-        loopIndexingRule$invert(getLoopIndexingFromIDs(IDs)) 
-    }, 
+      loopIndexingRule$invert(getLoopIndexingFromIDs(IDs))
+    },
     getIDsFromLoopIndexing = function(loopIndexingRange) { # Could be named loopIndexingToIDs or some such.
       if (!length(loopIndexingRange$indexRanges)) { # scalar case
         return(1)
@@ -201,7 +201,7 @@ declRuleClass <- R6Class(
       }
       return(nodeIDs)
     },
-    getLoopIndexingFromIDs = function(nodeIDs) { 
+    getLoopIndexingFromIDs = function(nodeIDs) {
       indexingRules <- loopIndexingRule$graphRule$indexRules
       if (!length(indexingRules)) { # scalar case
         if (nodeIDs == 1) {
@@ -337,7 +337,7 @@ calcRuleClass <- R6Class(
 
       # Need loop indexing because nodeFunctions will use that indexing
       # (e.g. `y[i+1]` needs value of `i`).
-      indexingRange <- declRule$loopIndexingRule$apply(inputRange)  
+      indexingRange <- declRule$loopIndexingRule$apply(inputRange)
       if (is.null(indexingRange)) {
         return(NULL)
       }
@@ -514,7 +514,7 @@ calcRangeClass <- R6Class(
   portable = FALSE,
   public = list(
     varName = NULL,
-    indexingRange = NULL,   # a loopIndexingRangeClass
+    indexingRange = NULL, # a loopIndexingRangeClass
     sortID = NULL,
     multiSortIDindex = NULL,
     declID = NULL,
