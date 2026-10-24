@@ -1,3 +1,5 @@
+nmKeywords <- list(copy = "nmCopy")
+
 # It's unclear what this should return since in nimble one gets a model object
 # but with nCompiler, we need a modelClass to compile and then we can create an instance.
 # If we create an instance as the output here, one can't then compile that with an algorithm via `nCompile`.
@@ -662,7 +664,7 @@ make_decl_methods_from_declInfo <- function(declInfo) {
 }
 
 make_getParamID_method <- function(distName) {
-  if(missing(distName)) {
+  if (missing(distName)) {
     return(
       list(getParamID_one = nCompiler::nFunction(
         name = "getParamID_one",
@@ -689,17 +691,20 @@ make_getParamID_method <- function(distName) {
     if_then_lines <- lapply(
       seq_along(paramNames),
       function(i) {
-        bquote(if (param_name_ == .(paramNames[i])) return(.(as.numeric(paramIDs[i]))))
+        bquote(if (param_name_ == .(paramNames[i])) {
+          return(.(as.numeric(paramIDs[i])))
+        })
       }
     )
     fun_body <- quote({})
-    for(i in seq_along(if_then_lines)) {
+    for (i in seq_along(if_then_lines)) {
       fun_body[[i + 1]] <- if_then_lines[[i]]
     }
     fun_body[[length(if_then_lines) + 2]] <- quote(return(0))
     fun <- bquote(
-      function(param_name_) 
+      function(param_name_) {
         .(fun_body)
+      }
     ) |> eval()
     attr(fun, "srcref") <- NULL
   }
@@ -717,7 +722,7 @@ make_getParam_methods <- function(distName, LHSrep, RHSrep, altParamExprsRep) {
   if (length(reqdExprs) > 0) names(reqdExprs) <- names(RHSrep)[-1]
   allParamExprs <- c(list(value = LHSrep), reqdExprs, altParamExprsRep)
   paramNamesToUse <- getParamNames(distName)
-  allParamExprs <- allParamExprs[ names(allParamExprs) %in% paramNamesToUse]
+  allParamExprs <- allParamExprs[names(allParamExprs) %in% paramNamesToUse]
   paramNames <- names(allParamExprs)
   paramIDs <- as.integer(getParamID(distName, paramNames))
   sort_order <- order(paramIDs)

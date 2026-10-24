@@ -102,7 +102,7 @@ modelDeclClass <- R6Class(
       if (!stoch) {
         return(NULL)
       }
-      types <- nimble:::distributions[[distributionName]]$types
+      types <- nimbleModel:::distributions[[distributionName]]$types
       if (is.null(types)) {
         return(NULL)
       }
@@ -352,7 +352,7 @@ modelDeclClass <- R6Class(
               }
             }
             if (is.c(origIndex)) { # Handles new cases like `y[c(2,3,5)] ~ dmnorm(...)`.
-              if (origIndex[[1]] == "nimC") {
+              if (origIndex[[1]] == "nC") {
                 logProbExpr[[i]] <- origIndex[[2]]
               } else {
                 stop("unexpected input in `", safeDeparse(origIndex), "`.")

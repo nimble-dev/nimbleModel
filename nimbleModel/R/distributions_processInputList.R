@@ -981,9 +981,9 @@ getParamID <- function(dist, params = NULL, valueOnly = is.null(params) &&
 # This is taken from nimble's distribution system.
 # It is worth revisiting whether this is needed as is.
 # In nimble it is used only a few places, none of which
-# seem immediately necessary. One option would be to 
-# modify this to return the list with the scalar type 
-# *and* the nDim, which is right there but is not returned 
+# seem immediately necessary. One option would be to
+# modify this to return the list with the scalar type
+# *and* the nDim, which is right there but is not returned
 # by this function.
 #' @rdname distributionInfo
 #' @export

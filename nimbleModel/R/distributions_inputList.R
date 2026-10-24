@@ -101,8 +101,15 @@ distributionsInputList <- list(
   ),
   dexp = list(
     BUGSdist = "dexp(rate, scale)",
-    Rdist = "dexp_nimble(rate = 1/scale)",
-    altParams = "scale = 1/rate",
+    Rdist = c("dexp_nComp(scale = 1/rate)"),
+    altParams = "rate = 1/scale",
+    range = c(0, Inf),
+    pqAvail = TRUE
+  ),
+  dexp_nComp = list(
+    BUGSdist = "dexp_nComp(rate, scale)",
+    Rdist = c("dexp_nComp(scale = 1/rate)"),
+    altParams = "rate = 1/scale",
     range = c(0, Inf),
     pqAvail = TRUE
   ),

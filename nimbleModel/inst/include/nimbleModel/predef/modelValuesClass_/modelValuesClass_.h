@@ -21,6 +21,7 @@ public:
       if(m > old_m) {
         for(int i = old_m; i < m; i++) {
           (*NL)[i].resize(dims);
+          (*NL)[i].setZero(); // resize leaves new elements uninitialized
         }
       }
     }

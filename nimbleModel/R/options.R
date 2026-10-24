@@ -10,7 +10,9 @@
     disallowMultivariateArgumentExpressions = TRUE,
     legacy_nimble = FALSE, # TRUE means stricter use of original nimble behavior in some cases.
     nodesAsChars = FALSE,
-    verbose = TRUE
+    verbose = TRUE,
+    getDependenciesIncludesPredictiveNodes = TRUE, ## may be toggled off during MCMC sampler building
+    includeUnneededLatents = FALSE
   )
 )
 

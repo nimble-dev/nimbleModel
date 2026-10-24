@@ -34,7 +34,11 @@ modelDefClass <- R6Class(
       checkAndAssignConstants(constants, code)
 
       modelCode <<- codeProcessIfThenElse(code, constants, userEnv)
-      modelCode <<- nimble:::nf_changeNimKeywords(modelCode) # Formerly in `assignBUGScode`.
+
+      # Switch keyword name transformations as a test while we determine what happens here vs in nimble2.
+      # We need to not use nimble anymore.
+      #
+      modelCode <<- nCompiler:::nf_changeKeywords(modelCode, nmKeywords) # Formerly in `assignBUGScode`.
 
       # TODO: add this later.
       # setModelValuesClassName()
@@ -575,7 +579,7 @@ modelDefClass <- R6Class(
         if (decl$stoch) {
           params <- as.list(valueExpr[-1]) # Extract the original distribution parameters.
           paramNames <- names(valueExpr)[-1]
-          types <- nimble:::distributions[[decl$distributionName]]$types
+          types <- nimbleModel:::distributions[[decl$distributionName]]$types
           # `types` may be NULL if all are scalar.
 
           for (iParam in seq_along(params)) {
@@ -1022,7 +1026,6 @@ modelDefClass <- R6Class(
     }
   )
 )
-
 
 
 # Evaluates `if` statements in model code to generate actual model code
