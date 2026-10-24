@@ -125,61 +125,6 @@ test_that("basic tests of nodeIDs", {
                    'index 1: c(4, 9)')
 
   code <- nimbleCode({
-    for(i in 3:10)
-      y[i] ~ dnorm(0,1)
-  })
-
-  m <- nimbleModel(code)
-  decl <- m$modelDef$declRules$y$rules[[1]]
-
-  expect_identical(decl$getIDsFromLoopIndexing(loopIndexingRangeClass$new(".loop[5]")), 5)
-  expect_identical(
-    decl$getLoopIndexingFromIDs(5)$toChar(),
-    "index 1: 5"
-  )
-  expect_identical(decl$getIDsFromLoopIndexing(loopIndexingRangeClass$new(".loop[1:5]")), 1:5)
-  expect_identical(
-    decl$getLoopIndexingFromIDs(1:5)$toChar(),
-    "index 1: 1:5"
-  )
-  expect_identical(decl$getIDsFromLoopIndexing(loopIndexingRangeClass$new(".loop[3:5]")), 3:5)
-  expect_identical(
-    decl$getLoopIndexingFromIDs(3:5)$toChar(),
-    "index 1: 3:5"
-  )
-
-  expect_identical(decl$getIDsFromLoopIndexing(loopIndexingRangeClass$new(".loop[9:14]")), 9:14)
-  expect_identical(
-    decl$getLoopIndexingFromIDs(9:14)$toChar(),
-    "index 1: 9:14"
-  )
-
-  expect_identical(decl$getIDsFromLoopIndexing(loopIndexingRangeClass$new('.loop[c(5,7)]')), c(3L,5L))
-  expect_identical(decl$getLoopIndexingFromIDs(c(3,5))$toChar(),
-                   'index 1: c(5, 7)')
-
-  code <- nimbleCode({
-    for (i in c(2, 4, 7, 9)) {
-      y[i] ~ dnorm(0, 1)
-    }
-  })
-
-  m <- nimbleModel(code)
-  decl <- m$modelDef$declRules$y$rules[[1]]
-
-  expect_identical(decl$getIDsFromLoopIndexing(loopIndexingRangeClass$new(".loop[1:5]")), 1:2)
-  expect_identical(
-    decl$getLoopIndexingFromIDs(1:2)$toChar(),
-    "index 1: c(2, 4)"
-  )
-
-  expect_identical(decl$getIDsFromLoopIndexing(loopIndexingRangeClass$new(".loop[c(4, 9)]")), c(2L, 4L))
-  expect_identical(
-    decl$getLoopIndexingFromIDs(c(2, 4))$toChar(),
-    "index 1: c(4, 9)"
-  )
-
-  code <- nimbleCode({
     for (i in 3:10) {
       y[i] ~ dnorm(0, 1)
     }
@@ -200,7 +145,7 @@ test_that("basic tests of nodeIDs", {
     "index 1: 5:7"
   )
 
-  expect_identical(decl$getIDsFromLoopIndexing(loopIndexingRangeClass$new(".loop[c(5,7)]")), c(3, 5))
+  expect_identical(decl$getIDsFromLoopIndexing(loopIndexingRangeClass$new(".loop[c(5,7)]")), c(3L, 5L))
   expect_identical(
     decl$getLoopIndexingFromIDs(c(3, 5))$toChar(),
     "index 1: c(5, 7)"
@@ -275,7 +220,7 @@ test_that("nodeIDs with multiple loops", {
 
   # do with arbitrary subsetting, separable
   indexingRange <- decl$loopIndexingRule$apply('y[c(3,5),3:5,c(6,8)]')
-  ids <- c(8, 10, 13, 15, 18, 20, 48, 50, 53, 55, 58, 60)
+  ids <- as.integer(c(8, 10, 13, 15, 18, 20, 48, 50, 53, 55, 58, 60))
   expect_identical(decl$getIDsFromLoopIndexing(indexingRange), ids)
   expect_identical(
     decl$getLoopIndexingFromIDs(ids)$toChar(),
