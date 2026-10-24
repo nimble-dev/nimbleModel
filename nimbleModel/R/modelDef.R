@@ -542,6 +542,7 @@ modelDefClass <- R6Class(
         newValueExpr <- as.call(c(as.list(newValueExpr), boundExprs, nonReqdArgExprs))
         newCode <- decl$code
         newCode[[3]] <- newValueExpr
+        newCode <- modelCode <<- nCompiler:::nf_changeKeywords(newCode, nmKeywords)
 
         # Note at this point `boundExprs` set back to NULL as all info in `lower` , `upper` in `valueExpr`.
         declInfo[[i]] <<- modelDeclClass$new(
