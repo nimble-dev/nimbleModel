@@ -128,7 +128,7 @@ nimbleOrRfunctionNames <- c(
   "sd", "var",
   "max", "min",
   "asRow", "asCol",
-  "chol",
+  "nChol",
   "inverse",
   "forwardsolve", "backsolve", "solve",
   "nimEigen", "nimSvd",
