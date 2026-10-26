@@ -226,7 +226,9 @@ make_modelValues_nClass <- function(varInfo,
   if (is.null(defaultSizes)) defaultSizes <- list()
   for (v in names(varInfo$vars)) {
     if (is.null(defaultSizes[[v]]) || length(defaultSizes[[v]]) == 0) {
-      defaultSizes[[v]] <- rep(0, max(varInfo$vars[[v]]$nDim, 1))
+      nDim <- varInfo$vars[[v]]$nDim
+      # Scalars get size 1 so uncompiled rows are numeric(1). C++ ignores sizes for nDim 0.
+      defaultSizes[[v]] <- if (nDim == 0) 1 else rep(0, nDim)
     }
   }
 
@@ -468,10 +470,11 @@ as.list.modelValues <- function(x, varNames, stack = TRUE, flatten = FALSE, iter
   if (length(varNames)) {
     ans <- vector("list", length(varNames)) |> setNames(varNames)
     for (var in varNames) {
-      res <- as.list(nCompiler::value(x, var)) # converts nList to list; compiled or uncompiled.
+      nl <- nCompiler::value(x, var)
+      res <- as.list(nl) # converts nList to list; compiled or uncompiled.
       if (flatten) {
         rawDims <- dimOrLength(res[[1]])
-        this_colnames <- dims_2_colnames(rawDims, var = var)
+        this_colnames <- nList_2_colnames(nl, rawDims, var = var)
       }
       if (stack) {
         res <- simplify2array(res, higher = !flatten)
@@ -567,6 +570,18 @@ dims_2_colnames <- function(dims, var = "x") {
   colnames <- paste0(var, "[", dim_strings, "]")
 }
 
+# Column names for the variable held in nList nl.
+# A true scalar (nDim 0) is named by the variable name alone, as in nimble,
+# whereas a length-1 vector is named with "[1]".
+# R values do not distinguish these cases, so we use the nList's element type.
+nList_2_colnames <- function(nl, dims, var) {
+  if (isTRUE(nl$get_nDim() == 0L)) {
+    var
+  } else {
+    dims_2_colnames(dims, var = var)
+  }
+}
+
 #' @exportS3Method
 #' @method as.matrix modelValues
 as.matrix.modelValues <- function(x) {
@@ -579,7 +594,7 @@ as.matrix.modelValues <- function(x) {
     if (length(this_list) == 0) next
     dim_x <- dimOrLength(this_list[[1]])
     tot_len <- prod(dim_x)
-    this_colnames <- dims_2_colnames(dim_x, var = vn)
+    this_colnames <- nList_2_colnames(this_list, dim_x, var = vn)
     # Possibly add check that all elements have the same dim
     this_matrix <- this_list |>
       lapply(\(x) {
