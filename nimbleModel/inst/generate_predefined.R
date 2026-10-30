@@ -4,6 +4,10 @@
 nCompiler::nCompile(instr_nClass = nimbleModel:::instr_nClass, control = list(generate_predefined = TRUE))
 test <- nCompiler::nCompile(instr_nClass = nimbleModel:::instr_nClass)
 ## #
+## # generate new predef/instrList_nClass (after instr_nClass is in place). Move to package.
+nCompiler::nCompile(instrList_nClass = nimbleModel:::instrList_nClass, control = list(generate_predefined = TRUE))
+test <- nCompiler::nCompile(instrList_nClass = nimbleModel:::instrList_nClass)
+## #
 ## # generate new predef/declFunBase_nC. Move to package.
 ## # You should see "#include <nimbleModel/predef/declFunClass_/declFunClass_.h>" in the hContent
 ## # after declaration of declFunBase_nClass

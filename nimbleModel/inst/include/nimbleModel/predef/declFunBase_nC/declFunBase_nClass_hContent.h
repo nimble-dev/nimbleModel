@@ -20,6 +20,12 @@ public:
    virtual  int  getParamID_cpp ( std::string param )  ;
    virtual  std::unique_ptr<ETaccessorBase>  getParam_cpp ( std::shared_ptr<instr_nClass> instr, int paramID )  ;
    virtual  double  getBound_cpp ( std::shared_ptr<instr_nClass> instr, int boundID )  ;
+   virtual  double  calculate_singleton_cpp ( std::shared_ptr<instr_nClass> instr, int step )  ;
+   virtual  double  calculateDiff_singleton_cpp ( std::shared_ptr<instr_nClass> instr, int step )  ;
+   virtual  double  getLogProb_singleton_cpp ( std::shared_ptr<instr_nClass> instr, int step )  ;
+   virtual  void  simulate_singleton_cpp ( std::shared_ptr<instr_nClass> instr, int step )  ;
+   virtual  std::unique_ptr<ETaccessorBase>  getParam_singleton_cpp ( std::shared_ptr<instr_nClass> instr, int step, int paramID )  ;
+   virtual  double  getBound_singleton_cpp ( std::shared_ptr<instr_nClass> instr, int step, int boundID )  ;
       declFunBase_nClass (  )  ;
 
 };

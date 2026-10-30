@@ -18,10 +18,10 @@ using namespace Rcpp;
 RESET_EIGEN_ERRORS
 return(true);
 }
-    std::shared_ptr<nList_instr_nClass>  modelBase_nClass::makeCompiledInstrList ( SEXP input )  {
+    std::shared_ptr<instrList_nClass>  modelBase_nClass::makeCompiledInstrList ( SEXP input )  {
 RESET_EIGEN_ERRORS
-std::shared_ptr<nList_instr_nClass> ans;
-ans = nClass_builder<nList_instr_nClass>()();
+std::shared_ptr<instrList_nClass> ans;
+ans = nClass_builder<instrList_nClass>()();
 ans->set_all_values(input);;
 return(ans);
 }
@@ -32,22 +32,22 @@ ans = nClass_builder<instr_nClass>()();
 ans->set_all_values(input);;
 return(ans);
 }
-    double  modelBase_nClass::calculate_impl ( std::shared_ptr<nList_instr_nClass> instrList )  {
+    double  modelBase_nClass::calculate_impl ( std::shared_ptr<instrList_nClass> instrList )  {
 RESET_EIGEN_ERRORS
 Rprintf("modelBase_nClass calculate_impl (should not see this)\n");;
 return(0.0);
 }
-    double  modelBase_nClass::calculateDiff_impl ( std::shared_ptr<nList_instr_nClass> instrList )  {
+    double  modelBase_nClass::calculateDiff_impl ( std::shared_ptr<instrList_nClass> instrList )  {
 RESET_EIGEN_ERRORS
 Rprintf("modelBase_nClass calculateDiff_impl (should not see this)\n");;
 return(0.0);
 }
-    double  modelBase_nClass::getLogProb_impl ( std::shared_ptr<nList_instr_nClass> instrList )  {
+    double  modelBase_nClass::getLogProb_impl ( std::shared_ptr<instrList_nClass> instrList )  {
 RESET_EIGEN_ERRORS
 Rprintf("modelBase_nClass getLogProb_impl (should not see this)\n");;
 return(0.0);
 }
-    void  modelBase_nClass::simulate_impl ( std::shared_ptr<nList_instr_nClass> instrList )  {
+    void  modelBase_nClass::simulate_impl ( std::shared_ptr<instrList_nClass> instrList )  {
 RESET_EIGEN_ERRORS
 Rprintf("modelBase_nClass simulate_impl (should not see this)\n");;
 }
@@ -62,6 +62,34 @@ Rprintf("modelBase_nClass getParam_impl (should not see this)\n"); return nullpt
     double  modelBase_nClass::getBound_impl ( std::shared_ptr<instr_nClass> node, int boundID )  {
 RESET_EIGEN_ERRORS
 Rprintf("modelBase_nClass getBound_impl (should not see this)\n");;
+return(0.0);
+}
+    double  modelBase_nClass::calculate_indexed_impl ( std::shared_ptr<instrList_nClass> instrList, int step )  {
+RESET_EIGEN_ERRORS
+Rprintf("modelBase_nClass calculate_indexed_impl (should not see this)\n");;
+return(0.0);
+}
+    double  modelBase_nClass::calculateDiff_indexed_impl ( std::shared_ptr<instrList_nClass> instrList, int step )  {
+RESET_EIGEN_ERRORS
+Rprintf("modelBase_nClass calculateDiff_indexed_impl (should not see this)\n");;
+return(0.0);
+}
+    double  modelBase_nClass::getLogProb_indexed_impl ( std::shared_ptr<instrList_nClass> instrList, int step )  {
+RESET_EIGEN_ERRORS
+Rprintf("modelBase_nClass getLogProb_indexed_impl (should not see this)\n");;
+return(0.0);
+}
+    void  modelBase_nClass::simulate_indexed_impl ( std::shared_ptr<instrList_nClass> instrList, int step )  {
+RESET_EIGEN_ERRORS
+Rprintf("modelBase_nClass simulate_indexed_impl (should not see this)\n");;
+}
+    std::unique_ptr<ETaccessorBase>  modelBase_nClass::getParam_indexed_impl ( std::shared_ptr<instrList_nClass> instrList, int step, int paramID )  {
+RESET_EIGEN_ERRORS
+Rprintf("modelBase_nClass getParam_indexed_impl (should not see this)\n"); return nullptr;;
+}
+    double  modelBase_nClass::getBound_indexed_impl ( std::shared_ptr<instrList_nClass> instrList, int step, int boundID )  {
+RESET_EIGEN_ERRORS
+Rprintf("modelBase_nClass getBound_indexed_impl (should not see this)\n");;
 return(0.0);
 }
       modelBase_nClass::modelBase_nClass (  )  {
@@ -93,7 +121,13 @@ method("getLogProb_impl", &modelBase_nClass::getLogProb_impl, args({{arg("instrL
 method("simulate_impl", &modelBase_nClass::simulate_impl, args({{arg("instrList",copy)}})),
 method("getParamID_impl", &modelBase_nClass::getParamID_impl, args({{arg("node",copy)},{arg("param",copy)}})),
 method("getParam_impl", &modelBase_nClass::getParam_impl, args({{arg("node",copy)},{arg("paramID",copy)}})),
-method("getBound_impl", &modelBase_nClass::getBound_impl, args({{arg("node",copy)},{arg("boundID",copy)}}))
+method("getBound_impl", &modelBase_nClass::getBound_impl, args({{arg("node",copy)},{arg("boundID",copy)}})),
+method("calculate_indexed_impl", &modelBase_nClass::calculate_indexed_impl, args({{arg("instrList",copy)},{arg("step",copy)}})),
+method("calculateDiff_indexed_impl", &modelBase_nClass::calculateDiff_indexed_impl, args({{arg("instrList",copy)},{arg("step",copy)}})),
+method("getLogProb_indexed_impl", &modelBase_nClass::getLogProb_indexed_impl, args({{arg("instrList",copy)},{arg("step",copy)}})),
+method("simulate_indexed_impl", &modelBase_nClass::simulate_indexed_impl, args({{arg("instrList",copy)},{arg("step",copy)}})),
+method("getParam_indexed_impl", &modelBase_nClass::getParam_indexed_impl, args({{arg("instrList",copy)},{arg("step",copy)},{arg("paramID",copy)}})),
+method("getBound_indexed_impl", &modelBase_nClass::getBound_indexed_impl, args({{arg("instrList",copy)},{arg("step",copy)},{arg("boundID",copy)}}))
 )
 )
 #endif
