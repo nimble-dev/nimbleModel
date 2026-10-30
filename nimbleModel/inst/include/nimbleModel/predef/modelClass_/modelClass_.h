@@ -9,26 +9,26 @@ public:
     modelClass_() {};
     std::vector< std::shared_ptr<declFunBase_nClass> > declFunPtrs;
     std::map<std::string, size_t> name2index_map;
-    double calculate_impl(std::shared_ptr<nList_instr_nClass> instrList) override {
+    double calculate_impl(std::shared_ptr<instrList_nClass> instrList) override {
         // double logProb(0.0);
-        // const auto& instrVec = instrList->contents();
+        // const auto& instrVec = instrList->instr_nList->contents();
         // for (const auto& instr : instrVec) {
         //     logProb += declFunPtrs[instr->declID - 1 ]->calculate_cpp(instr);
         // }
         // return(logProb);
         return calc_op_impl< &declFunBase_nClass::calculate_cpp >(instrList);
     }
-    double calculateDiff_impl(std::shared_ptr<nList_instr_nClass> instrList) override {
+    double calculateDiff_impl(std::shared_ptr<instrList_nClass> instrList) override {
         return calc_op_impl< &declFunBase_nClass::calculateDiff_cpp >(instrList);
     }
-    double getLogProb_impl(std::shared_ptr<nList_instr_nClass> instrList) override {
+    double getLogProb_impl(std::shared_ptr<instrList_nClass> instrList) override {
         return calc_op_impl< &declFunBase_nClass::getLogProb_cpp >(instrList);
     }
 
     template <auto Method>
-    double calc_op_impl(std::shared_ptr<nList_instr_nClass> instrList) {
+    double calc_op_impl(std::shared_ptr<instrList_nClass> instrList) {
         double logProb(0.0);
-        const auto& instrVec = instrList->contents();
+        const auto& instrVec = instrList->instr_nList->contents();
         for (const auto& instr : instrVec) {
             logProb += ((*(declFunPtrs[instr->declID - 1 ])).*Method)(instr);
         }
@@ -49,11 +49,59 @@ public:
         return declFunPtrs[node->declID - 1]->getBound_cpp(node, boundID);
     }
 
-    void simulate_impl(std::shared_ptr<nList_instr_nClass> instrList) {
-        const auto& instrVec = instrList->contents();
+    void simulate_impl(std::shared_ptr<instrList_nClass> instrList) {
+        const auto& instrVec = instrList->instr_nList->contents();
         for (const auto& instr : instrVec) {
             declFunPtrs[instr->declID - 1 ]->simulate_cpp(instr);
         }
+    }
+
+    // One node (list step) of an instruction list, with no loop. `step` (1-based) numbers the
+    // nodes of the whole list in calculation order. Instruction j holds list steps
+    // offsets[j] + 1 through offsets[j] + nNodes, so a binary search finds the last j with
+    // offsets[j] < step (skipping any instructions with no nodes). Returns that instruction
+    // and sets `k` to the step within it (1-based).
+    std::shared_ptr<instr_nClass> find_instr_for_step_(const instrList_nClass& instrList, int step, int& k) {
+        if(step < 1 || step > instrList.nNodes_total)
+            Rcpp::stop("step %d is outside the instruction list's %d steps", step, instrList.nNodes_total);
+        const auto& offsets = instrList.offsets;
+        int lo = 0, hi = offsets.size() - 1;
+        while(lo < hi) {
+            int mid = (lo + hi + 1) / 2;
+            if(offsets[mid] < step) lo = mid; else hi = mid - 1;
+        }
+        k = step - offsets[lo];
+        return instrList.instr_nList->contents()[lo];
+    }
+    template <auto Method>
+    double calc_indexed_op_impl(std::shared_ptr<instrList_nClass> instrList, int step) {
+        int k;
+        auto instr = find_instr_for_step_(*instrList, step, k);
+        return ((*(declFunPtrs[instr->declID - 1])).*Method)(instr, k);
+    }
+    double calculate_indexed_impl(std::shared_ptr<instrList_nClass> instrList, int step) override {
+        return calc_indexed_op_impl< &declFunBase_nClass::calculate_singleton_cpp >(instrList, step);
+    }
+    double calculateDiff_indexed_impl(std::shared_ptr<instrList_nClass> instrList, int step) override {
+        return calc_indexed_op_impl< &declFunBase_nClass::calculateDiff_singleton_cpp >(instrList, step);
+    }
+    double getLogProb_indexed_impl(std::shared_ptr<instrList_nClass> instrList, int step) override {
+        return calc_indexed_op_impl< &declFunBase_nClass::getLogProb_singleton_cpp >(instrList, step);
+    }
+    void simulate_indexed_impl(std::shared_ptr<instrList_nClass> instrList, int step) override {
+        int k;
+        auto instr = find_instr_for_step_(*instrList, step, k);
+        declFunPtrs[instr->declID - 1]->simulate_singleton_cpp(instr, k);
+    }
+    std::unique_ptr<ETaccessorBase> getParam_indexed_impl(std::shared_ptr<instrList_nClass> instrList, int step, int paramID) override {
+        int k;
+        auto instr = find_instr_for_step_(*instrList, step, k);
+        return declFunPtrs[instr->declID - 1]->getParam_singleton_cpp(instr, k, paramID);
+    }
+    double getBound_indexed_impl(std::shared_ptr<instrList_nClass> instrList, int step, int boundID) override {
+        int k;
+        auto instr = find_instr_for_step_(*instrList, step, k);
+        return declFunPtrs[instr->declID - 1]->getBound_singleton_cpp(instr, k, boundID);
     }
 
     // This version takes a character vector of names from R so that

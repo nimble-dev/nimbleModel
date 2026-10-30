@@ -14,6 +14,11 @@ loopIndexingRuleClass <- R6Class(
     internalRule = NULL,
     decl = NULL,
     varName = character(),
+    # Loop indices used in the LHS, in context order. These are the idx slots that instructions for this
+    # declaration fill, so they determine the length of `idx` and which `idx[k]` each index becomes
+    # (see the test "lifted node that uses only some of its loop indices" in test-nimbleModel.R).
+    # (This is a regression test of a bug that was fixed 2026-10-29.)
+    indexVarNames = character(),
     initialize = function(LHS,
                           context,
                           constants = list(),
@@ -24,6 +29,7 @@ loopIndexingRuleClass <- R6Class(
         # Exclude indices not used in lifted expression, e.g., `i` in `y[i,j] ~ dnorm(mu[i], var = sigma2[j])`
         indexVarNames <- context$indexVarNames
         indexVarNames <- indexVarNames[indexVarNames %in% all.vars(LHS)]
+        indexVarNames <<- indexVarNames
         indexing <- if (length(indexVarNames)) {
           paste0("[", paste(indexVarNames, collapse = ","), "]")
         } else {

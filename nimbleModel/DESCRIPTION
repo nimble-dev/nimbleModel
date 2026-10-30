@@ -54,6 +54,7 @@ Collate:
     declFunBaseClass.R
     modelBaseClass.R
     instructions.R
+    instrRunners.R
     nimbleModel.R
     zzz.R
 

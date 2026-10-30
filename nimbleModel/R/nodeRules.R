@@ -541,15 +541,17 @@ calcRangeClass <- R6Class(
         stop("mismatch between indexing values and node-based sortIDs")
       }
 
+      # All of these instructions share their derived fields, so compute them once.
+      template <- add_instr_precalcs(list(
+        dims = 1, index_types = 2, lens = 1, nDim = 1, slots = 1, declID = declID
+      ))
+      class(template) <- "Rinstr"
       results <- lapply(seq_along(indices), \(i) {
-        tmp <- list(
-          dims = 1, index_types = 2, lens = 1, nDim = 1, slots = 1, sortID = sortID[i],
-          declID = declID, instr_type = 2, values = list(indices[i])
-        )
-        class(tmp) <- "Rinstr"
+        tmp <- template
+        tmp$sortID <- sortID[i]
+        tmp$values <- list(indices[i])
         return(tmp)
       })
-      class(results) <- "Rlist_Rinstr" # For ease of determining the type of the object in `makeInstrList`.
       return(results)
     }
   )

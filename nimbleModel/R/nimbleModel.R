@@ -96,7 +96,10 @@ make_modelClass_from_nimbleModel <- function(modelDef, data, inits, name = NULL)
     declFun_RvarName <- sub("declFun", "declFunClassGen", declFun_membername) # name of R var holding the nClass generator
     # Currently, we can't just make a list of these but need them as named objects in the environment,
     # which is passed into the nClass() call so that `initialize()` can use them via R's scoping.
-    assign(declFun_RvarName, make_declFun_nClass(declVarInfo, decl_methods, declFun_classname, declID))
+    # Length of `idx` for this declaration. Not `context$singleContexts`, which for a lifted node
+    # can include loop indices the node doesn't use (see the test "lifted node that uses only some of its loop indices" in test-nimbleModel.R).
+    nIdx <- length(declInfo$declRule$loopIndexingRule$indexVarNames)
+    assign(declFun_RvarName, make_declFun_nClass(declVarInfo, decl_methods, declFun_classname, declID, nIdx))
     declInfoList[[i]] <- make_decl_info_for_model_nClass(declFun_membername, declFun_RvarName, declFun_classname, declVarInfo)
   }
   # We have a canonical ordering of decls, but it does arise from a couple of places that should match.
@@ -150,7 +153,8 @@ nm_addModelDollarSign <- function(expr, exceptionNames = character(0)) {
 make_declFun_nClass <- function(varInfo = list(),
                                 methods = list(),
                                 classname,
-                                declID) {
+                                declID,
+                                nIdx) {
   # varInfo will be a list (names not used) of name, nDim, sizes.
   # These are the model member variables to be used by the declFxn.
   # They will be used in a constructor to set up C++ references to model variables.
@@ -190,7 +194,8 @@ make_declFun_nClass <- function(varInfo = list(),
     classname <- declLabelCreator()
   }
 
-  baseclass <- paste0("declFunClass_<", classname, ">")
+  # nIdx lets the C++ base class compile only the runners this declaration's instructions can use.
+  baseclass <- paste0("declFunClass_<", classname, ", ", nIdx, ">")
 
   # Rpublic method to set the model pointer/reference.
   setModel <- function(model) {
@@ -528,19 +533,19 @@ make_determ_calc_line <- function(LHSrep, RHSrep) {
   calc_line
 }
 
-make_nFxn_from_Cfun <- function(Cfun) {
-  Rfun <- Cfun
-  body(calc1Rfun) <- nm_addModelDollarSign(body(Cfun), exceptionNames = c("idx"))
-  nFxn <- nFunction(
-    name = "calc_one",
-    fun = Rfun,
-    compileInfo = list(C_fun = Cfun),
-    argTypes = list(idx = "integerVector"),
-    returnType = "numericScalar"
-  )
-  # declVars <- all.vars(body(calc1Cfun)) |> setdiff("idx")
-  nFxn
-}
+# make_nFxn_from_Cfun <- function(Cfun) {
+#   Rfun <- Cfun
+#   body(calc1Rfun) <- nm_addModelDollarSign(body(Cfun), exceptionNames = c("idx"))
+#   nFxn <- nFunction(
+#     name = "calc_one",
+#     fun = Rfun,
+#     compileInfo = list(C_fun = Cfun),
+#     argTypes = list(idx = "integerVector"),
+#     returnType = "numericScalar"
+#   )
+#   # declVars <- all.vars(body(calc1Cfun)) |> setdiff("idx")
+#   nFxn
+# }
 
 make_decl_method_nFxn <- function(f, name, returnType = "numericScalar") {
   Cfun <- f
@@ -567,22 +572,28 @@ make_decl_methods_from_declInfo <- function(declInfo) {
   LHS <- modelCode[[2]]
   RHS <- modelCode[[3]]
   type <- if (modelCode[[1]] == "~") "stoch" else "determ" # or use declInfo$stoch (logical)
-  context <- declInfo$declRule$context
+  # Use the loop indices that instructions fill (see loopIndexingRuleClass), not all of `context`,
+  # which for a lifted node can include loop indices the node doesn't use
+  # (see the test "lifted node that uses only some of its loop indices" in test-nimbleModel.R).
+  # (This is a regression test of a bug fixed on 2026-10-29.)
+  indexVarNames <- declInfo$declRule$loopIndexingRule$indexVarNames
   replacements <- sapply(
-    seq_along(context$singleContexts),
+    seq_along(indexVarNames),
     function(i) parse(text = paste0("idx[", i, "]"))[[1]]
   )
-  names(replacements) <- context$indexVarNames
+  names(replacements) <- indexVarNames
   LHSrep <- eval(substitute(substitute(e, replacements), list(e = LHS)))
   RHSrep <- eval(substitute(substitute(e, replacements), list(e = RHS)))
 
   if (type == "determ") {
     methodList <- eval(substitute(
       list(
+        # sim_one returns a dummy 0 so that simulate can share the calc runners.
         sim_one = (function(idx) {
           calc_one(idx)
+          return(0)
         }) |>
-          make_decl_method_nFxn("sim_one", NULL),
+          make_decl_method_nFxn("sim_one"),
         calc_one = (function(idx) {
           DETERMCALC
           return(0)
@@ -612,8 +623,9 @@ make_decl_methods_from_declInfo <- function(declInfo) {
       list(
         sim_one = (function(idx) {
           STOCHSIM
+          return(0)
         }) |>
-          make_decl_method_nFxn("sim_one", NULL),
+          make_decl_method_nFxn("sim_one"),
         calc_one = (function(idx) {
           STOCHCALC
           return(LOGPROB)
@@ -816,7 +828,7 @@ make_getBound_one_nFxn <- function(boundExprs = list()) {
     )
 
 
-    switch_line <- bquote(nSwitch(boundID_, 0:1))
+    switch_line <- bquote(nSwitch(boundID_, 1:2)) # boundID 1 is the lower bound, 2 the upper (as in nimble)
     switch_line[3 + (1:(length(case_lines)))] <- case_lines
 
     Rfun <- bquote(
