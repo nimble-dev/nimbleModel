@@ -800,24 +800,23 @@ test_that("non-sequential indexing cases", {
   )
   m <- mclass$new()
 
-  # No opDef for chol so comment out compiled operations.
-  # cmclass <- nCompile(mclass)
-  # cm <- cmclass$new()
+  ## C++ compilation error
+  cmclass <- nCompile(mclass)
+  cm <- cmclass$new()
   truth <- nCompiler:::dmnorm_chol(m$y[c(2, 3, 5)], rep(0, 3), diag(3), log = TRUE)
   expect_equal(m$calculate(), truth)
   m$simulate("y", includeData = TRUE)
   expect_identical(y[c(1, 4)], m$y[c(1, 4)])
   expect_false(any(y[c(2, 3, 5)] == m$y[c(2, 3, 5)]))
-  # expect_equal(cm$calculate('y'), truth)
-  # cm$simulate(y, includeData = TRUE)
-  # expect_false(any(y[c(2,3,5)] == cm$y[c(2,3,5)]))
+  expect_equal(cm$calculate('y'), truth)
+  cm$simulate(y, includeData = TRUE)
+  expect_false(any(y[c(2,3,5)] == cm$y[c(2,3,5)]))
 
   nr <- m$getNodes()[[2]]
   expect_true(inherits(nr$indexRanges[[1]], "indexRangeMatrixClass"))
   expect_identical(nr$numExternalIndexRanges, 0L)
   expect_identical(nr$toChar(), "`y[c(2, 3, 5)]`")
 
-  # Cannot compile. No operator def for nimC: This was part of the call:  y[i = nimC(2, 3, 5)]
   code <- nimbleCode({
     y[c(2, 3, 5)] <- x[1:3] + 1
   })
@@ -828,12 +827,12 @@ test_that("non-sequential indexing cases", {
   m <- mclass$new()
   m$calculate()
   expect_identical(m$y, c(NA, 2, 3, NA, 4))
-  expect_error({
-    cmclass <- nCompile(mclass)
-    cm <- cmclass$new()
-    cm$calculate()
-    expect_identical(cm$y, c(NA, 2, 3, NA, 4))
-  })
+  cmclass <- nCompile(mclass)
+  cm <- cmclass$new()
+  cm$y <- rep(NA, 5)  # Otherwise, y[1],y[4] end up being 5e-310.
+  cm$calculate()
+  # TODO: NAs not being represented correctly.
+  expect_failure(expect_identical(cm$y, c(NA, 2, 3, NA, 4)))
 })
 
 test_that("calculate with index offset and switched indices", {
@@ -2011,11 +2010,11 @@ test_that("duplication cases", {
   })
   set.seed(99)
   mclass <- nimbleModel(code, data = list(y = rnorm(3)), inits = list(z = rep(0, 3), pr = diag(3)), returnClass = TRUE)
-  # cmclass <- nCompile(mclass)
+  cmclass <- nCompile(mclass)
   m <- mclass$new()
-  # cm <- cmclass$new()
+  # C++ compilation error
+  cm <- cmclass$new()
 
-  ## TODO: add compiled simulate when {d,r}mnorm_chol is resolved.
   m$calculate()
   nodes <- c("y[1]", "y[2]")
   result <- sum(dnorm(m$y, log = TRUE))
@@ -2027,6 +2026,17 @@ test_that("duplication cases", {
   m$simulate(nodes, includeData = TRUE)
   expect_identical(vals, m$y)
 
+  cm$calculate()
+  nodes <- c('y[1]','y[2]')
+  result <- sum(dnorm(cm$y,log=TRUE))
+  expect_equal(cm$calculate(nodes), result)
+  
+  set.seed(1)
+  vals <- rnorm(3)
+  set.seed(1)
+  cm$simulate(nodes, includeData = TRUE)
+  expect_identical(vals, cm$y)
+  
   # With SSM situation.
   code <- nimbleCode({
     for (i in 3:8) {
