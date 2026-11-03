@@ -20,11 +20,23 @@ multiCopier_model_nC_base::init(this->copiers, model);
 }
     Eigen::Tensor<double, 1>  mCopy_nC::getValues (  )  {
 RESET_EIGEN_ERRORS
-return flatViewGroup.copyIntoVector();
+return getValues_();
 }
     void  mCopy_nC::setValues ( Eigen::Tensor<double, 1> v )  {
 RESET_EIGEN_ERRORS
-flatViewGroup.copyFromVector(v);
+setValues_() = v;
+}
+    Eigen::Tensor<double, 1>  mCopy_nC::getValues_indexed ( int i, std::string mode )  {
+RESET_EIGEN_ERRORS
+if (mode == "raw") return getValues_raw_(i);
+if (mode == "scalar") return getValues_scalar_(i);
+Rcpp::stop("getValues_indexed: mode must be \"raw\" or \"scalar\".");;
+}
+    void  mCopy_nC::setValues_indexed ( int i, Eigen::Tensor<double, 1> v, std::string mode )  {
+RESET_EIGEN_ERRORS
+if (mode == "raw") {setValues_raw_(i) = v; return;}
+if (mode == "scalar") {setValues_scalar_(i) = v; return;}
+Rcpp::stop("setValues_indexed: mode must be \"raw\" or \"scalar\".");;
 }
       mCopy_nC::mCopy_nC (  )  {
 RESET_EIGEN_ERRORS
@@ -56,7 +68,9 @@ field("copiers", &mCopy_nC::copiers)
 NCOMPILER_METHODS(
 method("init", &mCopy_nC::init, args({{arg("model",copy)}})),
 method("getValues", &mCopy_nC::getValues, args({{}})),
-method("setValues", &mCopy_nC::setValues, args({{arg("v",copy)}}))
+method("setValues", &mCopy_nC::setValues, args({{arg("v",copy)}})),
+method("getValues_indexed", &mCopy_nC::getValues_indexed, args({{arg("i",copy)},{arg("mode",copy)}})),
+method("setValues_indexed", &mCopy_nC::setValues_indexed, args({{arg("i",copy)},{arg("v",copy)},{arg("mode",copy)}}))
 )
 )
 #endif

@@ -65,12 +65,12 @@ multiCopier_nClass <- nCompiler::nClass(
       returnType = "numericVector",
       compileInfo = list(
         C_fun = function() {
-          cppLiteral("return flatViewGroup.copyIntoVector()")
+          cppLiteral("return getValues_()") # refreshes data pointers; see multiCopier_model_nC_base
         }
       )
     ),
     # Note that this setValues works but is not actually used by nimble2 keyword processing
-    # which instead uses copiers->flatViewGroup.setValues_() which provides an operator=.
+    # which instead uses copiers->setValues_() which provides an operator=.
     # It is possible that this setValues() will be useful in other contexts, or if not that we
     # can eventually remove it to avoid confusion.
     setValues = nFunction(
@@ -80,7 +80,37 @@ multiCopier_nClass <- nCompiler::nClass(
       },
       compileInfo = list(
         C_fun = function(v = "numericVector") {
-          cppLiteral("flatViewGroup.copyFromVector(v)")
+          cppLiteral("setValues_() = v") # refreshes data pointers; see multiCopier_model_nC_base
+        }
+      )
+    ),
+    # Get or set one entry (mode = "raw") or one flattened element (mode = "scalar"); i is 1-based.
+    # These choose the mode at run time, for use from R. nimble2 keyword processing instead
+    # calls getValues_raw_(i) etc. in multiCopier_model_nC_base directly, since its mode is fixed.
+    getValues_indexed = nFunction(
+      name = "getValues_indexed",
+      function(i = "integerScalar", mode = "string") {
+        cat("need uncompiled multiCopier getValues_indexed() implementation.")
+      },
+      returnType = "numericVector",
+      compileInfo = list(
+        C_fun = function(i = "integerScalar", mode = "string") {
+          cppLiteral('if (mode == "raw") return getValues_raw_(i);
+if (mode == "scalar") return getValues_scalar_(i);
+Rcpp::stop("getValues_indexed: mode must be \\"raw\\" or \\"scalar\\".");')
+        }
+      )
+    ),
+    setValues_indexed = nFunction(
+      name = "setValues_indexed",
+      function(i = "integerScalar", v = "numericVector", mode = "string") {
+        cat("need uncompiled multiCopier setValues_indexed() implementation.")
+      },
+      compileInfo = list(
+        C_fun = function(i = "integerScalar", v = "numericVector", mode = "string") {
+          cppLiteral('if (mode == "raw") {setValues_raw_(i) = v; return;}
+if (mode == "scalar") {setValues_scalar_(i) = v; return;}
+Rcpp::stop("setValues_indexed: mode must be \\"raw\\" or \\"scalar\\".");')
         }
       )
     )
@@ -203,11 +233,15 @@ makeMultiCopier <- function(source, nodes,
       model = multiCopier_nClass$new(),
       modelValues = multiCopierMV_nClass$new()
     )
+  # A single index i is the block i:i, which flattens identically.
   getRange <- function(indexRange) {
-    if (!inherits(indexRange, "indexRangeSequenceClass")) {
-      stop("In a copy operation, only contiguous index blocks are supported")
+    if (inherits(indexRange, "indexRangeSequenceClass")) {
+      return(c(indexRange$start, indexRange$end))
     }
-    c(indexRange$start, indexRange$end)
+    if (inherits(indexRange, "indexRangeScalarClass")) {
+      return(c(indexRange$value, indexRange$value))
+    }
+    stop("In a copy operation, only contiguous index blocks are supported")
   }
   for (i in seq_along(nodes)) {
     thisNode <- nodes[[i]]
@@ -225,8 +259,17 @@ makeMultiCopier <- function(source, nodes,
 
 # Uncompiled implementations of values(model, nodes) and `values<-`(model, nodes, value).
 
+# With mode = "scalar" (or eventually "node"), `nodes` must be indexed, as in
+# values(model, nodes[i], mode = "scalar"). Then `nodes` and `i` are evaluated separately
+# in the caller and passed to values_indexed(). With mode = "raw" (the default, as in nimble),
+# nodes[i] is evaluated as usual, giving entry i of `nodes`.
+
 #' @export
-values <- function(model, nodes) {
+values <- function(model, nodes, mode = "raw") {
+  if (!identical(mode, "raw")) {
+    base_and_index <- split_indexed_nodes(substitute(nodes), parent.frame(), mode)
+    return(values_indexed(model, base_and_index$nodes, base_and_index$i, mode))
+  }
   if (is.character(nodes)) {
     nodes <- lapply(nodes, \(x) varRangeClass$new(x))
   }
@@ -241,17 +284,27 @@ values <- function(model, nodes) {
 }
 
 #' @export
-`values<-` <- function(model, nodes, value) {
+`values<-` <- function(model, nodes, mode = "raw", value) {
+  if (!identical(mode, "raw")) {
+    base_and_index <- split_indexed_nodes(substitute(nodes), parent.frame(), mode)
+    values_indexed(model, base_and_index$nodes, base_and_index$i, mode) <- value
+    return(model)
+  }
   if (is.character(nodes)) {
     nodes <- lapply(nodes, \(x) varRangeClass$new(x))
   }
-  iV_start <- 1
-  replExprTemplate <- quote(model_stuff <- value[iV_start:iV_end])
+  # First find each target expression and length, so a wrong-length value
+  # is an error before anything is assigned.
+  targetExprs <- vector("list", length(nodes))
+  targetLengths <- numeric(length(nodes))
   for (i in seq_along(nodes)) {
     thisNode <- nodes[[i]]
     expr <- thisNode$toExpr()
     if (is.name(expr)) {
-      thisLength <- length(model[[expr]])
+      thisLength <- length(model[[as.character(expr)]])
+      model_stuff <- quote(model$VAR)
+      model_stuff[[3]] <- expr
+      expr <- model_stuff
     } else {
       mm <- thisNode$getMinMax()
       sizes <- mm[, 2] - mm[, 1] + 1
@@ -271,11 +324,99 @@ values <- function(model, nodes) {
       model_stuff[[3]] <- varExpr
       expr[[2]] <- model_stuff
     }
-    iV_end <- iV_start + thisLength - 1
+    targetExprs[[i]] <- expr
+    targetLengths[i] <- thisLength
+  }
+  if (length(value) != sum(targetLengths)) {
+    stop("values(model, nodes) <- value: value has length ", length(value),
+         " but nodes have total length ", sum(targetLengths), ".")
+  }
+  iV_start <- 1
+  replExprTemplate <- quote(model_stuff <- value[iV_start:iV_end])
+  for (i in seq_along(nodes)) {
+    iV_end <- iV_start + targetLengths[i] - 1
     replExpr <- replExprTemplate
-    replExpr[[2]] <- expr
+    replExpr[[2]] <- targetExprs[[i]]
     eval(replExpr)
     iV_start <- iV_end + 1
   }
+  model
+}
+
+# From the unevaluated `nodes` argument of values(model, nodes[i], mode = ...),
+# evaluate `nodes` and `i` separately in `env`.
+split_indexed_nodes <- function(nodesExpr, env, mode) {
+  if (!(is.call(nodesExpr) && identical(nodesExpr[[1]], as.name("[")) && length(nodesExpr) == 3)) {
+    stop("values: mode = \"", mode, "\" requires a singly indexed `nodes` argument, as in nodes[i].")
+  }
+  list(nodes = eval(nodesExpr[[2]], env), i = eval(nodesExpr[[3]], env))
+}
+
+as_varRange_list <- function(nodes) {
+  if (inherits(nodes, "varRangeClass")) {
+    return(list(nodes))
+  }
+  if (is.character(nodes)) {
+    return(lapply(nodes, \(x) varRangeClass$new(x)))
+  }
+  nodes
+}
+
+check_values_index <- function(i, n, what) {
+  if (!(is.numeric(i) && length(i) == 1 && !is.na(i) && i >= 1 && i <= n && i == round(i))) {
+    stop("values: index ", deparse(i), " is out of range for ", n, " ", what, ".")
+  }
+}
+
+# Uncompiled values(model, nodes[i], mode = mode) and its assignment form.
+# mode = "raw": entry i of `nodes`.
+# mode = "scalar": element i of values(model, nodes), as a length-1 vector.
+# mode = "node" is not yet supported.
+
+#' @export
+values_indexed <- function(model, nodes, i, mode = c("raw", "scalar", "node")) {
+  mode <- match.arg(mode)
+  nodes <- as_varRange_list(nodes)
+  switch(mode,
+    raw = {
+      check_values_index(i, length(nodes), "entries of `nodes`")
+      values(model, nodes[i])
+    },
+    scalar = {
+      vals <- values(model, nodes)
+      check_values_index(i, length(vals), "elements of values(model, nodes)")
+      vals[i]
+    },
+    node = stop("values: mode = \"node\" is not supported yet.")
+  )
+}
+
+#' @export
+`values_indexed<-` <- function(model, nodes, i, mode = c("raw", "scalar", "node"), value) {
+  mode <- match.arg(mode)
+  nodes <- as_varRange_list(nodes)
+  switch(mode,
+    raw = {
+      check_values_index(i, length(nodes), "entries of `nodes`")
+      n <- length(values(model, nodes[i]))
+      if (length(value) != n) {
+        stop("values: entry ", i, " of `nodes` has ", n, " elements, but ", length(value), " values were given.")
+      }
+      values(model, nodes[i]) <- value
+    },
+    scalar = {
+      if (length(value) != 1) {
+        stop("values: mode = \"scalar\" requires a single value, but ", length(value), " were given.")
+      }
+      lens <- vapply(nodes, \(x) length(values(model, list(x))), numeric(1))
+      check_values_index(i, sum(lens), "elements of values(model, nodes)")
+      k <- findInterval(i - 1, cumsum(c(0, lens)), left.open = FALSE, rightmost.closed = FALSE)
+      local_i <- i - sum(lens[seq_len(k - 1)])
+      vals <- values(model, nodes[k])
+      vals[local_i] <- value
+      values(model, nodes[k]) <- vals
+    },
+    node = stop("values: mode = \"node\" is not supported yet.")
+  )
   model
 }

@@ -90,6 +90,8 @@ export(makeMultiCopier)
 
 export(values)
 export("values<-")
+export("values_indexed<-")
+export(values_indexed)
 
 export(modelValues)
 export(modelValuesConf)

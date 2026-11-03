@@ -17,6 +17,8 @@ public:
     void  init ( std::shared_ptr<modelBase_nClass> model )  ;
     Eigen::Tensor<double, 1>  getValues (  )  ;
     void  setValues ( Eigen::Tensor<double, 1> v )  ;
+    Eigen::Tensor<double, 1>  getValues_indexed ( int i, std::string mode )  ;
+    void  setValues_indexed ( int i, Eigen::Tensor<double, 1> v, std::string mode )  ;
       mCopy_nC (  )  ;
   std::shared_ptr<nList_copier_nClass> copiers;
 
