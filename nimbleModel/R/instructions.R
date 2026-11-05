@@ -245,6 +245,13 @@ makeInstrList <- function(model, input, includeData = TRUE, use_vec = FALSE) {
   return(make_RinstrList(Rlist))
 }
 
+# The instrList for all nodes of a model, as used by model$calculate() etc. with no nodes.
+# Whole variables keep the input compact (no expansion to node names), and makeInstrList
+# drops RHS-only variables. nimble2 uses this as setup code for compiled calls with no nodes.
+makeAllNodesInstrList <- function(model, includeData = TRUE) {
+  makeInstrList(model, model$getVarNames(), includeData = includeData)
+}
+
 # Check that each instruction fills as many idx slots as its declaration has loop indices.
 # That is the length of `idx` the declaration's per-node methods expect, and in compiled code
 # it determines which runners exist for the declaration (see declFunClass_.h).
