@@ -57,6 +57,7 @@ modelDefClass <- R6Class(
       liftExpressionArgs()
       addRemainingDotParams() # Add additional altParams as needed.
       replaceAllConstants() # Simplify expressions introduced in `addRemainingDotParams`.
+      changeKeywordsInDecls() # Change keywords (e.g., `chol` to `nChol`) in expressions from distribution definitions.
       processDecls(userEnv) # Create declRules and set up symbolicParentNodes (and flags dynamic indexing).
       assignDeclIDs() # Set sequential declID values and declFun mapping.
       genAltParams() # Create altParam expressions and create `calculateCode` (without altParams).
@@ -659,6 +660,23 @@ modelDefClass <- R6Class(
         }
         newCode <- decl$code
         newCode[[3]] <- newValueExpr
+        declInfo[[iDecl]] <<- modelDeclClass$new(
+          newCode, decl$context,
+          decl$sourceLineNumber,
+          decl$truncated, decl$boundExprs
+        )
+      }
+      invisible(NULL)
+    },
+
+    # Reparameterizations and altParams come from the distribution definitions (e.g., `cholesky = chol(prec)`),
+    # after keywords were changed in `modelCode`, so change keywords again (e.g., `chol` to `nChol`).
+    # This is done after lifting and constant replacement, which look for the original names (e.g., `chol` in `neverReplaceable`).
+    changeKeywordsInDecls = function() {
+      for (iDecl in seq_along(declInfo)) {
+        decl <- declInfo[[iDecl]]
+        newCode <- nCompiler:::nf_changeKeywords(decl$code, nmKeywords)
+        if (identical(newCode, decl$code)) next
         declInfo[[iDecl]] <<- modelDeclClass$new(
           newCode, decl$context,
           decl$sourceLineNumber,
