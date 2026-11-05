@@ -12,7 +12,8 @@
     nodesAsChars = FALSE,
     verbose = TRUE,
     getDependenciesIncludesPredictiveNodes = TRUE, ## may be toggled off during MCMC sampler building
-    includeUnneededLatents = FALSE
+    includeUnneededLatents = FALSE,
+    check_values_node_inputs = TRUE # FALSE skips check_values_node_input (RHS-only and logProb checks for values node mode)
   )
 )
 

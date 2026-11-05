@@ -92,6 +92,24 @@ RESET_EIGEN_ERRORS
 Rprintf("modelBase_nClass getBound_indexed_impl (should not see this)\n");;
 return(0.0);
 }
+    Eigen::Tensor<double, 1>  modelBase_nClass::getValues_indexed_impl ( std::shared_ptr<instrList_nClass> instrList, int step )  {
+RESET_EIGEN_ERRORS
+Rprintf("modelBase_nClass getValues_indexed_impl (should not see this)\n");;
+return(createTensor<double, 1>(0.0, 0.0));
+}
+    void  modelBase_nClass::setValues_indexed_impl ( std::shared_ptr<instrList_nClass> instrList, int step, Eigen::Tensor<double, 1> value )  {
+RESET_EIGEN_ERRORS
+Rprintf("modelBase_nClass setValues_indexed_impl (should not see this)\n");;
+}
+    Eigen::Tensor<double, 1>  modelBase_nClass::getValues_nodes_impl ( std::shared_ptr<instrList_nClass> instrList )  {
+RESET_EIGEN_ERRORS
+Rprintf("modelBase_nClass getValues_nodes_impl (should not see this)\n");;
+return(createTensor<double, 1>(0.0, 0.0));
+}
+    void  modelBase_nClass::setValues_nodes_impl ( std::shared_ptr<instrList_nClass> instrList, Eigen::Tensor<double, 1> value )  {
+RESET_EIGEN_ERRORS
+Rprintf("modelBase_nClass setValues_nodes_impl (should not see this)\n");;
+}
       modelBase_nClass::modelBase_nClass (  )  {
 RESET_EIGEN_ERRORS
 }
@@ -127,7 +145,11 @@ method("calculateDiff_indexed_impl", &modelBase_nClass::calculateDiff_indexed_im
 method("getLogProb_indexed_impl", &modelBase_nClass::getLogProb_indexed_impl, args({{arg("instrList",copy)},{arg("step",copy)}})),
 method("simulate_indexed_impl", &modelBase_nClass::simulate_indexed_impl, args({{arg("instrList",copy)},{arg("step",copy)}})),
 method("getParam_indexed_impl", &modelBase_nClass::getParam_indexed_impl, args({{arg("instrList",copy)},{arg("step",copy)},{arg("paramID",copy)}})),
-method("getBound_indexed_impl", &modelBase_nClass::getBound_indexed_impl, args({{arg("instrList",copy)},{arg("step",copy)},{arg("boundID",copy)}}))
+method("getBound_indexed_impl", &modelBase_nClass::getBound_indexed_impl, args({{arg("instrList",copy)},{arg("step",copy)},{arg("boundID",copy)}})),
+method("getValues_indexed_impl", &modelBase_nClass::getValues_indexed_impl, args({{arg("instrList",copy)},{arg("step",copy)}})),
+method("setValues_indexed_impl", &modelBase_nClass::setValues_indexed_impl, args({{arg("instrList",copy)},{arg("step",copy)},{arg("value",copy)}})),
+method("getValues_nodes_impl", &modelBase_nClass::getValues_nodes_impl, args({{arg("instrList",copy)}})),
+method("setValues_nodes_impl", &modelBase_nClass::setValues_nodes_impl, args({{arg("instrList",copy)},{arg("value",copy)}}))
 )
 )
 #endif

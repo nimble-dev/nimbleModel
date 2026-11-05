@@ -26,6 +26,11 @@ public:
    virtual  void  simulate_singleton_cpp ( std::shared_ptr<instr_nClass> instr, int step )  ;
    virtual  std::unique_ptr<ETaccessorBase>  getParam_singleton_cpp ( std::shared_ptr<instr_nClass> instr, int step, int paramID )  ;
    virtual  double  getBound_singleton_cpp ( std::shared_ptr<instr_nClass> instr, int step, int boundID )  ;
+   virtual  Eigen::Tensor<double, 1>  getValues_singleton_cpp ( std::shared_ptr<instr_nClass> instr, int step )  ;
+   virtual  void  setValues_singleton_cpp ( std::shared_ptr<instr_nClass> instr, int step, Eigen::Tensor<double, 1> v )  ;
+   virtual  int  valuesLength_cpp ( std::shared_ptr<instr_nClass> instr )  ;
+   virtual  int  getValues_into_cpp ( std::shared_ptr<instr_nClass> instr, Eigen::Tensor<double, 1> & out, int offset )  ;
+   virtual  int  setValues_from_cpp ( std::shared_ptr<instr_nClass> instr, Eigen::Tensor<double, 1> & v, int offset )  ;
       declFunBase_nClass (  )  ;
 
 };

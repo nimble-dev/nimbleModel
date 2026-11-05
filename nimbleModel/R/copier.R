@@ -95,9 +95,7 @@ multiCopier_nClass <- nCompiler::nClass(
       returnType = "numericVector",
       compileInfo = list(
         C_fun = function(i = "integerScalar", mode = "string") {
-          cppLiteral('if (mode == "raw") return getValues_raw_(i);
-if (mode == "scalar") return getValues_scalar_(i);
-Rcpp::stop("getValues_indexed: mode must be \\"raw\\" or \\"scalar\\".");')
+          cppLiteral("return getValues_indexed_(i, mode)") # see multiCopier_model_nC_base
         }
       )
     ),
@@ -108,9 +106,7 @@ Rcpp::stop("getValues_indexed: mode must be \\"raw\\" or \\"scalar\\".");')
       },
       compileInfo = list(
         C_fun = function(i = "integerScalar", v = "numericVector", mode = "string") {
-          cppLiteral('if (mode == "raw") {setValues_raw_(i) = v; return;}
-if (mode == "scalar") {setValues_scalar_(i) = v; return;}
-Rcpp::stop("setValues_indexed: mode must be \\"raw\\" or \\"scalar\\".");')
+          cppLiteral("setValues_indexed_(i, v, mode)") # see multiCopier_model_nC_base
         }
       )
     )
@@ -259,13 +255,19 @@ makeMultiCopier <- function(source, nodes,
 
 # Uncompiled implementations of values(model, nodes) and `values<-`(model, nodes, value).
 
-# With mode = "scalar" (or eventually "node"), `nodes` must be indexed, as in
-# values(model, nodes[i], mode = "scalar"). Then `nodes` and `i` are evaluated separately
-# in the caller and passed to values_indexed(). With mode = "raw" (the default, as in nimble),
-# nodes[i] is evaluated as usual, giving entry i of `nodes`.
+# With mode = "scalar" or "node" and indexed `nodes`, as in values(model, nodes[i], mode = "scalar"),
+# `nodes` and `i` are evaluated separately in the caller and passed to values_indexed().
+# With mode = "raw" (the default, as in nimble), nodes[i] is evaluated as usual, giving entry i of `nodes`.
+# Without an index, "scalar" is the same as "raw", and "node" gives all the nodes' values in sorted order.
 
 #' @export
 values <- function(model, nodes, mode = "raw") {
+  # Unindexed scalar mode is the same as raw mode: all the values, flattened.
+  if (identical(mode, "scalar") && !is_singly_indexed(substitute(nodes))) mode <- "raw"
+  # Unindexed node mode: all the nodes, in sorted order.
+  if (identical(mode, "node") && !is_singly_indexed(substitute(nodes))) {
+    return(model$getValues_nodes(nodes))
+  }
   if (!identical(mode, "raw")) {
     base_and_index <- split_indexed_nodes(substitute(nodes), parent.frame(), mode)
     return(values_indexed(model, base_and_index$nodes, base_and_index$i, mode))
@@ -285,6 +287,11 @@ values <- function(model, nodes, mode = "raw") {
 
 #' @export
 `values<-` <- function(model, nodes, mode = "raw", value) {
+  if (identical(mode, "scalar") && !is_singly_indexed(substitute(nodes))) mode <- "raw"
+  if (identical(mode, "node") && !is_singly_indexed(substitute(nodes))) {
+    model$setValues_nodes(nodes, value)
+    return(model)
+  }
   if (!identical(mode, "raw")) {
     base_and_index <- split_indexed_nodes(substitute(nodes), parent.frame(), mode)
     values_indexed(model, base_and_index$nodes, base_and_index$i, mode) <- value
@@ -345,8 +352,12 @@ values <- function(model, nodes, mode = "raw") {
 
 # From the unevaluated `nodes` argument of values(model, nodes[i], mode = ...),
 # evaluate `nodes` and `i` separately in `env`.
+is_singly_indexed <- function(nodesExpr) {
+  is.call(nodesExpr) && identical(nodesExpr[[1]], as.name("[")) && length(nodesExpr) == 3
+}
+
 split_indexed_nodes <- function(nodesExpr, env, mode) {
-  if (!(is.call(nodesExpr) && identical(nodesExpr[[1]], as.name("[")) && length(nodesExpr) == 3)) {
+  if (!is_singly_indexed(nodesExpr)) {
     stop("values: mode = \"", mode, "\" requires a singly indexed `nodes` argument, as in nodes[i].")
   }
   list(nodes = eval(nodesExpr[[2]], env), i = eval(nodesExpr[[3]], env))
@@ -368,14 +379,45 @@ check_values_index <- function(i, n, what) {
   }
 }
 
+# In node mode, `nodes` is anything makeInstrList accepts, and node i is in sorted order,
+# as for model$calculate_indexed(nodes, i). Elements of `nodes` that are constants are not nodes and
+# are omitted. RHS-only elements and logProb variables are errors: they have no instruction to
+# align with calculate(nodes[i]) (and logProbs are available from getLogProb(nodes[i])).
+# The check uses getNodes, so for large node sets it can be skipped with
+# nimbleModelOptions(check_values_node_inputs = FALSE).
+check_values_node_input <- function(model, nodes) {
+  if (!isTRUE(getNimbleModelOption("check_values_node_inputs"))) {
+    return(invisible(TRUE))
+  }
+  if (!(is.character(nodes) || inherits(nodes, "varRangeClass") ||
+        (is.list(nodes) && length(nodes) && all(vapply(nodes, \(x) inherits(x, "varRangeClass"), logical(1)))))) {
+    return(invisible(TRUE)) # instructions
+  }
+  vr <- as_varRange_list(nodes)
+  varNames <- vapply(vr, \(x) x$varName, character(1))
+  if (any(startsWith(varNames, "logProb_"))) {
+    stop("values: mode = \"node\" does not support logProb variables (",
+         paste(unique(varNames[startsWith(varNames, "logProb_")]), collapse = ", "), ").")
+  }
+  nNodes <- length(model$getNodes(nodes, returnScalarComponents = TRUE, nodesAsChars = TRUE))
+  nWithRHSonly <- length(model$getNodes(nodes, includeRHSonly = TRUE, returnScalarComponents = TRUE, nodesAsChars = TRUE))
+  if (nWithRHSonly > nNodes) {
+    stop("values: mode = \"node\" does not support RHS-only elements of `nodes`.")
+  }
+  invisible(TRUE)
+}
+
 # Uncompiled values(model, nodes[i], mode = mode) and its assignment form.
 # mode = "raw": entry i of `nodes`.
 # mode = "scalar": element i of values(model, nodes), as a length-1 vector.
-# mode = "node" is not yet supported.
+# mode = "node": node i (see check_values_node_input), flattened.
 
 #' @export
 values_indexed <- function(model, nodes, i, mode = c("raw", "scalar", "node")) {
   mode <- match.arg(mode)
+  if (mode == "node") {
+    return(model$getValues_indexed(nodes, i))
+  }
   nodes <- as_varRange_list(nodes)
   switch(mode,
     raw = {
@@ -386,14 +428,17 @@ values_indexed <- function(model, nodes, i, mode = c("raw", "scalar", "node")) {
       vals <- values(model, nodes)
       check_values_index(i, length(vals), "elements of values(model, nodes)")
       vals[i]
-    },
-    node = stop("values: mode = \"node\" is not supported yet.")
+    }
   )
 }
 
 #' @export
 `values_indexed<-` <- function(model, nodes, i, mode = c("raw", "scalar", "node"), value) {
   mode <- match.arg(mode)
+  if (mode == "node") {
+    model$setValues_indexed(nodes, i, value)
+    return(model)
+  }
   nodes <- as_varRange_list(nodes)
   switch(mode,
     raw = {
@@ -415,8 +460,7 @@ values_indexed <- function(model, nodes, i, mode = c("raw", "scalar", "node")) {
       vals <- values(model, nodes[k])
       vals[local_i] <- value
       values(model, nodes[k]) <- vals
-    },
-    node = stop("values: mode = \"node\" is not supported yet.")
+    }
   )
   model
 }

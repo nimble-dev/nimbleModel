@@ -28,15 +28,11 @@ setValues_() = v;
 }
     Eigen::Tensor<double, 1>  mCopy_nC::getValues_indexed ( int i, std::string mode )  {
 RESET_EIGEN_ERRORS
-if (mode == "raw") return getValues_raw_(i);
-if (mode == "scalar") return getValues_scalar_(i);
-Rcpp::stop("getValues_indexed: mode must be \"raw\" or \"scalar\".");;
+return getValues_indexed_(i, mode);
 }
     void  mCopy_nC::setValues_indexed ( int i, Eigen::Tensor<double, 1> v, std::string mode )  {
 RESET_EIGEN_ERRORS
-if (mode == "raw") {setValues_raw_(i) = v; return;}
-if (mode == "scalar") {setValues_scalar_(i) = v; return;}
-Rcpp::stop("setValues_indexed: mode must be \"raw\" or \"scalar\".");;
+setValues_indexed_(i, v, mode);
 }
       mCopy_nC::mCopy_nC (  )  {
 RESET_EIGEN_ERRORS

@@ -201,8 +201,13 @@ test_that("uncompiled values(model, nodes[i], mode = ...) and values_indexed wor
   values_indexed(m, vr, 13, "scalar") <- -1
   expect_equal(m$mu, -1)
 
-  expect_error(values(m, nodes, mode = "scalar"))
+  # unindexed scalar mode is raw mode
+  expect_equal(values(m, nodes, mode = "scalar"), values(m, nodes))
+  allVals <- values(m, nodes)
+  values(m, nodes, mode = "scalar") <- allVals + 1
+  expect_equal(values(m, nodes), allVals + 1)
+  values(m, nodes) <- allVals
   expect_error(values(m, nodes[length(flat) + 1], mode = "scalar"))
   expect_error(values_indexed(m, nodes, 1, "raw") <- 1)
-  expect_error(values_indexed(m, nodes, 1, "node"))
+  expect_equal(values_indexed(m, nodes, 1, "node"), m$mu) # node mode uses sorted order
 })

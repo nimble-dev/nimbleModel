@@ -112,4 +112,5 @@ export(setdiff_nodes)
 
 export(setNimbleModelOption)
 export(getNimbleModelOption)
+export(withNimbleModelOptions)
 

@@ -80,5 +80,19 @@ public:
     setActiveRow(0);
     return flatViewGroup.setValues_at_(i - 1);
   }
+
+  // For use from R, via
+  // multiCopier_nClass$getValues_indexed and $setValues_indexed,
+  // allowing run-time choice of mode.
+  Eigen::Tensor<double, 1> getValues_indexed_(int i, const std::string &mode) {
+    if (mode == "raw") return getValues_raw_(i);
+    if (mode == "scalar") return getValues_scalar_(i);
+    Rcpp::stop("getValues_indexed: mode must be \"raw\" or \"scalar\".");
+  }
+  void setValues_indexed_(int i, const Eigen::Tensor<double, 1> &v, const std::string &mode) {
+    if (mode == "raw") {setValues_raw_(i) = v; return;}
+    if (mode == "scalar") {setValues_scalar_(i) = v; return;}
+    Rcpp::stop("setValues_indexed: mode must be \"raw\" or \"scalar\".");
+  }
 };
 #endif
