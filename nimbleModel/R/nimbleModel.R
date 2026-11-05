@@ -89,6 +89,9 @@ make_modelClass_from_nimbleModel <- function(modelDef, data, inits, name = NULL)
       unlist() |>
       unique() |>
       setdiff(c("idx", "paramID_", "boundID_", "LocalNewLogProb_", "LocalAns_", "model", "param_name_")) %||% character()
+    # Other method locals (e.g. in getValues_into_one) are named Local*_, and
+    # nFunction's handling of refArgs adds *_Ref__ names to the uncompiled bodies.
+    declVars <- declVars[!grepl("^Local[[:alnum:]]*_$", declVars) & !grepl("_Ref__$", declVars)]
     declVarInfo <- modelVarInfo$vars[declVars]
     declID <- as.numeric(declInfo$declRule$ID) # Formerly `sourceLineNumber`, which may not be unique.
     declFun_membername <- declFunNames[i]
@@ -672,7 +675,147 @@ make_decl_methods_from_declInfo <- function(declInfo) {
     getBoundMethods <- make_getBound_methods(declInfo$distributionName, LHSrep, RHSrep, boundExprsRep)
     getParamIDMethod <- make_getParamID_method(declInfo$distributionName)
   }
-  c(methodList, getParamMethods, getBoundMethods, getParamIDMethod)
+  valuesMethods <- make_values_one_methods(LHSrep)
+  c(methodList, getParamMethods, getBoundMethods, getParamIDMethod, valuesMethods)
+}
+
+# Generated per-node methods for values(model, nodes[i], mode = "node") and
+# values(model, nodes, mode = "node"). For one node (its LHS, as LHSrep with idx filled in):
+#   valuesLength_one(idx): the number of values (as a double, since that is the type of
+#     index arithmetic in the DSL).
+#   getValues_into_one(idx, LocalOut_, LocalOff_): copy the values, flattened in column-major
+#     order, into LocalOut_ starting after LocalOff_ (a 0-based offset).
+#   setValues_from_one(idx, LocalV_, LocalOff_): the reverse.
+# These do no checking. The loops over nodes, the offsets and the length checks are hand-coded
+# in declFunClass_.h, which calls these without virtual dispatch.
+# The vector arguments (and idx) are passed by reference, so a loop over nodes doesn't copy them.
+#
+# The compiled code depends on D, the number of ranges in the LHS:
+# D = 0 (scalar) and D = 1 use the LHS directly in DSL code.
+# D >= 2 needs a flattened view. In that case, we put
+# the index expressions into local variables and call
+# nm_getBlock_into_ or nm_setBlock_from_
+# (in declFunClass_.h), which use a RuntimeFlatView.
+# All locals are named Local*_, which is used above as a pattern
+# to exclude from the model$ prefixing in nm_addModelDollarSign.
+make_values_one_methods <- function(LHSrep) {
+  if (is.name(LHSrep)) {
+    # A scalar variable. (A non-scalar variable on the LHS is always indexed.)
+    varName <- as.character(LHSrep)
+    indexExprs <- list()
+  } else {
+    varName <- as.character(LHSrep[[2]])
+    indexExprs <- as.list(LHSrep)[-(1:2)]
+  }
+  isRange <- vapply(indexExprs, \(e) is.call(e) && identical(e[[1]], as.name(":")), logical(1))
+  D <- sum(isRange)
+  if (D == 0) {
+    C_len <- function(idx) {
+      return(1)
+    }
+    C_get <- substitute(function(idx, LocalOut_, LocalOff_) {
+      LocalOut_[LocalOff_ + 1] <- LHS
+    }, list(LHS = LHSrep)) |> eval()
+    C_set <- substitute(function(idx, LocalV_, LocalOff_) {
+      LHS <- LocalV_[LocalOff_ + 1]
+    }, list(LHS = LHSrep)) |> eval()
+  } else if (D == 1) {
+    e <- indexExprs[[which(isRange)]]
+    LEN <- substitute((B - A + 1), list(A = e[[2]], B = e[[3]]))
+    C_len <- substitute(function(idx) {
+      return(LEN)
+    }, list(LEN = LEN)) |> eval()
+    C_get <- substitute(function(idx, LocalOut_, LocalOff_) {
+      LocalOut_[(LocalOff_ + 1):(LocalOff_ + LEN)] <- LHS
+    }, list(LHS = LHSrep, LEN = LEN)) |> eval()
+    C_set <- substitute(function(idx, LocalV_, LocalOff_) {
+      LHS <- LocalV_[(LocalOff_ + 1):(LocalOff_ + LEN)]
+    }, list(LHS = LHSrep, LEN = LEN)) |> eval()
+  } else {
+    # D >= 2.
+    # Create local variables to calculate index starts and ends (which could be expressions like i + 1).
+    # Then call nm_getBlock_into_/nm_setBlock_from_ (in declFunClass_.h) in C++.
+    boundLines <- list()
+    blocks <- character()
+    lenExprs <- list()
+    for (k in seq_along(indexExprs)) {
+      e <- indexExprs[[k]]
+      if (isRange[k]) {
+        S <- paste0("LocalS", k, "_")
+        E <- paste0("LocalE", k, "_")
+        boundLines <- c(boundLines,
+                        substitute(S <- A, list(S = as.name(S), A = e[[2]])),
+                        substitute(E <- B, list(E = as.name(E), B = e[[3]])))
+        blocks <- c(blocks, paste0("nm_r_(", S, ", ", E, ")"))
+        lenExprs <- c(lenExprs, substitute((B - A + 1), list(A = e[[2]], B = e[[3]])))
+      } else {
+        I <- paste0("LocalI", k, "_")
+        boundLines <- c(boundLines, substitute(I <- A, list(I = as.name(I), A = e)))
+        blocks <- c(blocks, paste0("nm_i_(", I, ")"))
+      }
+    }
+    blocksCode <- paste0("{", paste(blocks, collapse = ", "), "}")
+    lenExpr <- Reduce(\(a, b) substitute(A * B, list(A = a, B = b)), lenExprs)
+    C_len <- substitute(function(idx) {
+      return(LEN)
+    }, list(LEN = lenExpr)) |> eval()
+    C_get <- as.call(c(
+      as.name("{"), boundLines,
+      substitute(nCpp(CODE), list(CODE = paste0(
+        "nm_getBlock_into_(", varName, ", ", blocksCode, ", LocalOut_.data() + LocalOff_)"
+      )))
+    ))
+    C_get <- eval(substitute(function(idx, LocalOut_, LocalOff_) BODY, list(BODY = C_get)))
+    C_set <- as.call(c(
+      as.name("{"), boundLines,
+      substitute(nCpp(CODE), list(CODE = paste0(
+        "nm_setBlock_from_(", varName, ", ", blocksCode, ", LocalV_.data() + LocalOff_)"
+      )))
+    ))
+    C_set <- eval(substitute(function(idx, LocalV_, LocalOff_) BODY, list(BODY = C_set)))
+  }
+
+  # Uncompiled versions. R has no pass by reference here, so getValues_into_one returns LocalOut_.
+  R_len <- substitute(function(idx) {
+    return(length(LHS))
+  }, list(LHS = LHSrep)) |> eval()
+  R_get <- substitute(function(idx, LocalOut_, LocalOff_) {
+    LocalOut_[LocalOff_ + seq_along(LHS)] <- as.numeric(LHS)
+    return(LocalOut_)
+  }, list(LHS = LHSrep)) |> eval()
+  R_set <- substitute(function(idx, LocalV_, LocalOff_) {
+    LHS <- LocalV_[LocalOff_ + seq_along(LHS)]
+  }, list(LHS = LHSrep)) |> eval()
+  exceptionNames <- c("idx", "LocalOut_", "LocalV_", "LocalOff_")
+  body(R_len) <- nm_addModelDollarSign(body(R_len), exceptionNames = exceptionNames)
+  body(R_get) <- nm_addModelDollarSign(body(R_get), exceptionNames = exceptionNames)
+  body(R_set) <- nm_addModelDollarSign(body(R_set), exceptionNames = exceptionNames)
+  list(
+    valuesLength_one = nFunction(
+      name = "valuesLength_one",
+      R_len,
+      compileInfo = list(C_fun = C_len),
+      returnType = "numericScalar", # index arithmetic in the DSL is double; declFunClass_ casts to int
+      argTypes = list(idx = "integerVector"),
+      refArgs = "idx"
+    ),
+    getValues_into_one = nFunction(
+      name = "getValues_into_one",
+      R_get,
+      compileInfo = list(C_fun = C_get),
+      returnType = "void",
+      argTypes = list(idx = "integerVector", LocalOut_ = "numericVector", LocalOff_ = "integerScalar"),
+      refArgs = c("idx", "LocalOut_")
+    ),
+    setValues_from_one = nFunction(
+      name = "setValues_from_one",
+      R_set,
+      compileInfo = list(C_fun = C_set),
+      returnType = "void",
+      argTypes = list(idx = "integerVector", LocalV_ = "numericVector", LocalOff_ = "integerScalar"),
+      refArgs = c("idx", "LocalV_")
+    )
+  )
 }
 
 make_getParamID_method <- function(distName) {

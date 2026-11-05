@@ -2,6 +2,30 @@
 // Add "#include <nCompiler/predef/nodeFxnClass_/nodeFxnClass_.h>" the compileInfo$HpostCode
 // so it appears after the declaration of nodeFxnBase_nClass.
 
+// Helpers for getValues_into_one/setValues_from_one of a node whose LHS has two or more ranges
+// (see make_values_one_methods). Indices and range bounds are 1-based, as in the DSL.
+// The generated code looks like
+//   nm_getBlock_into_(W, {nm_i_(LocalI1_), nm_r_(LocalS2_, LocalE2_), nm_r_(LocalS3_, LocalE3_)}, LocalOut_.data() + LocalOff_);
+// There is no checking here: the caller (in declFunClass_) checks lengths.
+inline b__ nm_i_(int i) { return b__(static_cast<long>(i) - 1); }
+inline b__ nm_r_(int s, int e) { return b__(static_cast<long>(s) - 1, static_cast<long>(e) - 1); }
+
+template<typename T>
+RuntimeFlatView<double> nm_blockView_(T &var, const std::vector<b__> &blocks) {
+    return RuntimeFlatView<double>(var.data(),
+                                   std::vector<int>(var.dimensions().begin(), var.dimensions().end()),
+                                   blocks);
+}
+template<typename T>
+void nm_getBlock_into_(T &var, const std::vector<b__> &blocks, double *dest) {
+    nm_blockView_(var, blocks).copyIntoVector(dest);
+}
+template<typename T>
+void nm_setBlock_from_(T &var, const std::vector<b__> &blocks, const double *src) {
+    RuntimeFlatView<double> view = nm_blockView_(var, blocks);
+    view.copyFromVector(src);
+}
+
 // NIDX is the number of loop indices of the declaration, i.e. the length of `idx`.
 template<class Derived, int NIDX>
 class declFunClass_ : public declFunBase_nClass {
@@ -72,6 +96,87 @@ public:
             set_instr_idx_(*instr, step, singleton_idx_);
             return static_cast<Derived*>(this)->getBound_one(singleton_idx_, boundID);
         }
+    }
+
+    // values(model, nodes[i], mode = "node") and values(model, nodes, mode = "node").
+    // The generated valuesLength_one, getValues_into_one and setValues_from_one handle one node
+    // at an offset into a vector, with no checking. The loops over nodes, the offsets and the
+    // length checks are here. Calls to the generated methods are not virtual.
+    //
+    // Call f(idx) for each node of `instr`, in order. A declaration with no loop indices
+    // has one node and gets a dummy idx, as in calc_0_.
+    template<class F>
+    void for_each_node_(const std::shared_ptr<instr_nClass> &instr, F &&f) {
+        if constexpr (NIDX == 0) {
+            f(instr->lens);
+        } else {
+            const int n = instr->nNodes;
+            for(int k = 1; k <= n; ++k) {
+                set_instr_idx_(*instr, k, singleton_idx_);
+                f(singleton_idx_);
+            }
+        }
+    }
+    // The total number of values in the nodes of `instr`.
+    int valuesLength_cpp(std::shared_ptr<instr_nClass> instr) override {
+        RESET_EIGEN_ERRORS;
+        Derived *self = static_cast<Derived*>(this);
+        int total = 0;
+        for_each_node_(instr, [&](Eigen::Tensor<int, 1> &idx) { total += static_cast<int>(self->valuesLength_one(idx)); });
+        return total;
+    }
+    // Copy the values of the nodes of `instr` into `out`, starting after `offset` (0-based).
+    // Returns the offset after the last value copied.
+    int getValues_into_cpp(std::shared_ptr<instr_nClass> instr, Eigen::Tensor<double, 1> &out, int offset) override {
+        RESET_EIGEN_ERRORS;
+        Derived *self = static_cast<Derived*>(this);
+        for_each_node_(instr, [&](Eigen::Tensor<int, 1> &idx) {
+            const int n = static_cast<int>(self->valuesLength_one(idx));
+            if(offset + n > out.size())
+                Rcpp::stop("getValues: the output vector is too short for these nodes.");
+            self->getValues_into_one(idx, out, offset);
+            offset += n;
+        });
+        return offset;
+    }
+    // Set the values of the nodes of `instr` from `v`, starting after `offset` (0-based).
+    // Returns the offset after the last value used.
+    int setValues_from_cpp(std::shared_ptr<instr_nClass> instr, Eigen::Tensor<double, 1> &v, int offset) override {
+        RESET_EIGEN_ERRORS;
+        Derived *self = static_cast<Derived*>(this);
+        for_each_node_(instr, [&](Eigen::Tensor<int, 1> &idx) {
+            const int n = static_cast<int>(self->valuesLength_one(idx));
+            if(offset + n > v.size())
+                Rcpp::stop("setValues: value is too short for these nodes.");
+            self->setValues_from_one(idx, v, offset);
+            offset += n;
+        });
+        return offset;
+    }
+    // One node (step) of `instr`.
+    Eigen::Tensor<int, 1> &singleton_idx_for_(const std::shared_ptr<instr_nClass> &instr, int step) {
+        if constexpr (NIDX == 0) {
+            return instr->lens;
+        } else {
+            set_instr_idx_(*instr, step, singleton_idx_);
+            return singleton_idx_;
+        }
+    }
+    Eigen::Tensor<double, 1> getValues_singleton_cpp(std::shared_ptr<instr_nClass> instr, int step) override {
+        RESET_EIGEN_ERRORS;
+        Derived *self = static_cast<Derived*>(this);
+        Eigen::Tensor<int, 1> &idx = singleton_idx_for_(instr, step);
+        Eigen::Tensor<double, 1> out(static_cast<int>(self->valuesLength_one(idx)));
+        self->getValues_into_one(idx, out, 0);
+        return out;
+    }
+    void setValues_singleton_cpp(std::shared_ptr<instr_nClass> instr, int step, Eigen::Tensor<double, 1> v) override {
+        RESET_EIGEN_ERRORS;
+        Derived *self = static_cast<Derived*>(this);
+        Eigen::Tensor<int, 1> &idx = singleton_idx_for_(instr, step);
+        if(v.size() != static_cast<int>(self->valuesLength_one(idx)))
+            Rcpp::stop("setValues: value has the wrong length for this node.");
+        self->setValues_from_one(idx, v, 0);
     }
 
     double calculate_cpp( std::shared_ptr<instr_nClass> instr) override {

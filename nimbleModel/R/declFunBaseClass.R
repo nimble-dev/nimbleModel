@@ -39,6 +39,41 @@ declFunBase_nClass <- nClass(
     getBound_singleton = function(instr, step, boundID) {
       getBound_one(set_instr_idx(instr, step), boundID)
     },
+    # The values of one node, flattened, for values(model, nodes[i], mode = "node").
+    getValues_singleton = function(instr, step) {
+      idx <- set_instr_idx(instr, step)
+      out <- numeric(valuesLength_one(idx))
+      getValues_into_one(idx, out, 0)
+    },
+    setValues_singleton = function(instr, step, v) {
+      idx <- set_instr_idx(instr, step)
+      if (length(v) != valuesLength_one(idx)) stop("setValues: value has the wrong length for this node.")
+      setValues_from_one(idx, v, 0)
+      invisible(NULL)
+    },
+    # All the nodes of an instr, for values(model, nodes, mode = "node").
+    valuesLength = function(instr) {
+      total <- 0
+      for (k in seq_len(instr$nNodes)) {
+        idx <- set_instr_idx(instr, k) # a name, since idx is a refArg
+        total <- total + valuesLength_one(idx)
+      }
+      total
+    },
+    getValues_instr = function(instr) {
+      unlist(lapply(seq_len(instr$nNodes), \(k) getValues_singleton(instr, k)), use.names = FALSE)
+    },
+    # Set from v starting after offset (0-based), and return the offset after the last value used.
+    setValues_instr = function(instr, v, offset) {
+      for (k in seq_len(instr$nNodes)) {
+        idx <- set_instr_idx(instr, k)
+        n <- valuesLength_one(idx)
+        if (offset + n > length(v)) stop("setValues: value is too short for these nodes.")
+        setValues_from_one(idx, v, offset)
+        offset <- offset + n
+      }
+      offset
+    },
     # getParam: use only the first entry in the instr.
     getParam = function(instr, paramID) {
       fi <- first_idx(instr)
@@ -346,6 +381,78 @@ declFunBase_nClass <- nClass(
         C_fun = function(instr = "instr_nClass", step = "integerScalar", boundID = "integerScalar") {
           cppLiteral('Rprintf("declFunBase_nClass virtual base getBound_singleton_cpp should never be called (something is wrong)\\n");')
           return(0)
+        }
+      )
+    ),
+    getValues_singleton_cpp = nFunction(
+      name = "getValues_singleton_cpp",
+      function(instr, step) {
+        stop("Uncompiled version of getValues_singleton_cpp should not be called.")
+      },
+      returnType = "numericVector",
+      compileInfo = list(
+        virtual = TRUE,
+        C_fun = function(instr = "instr_nClass", step = "integerScalar") {
+          cppLiteral('Rprintf("declFunBase_nClass virtual base getValues_singleton_cpp should never be called (something is wrong)\\n");')
+          return(nNumeric(length = 0))
+        }
+      )
+    ),
+    setValues_singleton_cpp = nFunction(
+      name = "setValues_singleton_cpp",
+      function(instr, step, v) {
+        stop("Uncompiled version of setValues_singleton_cpp should not be called.")
+      },
+      returnType = "void",
+      compileInfo = list(
+        virtual = TRUE,
+        C_fun = function(instr = "instr_nClass", step = "integerScalar", v = "numericVector") {
+          cppLiteral('Rprintf("declFunBase_nClass virtual base setValues_singleton_cpp should never be called (something is wrong)\\n");')
+        }
+      )
+    ),
+    # All the nodes of an instr, for values(model, nodes, mode = "node"). See declFunClass_.h.
+    valuesLength_cpp = nFunction(
+      name = "valuesLength_cpp",
+      function(instr) {
+        stop("Uncompiled version of valuesLength_cpp should not be called.")
+      },
+      returnType = "integerScalar",
+      compileInfo = list(
+        virtual = TRUE,
+        C_fun = function(instr = "instr_nClass") {
+          cppLiteral('Rprintf("declFunBase_nClass virtual base valuesLength_cpp should never be called (something is wrong)\\n");')
+          return(0L)
+        }
+      )
+    ),
+    getValues_into_cpp = nFunction(
+      name = "getValues_into_cpp",
+      function(instr, out, offset) {
+        stop("Uncompiled version of getValues_into_cpp should not be called.")
+      },
+      returnType = "integerScalar",
+      refArgs = "out",
+      compileInfo = list(
+        virtual = TRUE,
+        C_fun = function(instr = "instr_nClass", out = "numericVector", offset = "integerScalar") {
+          cppLiteral('Rprintf("declFunBase_nClass virtual base getValues_into_cpp should never be called (something is wrong)\\n");')
+          return(0L)
+        }
+      )
+    ),
+    setValues_from_cpp = nFunction(
+      name = "setValues_from_cpp",
+      function(instr, v, offset) {
+        stop("Uncompiled version of setValues_from_cpp should not be called.")
+      },
+      returnType = "integerScalar",
+      refArgs = "v",
+      compileInfo = list(
+        virtual = TRUE,
+        C_fun = function(instr = "instr_nClass", v = "numericVector", offset = "integerScalar") {
+          cppLiteral('Rprintf("declFunBase_nClass virtual base setValues_from_cpp should never be called (something is wrong)\\n");')
+          return(0L)
         }
       )
     )

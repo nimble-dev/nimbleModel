@@ -30,6 +30,10 @@ public:
    virtual  void  simulate_indexed_impl ( std::shared_ptr<instrList_nClass> instrList, int step )  ;
    virtual  std::unique_ptr<ETaccessorBase>  getParam_indexed_impl ( std::shared_ptr<instrList_nClass> instrList, int step, int paramID )  ;
    virtual  double  getBound_indexed_impl ( std::shared_ptr<instrList_nClass> instrList, int step, int boundID )  ;
+   virtual  Eigen::Tensor<double, 1>  getValues_indexed_impl ( std::shared_ptr<instrList_nClass> instrList, int step )  ;
+   virtual  void  setValues_indexed_impl ( std::shared_ptr<instrList_nClass> instrList, int step, Eigen::Tensor<double, 1> value )  ;
+   virtual  Eigen::Tensor<double, 1>  getValues_nodes_impl ( std::shared_ptr<instrList_nClass> instrList )  ;
+   virtual  void  setValues_nodes_impl ( std::shared_ptr<instrList_nClass> instrList, Eigen::Tensor<double, 1> value )  ;
       modelBase_nClass (  )  ;
 
 };

@@ -103,6 +103,41 @@ public:
         auto instr = find_instr_for_step_(*instrList, step, k);
         return declFunPtrs[instr->declID - 1]->getBound_singleton_cpp(instr, k, boundID);
     }
+    Eigen::Tensor<double, 1> getValues_indexed_impl(std::shared_ptr<instrList_nClass> instrList, int step) override {
+        int k;
+        auto instr = find_instr_for_step_(*instrList, step, k);
+        return declFunPtrs[instr->declID - 1]->getValues_singleton_cpp(instr, k);
+    }
+    void setValues_indexed_impl(std::shared_ptr<instrList_nClass> instrList, int step, Eigen::Tensor<double, 1> value) override {
+        int k;
+        auto instr = find_instr_for_step_(*instrList, step, k);
+        declFunPtrs[instr->declID - 1]->setValues_singleton_cpp(instr, k, value);
+    }
+    // All the nodes of an instruction list, for values(model, nodes, mode = "node").
+    // The total length is found first (cheaply: no values are copied), so the result is
+    // allocated once and a wrong-length value is an error before anything is set.
+    // There is one virtual call per instruction (not per node) for each pass.
+    int valuesLength_impl_(const instrList_nClass &instrList) {
+        int total = 0;
+        for (const auto& instr : instrList.instr_nList->contents())
+            total += declFunPtrs[instr->declID - 1]->valuesLength_cpp(instr);
+        return total;
+    }
+    Eigen::Tensor<double, 1> getValues_nodes_impl(std::shared_ptr<instrList_nClass> instrList) override {
+        Eigen::Tensor<double, 1> out(valuesLength_impl_(*instrList));
+        int offset = 0;
+        for (const auto& instr : instrList->instr_nList->contents())
+            offset = declFunPtrs[instr->declID - 1]->getValues_into_cpp(instr, out, offset);
+        return out;
+    }
+    void setValues_nodes_impl(std::shared_ptr<instrList_nClass> instrList, Eigen::Tensor<double, 1> value) override {
+        const int total = valuesLength_impl_(*instrList);
+        if (value.size() != total)
+            Rcpp::stop("setValues: value has length %d but the nodes have %d values.", (int)value.size(), total);
+        int offset = 0;
+        for (const auto& instr : instrList->instr_nList->contents())
+            offset = declFunPtrs[instr->declID - 1]->setValues_from_cpp(instr, value, offset);
+    }
 
     // This version takes a character vector of names from R so that
     // the ordering of nodeFxns matches that in R, which is important for
@@ -234,3 +269,48 @@ public:
         }
     }
 };
+
+// Support for nimble2's values(model, nodes[i], mode = "node") <- y, which becomes
+// setValues_indexed_(model, instrList, i) = y. When generating code,
+// we know we are on the LHS, and it is easiest to modify the LHS alone.
+// Using a proxy object with an operator=() makes that simple.
+struct SetValuesIndexedProxy_ {
+    std::shared_ptr<modelBase_nClass> model;
+    std::shared_ptr<instrList_nClass> instrList;
+    int step;
+    void operator=(const Eigen::Tensor<double, 1> &v) {
+        model->setValues_indexed_impl(instrList, step, v);
+    }
+    void operator=(double x) {
+        Eigen::Tensor<double, 1> v(1);
+        v(0) = x;
+        model->setValues_indexed_impl(instrList, step, v);
+    }
+};
+
+template<typename M>
+SetValuesIndexedProxy_ setValues_indexed_(const std::shared_ptr<M> &model,
+                                          std::shared_ptr<instrList_nClass> instrList, int step) {
+    return SetValuesIndexedProxy_{model, instrList, step};
+}
+
+// The same for values(model, nodes, mode = "node") <- y, which becomes
+// setValues_nodes_(model, instrList) = y.
+struct SetValuesNodesProxy_ {
+    std::shared_ptr<modelBase_nClass> model;
+    std::shared_ptr<instrList_nClass> instrList;
+    void operator=(const Eigen::Tensor<double, 1> &v) {
+        model->setValues_nodes_impl(instrList, v);
+    }
+    void operator=(double x) {
+        Eigen::Tensor<double, 1> v(1);
+        v(0) = x;
+        model->setValues_nodes_impl(instrList, v);
+    }
+};
+
+template<typename M>
+SetValuesNodesProxy_ setValues_nodes_(const std::shared_ptr<M> &model,
+                                      std::shared_ptr<instrList_nClass> instrList) {
+    return SetValuesNodesProxy_{model, instrList};
+}

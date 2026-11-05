@@ -81,6 +81,30 @@ RESET_EIGEN_ERRORS
 Rprintf("declFunBase_nClass virtual base getBound_singleton_cpp should never be called (something is wrong)\n");;
 return(0.0);
 }
+    Eigen::Tensor<double, 1>  declFunBase_nClass::getValues_singleton_cpp ( std::shared_ptr<instr_nClass> instr, int step )  {
+RESET_EIGEN_ERRORS
+Rprintf("declFunBase_nClass virtual base getValues_singleton_cpp should never be called (something is wrong)\n");;
+return(createTensor<double, 1>(0.0, 0.0));
+}
+    void  declFunBase_nClass::setValues_singleton_cpp ( std::shared_ptr<instr_nClass> instr, int step, Eigen::Tensor<double, 1> v )  {
+RESET_EIGEN_ERRORS
+Rprintf("declFunBase_nClass virtual base setValues_singleton_cpp should never be called (something is wrong)\n");;
+}
+    int  declFunBase_nClass::valuesLength_cpp ( std::shared_ptr<instr_nClass> instr )  {
+RESET_EIGEN_ERRORS
+Rprintf("declFunBase_nClass virtual base valuesLength_cpp should never be called (something is wrong)\n");;
+return(0);
+}
+    int  declFunBase_nClass::getValues_into_cpp ( std::shared_ptr<instr_nClass> instr, Eigen::Tensor<double, 1> & out, int offset )  {
+RESET_EIGEN_ERRORS
+Rprintf("declFunBase_nClass virtual base getValues_into_cpp should never be called (something is wrong)\n");;
+return(0);
+}
+    int  declFunBase_nClass::setValues_from_cpp ( std::shared_ptr<instr_nClass> instr, Eigen::Tensor<double, 1> & v, int offset )  {
+RESET_EIGEN_ERRORS
+Rprintf("declFunBase_nClass virtual base setValues_from_cpp should never be called (something is wrong)\n");;
+return(0);
+}
       declFunBase_nClass::declFunBase_nClass (  )  {
 RESET_EIGEN_ERRORS
 }
@@ -112,7 +136,12 @@ method("calculate_singleton_cpp", &declFunBase_nClass::calculate_singleton_cpp, 
 method("calculateDiff_singleton_cpp", &declFunBase_nClass::calculateDiff_singleton_cpp, args({{arg("instr",copy)},{arg("step",copy)}})),
 method("getLogProb_singleton_cpp", &declFunBase_nClass::getLogProb_singleton_cpp, args({{arg("instr",copy)},{arg("step",copy)}})),
 method("simulate_singleton_cpp", &declFunBase_nClass::simulate_singleton_cpp, args({{arg("instr",copy)},{arg("step",copy)}})),
-method("getBound_singleton_cpp", &declFunBase_nClass::getBound_singleton_cpp, args({{arg("instr",copy)},{arg("step",copy)},{arg("boundID",copy)}}))
+method("getBound_singleton_cpp", &declFunBase_nClass::getBound_singleton_cpp, args({{arg("instr",copy)},{arg("step",copy)},{arg("boundID",copy)}})),
+method("getValues_singleton_cpp", &declFunBase_nClass::getValues_singleton_cpp, args({{arg("instr",copy)},{arg("step",copy)}})),
+method("setValues_singleton_cpp", &declFunBase_nClass::setValues_singleton_cpp, args({{arg("instr",copy)},{arg("step",copy)},{arg("v",copy)}})),
+method("valuesLength_cpp", &declFunBase_nClass::valuesLength_cpp, args({{arg("instr",copy)}})),
+method("getValues_into_cpp", &declFunBase_nClass::getValues_into_cpp, args({{arg("instr",copy)},{arg("out",ref)},{arg("offset",copy)}})),
+method("setValues_from_cpp", &declFunBase_nClass::setValues_from_cpp, args({{arg("instr",copy)},{arg("v",ref)},{arg("offset",copy)}}))
 )
 )
 #endif

@@ -16,7 +16,11 @@ update_model_calc_methods_LAT <- function(code, symTab, auxEnv, info) {
     getBound_indexed = "getBound_indexed_impl",
     getParam = "getParam_impl",
     getParam_indexed = "getParam_indexed_impl",
-    getParamID = "getParamID_impl"
+    getParamID = "getParamID_impl",
+    getValues_indexed = "getValues_indexed_impl",
+    setValues_indexed = "setValues_indexed_impl",
+    getValues_nodes = "getValues_nodes_impl",
+    setValues_nodes = "setValues_nodes_impl"
   )
   returnType <- switch(code$name,
     calculate = "numericScalar",
@@ -31,7 +35,11 @@ update_model_calc_methods_LAT <- function(code, symTab, auxEnv, info) {
     getBound_indexed = "numericScalar",
     getParam = "ETaccessor()",
     getParam_indexed = "ETaccessor()",
-    getParamID = "integerScalar"
+    getParamID = "integerScalar",
+    getValues_indexed = "numericVector",
+    setValues_indexed = "void",
+    getValues_nodes = "numericVector",
+    setValues_nodes = "void"
   )
   code$name <- method
   code$type <- nCompiler:::type2symbol(!!returnType)
@@ -709,6 +717,60 @@ modelBase_nClass <- nClass(
       loc <- instrList_find_singleton(instrList, i)
       instr_j <- instrList$instr_nList[[loc$j]]
       declFunList[[instr_j$declID]]$getBound_singleton(instr_j, loc$k, boundID)
+    },
+    # The flattened values of node i from an instrList.
+    # This is used by values(model, nodes[i], mode = "node").
+    getValues_indexed = function(instrList, i) {
+      check_values_node_input(self, instrList)
+      calc_indexed_op(instrList, i, "getValues_singleton", "getValues_indexed_impl")
+    },
+    setValues_indexed = function(instrList, i, value) {
+      check_values_node_input(self, instrList)
+      instrList <- makeInstrList(self, instrList)
+      if (isCompiled()) {
+        if (inherits(instrList, "RinstrList") || !nCompiler:::isCompiled(instrList)) {
+          instrList <- makeCompiledInstrList(instrList)
+        }
+        self$setValues_indexed_impl(instrList, i, as.numeric(value))
+        return(invisible(NULL))
+      }
+      loc <- instrList_find_singleton(instrList, i)
+      instr_j <- instrList$instr_nList[[loc$j]]
+      declFunList[[instr_j$declID]]$setValues_singleton(instr_j, loc$k, as.numeric(value))
+      invisible(NULL)
+    },
+    # The flattened values of all the nodes of an instrList, in its (sorted) order.
+    # This is used by values(model, nodes, mode = "node").
+    getValues_nodes = function(instrList) {
+      check_values_node_input(self, instrList)
+      instrList <- makeInstrList(self, instrList)
+      if (isCompiled()) {
+        if (inherits(instrList, "RinstrList") || !nCompiler:::isCompiled(instrList)) {
+          instrList <- makeCompiledInstrList(instrList)
+        }
+        return(self$getValues_nodes_impl(instrList))
+      }
+      unlist(lapply(instrList$instr_nList, \(instr) declFunList[[instr$declID]]$getValues_instr(instr)), use.names = FALSE)
+    },
+    setValues_nodes = function(instrList, value) {
+      check_values_node_input(self, instrList)
+      instrList <- makeInstrList(self, instrList)
+      value <- as.numeric(value)
+      if (isCompiled()) {
+        if (inherits(instrList, "RinstrList") || !nCompiler:::isCompiled(instrList)) {
+          instrList <- makeCompiledInstrList(instrList)
+        }
+        self$setValues_nodes_impl(instrList, value)
+        return(invisible(NULL))
+      }
+      instrs <- instrList$instr_nList
+      total <- sum(vapply(instrs, \(instr) declFunList[[instr$declID]]$valuesLength(instr), numeric(1)))
+      if (length(value) != total) {
+        stop("setValues: value has length ", length(value), " but the nodes have ", total, " values.")
+      }
+      offset <- 0
+      for (instr in instrs) offset <- declFunList[[instr$declID]]$setValues_instr(instr, value, offset)
+      invisible(NULL)
     }
   ),
   Cpublic = list(
@@ -938,6 +1000,62 @@ modelBase_nClass <- nClass(
         },
         virtual = TRUE
       )
+    ),
+    getValues_indexed_impl = nFunction(
+      name = "getValues_indexed_impl",
+      function(instrList, step) {
+        cat("Uncompiled `getValues_indexed_impl` should never be called.\n")
+        return(0)
+      },
+      returnType = "numericVector",
+      compileInfo = list(
+        C_fun = function(instrList = "instrList_nClass", step = "integerScalar") {
+          cppLiteral('Rprintf("modelBase_nClass getValues_indexed_impl (should not see this)\\n");')
+          return(nNumeric(length = 0))
+        },
+        virtual = TRUE
+      )
+    ),
+    setValues_indexed_impl = nFunction(
+      name = "setValues_indexed_impl",
+      function(instrList, step, value) {
+        cat("Uncompiled `setValues_indexed_impl` should never be called.\n")
+      },
+      returnType = "void",
+      compileInfo = list(
+        C_fun = function(instrList = "instrList_nClass", step = "integerScalar", value = "numericVector") {
+          cppLiteral('Rprintf("modelBase_nClass setValues_indexed_impl (should not see this)\\n");')
+        },
+        virtual = TRUE
+      )
+    ),
+    getValues_nodes_impl = nFunction(
+      name = "getValues_nodes_impl",
+      function(instrList) {
+        cat("Uncompiled `getValues_nodes_impl` should never be called.\n")
+        return(0)
+      },
+      returnType = "numericVector",
+      compileInfo = list(
+        C_fun = function(instrList = "instrList_nClass") {
+          cppLiteral('Rprintf("modelBase_nClass getValues_nodes_impl (should not see this)\\n");')
+          return(nNumeric(length = 0))
+        },
+        virtual = TRUE
+      )
+    ),
+    setValues_nodes_impl = nFunction(
+      name = "setValues_nodes_impl",
+      function(instrList, value) {
+        cat("Uncompiled `setValues_nodes_impl` should never be called.\n")
+      },
+      returnType = "void",
+      compileInfo = list(
+        C_fun = function(instrList = "instrList_nClass", value = "numericVector") {
+          cppLiteral('Rprintf("modelBase_nClass setValues_nodes_impl (should not see this)\\n");')
+        },
+        virtual = TRUE
+      )
     )
   ),
   # See comment above about needing to ensure a virtual destructor
@@ -949,7 +1067,8 @@ modelBase_nClass <- nClass(
       c(
         "calculate", "calculate_indexed", "calculateDiff", "calculateDiff_indexed",
         "simulate", "simulate_indexed", "getLogProb", "getLogProb_indexed",
-        "getBound", "getBound_indexed", "getParam", "getParam_indexed", "getParamID"
+        "getBound", "getBound_indexed", "getParam", "getParam_indexed", "getParamID",
+        "getValues_indexed", "setValues_indexed", "getValues_nodes", "setValues_nodes"
       ),
       function(method) {
         matchDef <- if(method %in% c("calculate", "calculateDiff", "simulate", "getLogProb")) {
@@ -966,6 +1085,14 @@ modelBase_nClass <- nClass(
           function(instrList, i, boundID) {}
         } else if (method == "getParamID") {
           function(instr, param) {}
+        } else if (method == "getValues_indexed") {
+          function(instrList, i) {}
+        } else if (method == "setValues_indexed") {
+          function(instrList, i, value) {}
+        } else if (method == "getValues_nodes") {
+          function(instrList) {}
+        } else if (method == "setValues_nodes") {
+          function(instrList, value) {}
         }
         # matchDef belongs at the top level of an opDef (see nCompiler:::normalizeCallArgs). For model$method(...),
         # labelAbstractTypesEnv$MethodCall uses it to put the arguments in order before calling the handler.
