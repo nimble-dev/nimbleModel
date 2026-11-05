@@ -47,7 +47,10 @@ field("slots", &instr_nClass::slots),
 field("values", &instr_nClass::values),
 field("instr_type", &instr_nClass::instr_type),
 field("sortID", &instr_nClass::sortID),
-field("declID", &instr_nClass::declID)
+field("declID", &instr_nClass::declID),
+field("nNodes", &instr_nClass::nNodes),
+field("strides", &instr_nClass::strides),
+field("idxSlotStarts", &instr_nClass::idxSlotStarts)
 ),
 NCOMPILER_METHODS()
 )

@@ -22,6 +22,9 @@ public:
   int instr_type;
   Eigen::Tensor<int, 1> sortID;
   int declID;
+  int nNodes;
+  Eigen::Tensor<int, 1> strides;
+  Eigen::Tensor<int, 1> idxSlotStarts;
 
 };
 

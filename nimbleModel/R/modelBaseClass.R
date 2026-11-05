@@ -1,3 +1,63 @@
+update_model_calc_methods_LAT <- function(code, symTab, auxEnv, info) {
+  # On input, model$calculate(instrList)
+  # has become MethodCall(model, calculate(instrList))
+  # and here the input will be code = calculate(instrList)
+  # as exprClasses
+  method <- switch(code$name,
+    calculate = "calculate_impl",
+    calculate_indexed = "calculate_indexed_impl",
+    calculateDiff = "calculateDiff_impl",
+    calculateDiff_indexed = "calculateDiff_indexed_impl",
+    simulate = "simulate_impl",
+    simulate_indexed = "simulate_indexed_impl",
+    getLogProb = "getLogProb_impl",
+    getLogProb_indexed = "getLogProb_indexed_impl",
+    getBound = "getBound_impl",
+    getBound_indexed = "getBound_indexed_impl",
+    getParam = "getParam_impl",
+    getParam_indexed = "getParam_indexed_impl",
+    getParamID = "getParamID_impl",
+    getValues_indexed = "getValues_indexed_impl",
+    setValues_indexed = "setValues_indexed_impl",
+    getValues_nodes = "getValues_nodes_impl",
+    setValues_nodes = "setValues_nodes_impl"
+  )
+  returnType <- switch(code$name,
+    calculate = "numericScalar",
+    calculate_indexed = "numericScalar",
+    calculateDiff = "numericScalar",
+    calculateDiff_indexed = "numericScalar",
+    simulate = "void",
+    simulate_indexed = "void",
+    getLogProb = "numericScalar",
+    getLogProb_indexed = "numericScalar",
+    getBound = "numericScalar",
+    getBound_indexed = "numericScalar",
+    getParam = "ETaccessor()",
+    getParam_indexed = "ETaccessor()",
+    getParamID = "integerScalar",
+    getValues_indexed = "numericVector",
+    setValues_indexed = "void",
+    getValues_nodes = "numericVector",
+    setValues_nodes = "void"
+  )
+  code$name <- method
+  code$type <- nCompiler:::type2symbol(!!returnType)
+  invisible(NULL)
+}
+
+# `boundID` is a numeric boundID, 1 for lower and 2 for upper (as in nimble), which is what compiled code
+# must pass, or (uncompiled only) "lower" or "upper".
+bound_to_boundID <- function(boundID, caller) {
+  if (is.numeric(boundID) && length(boundID) == 1 && boundID %in% c(1, 2)) {
+    return(boundID)
+  }
+  if (!(is.character(boundID) && length(boundID) == 1 && boundID %in% c("lower", "upper"))) {
+    stop(caller, ": 'boundID' must be 1 (lower) or 2 (upper), or \"lower\" or \"upper\"")
+  }
+  if (boundID == "lower") 1 else 2
+}
+
 #' @export
 modelBase_nClass <- nClass(
   classname = "modelBase_nClass",
@@ -495,45 +555,47 @@ modelBase_nClass <- nClass(
       }
       instrList <- makeInstrList(self, instr)
       if (isCompiled()) {
-        if (inherits(instrList, "Rlist_Rinstr") || !nCompiler:::isCompiled(instrList)) {
+        if (inherits(instrList, "RinstrList") || !nCompiler:::isCompiled(instrList)) {
           instrList <- makeCompiledInstrList(instrList)
         }
         return(self[[fn_cpp]](instrList))
       }
+      instrs <- instrList$instr_nList
       logProb <- 0
-      for (i in 1:length(instrList)) {
-        logProb <- logProb + declFunList[[instrList[[i]]$declID]][[fn]](instrList[[i]])
+      for (i in 1:length(instrs)) {
+        logProb <- logProb + declFunList[[instrs[[i]]$declID]][[fn]](instrs[[i]])
       }
       return(logProb)
     },
-    calculate = function(instr) {
-      logProb <- calc_op(instr, "calculate", "calculate_impl")
+    calculate = function(instrList) {
+      logProb <- calc_op(instrList, "calculate", "calculate_impl")
       return(logProb)
     },
-    calculateDiff = function(instr) {
-      logProb <- calc_op(instr, "calculateDiff", "calculateDiff_impl")
+    calculateDiff = function(instrList) {
+      logProb <- calc_op(instrList, "calculateDiff", "calculateDiff_impl")
       return(logProb)
     },
-    getLogProb = function(instr) {
-      logProb <- calc_op(instr, "getLogProb", "getLogProb_impl")
+    getLogProb = function(instrList) {
+      logProb <- calc_op(instrList, "getLogProb", "getLogProb_impl")
       return(logProb)
     },
-    simulate = function(instr, includeData = FALSE) {
-      if (missing(instr)) {
-        instr <- getVarNames()
+    simulate = function(instrList, includeData = FALSE) {
+      if (missing(instrList)) {
+        instrList <- getVarNames()
       }
-      instrList <- makeInstrList(self, instr, includeData = includeData)
+      instrList <- makeInstrList(self, instrList, includeData = includeData)
       if (is.null(instrList)) {
         return(invisible(NULL))
       }
       if (isCompiled()) {
-        if (inherits(instrList, "Rlist_Rinstr") || !nCompiler:::isCompiled(instrList)) {
+        if (inherits(instrList, "RinstrList") || !nCompiler:::isCompiled(instrList)) {
           instrList <- makeCompiledInstrList(instrList)
         }
         self$simulate_impl(instrList)
       } else {
-        for (i in 1:length(instrList)) {
-          declFunList[[instrList[[i]]$declID]]$simulate(instrList[[i]])
+        instrs <- instrList$instr_nList
+        for (i in 1:length(instrs)) {
+          declFunList[[instrs[[i]]$declID]]$simulate(instrs[[i]])
         }
       }
       return(invisible(NULL))
@@ -541,62 +603,174 @@ modelBase_nClass <- nClass(
     # `one_instr` is a single instr_nClass (if an instList is provided, the first one is used).
     # Within it, one node will be used (see declFunBase_nClass$first_idx).
     # `param` is an integer paramID or a character param name.
-    getParamID = function(one_instr, param) {
-      instrList <- makeInstrList(self, one_instr)
+    getParamID = function(instr, param) {
+      instrList <- makeInstrList(self, instr)
+      first_instr <- instrList$instr_nList[[1]]
       if (is.numeric(param)) {
         paramID <- param
       } else if (is.character(param)) {
         if (isCompiled()) {
-          if (!nCompiler:::isCompiled(instrList)) instr <- makeCompiledInstr(instrList[[1]])
-          paramID <- self$getParamID_impl(instr, param)
+          one_instr <- if (nCompiler:::isCompiled(first_instr)) first_instr else makeCompiledInstr(first_instr)
+          paramID <- self$getParamID_impl(one_instr, param)
         } else {
-          paramID <- declFunList[[instrList[[1]]$declID]]$getParamID(param)
+          paramID <- declFunList[[first_instr$declID]]$getParamID(param)
         }
       } else {
         stop("getParamID: argument `param` must be a character param name or (redundantly) a numeric paramID.")
       }
       return(paramID)
     },
-    getParam = function(one_instr, param) {
-      instrList <- makeInstrList(self, one_instr)
+    getParam = function(instr, paramID) {
+      input_paramID <- paramID # an integer paramID or a character param name
+      instrList <- makeInstrList(self, instr)
+      first_instr <- instrList$instr_nList[[1]]
       if (isCompiled()) {
-        if (!nCompiler:::isCompiled(instrList)) instr <- makeCompiledInstr(instrList[[1]])
+        one_instr <- if (nCompiler:::isCompiled(first_instr)) first_instr else makeCompiledInstr(first_instr)
       }
-      if (is.numeric(param)) {
-        paramID <- param
-      } else if (is.character(param)) {
-        paramID <- self$getParamID(instrList, param)
+      if (is.numeric(input_paramID)) {
+        paramID <- input_paramID
+      } else if (is.character(input_paramID)) {
+        paramID <- self$getParamID(instrList, input_paramID)
         # getParamID(
         #  self$modelDef$declInfo[[one_instr$declID]]$distributionName,
         #  param
         # )
         # FIXME: Upon switching from the general function getParamID to the constructed method,
         #  I am not sure that we return NA as a failure value.
-        if (is.na(paramID)) stop("getParam: argument `param` is not a valid parameter name for this node.")
+        if (is.na(paramID)) stop("getParam: argument `paramID` is not a valid parameter name for this node.")
       } else {
-        stop("getParam: argument `param` must be an integer paramID or a character param name.")
+        stop("getParam: argument `paramID` must be an integer paramID or a character param name.")
       }
       if (isCompiled()) {
-        # if (!nCompiler:::isCompiled(instrList)) instr <- makeCompiledInstr(instrList[[1]])
-        return(self$getParam_impl(instr, paramID))
+        return(self$getParam_impl(one_instr, paramID))
       }
-      declFunList[[instrList[[1]]$declID]]$getParam(instrList[[1]], paramID)
+      declFunList[[first_instr$declID]]$getParam(first_instr, paramID)
     },
-    getBound = function(one_instr, bound) {
-      instrList <- makeInstrList(self, one_instr)
-      if (!bound %in% c("lower", "upper")) {
-        stop("getBound: 'bound' must be either 'lower' or 'upper'")
-      }
-      boundID <- if (bound == "lower") 0 else 1
+    getBound = function(instr, boundID) {
+      instrList <- makeInstrList(self, instr)
+      first_instr <- instrList$instr_nList[[1]]
+      boundID <- bound_to_boundID(boundID, "getBound")
       if (isCompiled()) {
-        if (!nCompiler:::isCompiled(instrList)) {
-          instr <- makeCompiledInstr(instrList[[1]])
-        } else {
-          instr <- instrList[[1]]
-        }
-        return(self$getBound_impl(instr, boundID))
+        one_instr <- if (nCompiler:::isCompiled(first_instr)) first_instr else makeCompiledInstr(first_instr)
+        return(self$getBound_impl(one_instr, boundID))
       }
-      declFunList[[instrList[[1]]$declID]]$getBound(instrList[[1]], boundID)
+      declFunList[[first_instr$declID]]$getBound(first_instr, boundID)
+    },
+    # One node of an instruction list, with no loop: `step` (1-based) numbers the nodes of the whole list
+    # in calculation order, i.e. this is `nodes[step]`. `instr` is anything `makeInstrList` accepts.
+    calc_indexed_op = function(instr, step, fn, fn_cpp, includeData = TRUE) {
+      instrList <- makeInstrList(self, instr, includeData = includeData)
+      if (isCompiled()) {
+        if (inherits(instrList, "RinstrList") || !nCompiler:::isCompiled(instrList)) {
+          instrList <- makeCompiledInstrList(instrList)
+        }
+        return(self[[fn_cpp]](instrList, step))
+      }
+      loc <- instrList_find_singleton(instrList, step)
+      instr_j <- instrList$instr_nList[[loc$j]]
+      declFunList[[instr_j$declID]][[fn]](instr_j, loc$k)
+    },
+    calculate_indexed = function(instrList, i) {
+      calc_indexed_op(instrList, i, "calculate_singleton", "calculate_indexed_impl")
+    },
+    calculateDiff_indexed = function(instrList, i) {
+      calc_indexed_op(instrList, i, "calculateDiff_singleton", "calculateDiff_indexed_impl")
+    },
+    getLogProb_indexed = function(instrList, i) {
+      calc_indexed_op(instrList, i, "getLogProb_singleton", "getLogProb_indexed_impl")
+    },
+    # As with `simulate`, data nodes are omitted (and so not numbered) unless `includeData = TRUE`.
+    simulate_indexed = function(instrList, i, includeData = FALSE) {
+      calc_indexed_op(instrList, i, "simulate_singleton", "simulate_indexed_impl", includeData = includeData)
+      return(invisible(NULL))
+    },
+    getParam_indexed = function(instrList, i, paramID) {
+      input_paramID <- paramID # an integer paramID or a character param name
+      instrList <- makeInstrList(self, instrList)
+      loc <- instrList_find_singleton(instrList, i)
+      instr_j <- instrList$instr_nList[[loc$j]]
+      if (is.numeric(input_paramID)) {
+        paramID <- input_paramID
+      } else if (is.character(input_paramID)) {
+        paramID <- self$getParamID(instr_j, input_paramID)
+        if (is.na(paramID)) stop("getParam_indexed: argument `paramID` is not a valid parameter name for this node.")
+      } else {
+        stop("getParam_indexed: argument `paramID` must be an integer paramID or a character param name.")
+      }
+      if (isCompiled()) {
+        if (inherits(instrList, "RinstrList") || !nCompiler:::isCompiled(instrList)) {
+          instrList <- makeCompiledInstrList(instrList)
+        }
+        return(self$getParam_indexed_impl(instrList, i, paramID))
+      }
+      declFunList[[instr_j$declID]]$getParam_singleton(instr_j, loc$k, paramID)
+    },
+    getBound_indexed = function(instrList, i, boundID) {
+      boundID <- bound_to_boundID(boundID, "getBound_indexed")
+      instrList <- makeInstrList(self, instrList)
+      if (isCompiled()) {
+        if (inherits(instrList, "RinstrList") || !nCompiler:::isCompiled(instrList)) {
+          instrList <- makeCompiledInstrList(instrList)
+        }
+        return(self$getBound_indexed_impl(instrList, i, boundID))
+      }
+      loc <- instrList_find_singleton(instrList, i)
+      instr_j <- instrList$instr_nList[[loc$j]]
+      declFunList[[instr_j$declID]]$getBound_singleton(instr_j, loc$k, boundID)
+    },
+    # The flattened values of node i from an instrList.
+    # This is used by values(model, nodes[i], mode = "node").
+    getValues_indexed = function(instrList, i) {
+      check_values_node_input(self, instrList)
+      calc_indexed_op(instrList, i, "getValues_singleton", "getValues_indexed_impl")
+    },
+    setValues_indexed = function(instrList, i, value) {
+      check_values_node_input(self, instrList)
+      instrList <- makeInstrList(self, instrList)
+      if (isCompiled()) {
+        if (inherits(instrList, "RinstrList") || !nCompiler:::isCompiled(instrList)) {
+          instrList <- makeCompiledInstrList(instrList)
+        }
+        self$setValues_indexed_impl(instrList, i, as.numeric(value))
+        return(invisible(NULL))
+      }
+      loc <- instrList_find_singleton(instrList, i)
+      instr_j <- instrList$instr_nList[[loc$j]]
+      declFunList[[instr_j$declID]]$setValues_singleton(instr_j, loc$k, as.numeric(value))
+      invisible(NULL)
+    },
+    # The flattened values of all the nodes of an instrList, in its (sorted) order.
+    # This is used by values(model, nodes, mode = "node").
+    getValues_nodes = function(instrList) {
+      check_values_node_input(self, instrList)
+      instrList <- makeInstrList(self, instrList)
+      if (isCompiled()) {
+        if (inherits(instrList, "RinstrList") || !nCompiler:::isCompiled(instrList)) {
+          instrList <- makeCompiledInstrList(instrList)
+        }
+        return(self$getValues_nodes_impl(instrList))
+      }
+      unlist(lapply(instrList$instr_nList, \(instr) declFunList[[instr$declID]]$getValues_instr(instr)), use.names = FALSE)
+    },
+    setValues_nodes = function(instrList, value) {
+      check_values_node_input(self, instrList)
+      instrList <- makeInstrList(self, instrList)
+      value <- as.numeric(value)
+      if (isCompiled()) {
+        if (inherits(instrList, "RinstrList") || !nCompiler:::isCompiled(instrList)) {
+          instrList <- makeCompiledInstrList(instrList)
+        }
+        self$setValues_nodes_impl(instrList, value)
+        return(invisible(NULL))
+      }
+      instrs <- instrList$instr_nList
+      total <- sum(vapply(instrs, \(instr) declFunList[[instr$declID]]$valuesLength(instr), numeric(1)))
+      if (length(value) != total) {
+        stop("setValues: value has length ", length(value), " but the nodes have ", total, " values.")
+      }
+      offset <- 0
+      for (instr in instrs) offset <- declFunList[[instr$declID]]$setValues_instr(instr, value, offset)
+      invisible(NULL)
     }
   ),
   Cpublic = list(
@@ -611,11 +785,11 @@ modelBase_nClass <- nClass(
     makeCompiledInstrList = nFunction(
       name = "makeCompiledInstrList",
       function(input = "SEXP") {
-        ans <- nList(instr_nClass)$new()
+        ans <- instrList_nClass$new()
         cppLiteral("ans->set_all_values(input);")
         return(ans)
       },
-      returnType = "nList(instr_nClass)"
+      returnType = "instrList_nClass"
     ),
     # Like `makeCompiledInstrList` but for a single instr_nClass (used by
     # `getParam`, which takes one node rather than a list of them).
@@ -636,7 +810,7 @@ modelBase_nClass <- nClass(
       },
       returnType = "numericScalar",
       compileInfo = list(
-        C_fun = function(instrList = "nList(instr_nClass)") {
+        C_fun = function(instrList = "instrList_nClass") {
           # NOTE: instrList input will be ordered.
           cppLiteral('Rprintf("modelBase_nClass calculate_impl (should not see this)\\n");')
           return(0)
@@ -652,7 +826,7 @@ modelBase_nClass <- nClass(
       },
       returnType = "numericScalar",
       compileInfo = list(
-        C_fun = function(instrList = "nList(instr_nClass)") {
+        C_fun = function(instrList = "instrList_nClass") {
           # NOTE: instrList input will be ordered.
           cppLiteral('Rprintf("modelBase_nClass calculateDiff_impl (should not see this)\\n");')
           return(0)
@@ -668,7 +842,7 @@ modelBase_nClass <- nClass(
       },
       returnType = "numericScalar",
       compileInfo = list(
-        C_fun = function(instrList = "nList(instr_nClass)") {
+        C_fun = function(instrList = "instrList_nClass") {
           # NOTE: instrList input will be ordered.
           cppLiteral('Rprintf("modelBase_nClass getLogProb_impl (should not see this)\\n");')
           return(0)
@@ -684,7 +858,7 @@ modelBase_nClass <- nClass(
       },
       returnType = "void",
       compileInfo = list(
-        C_fun = function(instrList = "nList(instr_nClass)") {
+        C_fun = function(instrList = "instrList_nClass") {
           # NOTE: instrList input will be ordered.
           cppLiteral('Rprintf("modelBase_nClass simulate_impl (should not see this)\\n");')
         },
@@ -736,25 +910,206 @@ modelBase_nClass <- nClass(
         },
         virtual = TRUE
       )
+    ),
+    # One node (list step) of an instruction list; see `calc_indexed_op`.
+    calculate_indexed_impl = nFunction(
+      name = "calculate_indexed_impl",
+      function(instrList, step) {
+        cat("Uncompiled `calculate_indexed_impl` should never be called.\n")
+        return(0)
+      },
+      returnType = "numericScalar",
+      compileInfo = list(
+        C_fun = function(instrList = "instrList_nClass", step = "integerScalar") {
+          cppLiteral('Rprintf("modelBase_nClass calculate_indexed_impl (should not see this)\\n");')
+          return(0)
+        },
+        virtual = TRUE
+      )
+    ),
+    calculateDiff_indexed_impl = nFunction(
+      name = "calculateDiff_indexed_impl",
+      function(instrList, step) {
+        cat("Uncompiled `calculateDiff_indexed_impl` should never be called.\n")
+        return(0)
+      },
+      returnType = "numericScalar",
+      compileInfo = list(
+        C_fun = function(instrList = "instrList_nClass", step = "integerScalar") {
+          cppLiteral('Rprintf("modelBase_nClass calculateDiff_indexed_impl (should not see this)\\n");')
+          return(0)
+        },
+        virtual = TRUE
+      )
+    ),
+    getLogProb_indexed_impl = nFunction(
+      name = "getLogProb_indexed_impl",
+      function(instrList, step) {
+        cat("Uncompiled `getLogProb_indexed_impl` should never be called.\n")
+        return(0)
+      },
+      returnType = "numericScalar",
+      compileInfo = list(
+        C_fun = function(instrList = "instrList_nClass", step = "integerScalar") {
+          cppLiteral('Rprintf("modelBase_nClass getLogProb_indexed_impl (should not see this)\\n");')
+          return(0)
+        },
+        virtual = TRUE
+      )
+    ),
+    simulate_indexed_impl = nFunction(
+      name = "simulate_indexed_impl",
+      function(instrList, step) {
+        cat("Uncompiled `simulate_indexed_impl` should never be called.\n")
+        return(invisible(NULL))
+      },
+      returnType = "void",
+      compileInfo = list(
+        C_fun = function(instrList = "instrList_nClass", step = "integerScalar") {
+          cppLiteral('Rprintf("modelBase_nClass simulate_indexed_impl (should not see this)\\n");')
+        },
+        virtual = TRUE
+      )
+    ),
+    getParam_indexed_impl = nFunction(
+      name = "getParam_indexed_impl",
+      function(instrList, step, paramID) {
+        cat("Uncompiled `getParam_indexed_impl` should never be called.\n")
+        return(NULL)
+      },
+      # We must return a general object because it may have different nDim
+      returnType = "ETaccessor()",
+      compileInfo = list(
+        C_fun = function(instrList = "instrList_nClass", step = "integerScalar", paramID = "integerScalar") {
+          cppLiteral('Rprintf("modelBase_nClass getParam_indexed_impl (should not see this)\\n"); return nullptr;')
+        },
+        virtual = TRUE
+      )
+    ),
+    getBound_indexed_impl = nFunction(
+      name = "getBound_indexed_impl",
+      function(instrList, step, boundID) {
+        cat("Uncompiled `getBound_indexed_impl` should never be called.\n")
+        return(0)
+      },
+      returnType = "numericScalar",
+      compileInfo = list(
+        C_fun = function(instrList = "instrList_nClass", step = "integerScalar", boundID = "integerScalar") {
+          cppLiteral('Rprintf("modelBase_nClass getBound_indexed_impl (should not see this)\\n");')
+          return(0)
+        },
+        virtual = TRUE
+      )
+    ),
+    getValues_indexed_impl = nFunction(
+      name = "getValues_indexed_impl",
+      function(instrList, step) {
+        cat("Uncompiled `getValues_indexed_impl` should never be called.\n")
+        return(0)
+      },
+      returnType = "numericVector",
+      compileInfo = list(
+        C_fun = function(instrList = "instrList_nClass", step = "integerScalar") {
+          cppLiteral('Rprintf("modelBase_nClass getValues_indexed_impl (should not see this)\\n");')
+          return(nNumeric(length = 0))
+        },
+        virtual = TRUE
+      )
+    ),
+    setValues_indexed_impl = nFunction(
+      name = "setValues_indexed_impl",
+      function(instrList, step, value) {
+        cat("Uncompiled `setValues_indexed_impl` should never be called.\n")
+      },
+      returnType = "void",
+      compileInfo = list(
+        C_fun = function(instrList = "instrList_nClass", step = "integerScalar", value = "numericVector") {
+          cppLiteral('Rprintf("modelBase_nClass setValues_indexed_impl (should not see this)\\n");')
+        },
+        virtual = TRUE
+      )
+    ),
+    getValues_nodes_impl = nFunction(
+      name = "getValues_nodes_impl",
+      function(instrList) {
+        cat("Uncompiled `getValues_nodes_impl` should never be called.\n")
+        return(0)
+      },
+      returnType = "numericVector",
+      compileInfo = list(
+        C_fun = function(instrList = "instrList_nClass") {
+          cppLiteral('Rprintf("modelBase_nClass getValues_nodes_impl (should not see this)\\n");')
+          return(nNumeric(length = 0))
+        },
+        virtual = TRUE
+      )
+    ),
+    setValues_nodes_impl = nFunction(
+      name = "setValues_nodes_impl",
+      function(instrList, value) {
+        cat("Uncompiled `setValues_nodes_impl` should never be called.\n")
+      },
+      returnType = "void",
+      compileInfo = list(
+        C_fun = function(instrList = "instrList_nClass", value = "numericVector") {
+          cppLiteral('Rprintf("modelBase_nClass setValues_nodes_impl (should not see this)\\n");')
+        },
+        virtual = TRUE
+      )
     )
   ),
   # See comment above about needing to ensure a virtual destructor
   predefined = quote(system.file(file.path("include", "nimbleModel", "predef"), package = "nimbleModel") |> file.path("modelBase_nC")),
   compileInfo = list(
+    # Each of these model methods, called from compiled code as model$method(...), becomes the
+    # corresponding *_impl method (see update_model_calc_methods_LAT).
+    opDefs = sapply(
+      c(
+        "calculate", "calculate_indexed", "calculateDiff", "calculateDiff_indexed",
+        "simulate", "simulate_indexed", "getLogProb", "getLogProb_indexed",
+        "getBound", "getBound_indexed", "getParam", "getParam_indexed", "getParamID",
+        "getValues_indexed", "setValues_indexed", "getValues_nodes", "setValues_nodes"
+      ),
+      function(method) {
+        matchDef <- if(method %in% c("calculate", "calculateDiff", "simulate", "getLogProb")) {
+          function(instrList) {}
+        } else if (method %in% c("calculate_indexed", "calculateDiff_indexed", "simulate_indexed", "getLogProb_indexed")) {
+          function(instrList, i) {}
+        } else if (method == "getParam") {
+          function(instr, paramID) {}
+        } else if (method == "getBound") {
+          function(instr, boundID) {}
+        } else if (method == "getParam_indexed") {
+          function(instrList, i, paramID) {}
+        } else if (method == "getBound_indexed") {
+          function(instrList, i, boundID) {}
+        } else if (method == "getParamID") {
+          function(instr, param) {}
+        } else if (method == "getValues_indexed") {
+          function(instrList, i) {}
+        } else if (method == "setValues_indexed") {
+          function(instrList, i, value) {}
+        } else if (method == "getValues_nodes") {
+          function(instrList) {}
+        } else if (method == "setValues_nodes") {
+          function(instrList, value) {}
+        }
+        # matchDef belongs at the top level of an opDef (see nCompiler:::normalizeCallArgs). For model$method(...),
+        # labelAbstractTypesEnv$MethodCall uses it to put the arguments in order before calling the handler.
+        list(
+          matchDef = matchDef,
+          labelAbstractTypes = list(handler = update_model_calc_methods_LAT)
+        )
+      },
+      simplify = FALSE
+    ),
     interface = "full",
     createFromR = FALSE,
-    Hincludes = c('"declFunBase_nClass_c_.h"', '"instr_nClass_c_.h"'),
-    needed_units = list("declFunBase_nClass", "instr_nClass", "nList(instr_nClass)"),
+    Hincludes = c('"declFunBase_nClass_c_.h"', '"instr_nClass_c_.h"', '"instrList_nClass_c_.h"'),
+    needed_units = list("declFunBase_nClass", "instr_nClass", "nList(instr_nClass)", "instrList_nClass"),
     exportName = "modelBase_nClass_new",
     packageNames = c(uncompiled = "modelBase_nClass_R", compiled = "modelBase_nClass"),
     depends = "nimbleModel",
     HpostCode = "#include <nimbleModel/predef/modelClass_/modelClass_.h>"
   )
 )
-
-# Manually add
-# # "#include <nCompiler/predef/modelClass_/modelClass_.h>" to that file,
-# after the header content.
-
-
-# nCompile(modelBase_nClass, control=list(generate_predefined=TRUE))

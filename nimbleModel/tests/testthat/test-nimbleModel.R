@@ -117,7 +117,7 @@ test_that("basic testing of models, compiled and uncompiled", {
 
   ## Check that instrList is in correct order.
   instrList <- makeInstrList(m, c("y", "lifted_sqrt_oPtau_cP"))
-  expect_equal(instrList[[1]]$lens, 1) # lifted node first
+  expect_equal(instrList$instr_nList[[1]]$lens, 1) # lifted node first
   lp <- m$calculate(instrList)
   expect_equal(m$lifted_sqrt_oPtau_cP, 5)
   expect_equal(lp, lp_y)
@@ -219,6 +219,163 @@ test_that("basic testing of models, compiled and uncompiled", {
   # to ensure gc() happens while the DLL is still in place.
   rm(cm, m, cmh, returned_base_model, returned_der_model, converted_der_model)
   gc()
+})
+
+test_that("model methods called from nClass methods, uncompiled and compiled", {
+  # Each model method is called from its own method of one nClass, so that there is one compilation.
+  # In compiled code, model$calculate(nodes) and so on become model$calculate_impl(nodes) and so on
+  # (see update_model_calc_methods_LAT in modelBaseClass.R).
+  code <- nimbleCode({
+    mu ~ dnorm(0, sd = 2)
+    for (i in 1:4) {
+      y[i] ~ dnorm(mu, sd = 1.5)
+    }
+    for (i in 1:3) {
+      u[i] ~ dunif(lo[i], lo[i] + w[i])
+    }
+  })
+  y <- c(0.3, -1.2, 2.1, 0.8)
+  lo <- c(-1, 0, 2)
+  w <- c(1, 2, 3)
+  mclass <- nimbleModel(code,
+    inits = list(mu = 0.5, lo = lo, w = w, u = lo + w / 2),
+    data = list(y = y), returnClass = TRUE
+  )
+  modelCaller <- nClass(
+    classname = "modelCaller",
+    Cpublic = list(
+      model = "nimbleModel:::modelBase_nClass()",
+      ynodes = "nimbleModel:::instrList_nClass()", # y[1:4], data
+      unodes = "nimbleModel:::instrList_nClass()", # u[1:3]
+      unode = "nimbleModel:::instr_nClass()", # the instruction for u[1:3]; getParam and getBound use u[1]
+      calc = nFunction(function() {
+        return(model$calculate(ynodes))
+      }, returnType = "numericScalar"),
+      calcDiff = nFunction(function() {
+        return(model$calculateDiff(ynodes))
+      }, returnType = "numericScalar"),
+      logProb = nFunction(function() {
+        return(model$getLogProb(ynodes))
+      }, returnType = "numericScalar"),
+      sim = nFunction(function() {
+        model$simulate(unodes)
+      }, returnType = "void"),
+      paramID = nFunction(function(param = "character()") {
+        return(model$getParamID(unode, param))
+      }, returnType = "integerScalar"),
+      param = nFunction(function(paramID = "integerScalar") {
+        return(model$getParam(unode, paramID))
+      }, returnType = "ETaccessor()"),
+      bound = nFunction(function(boundID = "integerScalar") {
+        return(model$getBound(unode, boundID))
+      }, returnType = "numericScalar"),
+      calc_indexed = nFunction(function(i = "integerScalar") {
+        return(model$calculate_indexed(ynodes, i))
+      }, returnType = "numericScalar"),
+      calcDiff_indexed = nFunction(function(i = "integerScalar") {
+        return(model$calculateDiff_indexed(ynodes, i))
+      }, returnType = "numericScalar"),
+      logProb_indexed = nFunction(function(i = "integerScalar") {
+        return(model$getLogProb_indexed(ynodes, i))
+      }, returnType = "numericScalar"),
+      sim_indexed = nFunction(function(i = "integerScalar") {
+        model$simulate_indexed(unodes, i)
+      }, returnType = "void"),
+      param_indexed = nFunction(function(i = "integerScalar", paramID = "integerScalar") {
+        return(model$getParam_indexed(unodes, i, paramID))
+      }, returnType = "ETaccessor()"),
+      # Named arguments out of order, which the matchDef in the opDef must put in order.
+      param_indexed_named = nFunction(function(i = "integerScalar", paramID = "integerScalar") {
+        return(model$getParam_indexed(paramID = paramID, i = i, instrList = unodes))
+      }, returnType = "ETaccessor()"),
+      bound_indexed = nFunction(function(i = "integerScalar", boundID = "integerScalar") {
+        return(model$getBound_indexed(unodes, i, boundID))
+      }, returnType = "numericScalar")
+    )
+  )
+  comp <- nCompile(mclass, modelCaller)
+
+  for (case in c("uncompiled", "compiled")) {
+    if (case == "uncompiled") {
+      m <- mclass$new()
+      caller <- modelCaller$new()
+    } else {
+      m <- comp$mclass$new()
+      caller <- comp$modelCaller$new()
+    }
+    caller$model <- m
+    ynodes <- makeInstrList(m, "y")
+    unodes <- makeInstrList(m, "u")
+    if (case == "uncompiled") {
+      caller$ynodes <- ynodes
+      caller$unodes <- unodes
+      caller$unode <- unodes$instr_nList[[1]]
+    } else {
+      caller$ynodes <- m$makeCompiledInstrList(ynodes)
+      caller$unodes <- m$makeCompiledInstrList(unodes)
+      caller$unode <- m$makeCompiledInstr(unodes$instr_nList[[1]])
+    }
+    m$calculate() # also calculates the lifted nodes for lo + w
+
+    # calculate, getLogProb and calculateDiff
+    lp_y <- dnorm(y, 0.5, 1.5, log = TRUE)
+    expect_equal(caller$calc(), sum(lp_y), info = case)
+    expect_equal(caller$logProb(), sum(lp_y), info = case)
+    expect_equal(caller$calcDiff(), 0, info = case)
+    m$mu <- 1
+    new_lp_y <- dnorm(y, 1, 1.5, log = TRUE)
+    expect_equal(caller$calcDiff(), sum(new_lp_y) - sum(lp_y), info = case)
+    expect_equal(caller$logProb(), sum(new_lp_y), info = case)
+    for (k in 1:4) {
+      expect_equal(caller$logProb_indexed(k), new_lp_y[k], info = case)
+    }
+    m$mu <- 0.5
+    for (k in 1:4) {
+      expect_equal(caller$calcDiff_indexed(k), lp_y[k] - new_lp_y[k], info = case)
+      expect_equal(caller$calc_indexed(k), lp_y[k], info = case)
+    }
+    expect_equal(caller$logProb(), sum(lp_y), info = case)
+
+    # getParamID, getParam and getBound: the non-indexed versions use the first node, u[1]
+    minID <- caller$paramID("min")
+    expect_equal(minID, m$getParamID("u", "min"), info = case)
+    expect_warning(expect_equal(caller$param(minID), lo[1], info = case))
+    expect_warning(expect_equal(caller$bound(1L), lo[1], info = case)) # boundID 1 is the lower bound
+    expect_warning(expect_equal(caller$bound(2L), lo[1] + w[1], info = case)) # boundID 2 is the upper bound
+    for (k in 1:3) {
+      expect_equal(caller$param_indexed(k, minID), lo[k], info = case)
+      expect_equal(caller$param_indexed_named(k, minID), lo[k], info = case)
+      expect_equal(caller$bound_indexed(k, 1L), lo[k], info = case)
+      expect_equal(caller$bound_indexed(k, 2L), lo[k] + w[k], info = case)
+    }
+
+    # simulate_indexed changes only the k-th node, within its bounds
+    set.seed(1)
+    for (k in 1:3) {
+      before <- m$u
+      caller$sim_indexed(k)
+      expect_identical(which(m$u != before), k, info = case)
+      expect_true(m$u[k] >= lo[k] && m$u[k] <= lo[k] + w[k], info = case)
+    }
+    if(case == "uncompiled") {
+      sim_u <- m$u # record uncompiled
+    } else {
+      expect_equal(sim_u, m$u) # then check for compiled match
+    }
+    # simulate changes all of them, within their bounds
+    set.seed(2)
+    before <- m$u
+    caller$sim()
+    expect_true(all(m$u != before), info = case)
+    expect_true(all(m$u >= lo & m$u <= lo + w), info = case)
+    if(case == "uncompiled") {
+      sim_u2 <- m$u # record uncompiled
+    } else {
+      expect_equal(sim_u2, m$u) # then check for compiled match
+    }
+    # and the data nodes were not touched
+    expect_identical(m$y, y, info = case)
+  }
 })
 
 test_that("no indices", {
@@ -917,7 +1074,7 @@ test_that("calculate works correctly for time series/SSM recursion", {
   m <- mclass$new()
 
   instrList <- makeInstrList(m, c("y", "mu"))
-  sortIDs <- lapply(instrList, \(x) x$sortID)
+  sortIDs <- lapply(instrList$instr_nList, \(x) x$sortID)
   expect_true(all(diff(sapply(sortIDs, \(x) min(x, na.rm = TRUE))) >= 0), "incorrect order")
   expect_true(
     all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm = TRUE))),
@@ -925,8 +1082,8 @@ test_that("calculate works correctly for time series/SSM recursion", {
   )
 
   # Check proper handling when providing list of instructions.
-  instrList <- makeInstrList(m, instrList[c(5, 3, 1, 2, 4)])
-  sortIDs <- lapply(instrList, \(x) x$sortID)
+  instrList <- makeInstrList(m, instrList$instr_nList[c(5, 3, 1, 2, 4)])
+  sortIDs <- lapply(instrList$instr_nList, \(x) x$sortID)
   expect_true(all(diff(sapply(sortIDs, \(x) min(x, na.rm = TRUE))) >= 0))
   expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm = TRUE))))
 
@@ -958,7 +1115,7 @@ test_that("calculate works correctly for time series/SSM recursion", {
   m <- mclass$new()
 
   instrList <- makeInstrList(m, c("y", "mu"))
-  sortIDs <- lapply(instrList, \(x) x$sortID)
+  sortIDs <- lapply(instrList$instr_nList, \(x) x$sortID)
   expect_true(all(diff(sapply(sortIDs, \(x) min(x, na.rm = TRUE))) >= 0), "incorrect order")
   expect_true(
     all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm = TRUE))),
@@ -967,7 +1124,7 @@ test_that("calculate works correctly for time series/SSM recursion", {
 
   # Check idempotency
   instrList <- makeInstrList(m, instrList)
-  sortIDs <- lapply(instrList, \(x) x$sortID)
+  sortIDs <- lapply(instrList$instr_nList, \(x) x$sortID)
   expect_true(all(diff(sapply(sortIDs, \(x) min(x, na.rm = TRUE))) >= 0), "incorrect order")
   expect_true(
     all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm = TRUE))),
@@ -976,8 +1133,8 @@ test_that("calculate works correctly for time series/SSM recursion", {
 
   # Check proper handling when providing list of instructions.
   # This would need to be created as an R list of instrClass objects,
-  # instrList <- makeInstrList(m, lapply(c(5,3,1,2,4), \(i) instrList[[i]]))
-  # sortIDs <- lapply(instrList, \(x) x$sortID)
+  # instrList <- makeInstrList(m, lapply(c(5,3,1,2,4), \(i) instrList$instr_nList[[i]]))
+  # sortIDs <- lapply(instrList$instr_nList, \(x) x$sortID)
   # expect_true(all(diff(sapply(sortIDs, \(x) min(x,na.rm=TRUE))) >= 0))
   # expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm=TRUE))))
 
@@ -1002,15 +1159,15 @@ test_that("calculate works correctly for time series/SSM recursion", {
   m <- mclass$new()
 
   instrList <- makeInstrList(m, c("y", "mu"))
-  sortIDs <- lapply(instrList, \(x) x$sortID)
+  sortIDs <- lapply(instrList$instr_nList, \(x) x$sortID)
   expect_true(all(diff(sapply(sortIDs, \(x) min(x, na.rm = TRUE))) >= 0), "incorrect order")
   expect_true(
     all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm = TRUE))),
     "something other than sequential dependence on the past"
   )
 
-  instrList <- makeInstrList(m, instrList[c(5, 3, 1, 2, 4, 6, 9, 8, 7)])
-  sortIDs <- lapply(instrList, \(x) x$sortID)
+  instrList <- makeInstrList(m, instrList$instr_nList[c(5, 3, 1, 2, 4, 6, 9, 8, 7)])
+  sortIDs <- lapply(instrList$instr_nList, \(x) x$sortID)
   expect_true(all(diff(sapply(sortIDs, \(x) min(x, na.rm = TRUE))) >= 0))
   expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm = TRUE))))
 
@@ -1091,7 +1248,7 @@ test_that("calculate works correctly for time series/SSM recursion", {
   m <- mclass$new()
 
   instrList <- makeInstrList(m, c("y", "mu"))
-  sortIDs <- lapply(instrList, \(x) x$sortID)
+  sortIDs <- lapply(instrList$instr_nList, \(x) x$sortID)
   expect_true(all(diff(sapply(sortIDs, \(x) min(x, na.rm = TRUE))) >= 0), "incorrect order")
   expect_true(
     all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm = TRUE))),
@@ -1099,8 +1256,8 @@ test_that("calculate works correctly for time series/SSM recursion", {
   )
 
   # Check proper handling when providing list of instructions.
-  instrList <- makeInstrList(m, lapply(c(5, 3, 1, 2, 4), \(i) instrList[[i]]))
-  sortIDs <- lapply(instrList, \(x) x$sortID)
+  instrList <- makeInstrList(m, lapply(c(5, 3, 1, 2, 4), \(i) instrList$instr_nList[[i]]))
+  sortIDs <- lapply(instrList$instr_nList, \(x) x$sortID)
   expect_true(all(diff(sapply(sortIDs, \(x) min(x, na.rm = TRUE))) >= 0))
   expect_true(all(sapply(sortIDs, \(x) length(x) == 1 || all(diff(x) >= 1, na.rm = TRUE))))
 
@@ -1204,25 +1361,25 @@ test_that("basic creation of list of instr_nClass objects", {
 
   m <- nimbleModel(code, data = data, returnClass = FALSE)
 
-  instr0 <- makeInstrList(m, "mu")[[1]]
+  instr0 <- makeInstrList(m, "mu")$instr_nList[[1]]
   expect_identical(instr0$lens, 1)
   expect_identical(length(instr0$values), 0L)
   expect_identical(instr0$index_types, 0)
   expect_identical(instr0$instr_type, 0)
 
-  instr1 <- makeInstrList(m, "y[3:4]")[[1]]
+  instr1 <- makeInstrList(m, "y[3:4]")$instr_nList[[1]]
   expect_identical(instr1$lens, 2)
   expect_identical(instr1$values[[1]], 3) # offset
   expect_identical(instr1$index_types, 1)
   expect_identical(instr1$instr_type, 1)
 
-  instr2 <- makeInstrList(m, c("y[c(2,5)]"))[[1]]
+  instr2 <- makeInstrList(m, c("y[c(2,5)]"))$instr_nList[[1]]
   expect_identical(instr2$lens, 2)
   expect_identical(instr2$values[[1]], c(2, 5))
   expect_identical(instr2$index_types, 2)
   expect_identical(instr2$instr_type, 2)
 
-  instr2 <- makeInstrList(m, varRangeClass$new(list(newIndexRange(matrix(c(2, 5), ncol = 1))), varName = "y"))[[1]]
+  instr2 <- makeInstrList(m, varRangeClass$new(list(newIndexRange(matrix(c(2, 5), ncol = 1))), varName = "y"))$instr_nList[[1]]
   expect_identical(instr2$lens, 2)
   expect_identical(instr2$values[[1]], c(2, 5))
   expect_identical(instr2$index_types, 2)
@@ -1240,22 +1397,22 @@ test_that("basic creation of list of instr_nClass objects", {
 
   data <- list(y = matrix(rnorm(20), 5))
   m <- nimbleModel(code, data = data)
-  instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(2:5)), newIndexRange(quote(1:3))), varName = "y"))[[1]]
+  instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(2:5)), newIndexRange(quote(1:3))), varName = "y"))$instr_nList[[1]]
   expect_identical(instr$instr_type, 4)
 
-  instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(2:5)), newIndexRange(matrix(c(1, 4), ncol = 1))), varName = "y"))[[1]]
+  instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(2:5)), newIndexRange(matrix(c(1, 4), ncol = 1))), varName = "y"))$instr_nList[[1]]
   expect_identical(instr$instr_type, 5)
 
-  instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(matrix(c(1, 4), ncol = 1)), newIndexRange(quote(2:5))), varName = "y"))[[1]]
+  instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(matrix(c(1, 4), ncol = 1)), newIndexRange(quote(2:5))), varName = "y"))$instr_nList[[1]]
   expect_identical(instr$instr_type, 6)
 
-  instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(matrix(c(1, 4), ncol = 1)), newIndexRange(matrix(c(2, 4), ncol = 1))), varName = "y"))[[1]]
+  instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(matrix(c(1, 4), ncol = 1)), newIndexRange(matrix(c(2, 4), ncol = 1))), varName = "y"))$instr_nList[[1]]
   expect_identical(instr$instr_type, 7)
 
   ## order is shuffled to put first index slot in first range
   instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(2:5)), newIndexRange(matrix(c(1, 4), ncol = 1))),
     rangeToIndexSlot = list(2, 1), varName = "y"
-  ))[[1]]
+  ))$instr_nList[[1]]
   expect_identical(instr$instr_type, 6)
   expect_identical(instr$slots, c(1, 2))
   expect_identical(instr$index_types, c(2, 1))
@@ -1263,7 +1420,7 @@ test_that("basic creation of list of instr_nClass objects", {
   ## order is shuffled to put first index slot in first range
   instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(matrix(c(1, 4), ncol = 1)), newIndexRange(quote(2:5))),
     rangeToIndexSlot = list(2, 1), varName = "y"
-  ))[[1]]
+  ))$instr_nList[[1]]
   expect_identical(instr$instr_type, 5)
   expect_identical(instr$slots, c(1, 2))
   expect_identical(instr$index_types, c(1, 2))
@@ -1281,22 +1438,22 @@ test_that("basic creation of list of instr_nClass objects", {
 
   data <- list(y = matrix(rnorm(20), 4))
   m <- nimbleModel(code, data = data)
-  instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(1:3)), newIndexRange(quote(2:5))), varName = "y"))[[1]]
+  instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(1:3)), newIndexRange(quote(2:5))), varName = "y"))$instr_nList[[1]]
   expect_identical(instr$instr_type, 4)
 
-  instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(1:3)), newIndexRange(matrix(c(2, 5), ncol = 1))), varName = "y"))[[1]]
+  instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(1:3)), newIndexRange(matrix(c(2, 5), ncol = 1))), varName = "y"))$instr_nList[[1]]
   expect_identical(instr$instr_type, 6) # shuffled
 
-  instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(matrix(c(1, 4), ncol = 1)), newIndexRange(quote(2:5))), varName = "y"))[[1]]
+  instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(matrix(c(1, 4), ncol = 1)), newIndexRange(quote(2:5))), varName = "y"))$instr_nList[[1]]
   expect_identical(instr$instr_type, 5) # shuffled
 
-  instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(matrix(c(1, 4), ncol = 1)), newIndexRange(matrix(c(2, 5), ncol = 1))), varName = "y"))[[1]]
+  instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(matrix(c(1, 4), ncol = 1)), newIndexRange(matrix(c(2, 5), ncol = 1))), varName = "y"))$instr_nList[[1]]
   expect_identical(instr$instr_type, 7)
 
   ## order is shuffled to put first index slot in first range
   instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(2:5)), newIndexRange(matrix(c(1, 4), ncol = 1))),
     rangeToIndexSlot = list(2, 1), varName = "y"
-  ))[[1]]
+  ))$instr_nList[[1]]
   expect_identical(instr$instr_type, 5)
   expect_identical(instr$slots, c(1, 2))
   expect_identical(instr$index_types, c(1, 2))
@@ -1304,7 +1461,7 @@ test_that("basic creation of list of instr_nClass objects", {
   ## order is shuffled to put first index slot in first range
   instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(matrix(c(1, 5), ncol = 1)), newIndexRange(quote(2:4))),
     rangeToIndexSlot = list(2, 1), varName = "y"
-  ))[[1]]
+  ))$instr_nList[[1]]
   expect_identical(instr$instr_type, 6)
   expect_identical(instr$slots, c(1, 2))
   expect_identical(instr$index_types, c(2, 1))
@@ -1325,7 +1482,7 @@ test_that("basic creation of list of instr_nClass objects", {
   m <- nimbleModel(code, data = data)
   instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(2:5)), newIndexRange(matrix(c(1, 2, 2, 3), ncol = 2, byrow = TRUE))),
     varName = "y"
-  ))[[1]]
+  ))$instr_nList[[1]]
   expect_identical(instr$slots, c(1, 2, 3))
   expect_identical(instr$index_types, c(1, 2))
   expect_identical(instr$values[[2]], c(1, 2, 2, 3))
@@ -1339,14 +1496,14 @@ test_that("basic creation of list of instr_nClass objects", {
       newIndexRange(quote(1:2))
     ),
     varName = "y"
-  ))[[1]]
+  ))$instr_nList[[1]]
   expect_identical(instr$instr_type, 12) # allseq
 
 
   ## indexRange order is shuffled to put first index slot in first indexRange.
   instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(2:5)), newIndexRange(matrix(c(1, 2, 2, 3), ncol = 2, byrow = TRUE))),
     varName = "y", rangeToIndexSlot = list(2, c(1, 3))
-  ))[[1]]
+  ))$instr_nList[[1]]
   expect_identical(instr$slots, c(1, 3, 2)) # shuffled
   expect_identical(instr$index_types, c(2, 1))
   expect_identical(instr$values[[1]], c(1, 2, 2, 3))
@@ -1355,7 +1512,7 @@ test_that("basic creation of list of instr_nClass objects", {
   ## order within the matrix indexRange is shuffled to be ascending.
   instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(quote(2:5)), newIndexRange(matrix(c(1, 2, 2, 3), ncol = 2, byrow = TRUE))),
     varName = "y", rangeToIndexSlot = list(2, c(3, 1))
-  ))[[1]]
+  ))$instr_nList[[1]]
   expect_identical(instr$slots, c(1, 3, 2)) # shuffled
   expect_identical(instr$index_types, c(2, 1))
   expect_identical(instr$values[[1]], c(2, 1, 3, 2)) # shuffled
@@ -1363,7 +1520,7 @@ test_that("basic creation of list of instr_nClass objects", {
 
   instr <- makeInstrList(m, varRangeClass$new(list(newIndexRange(matrix(c(1, 3), ncol = 1)), newIndexRange(matrix(c(1, 2, 2, 3), ncol = 2, byrow = TRUE))),
     varName = "y"
-  ))[[1]]
+  ))$instr_nList[[1]]
   expect_identical(instr$instr_type, 10)
 
   ## Check technique of building and copying nList(instr_nClass) as a method.
@@ -1381,14 +1538,46 @@ test_that("basic creation of list of instr_nClass objects", {
   instrList <- makeInstrList(cm, "y[2:5]")
   cinstrList <- cm$makeCompiledInstrList(instrList)
   expect_true(cinstrList$isCompiled())
-  expect_true(inherits(cinstrList, "nList"))
-  expect_identical(length(cinstrList), 1L)
-  cinstr <- cinstrList[[1]]
+  expect_true(inherits(cinstrList, "instrList_nClass"))
+  expect_identical(cinstrList$offsets, 0L)
+  expect_identical(cinstrList$nNodes_total, 4L)
+  expect_true(inherits(cinstrList$instr_nList, "nList"))
+  expect_identical(length(cinstrList$instr_nList), 1L)
+  cinstr <- cinstrList$instr_nList[[1]]
   expect_true(cinstr$isCompiled())
   expect_identical(cinstr$nDim, 1L)
   expect_identical(cinstr$dims, 1L)
   expect_identical(cinstr$lens, 4L)
   expect_identical(cinstr$values[[1]], 2L)
+  expect_identical(cinstr$nNodes, 4L)
+  expect_identical(cinstr$strides, 1L)
+  expect_identical(cinstr$idxSlotStarts, 0L)
+  # The compiled list can be used directly.
+  expect_equal(cm$calculate(cinstrList), cm$calculate("y[2:5]"))
+})
+
+test_that("instruction lists record each instruction's node count and offset", {
+  code <- quote({
+    mu ~ dnorm(0, 1)
+    for (i in 1:5) {
+      for (j in 1:3) {
+        y[i, j] ~ dnorm(mu, 1)
+      }
+    }
+  })
+  m <- nimbleModel(code, returnClass = FALSE)
+  instrList <- makeInstrList(m, c("mu", "y[2:4, 1:3]"))
+  expect_true(inherits(instrList, "RinstrList"))
+  instrs <- instrList$instr_nList
+  expect_identical(length(instrs), 2L)
+  expect_identical(instrs[[1]]$nNodes, 1) # mu
+  expect_identical(instrs[[2]]$nNodes, 9) # y[2:4, 1:3]
+  expect_identical(instrs[[2]]$strides, c(3, 1)) # last range fastest
+  expect_identical(instrs[[2]]$idxSlotStarts, c(0, 1))
+  expect_identical(instrList$offsets, c(0, 1))
+  expect_identical(instrList$nNodes_total, 10)
+  # Idempotent.
+  expect_identical(makeInstrList(m, instrList), instrList)
 })
 
 # Note that whether `k` is considered as a RHSonly node might change; see Issue 28.
@@ -2051,4 +2240,36 @@ test_that("duplication cases", {
   cm$calculate(nodes)
   expect_identical(expected, m$y[2:8])
   expect_identical(expected, cm$y[2:8])
+})
+
+test_that("lifted node that uses only some of its loop indices", {
+  # Regression test: `sqrt(s2[j])` is lifted from `y[i, j]` and keeps the for-loop context `i, j`,
+  # but its instructions fill only one idx slot (for `j`). Its generated code must use `idx[1]` for `j`
+  # (it used `idx[2]`, leaving the lifted node NA), and the compiled declaration must be built for
+  # one loop index (otherwise compiled calculation errors with "instruction type ... cannot occur").
+  code <- nimbleCode({
+    for (j in 1:3) {
+      s2[j] ~ dunif(0, 10)
+    }
+    for (i in 1:4) {
+      for (j in 1:3) {
+        y[i, j] ~ dnorm(0, var = s2[j])
+      }
+    }
+  })
+  s2 <- c(0.25, 1, 4)
+  y <- matrix(rnorm(12), 4, 3)
+  mclass <- nimbleModel(code, inits = list(s2 = s2), data = list(y = y), returnClass = TRUE)
+  cmclass <- nCompile(mclass)
+  m <- mclass$new()
+  cm <- cmclass$new()
+  expected <- dnorm(y, 0, rep(sqrt(s2), each = 4), log = TRUE)
+  for (obj in list(m, cm)) {
+    obj$calculate()
+    expect_equal(obj$calculate("y"), sum(expected))
+    for (k in 1:12) {
+      node <- paste0("y[", (k - 1) %% 4 + 1, ", ", (k - 1) %/% 4 + 1, "]")
+      expect_equal(obj$getLogProb(node), expected[k])
+    }
+  }
 })

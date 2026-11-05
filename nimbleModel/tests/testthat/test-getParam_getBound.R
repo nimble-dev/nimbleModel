@@ -36,10 +36,10 @@ test_that("basic getParam and getBound works from full interface", {
   # Now that is supported (and tested) inside the functions
   # vr <- varRangeClass$new('y[3]')
   # instrList <- makeInstrList(m, vr)
-  # y3 <- instrList[[1]]
+  # y3 <- instrList$instr_nList[[1]]
   # vr <- varRangeClass$new("v")
   # instrList <- makeInstrList(m, vr)
-  # v <- instrList[[1]]
+  # v <- instrList$instr_nList[[1]]
   y3 <- "y[3]"
   v <- "v"
   for (case in c("comp", "uncomp")) {

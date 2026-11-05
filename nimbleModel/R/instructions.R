@@ -52,10 +52,30 @@ range2instr <- function(range) {
       )
     }) # in calcRange, column major; need row major here for simpler/more efficient determination of indices
   }
-  instr$instr_type <- determineInstrType(instr)
+  instr <- add_instr_precalcs(instr)
   instr$sortID <- range$sortID
   instr$declID <- range$declID
   class(instr) <- "Rinstr"
+  return(instr)
+}
+
+# Add precalculated (once) fields to an instruction:
+#   nNodes:     number of nodes in the instruction.
+#   strides:    these are strides for the *indexing* (nested as written in the *model code*), not the *data*. E.g. in for(i in 1:3) for(j in 1:6) {...}: j goes fastest so has stride=1; i has stride=6.
+#   idxSlotStarts: number of idx slots filled by the ranges before each range, i.e. where its slots start.
+#   instr_type: the iteration plan, from `determineInstrType`.
+# Every place that builds instructions calls this, so they can't drift apart.
+add_instr_precalcs <- function(instr) {
+  lens <- as.numeric(instr$lens)
+  nNodes <- prod(lens) # computed as double so the overflow check below can't itself overflow
+  if (nNodes > .Machine$integer.max) {
+    stop("an instruction has ", nNodes, " nodes, more than the maximum of ", .Machine$integer.max)
+  }
+  instr$nNodes <- nNodes
+  nRanges <- length(lens)
+  instr$strides <- rev(cumprod(c(1, rev(lens)[-nRanges])))
+  instr$idxSlotStarts <- if (length(instr$dims)) c(0, cumsum(instr$dims)[-length(instr$dims)]) else numeric(0)
+  instr$instr_type <- determineInstrType(instr)
   return(instr)
 }
 
@@ -130,29 +150,30 @@ makeInstrList <- function(model, input, includeData = TRUE, use_vec = FALSE) {
   # (1) a char vector of "nodes"
   # (2) a list of (or single) varRanges
   # (3) an nList of (or single) instr_nClass objects (assumed to be in sort order)
-  # (4) an R list of Rinstr objects (created by `range2instr`) (not assumed to be in sort order)
+  # (4) an R list of (or single) Rinstr objects (created by `range2instr`) (not assumed to be in sort order)
+  # (5) an `RinstrList` or `instrList_nClass` (returned as is)
+  # It returns an `RinstrList` (see `make_RinstrList`), or NULL if there are no nodes.
 
+  # Already a list of instructions with offsets.
+  if (inherits(input, "RinstrList") || inherits(input, "instrList_nClass")) {
+    return(input)
+  }
   # A single instruction.
-  if (inherits(input, "instr_nClass")) {
-    return(list(input))
+  if (inherits(input, "instr_nClass") || inherits(input, "Rinstr")) {
+    return(make_RinstrList(list(input)))
   }
   # An nList of instructions.
   if (inherits(input, "nList")) {
     if (!inherits(input[[1]], "instr_nClass")) {
       stop("nList input to `makeInstrList` should contain `instr_nClass` objects")
     } else {
-      return(input)
+      return(make_RinstrList(input))
     }
   }
 
-  # An R list of instr_nClass-like R lists
-  if (inherits(input, "Rlist_Rinstr")) {
-    return(input)
-  }
-
   # An R list of `Rinstr` elements, not assumed to be in sort order.
-  if (inherits(input, "Rlist_Rinstr") || (is.list(input) && all(sapply(input, \(x) inherits(x, "Rinstr"))))) {
-    # Create sort-ordered `Rlist_Rinstr`.
+  if (is.list(input) && all(sapply(input, \(x) inherits(x, "Rinstr")))) {
+    # Sort by sortID.
     sortIDs <- lapply(input, \(x) x$sortID)
     sortIDranges <- sapply(sortIDs, \(x) range(x, na.rm = TRUE))
     multiSortID <- which(sortIDranges[1, ] != sortIDranges[2, ])
@@ -167,8 +188,7 @@ makeInstrList <- function(model, input, includeData = TRUE, use_vec = FALSE) {
     }
     ord <- order(sortIDranges[1, ])
     input <- input[ord]
-    class(input) <- "Rlist_Rinstr"
-    return(input)
+    return(make_RinstrList(input))
   }
 
   # Finally handle character vectors or varRanges.
@@ -202,6 +222,8 @@ makeInstrList <- function(model, input, includeData = TRUE, use_vec = FALSE) {
     if (!all(diff(sortIDs[[i]]) == 1, na.rm = TRUE)) {
       # This quickly creates a list of R lists, where the elements mimic instr_nClass objects,
       # from a calcRange with multiple sortID values. Creating many calcRanges or instr_nClass objects is slow.
+      # Note: `makeScalarInstrInfoLists` builds instructions with nDim = 1 (one idx slot), so it looks like it
+      # will only work for declarations with a single loop index (checked by `check_instr_nDims` below).
       newInstrs <- c(newInstrs, ranges[[i]]$makeScalarInstrInfoLists())
       rangesToRemove <- c(rangesToRemove, i)
     } else { # Check for any overlapping sortID values for the sequential backward dependence calcRange.
@@ -219,8 +241,88 @@ makeInstrList <- function(model, input, includeData = TRUE, use_vec = FALSE) {
   Rlist <- c(newInstrs, lapply(ranges, \(x) range2instr(x)))
   sortIDs <- sapply(Rlist, \(x) min(x$sortID, na.rm = TRUE)) # `min` still needed for case of ascending sortIDs (e.g., dependence on the past), which are not split.
   Rlist <- Rlist[order(sortIDs)]
-  class(Rlist) <- "Rlist_Rinstr" # For checking idempotency.
-  return(Rlist)
+  check_instr_nDims(model, Rlist)
+  return(make_RinstrList(Rlist))
+}
+
+# Check that each instruction fills as many idx slots as its declaration has loop indices.
+# That is the length of `idx` the declaration's per-node methods expect, and in compiled code
+# it determines which runners exist for the declaration (see declFunClass_.h).
+# The loop indices come from `loopIndexingRule`, not `context`: a lifted node is given the same
+# for-loop context as its original node, even if it doesn't use all of those indices
+# (see the test "lifted node that uses only some of its loop indices" in test-nimbleModel.R).
+check_instr_nDims <- function(model, instrs) {
+  declInfo <- model$modelDef$declInfo
+  for (instr in instrs) {
+    nIdx <- length(declInfo[[instr$declID]]$declRule$loopIndexingRule$indexVarNames)
+    if (instr$nDim != nIdx) {
+      stop(
+        "an instruction for declaration ", instr$declID, " fills ", instr$nDim,
+        " index slots, but the declaration has ", nIdx, " loop indices"
+      )
+    }
+  }
+}
+
+# Wrap a sort-ordered list of instructions (Rinstr lists or instr_nClass objects, or an nList of them)
+# in the R-list form of `instrList_nClass`. Uncompiled code uses this directly; compiled code copies it
+# into an `instrList_nClass` (see `makeCompiledInstrList`). The steps of the whole list are numbered in
+# list order, so instruction j covers list steps offsets[j] + 1 through offsets[j] + nNodes of instruction j.
+make_RinstrList <- function(instrs) {
+  n <- length(instrs)
+  nNodes <- vapply(seq_len(n), \(j) as.numeric(instrs[[j]]$nNodes), numeric(1))
+  nNodes_total <- sum(nNodes) # double, so the overflow check below can't itself overflow
+  if (nNodes_total > .Machine$integer.max) {
+    stop("a list of instructions has ", nNodes_total, " nodes, more than the maximum of ", .Machine$integer.max)
+  }
+  result <- list(
+    instr_nList = instrs,
+    offsets = if (n) c(0, cumsum(nNodes)[-n]) else numeric(0),
+    nNodes_total = nNodes_total
+  )
+  class(result) <- "RinstrList"
+  return(result)
+}
+
+# Fill `idx` for one step (node) of an instruction, with no loop. `step` is 1-based.
+# The counter of range r is ((step - 1) %/% strides[r]) %% lens[r] + 1, and each counter
+# is turned into idx values as the runners do: start + counter - 1 for a seq range, or the
+# counter's dims[r] values for a mat/matp range, written through that range's slots.
+set_instr_idx <- function(instr, step) {
+  if (!instr$nDim) {
+    return(0) # as passed by calc_0
+  }
+  idx <- numeric(instr$nDim)
+  k <- step - 1
+  for (r in seq_along(instr$lens)) {
+    counter <- (k %/% instr$strides[r]) %% instr$lens[r] + 1
+    d <- instr$dims[r]
+    slots <- instr$slots[instr$idxSlotStarts[r] + seq_len(d)]
+    if (instr$index_types[r] == 1) {
+      idx[slots] <- instr$values[[r]][1] + counter - 1
+    } else {
+      idx[slots] <- instr$values[[r]][(counter - 1) * d + seq_len(d)]
+    }
+  }
+  idx
+}
+
+# Find which instruction of an instruction list holds list step `step` (1-based), and the step
+# within that instruction. Instruction j holds list steps offsets[j] + 1 through offsets[j] + nNodes,
+# so j is the last instruction with offsets[j] < step (which skips any instructions with no nodes).
+instrList_find_singleton <- function(instrList, step) {
+  if (step < 1 || step > instrList$nNodes_total) {
+    stop("step ", step, " is outside the instruction list's ", instrList$nNodes_total, " steps")
+  }
+  offsets <- instrList$offsets
+  j <- findInterval(step - 1, offsets)
+  list(j = j, k = step - offsets[j])
+}
+
+# Fill `idx` for list step `step` (1-based) of an instruction list.
+set_instr_idx_from_instrList <- function(instrList, step) {
+  loc <- instrList_find_singleton(instrList, step)
+  set_instr_idx(instrList$instr_nList[[loc$j]], loc$k)
 }
 
 
@@ -248,6 +350,9 @@ instr_nClass <- nClass(
         self$instr_type <- instr$instr_type %||% 0L # Use integer for compilation (would char be ok?).
         self$sortID <- instr$sortID %||% integer()
         self$declID <- instr$declID %||% 0L
+        self$nNodes <- instr$nNodes %||% 0L
+        self$strides <- instr$strides %||% integer()
+        self$idxSlotStarts <- instr$idxSlotStarts %||% integer()
       }
     }
   ),
@@ -261,6 +366,9 @@ instr_nClass <- nClass(
     instr_type = "integerScalar",
     sortID = "integerVector",
     declID = "integerScalar",
+    nNodes = "integerScalar",
+    strides = "integerVector",
+    idxSlotStarts = "integerVector",
     instr_nClass = nFunction(
       function() {
         values <- nList(integerVector())$new()
@@ -275,5 +383,30 @@ instr_nClass <- nClass(
     exportName = "instr_nClass_new",
     needed_units = list("nCompiler:::nList(integerVector())"),
     packageNames = c(uncompiled = "instr_nClass_R", compiled = "instr_nClass")
+  )
+)
+
+# An ordered list of instructions, with the offset of each instruction's first step
+# within the whole list. Filled from an `RinstrList` (see `make_RinstrList`).
+instrList_nClass <- nClass(
+  classname = "instrList_nClass",
+  Cpublic = list(
+    instr_nList = "nList(instr_nClass)",
+    offsets = "integerVector",
+    nNodes_total = "integerScalar",
+    instrList_nClass = nFunction(
+      function() {
+        instr_nList <- nList(instr_nClass)$new()
+      },
+      compileInfo = list(constructor = TRUE)
+    )
+  ),
+  predefined = quote(system.file(file.path("include", "nimbleModel", "predef"), package = "nimbleModel") |> file.path("instrList_nClass")),
+  compileInfo = list(
+    interface = "full",
+    createFromR = TRUE,
+    exportName = "instrList_nClass_new",
+    needed_units = list("instr_nClass", "nList(instr_nClass)"),
+    packageNames = c(uncompiled = "instrList_nClass_R", compiled = "instrList_nClass")
   )
 )
