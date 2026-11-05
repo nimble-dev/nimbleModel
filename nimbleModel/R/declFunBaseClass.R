@@ -55,7 +55,7 @@ declFunBase_nClass <- nClass(
     valuesLength = function(instr) {
       total <- 0
       for (k in seq_len(instr$nNodes)) {
-        idx <- set_instr_idx(instr, k) # a name, since idx is a refArg
+        idx <- set_instr_idx(instr, k)
         total <- total + valuesLength_one(idx)
       }
       total

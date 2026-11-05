@@ -550,10 +550,8 @@ modelBase_nClass <- nClass(
       )
     },
     calc_op = function(instr, fn, fn_cpp) {
-      if (missing(instr)) {
-        instr <- getVarNames()
-      }
-      instrList <- makeInstrList(self, instr)
+      # No nodes means the whole model.
+      instrList <- if (missing(instr)) makeAllNodesInstrList(self) else makeInstrList(self, instr)
       if (isCompiled()) {
         if (inherits(instrList, "RinstrList") || !nCompiler:::isCompiled(instrList)) {
           instrList <- makeCompiledInstrList(instrList)
@@ -580,10 +578,12 @@ modelBase_nClass <- nClass(
       return(logProb)
     },
     simulate = function(instrList, includeData = FALSE) {
-      if (missing(instrList)) {
-        instrList <- getVarNames()
+      # No nodes means the whole model.
+      instrList <- if (missing(instrList)) {
+        makeAllNodesInstrList(self, includeData)
+      } else {
+        makeInstrList(self, instrList, includeData = includeData)
       }
-      instrList <- makeInstrList(self, instrList, includeData = includeData)
       if (is.null(instrList)) {
         return(invisible(NULL))
       }

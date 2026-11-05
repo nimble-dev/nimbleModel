@@ -249,3 +249,39 @@ test_that("compiled code can call the *_indexed_impl methods with an instrList_n
   }
   expect_error(caller$calc(7L), "outside")
 })
+
+test_that("calculate, calculateDiff, getLogProb and simulate with no nodes use the whole model, uncompiled and compiled", {
+  code <- nimbleCode({
+    mu ~ dnorm(0, sd = s) # s is RHS-only
+    for (i in 1:4) {
+      x[i] ~ dnorm(mu, 1)
+      w[i, 1:2] <- c(x[i], 2 * mu)
+    }
+    for (j in 1:3) y[j] ~ dnorm(x[j], 1)
+  })
+  constants <- list(s = 2)
+  data <- list(y = c(0.5, -1, 2))
+  inits <- list(mu = 0.2, x = c(0.1, -0.3, 1, 2))
+  m <- nimbleModel(code, constants = constants, data = data, inits = inits)
+  cm <- nimbleModel(code, constants = constants, data = data, inits = inits, compile = TRUE)
+  all_nodes <- m$getNodeNames()
+  expected <- dnorm(0.2, 0, 2, log = TRUE) + sum(dnorm(inits$x, 0.2, 1, log = TRUE)) +
+    sum(dnorm(data$y, inits$x[1:3], 1, log = TRUE))
+  for (model in list(m, cm)) {
+    expect_equal(model$calculate(), expected)
+    expect_equal(model$calculate(), model$calculate(all_nodes))
+    expect_equal(model$getLogProb(), expected)
+    expect_equal(model$calculateDiff(), 0)
+    expect_equal(model$w[, 2], rep(0.4, 4))
+    model$simulate()
+    expect_equal(model$y, data$y) # data are not simulated by default
+    expect_false(isTRUE(all.equal(model$x, inits$x)))
+    expect_equal(model$w[, 1], model$x) # deterministic nodes are simulated (calculated)
+    model$simulate(includeData = TRUE)
+    expect_false(isTRUE(all.equal(model$y, data$y)))
+  }
+  instrList <- nimbleModel:::makeAllNodesInstrList(m)
+  expect_equal(instrList$nNodes_total, length(all_nodes))
+  instrList <- nimbleModel:::makeAllNodesInstrList(m, includeData = FALSE)
+  expect_equal(instrList$nNodes_total, length(all_nodes) - 3)
+})

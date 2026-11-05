@@ -89,9 +89,8 @@ make_modelClass_from_nimbleModel <- function(modelDef, data, inits, name = NULL)
       unlist() |>
       unique() |>
       setdiff(c("idx", "paramID_", "boundID_", "LocalNewLogProb_", "LocalAns_", "model", "param_name_")) %||% character()
-    # Other method locals (e.g. in getValues_into_one) are named Local*_, and
-    # nFunction's handling of refArgs adds *_Ref__ names to the uncompiled bodies.
-    declVars <- declVars[!grepl("^Local[[:alnum:]]*_$", declVars) & !grepl("_Ref__$", declVars)]
+    # Other method locals (e.g. in getValues_into_one) are named Local*_.
+    declVars <- declVars[!grepl("^Local[[:alnum:]]*_$", declVars)]
     declVarInfo <- modelVarInfo$vars[declVars]
     declID <- as.numeric(declInfo$declRule$ID) # Formerly `sourceLineNumber`, which may not be unique.
     declFun_membername <- declFunNames[i]
@@ -561,6 +560,8 @@ make_decl_method_nFxn <- function(f, name, returnType = "numericScalar") {
     argTypes = list(idx = "integerVector"),
     returnType = T(returnType),
     compileInfo = list(C_fun = Cfun),
+    refArgs = "idx",
+    control = list(updateArgPassing = FALSE)
   )
   nFxn
 }
@@ -688,7 +689,8 @@ make_decl_methods_from_declInfo <- function(declInfo) {
 #   setValues_from_one(idx, LocalV_, LocalOff_): the reverse.
 # These do no checking. The loops over nodes, the offsets and the length checks are hand-coded
 # in declFunClass_.h, which calls these without virtual dispatch.
-# The vector arguments (and idx) are passed by reference, so a loop over nodes doesn't copy them.
+# The vector arguments (and idx) are passed by reference in C++, so a loop over nodes doesn't copy them.
+# As for the other per-node methods, updateArgPassing = FALSE keeps the uncompiled versions by value.
 #
 # The compiled code depends on D, the number of ranges in the LHS:
 # D = 0 (scalar) and D = 1 use the LHS directly in DSL code.
@@ -775,7 +777,7 @@ make_values_one_methods <- function(LHSrep) {
     C_set <- eval(substitute(function(idx, LocalV_, LocalOff_) BODY, list(BODY = C_set)))
   }
 
-  # Uncompiled versions. R has no pass by reference here, so getValues_into_one returns LocalOut_.
+  # Uncompiled versions. These take arguments by value (updateArgPassing = FALSE), so getValues_into_one returns LocalOut_.
   R_len <- substitute(function(idx) {
     return(length(LHS))
   }, list(LHS = LHSrep)) |> eval()
@@ -797,7 +799,8 @@ make_values_one_methods <- function(LHSrep) {
       compileInfo = list(C_fun = C_len),
       returnType = "numericScalar", # index arithmetic in the DSL is double; declFunClass_ casts to int
       argTypes = list(idx = "integerVector"),
-      refArgs = "idx"
+      refArgs = "idx",
+      control = list(updateArgPassing = FALSE)
     ),
     getValues_into_one = nFunction(
       name = "getValues_into_one",
@@ -805,7 +808,8 @@ make_values_one_methods <- function(LHSrep) {
       compileInfo = list(C_fun = C_get),
       returnType = "void",
       argTypes = list(idx = "integerVector", LocalOut_ = "numericVector", LocalOff_ = "integerScalar"),
-      refArgs = c("idx", "LocalOut_")
+      refArgs = c("idx", "LocalOut_"),
+      control = list(updateArgPassing = FALSE)
     ),
     setValues_from_one = nFunction(
       name = "setValues_from_one",
@@ -813,7 +817,8 @@ make_values_one_methods <- function(LHSrep) {
       compileInfo = list(C_fun = C_set),
       returnType = "void",
       argTypes = list(idx = "integerVector", LocalV_ = "numericVector", LocalOff_ = "integerScalar"),
-      refArgs = c("idx", "LocalV_")
+      refArgs = c("idx", "LocalV_"),
+      control = list(updateArgPassing = FALSE)
     )
   )
 }
@@ -942,7 +947,9 @@ make_getParam_one_nFxn <- function(paramIDs = integer(0), exprs = list(),
     Rfun,
     compileInfo = list(C_fun = Cfun),
     returnType = "ETaccessor()",
-    argTypes = list(idx = "integerVector", paramID_ = "integerScalar")
+    argTypes = list(idx = "integerVector", paramID_ = "integerScalar"),
+    refArgs = "idx",
+    control = list(updateArgPassing = FALSE)
   )
 }
 
@@ -995,7 +1002,9 @@ make_getBound_one_nFxn <- function(boundExprs = list()) {
     Rfun,
     compileInfo = list(C_fun = Cfun),
     returnType = "numericScalar",
-    argTypes = list(idx = "integerVector", boundID_ = "integerScalar")
+    argTypes = list(idx = "integerVector", boundID_ = "integerScalar"),
+    refArgs = "idx",
+    control = list(updateArgPassing = FALSE)
   )
 }
 
