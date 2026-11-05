@@ -83,6 +83,7 @@ export(messageIfVerbose)
 export(calc_dmnormAltParams)
 export(calc_dwishAltParams)
 
+export(nimCopy)
 export(nimbleCode)
 export(nimbleModel)
 export(makeInstrList)

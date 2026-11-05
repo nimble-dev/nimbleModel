@@ -217,13 +217,15 @@ multiCopierMV_nClass <- nCompiler::nClass(
 
 #' @export
 makeMultiCopier <- function(source, nodes,
-                            sourceType = c("model", "modelValues"), ...) {
-  # This will be called from a nimble2 keyword processor
+                            sourceType = c("model", "modelValues"),
+                            logProb = FALSE, logProbOnly = FALSE, model = NULL, ...) {
+  # This is called from setup code made by nimble2 keyword processing (for nimCopy and values).
+  # logProb and logProbOnly are as for nimCopy (see nimCopy.R). For a modelValues source,
+  # `model` is used to find the logProb elements of nodes.
   # The ... is to absorb further arguments that at the time of this writing are not fleshed out.
-  if (is.character(nodes)) {
-    nodes <- nodes |> lapply(\(x) nimbleModel:::varRangeClass$new(x))
-  }
   sourceType <- match.arg(sourceType)
+  if (sourceType == "model") model <- source
+  nodes <- nimCopy_prepareNodes(model, nodes, logProb, logProbOnly)
   multiCopier <-
     switch(sourceType,
       model = multiCopier_nClass$new(),
