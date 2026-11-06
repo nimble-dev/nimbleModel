@@ -555,7 +555,7 @@ modelDefClass <- R6Class(
 
     # Overwrite declInfo (both LHS and RHS) with constants replaced; only replaces scalar constants.
     replaceAllConstants = function() {
-      constantsEnv <- list2env(constants, parent = getDefaultNamespace())
+      constantsEnv <- list2env(constants, parent = makePreevaluationEnv())
       for (i in seq_along(declInfo)) {
         newCode <- replaceConstantsRecurse(declInfo[[i]]$code, constantsEnv)$code
         declInfo[[i]] <<- modelDeclClass$new(
@@ -671,7 +671,7 @@ modelDefClass <- R6Class(
 
     # Reparameterizations and altParams come from the distribution definitions (e.g., `cholesky = chol(prec)`),
     # after keywords were changed in `modelCode`, so change keywords again (e.g., `chol` to `nChol`).
-    # This is done after lifting and constant replacement, which look for the original names (e.g., `chol` in `neverReplaceable`).
+    # This is done after lifting and constant replacement; `liftedNonScalarCalls` and `neverReplaceable` include both the original and changed names.
     changeKeywordsInDecls = function() {
       for (iDecl in seq_along(declInfo)) {
         decl <- declInfo[[iDecl]]
@@ -1275,7 +1275,7 @@ replaceConstantsRecurse <- function(code, constantsEnv, do.eval = TRUE) {
         callChar <- as.character(code[[1]])
         if (exists(callChar, constantsEnv)) {
           if (!is.vectorized(code)) {
-            if (is.null(neverReplaceable[[callChar]])) {
+            if (!(callChar %in% neverReplaceable)) {
               if (isTRUE(callChar %in% nimblePreevaluationFunctionNames)) {
                 if (inherits(get(callChar, constantsEnv), "function")) {
                   testcode <- as.numeric(eval(code, constantsEnv))
@@ -1292,16 +1292,43 @@ replaceConstantsRecurse <- function(code, constantsEnv, do.eval = TRUE) {
   stop("unable to process `", safeDeparse(code), "`.")
 }
 
-neverReplaceable <- list(
-  # Only the names matter, any non-null value will do.
-  chol = TRUE,
-  inverse = TRUE,
-  CAR_calcNumIslands = TRUE,
-  CAR_calcC = TRUE,
-  CAR_calcM = TRUE,
-  CAR_calcEVs2 = TRUE,
-  CAR_calcEVs3 = TRUE
-)
+# Environment in which pre-evaluation finds functions in `nimblePreevaluationFunctionNames`.
+# It contains those that are not in base R (e.g., `pow`, `nStep`), from nimbleModel's namespace or its imports (nCompiler).
+# Its parent is `baseenv()`, so the user's global environment is not seen.
+makePreevaluationEnv <- function() {
+  ns <- topenv(environment(makePreevaluationEnv))
+  fns <- list()
+  for (fnName in setdiff(nimblePreevaluationFunctionNames, ls(baseenv(), all.names = TRUE))) {
+    fn <- get0(fnName, envir = ns, inherits = FALSE)
+    if (is.null(fn)) fn <- get0(fnName, envir = parent.env(ns), inherits = FALSE)
+    if (is.function(fn)) fns[[fnName]] <- fn
+  }
+  list2env(fns, parent = baseenv())
+}
+
+# Calls that are never pre-evaluated, even if all arguments are constants.
+neverReplaceable <- withChangedKeywords(c(
+  "chol",
+  "inverse",
+  "CAR_calcNumIslands",
+  "CAR_calcC",
+  "CAR_calcM",
+  "CAR_calcEVs2",
+  "CAR_calcEVs3"
+))
+
+# Non-scalar calls that are lifted when used as distribution arguments.
+# (Scalar argument expressions are lifted in general; see `isExprLiftable`.)
+liftedNonScalarCalls <- withChangedKeywords(c(
+  "chol",
+  "inverse",
+  "PDinverse_logdet",
+  "CAR_calcNumIslands",
+  "CAR_calcC",
+  "CAR_calcM",
+  "CAR_calcEVs2",
+  "CAR_calcEVs3"
+))
 
 liftedCallsDoNotAddIndexing <- c(
   "CAR_calcNumIslands"
@@ -1341,9 +1368,9 @@ isExprLiftable <- function(paramExpr, type = NULL) {
   }
   if (is.call(paramExpr)) {
     callText <- getCallText(paramExpr)
-    if (callText %in% names(neverReplaceable)) {
+    if (callText %in% liftedNonScalarCalls) {
       return(TRUE)
-    } # Special calls that are not lifted.
+    } # Special non-scalar calls that are lifted.
     if (length(paramExpr) == 1) {
       return(FALSE)
     } # Don't lift function calls with no arguments.
