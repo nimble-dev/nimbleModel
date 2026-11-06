@@ -42,6 +42,7 @@ Collate:
     modelFunctions.R
     modelValues.R
     model_utils.R
+    nimCopy.R
     nodeRules.R
     opDefs.R
     options.R       

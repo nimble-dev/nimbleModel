@@ -147,6 +147,12 @@ nimbleOrRfunctionNames <- c(
   "diag",
   "length"
 )
+# Model code has nCompiler keywords changed (e.g., `chol` to `nChol`; see modelDefClass), so also
+# allow the changed names of the functions above.
+nimbleOrRfunctionNames <- unique(c(
+  nimbleOrRfunctionNames,
+  unlist(nCompiler:::nKeyWords[intersect(names(nCompiler:::nKeyWords), nimbleOrRfunctionNames)], use.names = FALSE)
+))
 
 
 # Determine the RHS pieces, expressed symbolically.
