@@ -1,3 +1,12 @@
+# Model code has nCompiler keywords changed (e.g., `chol` to `nChol`; see modelDefClass), so lists
+# of function names used in model processing also need the changed names.
+withChangedKeywords <- function(fnNames) {
+  unique(c(
+    fnNames,
+    unlist(nCompiler:::nKeyWords[intersect(names(nCompiler:::nKeyWords), fnNames)], use.names = FALSE)
+  ))
+}
+
 nimblePreevaluationFunctionNames <- c(
   "+",
   "-",
@@ -93,6 +102,7 @@ nimblePreevaluationFunctionNames <- c(
   "nimNumeric", "nimMatrix", "nimArray",
   "length"
 )
+nimblePreevaluationFunctionNames <- withChangedKeywords(nimblePreevaluationFunctionNames)
 
 nimbleOrRfunctionNames <- c(
   ":", "[", "(",
@@ -130,6 +140,7 @@ nimbleOrRfunctionNames <- c(
   "asRow", "asCol",
   "chol",
   "inverse",
+  "logdet",
   "forwardsolve", "backsolve", "solve",
   "nimEigen", "nimSvd",
   ">", "<", ">=", "<=",
@@ -147,12 +158,7 @@ nimbleOrRfunctionNames <- c(
   "diag",
   "length"
 )
-# Model code has nCompiler keywords changed (e.g., `chol` to `nChol`; see modelDefClass), so also
-# allow the changed names of the functions above.
-nimbleOrRfunctionNames <- unique(c(
-  nimbleOrRfunctionNames,
-  unlist(nCompiler:::nKeyWords[intersect(names(nCompiler:::nKeyWords), nimbleOrRfunctionNames)], use.names = FALSE)
-))
+nimbleOrRfunctionNames <- withChangedKeywords(nimbleOrRfunctionNames)
 
 
 # Determine the RHS pieces, expressed symbolically.
