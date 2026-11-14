@@ -14,11 +14,11 @@
 # This might necessitate enhancing modelValues to be know about logProb nodes.
 #
 # In the future, there are several efficiency issues that could be revisited:
-#. - Instead of doing a full get for the "to" nodes just to get lengths, calculate these from indices or objects.
-#. - Check on when assignment ends up creating whole object copies or not.
-#.   This may be particularly the case when uncompiled code works with compiled objects.
-#.  - Consider get-and-set for each, rather than get-all and set-all, but preliminary investigation 
-#.   suggested that overhead of large allocation is minor compared to benefits of the latter.
+# . - Instead of doing a full get for the "to" nodes just to get lengths, calculate these from indices or objects.
+# . - Check on when assignment ends up creating whole object copies or not.
+# .   This may be particularly the case when uncompiled code works with compiled objects.
+# .  - Consider get-and-set for each, rather than get-all and set-all, but preliminary investigation
+# .   suggested that overhead of large allocation is minor compared to benefits of the latter.
 #
 #' Copy values between models and modelValues objects
 #'

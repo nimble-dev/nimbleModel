@@ -357,7 +357,7 @@ test_that("model methods called from nClass methods, uncompiled and compiled", {
       expect_identical(which(m$u != before), k, info = case)
       expect_true(m$u[k] >= lo[k] && m$u[k] <= lo[k] + w[k], info = case)
     }
-    if(case == "uncompiled") {
+    if (case == "uncompiled") {
       sim_u <- m$u # record uncompiled
     } else {
       expect_equal(sim_u, m$u) # then check for compiled match
@@ -368,7 +368,7 @@ test_that("model methods called from nClass methods, uncompiled and compiled", {
     caller$sim()
     expect_true(all(m$u != before), info = case)
     expect_true(all(m$u >= lo & m$u <= lo + w), info = case)
-    if(case == "uncompiled") {
+    if (case == "uncompiled") {
       sim_u2 <- m$u # record uncompiled
     } else {
       expect_equal(sim_u2, m$u) # then check for compiled match

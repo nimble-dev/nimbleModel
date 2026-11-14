@@ -1369,6 +1369,12 @@ test_that("basic check of graph interface", {
     c("y", "theta", "mu0", "sigma")
   )
 
+  result <- getNodes(model, includeRHSonly = TRUE, RHSonlyOnly = TRUE)
+  expect_identical(
+    sapply(result, function(node) node$varName),
+    c("sigma")
+  )
+
   result <- getNodes(model, "theta")
   expect_identical(
     sapply(result, function(node) node$varName),
@@ -3107,6 +3113,13 @@ test_that("handling RHSonly with getParents", {
   expect_identical(
     m$getParents("y", includeRHSonly = TRUE, nodesAsChars = TRUE),
     c("mu", "sigma")
+  )
+  expect_identical(
+    m$getParents("y",
+      includeRHSonly = TRUE, RHSonlyOnly = TRUE,
+      nodesAsChars = TRUE
+    ),
+    c("sigma")
   )
 
   code <- nimbleCode({
