@@ -957,7 +957,7 @@ test_that("non-sequential indexing cases", {
   )
   m <- mclass$new()
 
-  # No opDef for chol so comment out compiled operations.
+  # We can support that syntax on the model side but not in compilation (and not for use with copy() or values()).
   # cmclass <- nCompile(mclass)
   # cm <- cmclass$new()
   truth <- nCompiler:::dmnorm_chol(m$y[c(2, 3, 5)], rep(0, 3), diag(3), log = TRUE)
@@ -2199,22 +2199,28 @@ test_that("duplication cases", {
     y[1:3] ~ dmnorm(z[1:3], pr[1:3, 1:3])
   })
   set.seed(99)
-  mclass <- nimbleModel(code, data = list(y = rnorm(3)), inits = list(z = rep(0, 3), pr = diag(3)), returnClass = TRUE)
-  # cmclass <- nCompile(mclass)
-  m <- mclass$new()
-  # cm <- cmclass$new()
+  mclass <- nimbleModel(code, returnClass = TRUE)
+  cmclass <- nCompile(mclass)
+  data <- list(y = rnorm(3))
+  inits <- list(z = rep(0, 3), pr = diag(3))
+  m <- mclass$new(data = data, inits = inits)
+  cm <- cmclass$new(data = data, inits = inits)
 
-  ## TODO: add compiled simulate when {d,r}mnorm_chol is resolved.
   m$calculate()
+  cm$calculate()
   nodes <- c("y[1]", "y[2]")
   result <- sum(dnorm(m$y, log = TRUE))
   expect_equal(m$calculate(nodes), result)
+  expect_equal(cm$calculate(nodes), result)
 
   set.seed(1)
   vals <- rnorm(3)
   set.seed(1)
   m$simulate(nodes, includeData = TRUE)
   expect_identical(vals, m$y)
+  set.seed(1)
+  cm$simulate(nodes, includeData = TRUE)
+  expect_identical(vals, cm$y)
 
   # With SSM situation.
   code <- nimbleCode({
