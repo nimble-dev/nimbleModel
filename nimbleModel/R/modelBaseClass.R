@@ -456,34 +456,38 @@ modelBase_nClass <- nClass(
                                determOnly = FALSE, stochOnly = FALSE,
                                includeData = TRUE, dataOnly = FALSE,
                                includePredictive = getNimbleModelOption("getDependenciesIncludesPredictiveNodes"),
-                               predictiveOnly = FALSE, includeRHSonly = FALSE,
+                               predictiveOnly = FALSE,
+                               includeRHSonly = FALSE, RHSonlyOnly = FALSE,
                                downstream = FALSE, immediateOnly = FALSE,
                                nodesAsChars = getNimbleModelOption("nodesAsChars"),
                                returnScalarComponents = FALSE, .sort = FALSE) {
       nimbleModel::getDependencies(
         thisModel, nodes, omit, self,
         determOnly, stochOnly, includeData, dataOnly,
-        includePredictive, predictiveOnly, includeRHSonly,
+        includePredictive, predictiveOnly,
+        includeRHSonly, RHSonlyOnly,
         downstream, immediateOnly,
         nodesAsChars, returnScalarComponents, .sort
       )
     },
     getParents = function(nodes, omit = NULL, self = FALSE,
                           determOnly = FALSE, stochOnly = FALSE,
-                          includeData = TRUE, dataOnly = FALSE, includeRHSonly = FALSE,
+                          includeData = TRUE, dataOnly = FALSE,
+                          includeRHSonly = FALSE, RHSonlyOnly = FALSE,
                           upstream = FALSE, immediateOnly = FALSE,
                           nodesAsChars = getNimbleModelOption("nodesAsChars"),
                           returnScalarComponents = FALSE, .sort = FALSE) {
       nimbleModel::getParents(
         thisModel, nodes, omit, self,
-        determOnly, stochOnly, includeData, dataOnly, includeRHSonly,
+        determOnly, stochOnly, includeData, dataOnly,
+        includeRHSonly, RHSonlyOnly,
         upstream, immediateOnly,
         nodesAsChars, returnScalarComponents, .sort
       )
     },
     getNodes = function(nodes, determOnly = FALSE, stochOnly = FALSE,
                         includeData = TRUE, dataOnly = FALSE,
-                        includeRHSonly = FALSE,
+                        includeRHSonly = FALSE, RHSonlyOnly = FALSE,
                         topOnly = FALSE, latentOnly = FALSE, endOnly = FALSE,
                         includePredictive = TRUE, predictiveOnly = FALSE,
                         nodesAsChars = getNimbleModelOption("nodesAsChars"),
@@ -492,7 +496,7 @@ modelBase_nClass <- nClass(
       if (!missing(nodes)) {
         nimbleModel::getNodes(
           self, nodes, determOnly, stochOnly, includeData, dataOnly,
-          includeRHSonly,
+          includeRHSonly, RHSonlyOnly,
           topOnly, latentOnly, endOnly,
           includePredictive, predictiveOnly,
           nodesAsChars, returnScalarComponents, .sort
@@ -502,7 +506,7 @@ modelBase_nClass <- nClass(
           self,
           determOnly = determOnly, stochOnly = stochOnly,
           includeData = includeData, dataOnly = dataOnly,
-          includeRHSonly = includeRHSonly,
+          includeRHSonly = includeRHSonly, RHSonlyOnly = RHSonlyOnly,
           topOnly = topOnly, latentOnly = latentOnly, endOnly = endOnly,
           includePredictive = includePredictive, predictiveOnly = predictiveOnly,
           nodesAsChars = nodesAsChars, returnScalarComponents = returnScalarComponents,
@@ -511,14 +515,15 @@ modelBase_nClass <- nClass(
       }
     },
     getNodeNames = function(determOnly = FALSE, stochOnly = FALSE,
-                            includeData = TRUE, dataOnly = FALSE, includeRHSonly = FALSE,
+                            includeData = TRUE, dataOnly = FALSE,
+                            includeRHSonly = FALSE, RHSonlyOnly = FALSE,
                             topOnly = FALSE, latentOnly = FALSE, endOnly = FALSE,
                             includePredictive = TRUE, predictiveOnly = FALSE,
                             returnType = "names",
                             returnScalarComponents = FALSE) {
       nimbleModel::getNodeNames(
         self, determOnly, stochOnly, includeData, dataOnly,
-        includeRHSonly, topOnly, latentOnly, endOnly,
+        includeRHSonly, RHSonlyOnly, topOnly, latentOnly, endOnly,
         includePredictive, predictiveOnly, returnType, returnScalarComponents
       )
     },
@@ -1071,7 +1076,7 @@ modelBase_nClass <- nClass(
         "getValues_indexed", "setValues_indexed", "getValues_nodes", "setValues_nodes"
       ),
       function(method) {
-        matchDef <- if(method %in% c("calculate", "calculateDiff", "simulate", "getLogProb")) {
+        matchDef <- if (method %in% c("calculate", "calculateDiff", "simulate", "getLogProb")) {
           function(instrList) {}
         } else if (method %in% c("calculate_indexed", "calculateDiff_indexed", "simulate_indexed", "getLogProb_indexed")) {
           function(instrList, i) {}

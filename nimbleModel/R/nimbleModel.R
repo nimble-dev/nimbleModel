@@ -745,9 +745,11 @@ make_values_one_methods <- function(LHSrep) {
       if (isRange[k]) {
         S <- paste0("LocalS", k, "_")
         E <- paste0("LocalE", k, "_")
-        boundLines <- c(boundLines,
-                        substitute(S <- A, list(S = as.name(S), A = e[[2]])),
-                        substitute(E <- B, list(E = as.name(E), B = e[[3]])))
+        boundLines <- c(
+          boundLines,
+          substitute(S <- A, list(S = as.name(S), A = e[[2]])),
+          substitute(E <- B, list(E = as.name(E), B = e[[3]]))
+        )
         blocks <- c(blocks, paste0("nm_r_(", S, ", ", E, ")"))
         lenExprs <- c(lenExprs, substitute((B - A + 1), list(A = e[[2]], B = e[[3]])))
       } else {

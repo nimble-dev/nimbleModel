@@ -3,7 +3,7 @@
 getNodes <- function(model, nodes,
                      determOnly = FALSE, stochOnly = FALSE,
                      includeData = TRUE, dataOnly = FALSE,
-                     includeRHSonly = FALSE,
+                     includeRHSonly = FALSE, RHSonlyOnly = FALSE,
                      topOnly = FALSE, latentOnly = FALSE, endOnly = FALSE,
                      includePredictive = TRUE, predictiveOnly = FALSE,
                      nodesAsChars = getNimbleModelOption("nodesAsChars"),
@@ -43,6 +43,9 @@ getNodes <- function(model, nodes,
   }
 
   # Filter out; result is varRanges so do this before applying later rules, which produce nodeRanges.
+  if (RHSonlyOnly) {
+    nodes <- flatten(lapply(nodes, function(node) applyRules(model$modelDef$rhsOnlyRules, node)))
+  }
   if (dataOnly) {
     nodes <- flatten(lapply(nodes, function(node) applyRules(model$dataRules, node)))
   }
@@ -133,7 +136,8 @@ getNodes <- function(model, nodes,
 # Provided for backward compatibility.
 #' @export
 getNodeNames <- function(model, determOnly = FALSE, stochOnly = FALSE,
-                         includeData = TRUE, dataOnly = FALSE, includeRHSonly = FALSE,
+                         includeData = TRUE, dataOnly = FALSE,
+                         includeRHSonly = FALSE, RHSonlyOnly = FALSE,
                          topOnly = FALSE, latentOnly = FALSE, endOnly = FALSE,
                          includePredictive = TRUE, predictiveOnly = FALSE,
                          returnType = "names",
@@ -144,7 +148,8 @@ getNodeNames <- function(model, determOnly = FALSE, stochOnly = FALSE,
   return(getNodes(model,
     determOnly = determOnly, stochOnly = stochOnly,
     includeData = includeData, dataOnly = dataOnly,
-    includeRHSonly = includeRHSonly, topOnly = topOnly, latentOnly = latentOnly, endOnly = endOnly,
+    includeRHSonly = includeRHSonly, RHSonlyOnly = RHSonlyOnly,
+    topOnly = topOnly, latentOnly = latentOnly, endOnly = endOnly,
     includePredictive = includePredictive, predictiveOnly = predictiveOnly,
     nodesAsChars = TRUE,
     returnScalarComponents = returnScalarComponents, .sort = TRUE
@@ -222,7 +227,8 @@ getDependencies <- function(model, nodes, omit = NULL,
                             self = TRUE, determOnly = FALSE, stochOnly = FALSE,
                             includeData = TRUE, dataOnly = FALSE,
                             includePredictive = getNimbleModelOption("getDependenciesIncludesPredictiveNodes"),
-                            predictiveOnly = FALSE, includeRHSonly = FALSE,
+                            predictiveOnly = FALSE,
+                            includeRHSonly = FALSE, RHSonlyOnly = FALSE,
                             downstream = FALSE, immediateOnly = FALSE,
                             nodesAsChars = getNimbleModelOption("nodesAsChars"),
                             returnScalarComponents = FALSE, .sort = FALSE) {
@@ -240,7 +246,8 @@ getDependencies <- function(model, nodes, omit = NULL,
 
 getParents <- function(model, nodes, omit = NULL,
                        self = FALSE, determOnly = FALSE, stochOnly = FALSE,
-                       includeData = TRUE, dataOnly = FALSE, includeRHSonly = FALSE,
+                       includeData = TRUE, dataOnly = FALSE,
+                       includeRHSonly = FALSE, RHSonlyOnly = FALSE,
                        upstream = FALSE, immediateOnly = FALSE,
                        nodesAsChars = getNimbleModelOption("nodesAsChars"),
                        returnScalarComponents = FALSE, .sort = FALSE) {
@@ -249,7 +256,8 @@ getParents <- function(model, nodes, omit = NULL,
     down = FALSE, self = self,
     determOnly = determOnly, stochOnly = stochOnly,
     includeData = includeData, dataOnly = dataOnly, includePredictive = TRUE,
-    predictiveOnly = FALSE, includeRHSonly = includeRHSonly,
+    predictiveOnly = FALSE,
+    includeRHSonly = includeRHSonly, RHSonlyOnly = RHSonlyOnly,
     follow = upstream, immediateOnly = immediateOnly,
     nodesAsChars = nodesAsChars, returnScalarComponents = returnScalarComponents,
     .sort = .sort, model = model

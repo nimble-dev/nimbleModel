@@ -240,7 +240,8 @@ traverseGraph <- function(streamRules, declRules,
                           nodes, omit = NULL, down, self = TRUE,
                           determOnly = FALSE, stochOnly = FALSE,
                           includeData = TRUE, dataOnly = FALSE,
-                          includePredictive = TRUE, predictiveOnly = FALSE, includeRHSonly = FALSE,
+                          includePredictive = TRUE, predictiveOnly = FALSE,
+                          includeRHSonly = FALSE, RHSonlyOnly = FALSE,
                           follow = FALSE, immediateOnly = FALSE,
                           nodesAsChars = getNimbleModelOption("nodesAsChars"),
                           returnScalarComponents = FALSE, .sort = FALSE,
@@ -263,7 +264,7 @@ traverseGraph <- function(streamRules, declRules,
     determOnly = determOnly, stochOnly = stochOnly,
     includeData = includeData, dataOnly = dataOnly,
     includePredictive = includePredictive, predictiveOnly = predictiveOnly,
-    includeRHSonly = includeRHSonly, nodesAsChars = FALSE
+    includeRHSonly = includeRHSonly, RHSonlyOnly = RHSonlyOnly, nodesAsChars = FALSE
   )
 
   if (self) {

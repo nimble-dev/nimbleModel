@@ -337,8 +337,10 @@ values <- function(model, nodes, mode = "raw") {
     targetLengths[i] <- thisLength
   }
   if (length(value) != sum(targetLengths)) {
-    stop("values(model, nodes) <- value: value has length ", length(value),
-         " but nodes have total length ", sum(targetLengths), ".")
+    stop(
+      "values(model, nodes) <- value: value has length ", length(value),
+      " but nodes have total length ", sum(targetLengths), "."
+    )
   }
   iV_start <- 1
   replExprTemplate <- quote(model_stuff <- value[iV_start:iV_end])
@@ -392,14 +394,16 @@ check_values_node_input <- function(model, nodes) {
     return(invisible(TRUE))
   }
   if (!(is.character(nodes) || inherits(nodes, "varRangeClass") ||
-        (is.list(nodes) && length(nodes) && all(vapply(nodes, \(x) inherits(x, "varRangeClass"), logical(1)))))) {
+    (is.list(nodes) && length(nodes) && all(vapply(nodes, \(x) inherits(x, "varRangeClass"), logical(1)))))) {
     return(invisible(TRUE)) # instructions
   }
   vr <- as_varRange_list(nodes)
   varNames <- vapply(vr, \(x) x$varName, character(1))
   if (any(startsWith(varNames, "logProb_"))) {
-    stop("values: mode = \"node\" does not support logProb variables (",
-         paste(unique(varNames[startsWith(varNames, "logProb_")]), collapse = ", "), ").")
+    stop(
+      "values: mode = \"node\" does not support logProb variables (",
+      paste(unique(varNames[startsWith(varNames, "logProb_")]), collapse = ", "), ")."
+    )
   }
   nNodes <- length(model$getNodes(nodes, returnScalarComponents = TRUE, nodesAsChars = TRUE))
   nWithRHSonly <- length(model$getNodes(nodes, includeRHSonly = TRUE, returnScalarComponents = TRUE, nodesAsChars = TRUE))
