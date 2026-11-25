@@ -1047,6 +1047,7 @@ getParamNames <- function(dist, includeValue = TRUE) {
 ###################################################
 ###################################################
 
+#' @export
 distributions <- distributionsClass(distributionsInputList)
 
 # removed by CJP as getDistribution() and getDistributionsInfo() make it unneeded

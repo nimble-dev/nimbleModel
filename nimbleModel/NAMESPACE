@@ -99,6 +99,9 @@ export(modelValuesConf)
 export(getsize)
 export(resize)
 
+export(distributions)
+export(getParamNames)
+
 S3method("[", modelValues)
 S3method("[<-", modelValues)
 S3method("length", modelValues)
