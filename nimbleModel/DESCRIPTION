@@ -32,9 +32,6 @@ Collate:
     getSymbolicParentNodes.R
     graphRules.R
     loopIndexingRules.R
-    MCMC_configuration.R
-    MCMC_conjugacy.R
-    MCMC_utils.R
     mathCompatibility.R
     miscFunctions.R
     modelDecl.R
