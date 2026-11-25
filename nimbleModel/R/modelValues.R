@@ -88,7 +88,7 @@ modelValuesBase_nClass <- nCompiler::nClass(
     interface = "full",
     createFromR = FALSE,
     exportName = "modelValuesBase_nClass_new",
-    packageNames = c(uncompiled = "modeValuesBase_nClass_R", compiled = "modelValuesBase_nClass"),
+    packageNames = c(uncompiled = "modelValuesBase_nClass_R", compiled = "modelValuesBase_nClass"),
     depends = "nimbleModel",
     HpostCode = "#include <nimbleModel/predef/modelValuesClass_/modelValuesClass_.h>",
     overloadDefs = list(
@@ -297,7 +297,7 @@ make_modelValues_hashID <- function(varInfo) {
 }
 
 #' @export
-modelValues <- function(varInfo, .ID = FALSE, env = parent.frame(), ...) {
+modelValues <- function(varInfo, subset = NULL, .ID = FALSE, env = parent.frame(), ...) {
   dotsArgs <- list(...)
   # Use legacy mode if legacy_nimble is TRUE or the nimbleModel option is set
   legacy_nimble <- isTRUE(getNimbleModelOption("legacy_nimble")) || isTRUE(dotsArgs$legacy_nimble)
@@ -309,6 +309,12 @@ modelValues <- function(varInfo, .ID = FALSE, env = parent.frame(), ...) {
       varInfo <- get_varInfo_from_nimbleModel(varInfo$modelDef)
     } else if (inherits(varInfo, "modelDefClass")) {
       varInfo <- get_varInfo_from_nimbleModel(varInfo)
+    }
+    if (!is.null(subset)) {
+      varInfo <- list(
+        vars = varInfo$vars[names(varInfo$vars) %in% subset],
+        sizes = varInfo$sizes[names(varInfo$sizes) %in% subset]
+      )
     }
     hashedID <- make_modelValues_hashID(varInfo)
     cpp_classname <- Rname2CppName(paste0("MV_", hashedID))

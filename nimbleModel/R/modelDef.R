@@ -770,6 +770,8 @@ modelDefClass <- R6Class(
             varInfo[[lhsVar]]$mins <<- pmin(varInfo[[lhsVar]]$mins, newMinMax[, 1])
             varInfo[[lhsVar]]$maxs <<- pmax(varInfo[[lhsVar]]$maxs, newMinMax[, 2])
             if (anyStoch) {
+              internallyIndexed <- sapply(decl$indexExpr, \(x) is.call(x) && x[[1]] == ":")
+              newMinMax[internallyIndexed, 2] <- newMinMax[internallyIndexed, 1] # Collapse i:j to i for logProb for mv nodes.
               logProbVarInfo[[lhsLogProbVar]]$mins <<- pmin(logProbVarInfo[[lhsLogProbVar]]$mins, newMinMax[, 1])
               logProbVarInfo[[lhsLogProbVar]]$maxs <<- pmax(logProbVarInfo[[lhsLogProbVar]]$maxs, newMinMax[, 2])
             }
