@@ -1,5 +1,3 @@
-# Initial rough drafting of modelValues
-
 modelValuesBase_nClass <- nCompiler::nClass(
   classname = "modelValues",
   Rpublic = list(
